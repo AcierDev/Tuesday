@@ -75,6 +75,7 @@ export enum ColumnTitles {
   Notes = "Notes",
   Rating = "Rating",
   Due = "Due Date",
+  Vertical = "Vertical",
 }
 
 export enum ColumnTypes {

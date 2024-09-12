@@ -20,16 +20,16 @@ export const getCellClassName = (columnValue: ColumnValue): string => {
   return "bg-white";
 }
 
-export const getDueBadge = (dateString: string) => {
+export const getDueBadge = (dateString: string, range: number) => {
   const dueDate = new Date(dateString)
   const now = new Date()
-  const threeDaysFromNow = addDays(now, 3)
+  const daysFromNow = addDays(now, range)
 
   if (isBefore(dueDate, now)) {
     return <Badge variant="destructive">Due</Badge>
   } else if (isToday(dueDate)) {
     return <Badge variant="destructive">Due</Badge>
-  } else if (isWithinInterval(dueDate, { start: now, end: threeDaysFromNow })) {
+  } else if (isWithinInterval(dueDate, { start: now, end: daysFromNow })) {
     return <Badge variant="destructive">Due</Badge>
   }
   return null

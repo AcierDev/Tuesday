@@ -21,7 +21,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ onClose }: SettingsPanelProps) {
-  const { settings, updateSettings } = useOrderSettings()
+  const { settings, updateSettings, updateColumnVisibility } = useOrderSettings()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -34,7 +34,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
   }
 
   const addRule = () => {
-    const newRule: AutomatronRule = {
+    const newRule = {
       id: Date.now().toString(),
       field: '',
       value: '',
@@ -56,14 +56,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
   }
 
   const toggleColumnVisibility = (group: string, field: string) => {
-    const updatedVisibility = {
-      ...settings.columnVisibility,
-      [group]: {
-        ...settings.columnVisibility[group],
-        [field]: !settings.columnVisibility[group][field]
-      }
-    }
-    updateSettings({ columnVisibility: updatedVisibility })
+    updateColumnVisibility(group, field, !settings.columnVisibility[group][field])
   }
 
   const updateStatusColor = (status: string, color: string) => {
@@ -79,7 +72,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
     onClose()
   }
 
-return (
+  return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
@@ -109,23 +102,20 @@ return (
               <TabsTrigger value="grouping">Grouping</TabsTrigger>
             </TabsList>
             <TabsContent value="automatron">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-medium">Automatron</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Automatically update item status based on field changes
-            </p>
-          </div>
-          <Switch
-            id="automatron-active"
-            checked={settings.isAutomatronActive}
-            onCheckedChange={(checked) => {
-              updateSettings({ isAutomatronActive: checked })
-              console.log(checked)
-            }}
-          />
-        </div>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium">Automatron</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Automatically update item status based on field changes
+                    </p>
+                  </div>
+                  <Switch
+                    id="automatron-active"
+                    checked={settings.isAutomatronActive}
+                    onCheckedChange={(checked) => updateSettings({ isAutomatronActive: checked })}
+                  />
+                </div>
                 <div className="space-y-4">
                   {settings.automatronRules.map((rule) => (
                     <Card key={rule.id}>
@@ -168,7 +158,7 @@ return (
                                 <SelectValue placeholder="Select new status" />
                               </SelectTrigger>
                               <SelectContent>
-                                {Object.values(ItemStatus).map((status: ItemStatus) => (
+                                {Object.values(ItemStatus).map((status) => (
                                   <SelectItem key={status} value={status}>
                                     {status}
                                   </SelectItem>
@@ -216,7 +206,9 @@ return (
                             <Checkbox
                               id={`${group}-${field}`}
                               checked={settings.columnVisibility[group][field]}
-                              onCheckedChange={() => toggleColumnVisibility(group, field)}
+                              onCheckedChange={() => {
+                                toggleColumnVisibility(group, field)
+                              }}
                             />
                             <Label htmlFor={`${group}-${field}`}>{field}</Label>
                           </div>
@@ -351,8 +343,8 @@ return (
                       )}
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {settings.showCompletedOrders
-                          ? "Completed orders are visible when grouping by Object.values(ColumnTitles) other than Status."
-                          : "Completed orders are hidden when grouping by Object.values(ColumnTitles) other than Status."}
+                          ? "Completed orders are visible when grouping by fields other than Status."
+                          : "Completed orders are hidden when grouping by fields other than Status."}
                       </p>
                     </div>
                   </div>

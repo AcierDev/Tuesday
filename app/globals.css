@@ -103,3 +103,7 @@
   position: relative;
   z-index: 1;
 }
+
+.radix-popover-content {
+  z-index: 1000 !important;
+}

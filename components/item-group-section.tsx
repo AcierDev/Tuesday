@@ -13,7 +13,7 @@ import { CustomTableCell } from './custom-table-cell'
 import { ItemActions } from './item-actions'
 import { EditItemDialog } from './edit-item-dialog'
 import { isPastDue } from '../app/utils/functions'
-import { useOrderSettings } from '../hooks/use-order-settings'
+import { useOrderSettings } from './contexts-order-settings-context'
 
 interface ItemGroupProps {
   group: Group

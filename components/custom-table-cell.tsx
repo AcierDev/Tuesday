@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format, addDays } from 'date-fns'
 import { Badge } from "@/components/ui/badge"
 import { getDueBadge, getCellClassName } from '../app/utils/functions'
-import { useOrderSettings } from '../hooks/use-order-settings'
+import { useOrderSettings } from './contexts-order-settings-context'
 
 interface CustomTableCellProps {
   item: Item

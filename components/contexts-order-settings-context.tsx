@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react'
-import { OrderSettings, AutomatronRule, ColumnVisibility, StatusColors } from '../hooks/use-order-settings'
-import { ColumnTitles, ItemStatus } from '@/app/typings/types'
+"use client"
+
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react'
+import { ColumnTitles, ColumnVisibility, ItemStatus, OrderSettings } from '@/app/typings/types'
 
 type OrderSettingsAction =
   | { type: 'SET_SETTINGS'; payload: OrderSettings }
@@ -64,19 +65,36 @@ const OrderSettingsContext = createContext<{
 } | undefined>(undefined)
 
 export function OrderSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, dispatch] = useReducer(orderSettingsReducer, defaultSettings)
+  const [settings, dispatch] = useReducer(orderSettingsReducer, defaultSettings);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem('orderSettings')
-    if (savedSettings) {
-      const parsedSettings = JSON.parse(savedSettings)
-      dispatch({ type: 'SET_SETTINGS', payload: parsedSettings })
+    if (!isInitialized) {
+      const loadSettings = () => {
+        const savedSettings = localStorage.getItem('orderSettings');
+        if (savedSettings) {
+          try {
+            const parsedSettings = JSON.parse(savedSettings);
+            // Merge saved settings with default settings to ensure all properties exist
+            const mergedSettings = { ...defaultSettings, ...parsedSettings };
+            dispatch({ type: 'SET_SETTINGS', payload: mergedSettings });
+          } catch (error) {
+            dispatch({ type: 'SET_SETTINGS', payload: defaultSettings });
+          }
+        } else {
+          dispatch({ type: 'SET_SETTINGS', payload: defaultSettings });
+        }
+        setIsInitialized(true);
+      };
+      loadSettings();
     }
-  }, [])
+  }, [isInitialized]);
 
   useEffect(() => {
-    localStorage.setItem('orderSettings', JSON.stringify(settings))
-  }, [settings])
+    if (isInitialized) {
+      localStorage.setItem('orderSettings', JSON.stringify(settings));
+    }
+  }, [settings, isInitialized]);
 
   const updateSettings = (newSettings: Partial<OrderSettings>) => {
     dispatch({ type: 'UPDATE_SETTINGS', payload: newSettings })
