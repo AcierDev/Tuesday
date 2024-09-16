@@ -107,3 +107,8 @@
 .radix-popover-content {
   z-index: 1000 !important;
 }
+
+.sticky {
+  position: -webkit-sticky;
+  position: sticky;
+}

@@ -1,19 +1,26 @@
-"use client"
-
+import React from 'react'
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Edit, X } from 'lucide-react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MoreHorizontal, Edit, Trash2, Ship, CheckCircle, Truck } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Item } from '../app/typings/types'
 
 interface ItemActionsProps {
   item: Item
   onEdit: (item: Item) => void
-  onDelete: (itemId: string) => Promise<void>
-  onShip: (itemId: string) => Promise<void>
-  onMarkCompleted: (itemId: string) => Promise<void>
+  onDelete: (item: Item) => void
+  onShip: (itemId: string) => void
+  onMarkCompleted: (itemId: string) => void
+  onGetLabel: (item: Item) => void
 }
 
-export function ItemActions({ item, onEdit, onDelete, onShip, onMarkCompleted }: ItemActionsProps) {
+export function ItemActions({ item, onEdit, onDelete, onShip, onMarkCompleted, onGetLabel }: ItemActionsProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -23,19 +30,27 @@ export function ItemActions({ item, onEdit, onDelete, onShip, onMarkCompleted }:
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Actions</DropdownMenuLabel>
         <DropdownMenuItem onClick={() => onEdit(item)}>
           <Edit className="mr-2 h-4 w-4" />
           Edit
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onDelete(item.id)}>
-          <X className="mr-2 h-4 w-4" />
+        <DropdownMenuItem onClick={() => onDelete(item)}>
+          <Trash2 className="mr-2 h-4 w-4" />
           Delete
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => onGetLabel(item)}>
+          <Truck className="mr-2 h-4 w-4" />
+          Shipping Dashboard
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onShip(item.id)}>
-          Ship
+          <Ship className="mr-2 h-4 w-4" />
+          Mark as Shipped
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onMarkCompleted(item.id)}>
-          Mark Completed
+          <CheckCircle className="mr-2 h-4 w-4" />
+          Mark as Completed
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

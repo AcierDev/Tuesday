@@ -153,7 +153,7 @@ export default function OrderManagement() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
-      <Toaster position="top-right" />
+      <Toaster position="top-center" />
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-8 text-gray-900">Order Management</h1>
         <div className="bg-white p-6 rounded-lg shadow-md mb-8">

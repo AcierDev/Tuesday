@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -7,12 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
-import { CalendarIcon, ChevronDown, ChevronUp, X, RotateCcw } from "lucide-react"
+import { CalendarIcon, ChevronDown, ChevronUp, X, RotateCcw, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Item, ItemDesigns, ItemSizes, ColumnTitles, ColumnTypes } from '../app/typings/types'
+import { Item, ItemDesigns, ItemSizes, ColumnTitles, ColumnTypes, ItemStatus, ProgressStatus } from '../app/typings/types'
+import { boardConfig } from '@/app/config/boardconfig'
 
 interface NewItemModalProps {
   isOpen: boolean
@@ -27,8 +27,15 @@ export function NewItemModal({ isOpen, onClose, onSubmit }: NewItemModalProps) {
   const [vertical, setVertical] = useState(false)
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
   const [showOptionalFields, setShowOptionalFields] = useState(false)
-  const [optionalFields, setOptionalFields] = useState<Partial<Item>>({})
+  const [optionalFields, setOptionalFields] = useState<Record<ColumnTitles, string>>(() => {
+    const fields: Record<ColumnTitles, string> = {} as Record<ColumnTitles, string>
+    Object.values(ColumnTitles).forEach(title => {
+      fields[title] = ''
+    })
+    return fields
+  })
   const [showCalendar, setShowCalendar] = useState(false)
+  const [customInputs, setCustomInputs] = useState<Record<ColumnTitles, boolean>>({} as Record<ColumnTitles, boolean>)
 
   const handleSubmit = () => {
     if (!customerName || !size || !design) {
@@ -37,15 +44,30 @@ export function NewItemModal({ isOpen, onClose, onSubmit }: NewItemModalProps) {
     }
 
     const newItem: Partial<Item> = {
-      values: [
-        { columnName: ColumnTitles.Customer_Name, type: ColumnTypes.Text, text: customerName },
-        { columnName: ColumnTitles.Size, type: ColumnTypes.Dropdown, text: size },
-        { columnName: ColumnTitles.Design, type: ColumnTypes.Dropdown, text: design },
-        { columnName: ColumnTitles.Vertical, type: ColumnTypes.Text, text: vertical ? 'Yes' : 'No' },
-        ...(dueDate ? [{ columnName: ColumnTitles.Due, type: ColumnTypes.Date, text: format(dueDate, 'yyyy-MM-dd') }] : []),
-      ],
-      ...optionalFields,
+      values: Object.entries(ColumnTitles).map(([key, title]) => {
+        let value = optionalFields[title]
+        let type = boardConfig.columns[title]?.type || ColumnTypes.Text
+
+        if (title === ColumnTitles.Customer_Name) {
+          value = customerName
+        } else if (title === ColumnTitles.Size) {
+          value = size
+          type = ColumnTypes.Dropdown
+        } else if (title === ColumnTitles.Design) {
+          value = design
+          type = ColumnTypes.Dropdown
+        } else if (title === ColumnTitles.Due) {
+          value = dueDate ? format(dueDate, 'yyyy-MM-dd') : ''
+          type = ColumnTypes.Date
+        }
+
+        return { columnName: title, type, text: value }
+      }),
+      status: ItemStatus.New,
+      createdAt: Date.now(),
     }
+
+    newItem.values?.push({ columnName: ColumnTitles.Vertical, type: ColumnTypes.Text, text: vertical ? 'Yes' : 'No' })
 
     onSubmit(newItem)
     onClose()
@@ -54,10 +76,7 @@ export function NewItemModal({ isOpen, onClose, onSubmit }: NewItemModalProps) {
   const handleOptionalFieldChange = (columnName: ColumnTitles, value: string) => {
     setOptionalFields(prev => ({
       ...prev,
-      values: [
-        ...(prev.values || []),
-        { columnName, type: ColumnTypes.Text, text: value }
-      ]
+      [columnName]: value
     }))
   }
 
@@ -73,8 +92,22 @@ export function NewItemModal({ isOpen, onClose, onSubmit }: NewItemModalProps) {
     setVertical(false)
     setDueDate(undefined)
     setShowOptionalFields(false)
-    setOptionalFields({})
+    setOptionalFields(prev => {
+      const reset = { ...prev }
+      Object.keys(reset).forEach(key => {
+        reset[key as ColumnTitles] = ''
+      })
+      return reset
+    })
     setShowCalendar(false)
+    setCustomInputs({} as Record<ColumnTitles, boolean>)
+  }
+
+  const toggleCustomInput = (columnName: ColumnTitles) => {
+    setCustomInputs(prev => ({
+      ...prev,
+      [columnName]: !prev[columnName]
+    }))
   }
 
   return (
@@ -110,35 +143,71 @@ export function NewItemModal({ isOpen, onClose, onSubmit }: NewItemModalProps) {
               <Label htmlFor="size" className="text-right">
                 Size
               </Label>
-              <Select value={size} onValueChange={(value) => setSize(value as ItemSizes)}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select size" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(ItemSizes).map((size) => (
-                    <SelectItem key={size} value={size}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {!customInputs[ColumnTitles.Size] ? (
+                <div className="col-span-3 flex items-center space-x-2">
+                  <Select value={size} onValueChange={(value) => setSize(value as ItemSizes)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select size" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(ItemSizes).map((size) => (
+                        <SelectItem key={size} value={size}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="icon" onClick={() => toggleCustomInput(ColumnTitles.Size)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="col-span-3 flex items-center space-x-2">
+                  <Input
+                    value={size}
+                    onChange={(e) => setSize(e.target.value)}
+                    placeholder="Enter custom size"
+                  />
+                  <Button variant="outline" size="icon" onClick={() => toggleCustomInput(ColumnTitles.Size)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="design" className="text-right">
                 Design
               </Label>
-              <Select value={design} onValueChange={(value) => setDesign(value as ItemDesigns)}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select design" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(ItemDesigns).map((design) => (
-                    <SelectItem key={design} value={design}>
-                      {design}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {!customInputs[ColumnTitles.Design] ? (
+                <div className="col-span-3 flex items-center space-x-2">
+                  <Select value={design} onValueChange={(value) => setDesign(value as ItemDesigns)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select design" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(ItemDesigns).map((design) => (
+                        <SelectItem key={design} value={design}>
+                          {design}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="icon" onClick={() => toggleCustomInput(ColumnTitles.Design)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="col-span-3 flex items-center space-x-2">
+                  <Input
+                    value={design}
+                    onChange={(e) => setDesign(e.target.value)}
+                    placeholder="Enter custom design"
+                  />
+                  <Button variant="outline" size="icon" onClick={() => toggleCustomInput(ColumnTitles.Design)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="vertical" className="text-right">
@@ -204,19 +273,65 @@ export function NewItemModal({ isOpen, onClose, onSubmit }: NewItemModalProps) {
             <div className="grid gap-4 py-4">
               {Object.values(ColumnTitles).filter(title => 
                 !['Customer Name', 'Size', 'Design', 'Due Date'].includes(title)
-              ).map(title => (
-                <div key={title} className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor={title} className="text-right">
-                    {title}
-                  </Label>
-                  <Input
-                    id={title}
-                    value={optionalFields.values?.find(v => v.columnName === title)?.text || ''}
-                    onChange={(e) => handleOptionalFieldChange(title, e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-              ))}
+              ).map(title => {
+                const column = boardConfig.columns[title]
+                if (column?.type === ColumnTypes.Dropdown && column.options) {
+                  return (
+                    <div key={title} className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor={title} className="text-right">
+                        {title}
+                      </Label>
+                      {!customInputs[title] ? (
+                        <div className="col-span-3 flex items-center space-x-2">
+                          <Select 
+                            value={optionalFields[title]} 
+                            onValueChange={(value) => handleOptionalFieldChange(title, value)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder={`Select ${title}`} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {column.options.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {option}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button variant="outline" size="icon" onClick={() => toggleCustomInput(title)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="col-span-3 flex items-center space-x-2">
+                          <Input
+                            value={optionalFields[title]}
+                            onChange={(e) => handleOptionalFieldChange(title, e.target.value)}
+                            placeholder={`Enter custom ${title.toLowerCase()}`}
+                          />
+                          <Button variant="outline" size="icon" onClick={() => toggleCustomInput(title)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                } else {
+                  return (
+                    <div key={title} className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor={title} className="text-right">
+                        {title}
+                      </Label>
+                      <Input
+                        id={title}
+                        value={optionalFields[title]}
+                        onChange={(e) => handleOptionalFieldChange(title, e.target.value)}
+                        className="col-span-3"
+                      />
+                    </div>
+                  )
+                }
+              })}
             </div>
           )}
         </div>

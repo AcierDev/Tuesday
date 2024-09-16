@@ -1,3 +1,5 @@
+import { Receipt } from "./interfaces";
+
 export type Maybe<T> = T | null | undefined;
 
 export type Board = {
@@ -30,6 +32,10 @@ export type Item = {
   values: ColumnValue[];
   createdAt: number;
   status: ItemStatus;
+  receipt?: Receipt;
+  vertical?: boolean;
+  visible: boolean;
+  deleted: boolean;
 };
 
 export type ColumnValue = ColorColumnValue | GenericColumnValue;
@@ -75,7 +81,6 @@ export enum ColumnTitles {
   Notes = "Notes",
   Rating = "Rating",
   Due = "Due Date",
-  Vertical = "Vertical",
 }
 
 export enum ColumnTypes {
@@ -86,11 +91,21 @@ export enum ColumnTypes {
 }
 
 export enum ItemDesigns {
-  Main = "Main",
+  Coastal = "Coastal",
   Lawyer = "Lawyer",
   Fade_To_Five = "Fade To Five",
+  Striped_Coastal = "Striped Coastal",
+  Amber = "Amber",
+  Saphire = "Saphire",
+  Timberline = "Timberline",
+  Winter = "Winter",
+  Forest = "Forest",
+  Autumn = "Autumn",
+  Elemental = "Elemental",
   Abyss = "Abyss",
   Spectrum = "Spectrum",
+  Aloe = "Aloe",
+  Mirage = "Mirage",
 }
 
 export enum ItemSizes {
@@ -99,8 +114,11 @@ export enum ItemSizes {
   Sixten_By_Ten = "16 x 10",
   Nineteen_By_Ten = "19 x 10",
   TwentyTwo_By_ten = "22 x 10",
+  Nineteen_By_Eleven = "19 x 11",
+  TwentyTwo_By_Eleven = "22 x 11",
   TwentySeven_By_Eleven = "27 x 11",
   TwentySeven_By_Fifteen = "27 x 15",
+  ThirtyOne_By_Fifteen = "31 x 15",
   ThirtySix_By_Fifteen = "36 x 15",
 }
 

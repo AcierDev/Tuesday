@@ -15,6 +15,8 @@ import { toast } from 'sonner'
 import { useTheme } from 'next-themes'
 import { useOrderSettings } from './contexts-order-settings-context'
 import { AutomatronRule, ColumnTitles, ItemStatus } from '@/app/typings/types'
+import { getInputTypeForField } from '@/app/utils/functions'
+import { boardConfig } from '@/app/config/boardconfig'
 
 interface SettingsPanelProps {
   onClose: () => void
@@ -117,37 +119,56 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
                   />
                 </div>
                 <div className="space-y-4">
-                  {settings.automatronRules.map((rule) => (
-                    <Card key={rule.id}>
-                      <CardContent className="pt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                          <div>
-                            <Label htmlFor={`field-${rule.id}`}>When this field</Label>
-                            <Select
-                              value={rule.field}
-                              onValueChange={(value) => updateRule(rule.id, 'field', value)}
-                            >
-                              <SelectTrigger id={`field-${rule.id}`}>
-                                <SelectValue placeholder="Select field" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.values(ColumnTitles).map((field) => (
-                                  <SelectItem key={field} value={field}>
-                                    {field}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label htmlFor={`value-${rule.id}`}>Is set to</Label>
-                            <Input
-                              id={`value-${rule.id}`}
-                              value={rule.value}
-                              onChange={(e) => updateRule(rule.id, 'value', e.target.value)}
-                              placeholder="Enter value"
-                            />
-                          </div>
+    {settings.automatronRules.map((rule) => (
+      <Card key={rule.id}>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label htmlFor={`field-${rule.id}`}>When this field</Label>
+              <Select
+                value={rule.field}
+                onValueChange={(value) => updateRule(rule.id, 'field', value)}
+              >
+                <SelectTrigger id={`field-${rule.id}`}>
+                  <SelectValue placeholder="Select field" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.values(ColumnTitles).filter(title => getInputTypeForField(title) === 'select').map((field) => (
+                    <SelectItem key={field} value={field}>
+                      {field}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor={`value-${rule.id}`}>Is set to</Label>
+              {getInputTypeForField(rule.field) === 'select' ? (
+                <Select
+                  value={rule.value}
+                  onValueChange={(value) => updateRule(rule.id, 'value', value)}
+                >
+                  <SelectTrigger id={`value-${rule.id}`}>
+                    <SelectValue placeholder="Select value" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(boardConfig.columns[rule.field as ColumnTitles]?.options || []).map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id={`value-${rule.id}`}
+                  value={rule.value}
+                  onChange={(e) => updateRule(rule.id, 'value', e.target.value)}
+                  placeholder="Enter value"
+                  type={getInputTypeForField(rule.field)}
+                />
+              )}
+            </div>
                           <div>
                             <Label htmlFor={`status-${rule.id}`}>Change status to</Label>
                             <Select
@@ -205,7 +226,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
                           <div key={field} className="flex items-center space-x-2">
                             <Checkbox
                               id={`${group}-${field}`}
-                              checked={settings.columnVisibility[group][field]}
+                              checked={settings.columnVisibility[group]?.[field]}
                               onCheckedChange={() => {
                                 toggleColumnVisibility(group, field)
                               }}
