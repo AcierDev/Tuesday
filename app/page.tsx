@@ -1,13 +1,8 @@
-import { OrderManagement } from "@/components/order-management";
-import { RealmAppProvider } from "./hooks/useRealmApp";
-import { OrderSettingsProvider } from "@/components/contexts-order-settings-context";
-
 export default function Home() {
   return (
-    <RealmAppProvider>
-      <OrderSettingsProvider>
-        <OrderManagement></OrderManagement>
-      </OrderSettingsProvider>
-    </RealmAppProvider>
-  );
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Welcome to Tuesday</h1>
+      <p>This is the home page of your application. Start building your content here!</p>
+    </div>
+  )
 }
