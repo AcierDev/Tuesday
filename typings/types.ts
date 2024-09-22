@@ -1,4 +1,4 @@
-import { WeeklySchedules } from "@/components/weekly-schedule/useWeeklySchedule";
+import { WeeklySchedules } from "@/components/weekly-schedule/UseWeeklySchedule";
 import { Receipt } from "./interfaces";
 
 export type Maybe<T> = T | null | undefined;
@@ -8,7 +8,7 @@ export type Board = {
   name: string;
   items_page: ItemsResponse;
   settings: Settings;
-  weeklychedules: WeeklySchedules;
+  weeklySchedules: WeeklySchedules;
 };
 
 export type Group = {
@@ -186,3 +186,4 @@ export type OrderSettings = {
 
 export type ShippingStatus = 'unshipped' | 'pre_transit' | 'in_transit' | 'delivered'
 
+export type BackboardRequirement = Record<ItemSizes, number>;

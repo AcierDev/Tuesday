@@ -1,14 +1,21 @@
 import { WeekSelector } from "@/components/weekly-schedule/WeekSelector";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/functions";
+import { RefreshCw } from "lucide-react";
 
 type SchedulePageLayoutProps = {
   title: string;
   isMobile: boolean;
   currentWeekStart: Date;
   changeWeek: (direction: 'prev' | 'next') => void;
+  resetToCurrentWeek: () => void;
   renderFilters: () => React.ReactNode;
   renderWeekView: () => React.ReactNode;
   renderTabs: () => React.ReactNode;
+  hasDataInPreviousWeek: boolean;
+  hasDataInNextWeek: boolean;
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  isCurrentWeek: boolean;
 };
 
 export function SchedulePageLayout({ 
@@ -16,9 +23,14 @@ export function SchedulePageLayout({
   isMobile, 
   currentWeekStart, 
   changeWeek, 
+  resetToCurrentWeek,
   renderFilters, 
   renderWeekView, 
-  renderTabs 
+  renderTabs,
+  hasDataInPreviousWeek,
+  hasDataInNextWeek,
+  weekStartsOn,
+  isCurrentWeek
 }: SchedulePageLayoutProps) {
   return (
     <div className={cn(
@@ -39,13 +51,43 @@ export function SchedulePageLayout({
       {!isMobile && (
         <div className="flex items-center space-x-4 mb-6">
           <div className="flex-grow">{renderFilters()}</div>
-          <WeekSelector currentWeekStart={currentWeekStart} onChangeWeek={changeWeek} />
+          <div className="flex items-center space-x-2">
+            <WeekSelector 
+              currentWeekStart={currentWeekStart} 
+              onChangeWeek={changeWeek}
+              hasDataInPreviousWeek={hasDataInPreviousWeek}
+              hasDataInNextWeek={hasDataInNextWeek}
+              weekStartsOn={weekStartsOn}
+            />
+            {!isCurrentWeek && <Button
+              variant="outline"
+              size="icon"
+              onClick={resetToCurrentWeek}
+              aria-label="Reset to current week"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>}
+          </div>
         </div>
       )}
 
       {isMobile && (
-        <div className="mb-4">
-          <WeekSelector currentWeekStart={currentWeekStart} onChangeWeek={changeWeek} />
+        <div className="mb-4 flex items-center space-x-2">
+          <WeekSelector 
+            currentWeekStart={currentWeekStart} 
+            onChangeWeek={changeWeek}
+            hasDataInPreviousWeek={hasDataInPreviousWeek}
+            hasDataInNextWeek={hasDataInNextWeek}
+            weekStartsOn={weekStartsOn}
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={resetToCurrentWeek}
+            aria-label="Reset to current week"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
         </div>
       )}
 

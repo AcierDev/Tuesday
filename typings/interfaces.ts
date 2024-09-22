@@ -131,10 +131,6 @@ export interface ShippingItem extends Item {
   shipmentStatus?: ShippingStatus
 }
 
-export interface DaySchedule {
-  [day: string]: string[]
-}
-
 export interface BoxRequirement {
   [color: string]: number
 }
