@@ -180,3 +180,17 @@ export const BOX_COLORS: Record<ItemSizes, {
     mountingRail: '48"'
   },
 };
+
+export const backboardData = {
+  [ItemSizes.Fourteen_By_Seven]: { panels: 1, instructions: "1x Using an uncut backboard, cut off as little as possible on the sides when adding the angle. H: 18 5/16\"", width: 14, height: 18.3125, blankSize: 20 },
+  [ItemSizes.Sixteen_By_Six]: { panels: 1, instructions: "1x Using an uncut backboard, cut off as little as possible on the sides when adding the angle. H: 18 5/16\"", width: 16, height: 18.3125, blankSize: 20 },
+  [ItemSizes.Sixteen_By_Ten]: { panels: 1, instructions: "1x Using an uncut backboard, cut off as little as possible on the sides when adding the angle.\nCut the H: 30 ¾\"\nCut it in half with a straight cut (~24 ¼\")", width: 16, height: 30.75, blankSize: 32 },
+  [ItemSizes.Nineteen_By_Ten]: { panels: 2, instructions: "Panel 1: H: 30 ½\" W: 30 ¾\"\nPanel 2: H: 30 ½\" W: 27 ¾\"", width: 58.5, height: 30.5, blankSize: 32 },
+  [ItemSizes.TwentyTwo_By_Ten]: { panels: 2, instructions: "2x H: 30 ¾\" W: 33 ¾\"", width: 67.5, height: 30.75, blankSize: 32 },
+  [ItemSizes.Nineteen_By_Eleven]: { panels: 2, instructions: "2x H: 33 ¾ W: 33 ¾", width: 67.5, height: 33.75, blankSize: 32 },
+  [ItemSizes.TwentyTwo_By_Eleven]: { panels: 2, instructions: "2x H: 33 ¾ W: 33 ¾", width: 67.5, height: 33.75, blankSize: 36 },
+  [ItemSizes.TwentySeven_By_Eleven]: { panels: 3, instructions: "3x H: 33 ¾ W: 27 ¾\"", width: 83.25, height: 33.75, blankSize: 29 },
+  [ItemSizes.TwentySeven_By_Fifteen]: { panels: 3, instructions: "3x H: 46 5/16\" W: 27 ¾\"", width: 83.25, height: 46.3125, blankSize: 29 },
+  [ItemSizes.ThirtyOne_By_Fifteen]: { panels: 4, instructions: "4x H: 46 5/16\" W: 27 ¾\"", width: 111, height: 46.3125, blankSize: 29 },
+  [ItemSizes.ThirtySix_By_Fifteen]: { panels: 4, instructions: "4x H: 46 5/16\" W: 27 ¾\"", width: 111, height: 46.3125, blankSize: 29 },
+}

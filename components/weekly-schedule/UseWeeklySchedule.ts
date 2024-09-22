@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { format, startOfWeek, addWeeks, subWeeks } from 'date-fns'
+import { format, startOfWeek, addWeeks, subWeeks, isBefore, isAfter, endOfWeek, isSameWeek } from 'date-fns'
 import { toast } from 'sonner'
 import { useRealmApp } from '@/hooks/useRealmApp'
 
@@ -13,9 +13,13 @@ export interface UseWeeklyScheduleReturn {
   addItemToDay: (day: string, itemId: string) => Promise<void>
   removeItemFromDay: (day: string, itemId: string) => Promise<void>
   moveItem: (sourceDay: string, destDay: string, itemId: string, newIndex: number) => Promise<void>
+  hasDataInPreviousWeek: () => boolean
+  hasDataInNextWeek: () => boolean
+  resetToCurrentWeek: () => void
+  isCurrentWeek: () => boolean
 }
 
-export const useWeeklySchedule = ({ boardId, weekStartsOn = 1 }: { boardId: string, weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 }): UseWeeklyScheduleReturn => {
+export const useWeeklySchedule = ({weekStartsOn = 0 }: { weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 }): UseWeeklyScheduleReturn => {
   const { collection } = useRealmApp()
   const [weeklySchedules, setWeeklySchedules] = useState<WeeklySchedules>({})
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => 
@@ -26,17 +30,17 @@ export const useWeeklySchedule = ({ boardId, weekStartsOn = 1 }: { boardId: stri
     if (!collection) return
 
     try {
-      const board = await collection.findOne({ _id: boardId })
+      const board = await collection.findOne({})
       if (board?.weeklySchedules) {
         setWeeklySchedules(board.weeklySchedules)
-        const latestWeek = Object.keys(board.weeklySchedules).sort().pop()
-        if (latestWeek) {
-          setCurrentWeekStart(startOfWeek(new Date(latestWeek), { weekStartsOn }))
-        } else {
-          createNewWeek(currentWeekStart)
-        }
-      } else {
-        createNewWeek(currentWeekStart)
+      }
+      
+      // Always set to the current week, regardless of database content
+      const nowWeekStart = startOfWeek(new Date(), { weekStartsOn })
+      setCurrentWeekStart(nowWeekStart)
+      
+      if (!board?.weeklySchedules || !board.weeklySchedules[format(nowWeekStart, 'yyyy-MM-dd')]) {
+        createNewWeek(nowWeekStart)
       }
     } catch (err) {
       console.error("Failed to load weekly schedules", err)
@@ -44,7 +48,7 @@ export const useWeeklySchedule = ({ boardId, weekStartsOn = 1 }: { boardId: stri
         style: { background: '#EF4444', color: 'white' }
       })
     }
-  }, [collection, boardId, weekStartsOn])
+  }, [collection, weekStartsOn])
 
   useEffect(() => {
     loadSchedules()
@@ -71,8 +75,9 @@ export const useWeeklySchedule = ({ boardId, weekStartsOn = 1 }: { boardId: stri
 
     try {
       await collection.updateOne(
-        { _id: boardId },
-        { $set: { weeklySchedules: newSchedules } }
+        {},
+        { $set: { weeklySchedules: newSchedules } },
+        { upsert: true }
       )
       console.log("Weekly schedules saved successfully")
     } catch (err) {
@@ -89,6 +94,7 @@ export const useWeeklySchedule = ({ boardId, weekStartsOn = 1 }: { boardId: stri
         ? subWeeks(prevWeekStart, 1)
         : addWeeks(prevWeekStart, 1)
       const adjustedWeekStart = startOfWeek(newWeekStart, { weekStartsOn })
+
       if (!weeklySchedules[format(adjustedWeekStart, 'yyyy-MM-dd')]) {
         createNewWeek(adjustedWeekStart)
       }
@@ -138,12 +144,53 @@ export const useWeeklySchedule = ({ boardId, weekStartsOn = 1 }: { boardId: stri
     await saveSchedules(newSchedules)
   }, [weeklySchedules, currentWeekStart, saveSchedules])
 
+  const hasDataInNextWeek = useCallback(() => {
+    const nextWeekStart = addWeeks(currentWeekStart, 1);
+    const nextWeekKey = format(nextWeekStart, 'yyyy-MM-dd');
+    const currentDate = new Date();
+    const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn });
+
+    // Check if the current week is in the past
+    const isCurrentWeekPast = isBefore(currentWeekEnd, currentDate);
+
+    // Check if there's data in the next week
+    const hasData = !!weeklySchedules[nextWeekKey] && 
+      Object.values(weeklySchedules[nextWeekKey]).some(day => day.length > 0);
+
+    return isCurrentWeekPast && hasData;
+  }, [weeklySchedules, currentWeekStart, weekStartsOn]);
+
+  const hasDataInPreviousWeek = useCallback(() => {
+    const prevWeekStart = subWeeks(currentWeekStart, 1);
+    const prevWeekKey = format(prevWeekStart, 'yyyy-MM-dd');
+    return !!weeklySchedules[prevWeekKey] && Object.values(weeklySchedules[prevWeekKey]).some(day => day.length > 0);
+  }, [weeklySchedules, currentWeekStart]);
+
+  const resetToCurrentWeek = useCallback(() => {
+    const currentDate = new Date()
+    const newWeekStart = startOfWeek(currentDate, { weekStartsOn })
+    setCurrentWeekStart(newWeekStart)
+
+    if (!weeklySchedules[format(newWeekStart, 'yyyy-MM-dd')]) {
+      createNewWeek(newWeekStart)
+    }
+  }, [weekStartsOn, weeklySchedules])
+
+  const isCurrentWeek = useCallback(() => {
+    const today = new Date()
+    return isSameWeek(currentWeekStart, today, { weekStartsOn })
+  }, [currentWeekStart, weekStartsOn])
+
   return {
     weeklySchedules,
     currentWeekStart,
+    hasDataInPreviousWeek,
+    hasDataInNextWeek,
     changeWeek,
     addItemToDay,
     removeItemFromDay,
     moveItem,
+    resetToCurrentWeek,
+    isCurrentWeek
   }
 }
