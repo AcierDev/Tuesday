@@ -27,11 +27,11 @@ export function renderColorBox(design: ItemDesigns, color: number | string, piec
       <div 
         style={{ backgroundColor }}
         className={cn(
-          "rounded-md flex items-center justify-center text-white font-semibold",
+          "rounded-md flex items-center justify-center text-white font-semibold ⠀",
           isMobile ? "w-8 h-8 text-xs" : "w-12 h-12 text-sm"
         )}
       >
-        <span>{pieces}</span>
+        <span>{pieces + "x"}</span>
       </div>
       <span className={cn("mt-1 font-medium", isMobile ? "text-xs" : "text-sm")}>{color}</span>
     </div>

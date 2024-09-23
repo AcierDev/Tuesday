@@ -24,7 +24,7 @@ export function OverviewTab({ isMobile, totalPieces, filteredRequirements, selec
           <Card>
             <CardContent className={cn("flex flex-col justify-center", isMobile ? "p-4" : "p-6")}>
               <h3 className={cn("font-semibold mb-2", isMobile ? "text-sm" : "text-lg")}>Designs</h3>
-              <p className={cn("font-bold", isMobile ? "text-2xl" : "text-4xl")}>{filteredRequirements?.length}</p>
+              <p className={cn("font-bold", isMobile ? "text-2xl" : "text-4xl")}>{filteredRequirements.length}</p>
             </CardContent>
           </Card>
           {!isMobile && (
@@ -43,7 +43,7 @@ export function OverviewTab({ isMobile, totalPieces, filteredRequirements, selec
               "grid gap-4",
               isMobile ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
             )}>
-              {filteredRequirements?.map(([design, colorRequirements]) => (
+              {filteredRequirements.map(([design, colorRequirements]) => (
                 <div key={design} className="bg-gray-100 p-4 rounded-lg">
                   <h4 className={cn("font-semibold mb-2", isMobile ? "text-xs" : "text-sm")}>{design}</h4>
                   <p className={cn("font-bold", isMobile ? "text-lg" : "text-2xl")}>
