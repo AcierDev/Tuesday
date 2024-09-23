@@ -4,7 +4,7 @@ import { DragDropContext, Draggable, Droppable } from '@hello-pangea/dnd'
 import { GripVertical, Minus, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO } from 'date-fns'
+import { format, startOfWeek, addWeeks, subWeeks, parseISO } from 'date-fns'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,8 +12,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRealmApp } from '@/hooks/useRealmApp'
-import { ColumnTitles, type Item, ItemStatus } from '@/typings/types'
-import {WeekSelector} from './WeekSelector'
+import { ColumnTitles, type Item, ItemStatus, Board } from '@/typings/types'
+import { WeekSelector } from './WeekSelector'
 
 type DaySchedule = Record<string, string[]>;
 type WeeklySchedules = Record<string, DaySchedule>;
@@ -114,6 +114,14 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
     }
     setWeeklySchedules(newSchedules)
     await saveSchedules(newSchedules)
+    
+    if (collection) {
+      await collection.updateOne(
+        { id: boardId },
+        { $set: { "items_page.items.$[elem].isScheduled": true } },
+        { arrayFilters: [{ "elem.id": item.id }] }
+      )
+    }
   }
 
   const handleRemoveItem = async (day: string, itemId: string) => {
@@ -127,6 +135,14 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
     }
     setWeeklySchedules(newSchedules)
     await saveSchedules(newSchedules)
+    
+    if (collection) {
+      await collection.updateOne(
+        { id: boardId },
+        { $set: { "items_page.items.$[elem].isScheduled": false } },
+        { arrayFilters: [{ "elem.id": itemId }] }
+      )
+    }
   }
 
   const handleDragEnd = async (result: any) => {
@@ -154,6 +170,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
 
   const weekKey = format(currentWeekStart, 'yyyy-MM-dd')
   const filteredItems = items.filter(item => 
+    !item.isScheduled &&
     !Object.values(weeklySchedules[weekKey] || {}).flat().includes(item.id) &&
     getItemValue(item, ColumnTitles.Customer_Name).toLowerCase().includes(searchTerm.toLowerCase()) &&
     (filterDesign === 'all' || getItemValue(item, ColumnTitles.Design) === filterDesign) &&
@@ -177,11 +194,11 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
         <h2 className="text-2xl font-bold mb-2">Weekly Schedule</h2>
         <WeekSelector currentWeekStart={currentWeekStart} onChangeWeek={changeWeek} />
       </div>
-      <Card>
-        <CardContent className="p-0">
+      <div className="rounded-lg">
+        <div className="space-y-4">
           <DragDropContext onDragEnd={handleDragEnd}>
             {Object.entries(weeklySchedules[weekKey] || {}).map(([day, dayItemIds]) => (
-              <Card key={day} className="mb-4 bg-gray-50 shadow-sm rounded-none last:rounded-b">
+              <Card key={day} className="rounded-lg bg-gray-50 shadow-sm">
                 <CardHeader className="py-2">
                   <CardTitle className="text-lg">{day}</CardTitle>
                 </CardHeader>
@@ -229,8 +246,8 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
               </Card>
             ))}
           </DragDropContext>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Dialog open={isAddingItem} onOpenChange={setIsAddingItem}>
         <DialogContent className="sm:max-w-[425px]">

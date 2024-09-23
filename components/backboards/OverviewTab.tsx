@@ -1,15 +1,14 @@
-// OverviewTab.tsx
 import React from 'react';
 import { cn } from '@/utils/functions';
 import { ScrollArea } from '@radix-ui/react-scroll-area';
 import { Card, CardContent } from '../ui/card';
-import { backboardData } from '@/utils/constants';
-import { ItemSizes } from '@/typings/types';
+import { BackboardRequirement, ItemSizes } from '@/typings/types';
+import { backboardData } from "@/utils/constants";
 
 type OverviewTabProps = {
   isMobile: boolean;
   totalPanels: number;
-  filteredRequirements: [string, number][];
+  filteredRequirements: [ItemSizes, number][];
   selectedDates: Date[];
 };
 
@@ -52,7 +51,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
               isMobile ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
             )}>
               {filteredRequirements.map(([size, count]) => {
-                const { panels, width, height } = backboardData[size as ItemSizes];
+                const { width, height } = backboardData[size];
                 const totalArea = width * height * count;
                 return (
                   <div key={size} className="bg-gray-100 p-4 rounded-lg">

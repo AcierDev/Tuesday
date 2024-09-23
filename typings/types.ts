@@ -38,6 +38,7 @@ export type Item = {
   vertical?: boolean;
   visible: boolean;
   deleted: boolean;
+  isScheduled: boolean;
 };
 
 export type ColumnValue = ColorColumnValue | GenericColumnValue;

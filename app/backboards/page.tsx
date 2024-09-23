@@ -1,93 +1,55 @@
 "use client"
 
-import { useEffect, useState, useMemo } from 'react';
-import { addWeeks, format, isSameWeek, startOfWeek, subWeeks, addDays } from "date-fns";
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { format, addDays } from "date-fns";
 import { toast } from 'sonner';
 
-import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
 import { useRealmApp } from '@/hooks/useRealmApp';
+import { Item, Group, Board, ColumnTitles, ItemStatus, BackboardRequirement, ItemSizes } from '@/typings/types';
 import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
 import { useIsMobile } from '@/components/shared/UseIsMobile';
-import { Filters } from '@/components/shared/Filters';
-import { WeekView } from '@/components/shared/WeekView';
 import { SchedulePageLayout } from '@/components/shared/SchedulePageLayout';
-import { DAYS_OF_WEEK, backboardData } from '@/utils/constants';
-import { cn } from '@/utils/functions';
-import { BackboardRequirement, ColumnTitles, Item, ItemSizes } from '@/typings/types';
+import { WeekView } from '@/components/shared/WeekView';
+import { Filters } from '@/components/shared/Filters';
 import { OverviewTab } from '@/components/backboards/OverviewTab';
 import { DetailsTab } from '@/components/backboards/DetailsTab';
+import { useBoardOperations } from '@/components/orders/OrderHooks';
 import { BackboardCalculations } from '@/components/backboards/BackboardCalculations';
+import { backboardData } from '@/utils/constants';
 
-export default function BackboardCuttingGuidePage() {
-  const { collection } = useRealmApp();
+export default function BackboardSchedulePage() {
+  const { collection, isLoading } = useRealmApp()
   const [items, setItems] = useState<Item[]>([]);
+  const [board, setBoard] = useState<Board | null>(null);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [filterSize, setFilterSize] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('overview');
   const isMobile = useIsMobile();
+  const { weeklySchedules, currentWeekStart, hasDataInPreviousWeek, hasDataInNextWeek, changeWeek, resetToCurrentWeek, isCurrentWeek } = useWeeklySchedule({ weekStartsOn: 0 });
+  const {updateItem} = useBoardOperations(board, collection, {})
 
-  const {
-    weeklySchedules,
-    currentWeekStart,
-    hasDataInPreviousWeek,
-    hasDataInNextWeek,
-    changeWeek,
-    resetToCurrentWeek,
-    isCurrentWeek
-  } = useWeeklySchedule({ weekStartsOn: 0 });
-
-  useEffect(() => {
-    loadScheduleAndItems();
-  }, []);
-
-  const loadScheduleAndItems = async () => {
-    if (!collection) return;
+  const loadItems = useCallback(async () => {
+    if (!collection) return
 
     try {
-      const board = await collection.findOne({});
-      if (board) {
-        setItems(board.items_page.items || []);
-        // Assuming useWeeklySchedule manages weeklySchedules
-      }
+      const loadedBoard = await collection.findOne({})
+      setBoard(loadedBoard)
+      setItems(loadedBoard?.items_page.items || [])
+      console.log("Board loaded:", loadedBoard)
     } catch (err) {
-      console.error("Failed to load schedule and items", err);
-      toast.error("Failed to load backboard cutting guide. Please refresh the page.");
+      console.error("Failed to load board", err)
+      toast.error("Failed to load board. Please refresh the page.", {
+        style: { background: "#EF4444", color: "white" },
+      })
     }
-  };
+  }, [collection, setBoard, setItems])
 
-  const backboardRequirements: BackboardRequirement = useMemo(() => BackboardCalculations({
-    schedule: weeklySchedules[format(currentWeekStart, 'yyyy-MM-dd')] || {},
-    items,
-    selectedDates
-  }), [weeklySchedules, currentWeekStart, items, selectedDates]);
-
-  const filteredRequirements = useMemo(() => {
-    return Object.entries(backboardRequirements).filter(([size, _]) => {
-      const matchesSize = filterSize === 'all' || size === filterSize;
-      const matchesSearch = size.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesSize && matchesSearch;
-    });
-  }, [backboardRequirements, filterSize, searchTerm]);
-
-  const totalPanels = useMemo(() => {
-    return filteredRequirements.reduce((total, [size, count]) => {
-      return total + (backboardData[size as ItemSizes].panels * count);
-    }, 0);
-  }, [filteredRequirements]);
-
-  const renderFilters = () => (
-    <Filters
-      filterValue={filterSize}
-      onFilterChange={setFilterSize}
-      searchTerm={searchTerm}
-      onSearchTermChange={setSearchTerm}
-      filterOptions={Object.keys(backboardRequirements)}
-      isMobile={isMobile}
-    />
-  );
+  useEffect(() => {
+    if (!isLoading && collection) {
+      loadItems()
+    }
+  }, [isLoading, collection, loadItems])
 
   const toggleDateSelection = (date: Date) => {
     setSelectedDates(prev => {
@@ -99,65 +61,6 @@ export default function BackboardCuttingGuidePage() {
     });
   };
 
-  const selectedItems = useMemo(() => {
-    const itemSet = new Set<Item>();
-    const currentWeekKey = format(currentWeekStart, 'yyyy-MM-dd');
-    selectedDates.forEach(date => {
-      const selectedDay = DAYS_OF_WEEK[date.getDay()];
-      const daySchedule = weeklySchedules[currentWeekKey]?.[selectedDay] || [];
-      const dayItems = daySchedule
-        .map(id => items.find(item => item.id === id))
-        .filter(Boolean) as Item[];
-      dayItems.forEach(item => itemSet.add(item));
-    });
-    return Array.from(itemSet);
-  }, [weeklySchedules, items, selectedDates, currentWeekStart]);
-
-  const renderTabs = () => (
-    <Card className="flex-grow mt-4 overflow-hidden">
-      <Tabs className="h-full flex flex-col" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className={cn(
-          "w-full justify-start pt-2 bg-transparent border-b",
-          isMobile ? "px-2" : "px-6"
-        )}>
-          <TabsTrigger 
-            value="overview" 
-            className={cn(
-              "data-[state=active]:bg-background data-[state=active]:shadow-none data-[state=active]:border-primary data-[state=active]:border-b-2 rounded-none",
-              isMobile ? "flex-1" : ""
-            )}
-          >
-            Overview
-          </TabsTrigger>
-          <TabsTrigger 
-            value="details" 
-            className={cn(
-              "data-[state=active]:bg-background data-[state=active]:shadow-none data-[state=active]:border-primary data-[state=active]:border-b-2 rounded-none",
-              isMobile ? "flex-1" : ""
-            )}
-          >
-            Details
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent className="flex-grow overflow-auto" value="overview">
-          <OverviewTab
-            isMobile={isMobile}
-            totalPanels={totalPanels}
-            filteredRequirements={filteredRequirements}
-            selectedDates={selectedDates}
-          />
-        </TabsContent>
-        <TabsContent className="flex-grow overflow-hidden" value="details">
-          <DetailsTab
-            isMobile={isMobile}
-            filteredRequirements={filteredRequirements}
-            selectedItems={selectedItems}
-          />
-        </TabsContent>
-      </Tabs>
-    </Card>
-  );
-
   const renderWeekView = () => (
     <WeekView
       currentWeekStart={currentWeekStart}
@@ -166,22 +69,120 @@ export default function BackboardCuttingGuidePage() {
       toggleDateSelection={toggleDateSelection}
       isMobile={isMobile}
     />
-  );
+  );  
+
+  const itemsNeedingBackboards = useMemo(() => {
+    const selectedDateStrings = selectedDates.map(date => format(date, 'yyyy-MM-dd'));
+    const weekKey = format(currentWeekStart, 'yyyy-MM-dd');
+    const currentWeekSchedule = weeklySchedules[weekKey] || {};
+
+    const scheduledItems = new Set<string>();
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    dayNames.forEach((dayName, index) => {
+      const dayDate = format(addDays(currentWeekStart, index), 'yyyy-MM-dd');
+      if (selectedDateStrings.includes(dayDate) && currentWeekSchedule[dayName]) {
+        currentWeekSchedule[dayName].forEach(id => scheduledItems.add(id));
+      }
+    });
+
+    return items.filter(item => {
+      if (!scheduledItems.has(item.id)) return false;
+      const backboardValue = item.values.find(value => value.columnName === ColumnTitles.Backboard);
+      return backboardValue?.text !== 'Done';
+    })
+  }, [items, selectedDates, weeklySchedules, currentWeekStart]);
+
+  const filteredItemsNeedingBackboards = useMemo(() => {
+    return itemsNeedingBackboards.filter(item => {
+      const sizeValue = item.values.find(value => value.columnName === 'Size')?.text || '';
+      const matchesSize = filterSize === 'all' || sizeValue === filterSize;
+      const matchesSearch = item.values.some(value => 
+        String(value.text || "").toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      return matchesSize && matchesSearch;
+    });
+  }, [itemsNeedingBackboards, filterSize, searchTerm]);
+
+  const filteredBackboardGroup: Group = useMemo(() => ({
+    id: 'backboard-group',
+    title: 'Paint',
+    items: filteredItemsNeedingBackboards,
+  }), [filteredItemsNeedingBackboards]);
+
+  const backboardRequirements: BackboardRequirement = useMemo(() => BackboardCalculations({
+    schedule: weeklySchedules[format(currentWeekStart, 'yyyy-MM-dd')] || {},
+    items,
+    selectedDates
+  }), [weeklySchedules, currentWeekStart, items, selectedDates]);
+
+  // console.log('backboardRequirements', backboardRequirements)
+
+  const filteredRequirements = Object.entries(backboardRequirements).filter(([size, count]) => {
+    const matchesSize = filterSize === 'all' || size === filterSize;
+    const matchesSearch = size.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSize && matchesSearch && count > 0;
+  }) as [ItemSizes, number][];
+
+  const totalPanels = useMemo(() => {
+    return filteredRequirements.reduce((total, [size, count]) => {
+      return total + (backboardData[size as ItemSizes].panels * count);
+    }, 0);
+  }, [filteredRequirements]);
+
+  // console.log('filtered requirements', filteredRequirements)
 
   return (
     <SchedulePageLayout
-      title="Backboard Cutting Guide"
+      title="Backboard Schedule"
       isMobile={isMobile}
       currentWeekStart={currentWeekStart}
       changeWeek={changeWeek}
       resetToCurrentWeek={resetToCurrentWeek}
-      renderFilters={renderFilters}
+      renderFilters={() => (
+        <Filters
+          filterValue={filterSize}
+          onFilterChange={setFilterSize}
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          filterOptions={Object.keys(backboardRequirements)}
+          isMobile={isMobile}
+        />
+      )}
       renderWeekView={renderWeekView}
-      renderTabs={renderTabs}
+      tabs={[
+        {
+          value: 'overview',
+          label: 'Overview',
+          content: (
+            <OverviewTab
+              isMobile={isMobile}
+              totalPanels={totalPanels}
+              filteredRequirements={filteredRequirements}
+              selectedDates={selectedDates}
+            />
+          )
+        },
+        {
+          value: 'details',
+          label: 'Details',
+          content: (
+            <DetailsTab
+              isMobile={isMobile}
+              filteredRequirements={filteredRequirements}
+              selectedItems={filteredItemsNeedingBackboards}
+            />
+          )
+        }
+      ]}
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
       hasDataInPreviousWeek={hasDataInPreviousWeek()}
       hasDataInNextWeek={hasDataInNextWeek()}
       weekStartsOn={0}
       isCurrentWeek={isCurrentWeek()}
+      group={filteredBackboardGroup}
+      board={board}
     />
   );
 }

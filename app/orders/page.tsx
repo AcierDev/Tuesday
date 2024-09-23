@@ -48,7 +48,7 @@ export default function OrderManagementPage() {
     if (!collection) return
 
     try {
-      const loadedBoard = await collection.findOne({ /* your query here */ })
+      const loadedBoard = await collection.findOne({})
       setBoard(loadedBoard)
       console.log("Board loaded:", loadedBoard)
     } catch (err) {

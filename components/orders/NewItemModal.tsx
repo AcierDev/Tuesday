@@ -69,7 +69,8 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
       createdAt: Date.now(),
       vertical,
       visible: true,
-      deleted: false
+      deleted: false,
+      isScheduled: false,
     }
 
     onSubmit(newItem)
