@@ -1,40 +1,39 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { format, addDays, startOfWeek } from "date-fns";
-import { toast } from 'sonner';
+import { useEffect, useState, useCallback, useMemo } from 'react'
+import { format, addDays } from "date-fns"
+import { toast } from 'sonner'
 
-import { useRealmApp } from '@/hooks/useRealmApp';
-import { Item, Group, Board, ColumnTitles, ItemStatus } from '@/typings/types';
-import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
-import { useIsMobile } from '@/components/shared/UseIsMobile';
-import { SchedulePageLayout } from '@/components/shared/SchedulePageLayout';
-import { WeekView } from '@/components/shared/WeekView';
-import { Filters } from '@/components/shared/Filters';
-import { PaintRequirement, calculatePaintRequirements } from '@/components/paint/PaintCalculations';
-import { OverviewTab } from '@/components/paint/OverviewTab';
-import { DetailsTab } from '@/components/paint/DetailsTab';
-import { useBoardOperations } from '@/components/orders/OrderHooks';
+import { useRealmApp } from '@/hooks/useRealmApp'
+import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule"
+import { useIsMobile } from '@/components/shared/UseIsMobile'
+import { SchedulePageLayout } from '@/components/shared/SchedulePageLayout'
+import { Filters } from '@/components/shared/Filters'
+import { PaintRequirement, calculatePaintRequirements } from '@/components/paint/PaintCalculations'
+import { OverviewTab } from '@/components/paint/OverviewTab'
+import { DetailsTab } from '@/components/paint/DetailsTab'
+import { useBoardOperations } from '@/components/orders/OrderHooks'
+import { Board, Group, Item, ItemStatus } from '@/typings/types'
 
 export default function PaintSchedulePage() {
   const { collection, isLoading } = useRealmApp()
-  const [items, setItems] = useState<Item[]>([]);
-  const [board, setBoard] = useState<Board | null>(null);
-  const [paintRequirements, setPaintRequirements] = useState<Record<string, PaintRequirement>>({});
-  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-  const [filterDesign, setFilterDesign] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<string>('overview');
-  const isMobile = useIsMobile();
-  const { weeklySchedules, currentWeekStart, hasDataInPreviousWeek, hasDataInNextWeek, changeWeek, resetToCurrentWeek, isCurrentWeek } = useWeeklySchedule({ weekStartsOn: 0 });
-  const {updateItem} = useBoardOperations(board, collection, {})
-
+  const [items, setItems] = useState<Item[]>([])
+  const [board, setBoard] = useState<Board | undefined>(undefined)
+  const [paintRequirements, setPaintRequirements] = useState<Record<string, PaintRequirement>>({})
+  const [selectedDates, setSelectedDates] = useState<Date[]>([])
+  const [filterDesign, setFilterDesign] = useState<string>('all')
+  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [activeTab, setActiveTab] = useState<string>('overview')
+  const isMobile = useIsMobile()
+  const [updateItem, setUpdateItem] = useState<(updatedItem: Item) => Promise<void>>()
+  const { weeklySchedules, currentWeekStart, hasDataInPreviousWeek, hasDataInNextWeek, changeWeek, resetToCurrentWeek, isCurrentWeek } = useWeeklySchedule({ weekStartsOn: 0 })
+  
   const loadItems = useCallback(async () => {
     if (!collection) return
 
     try {
       const loadedBoard = await collection.findOne({})
-      setBoard(loadedBoard)
+      setBoard(loadedBoard || undefined)
       setItems(loadedBoard?.items_page.items || [])
       console.log("Board loaded:", loadedBoard)
     } catch (err) {
@@ -42,10 +41,22 @@ export default function PaintSchedulePage() {
       toast.error("Failed to load board. Please refresh the page.", {
         style: { background: "#EF4444", color: "white" },
       })
+      setBoard(undefined)
+      setItems([])
     }
-  }, [collection, setBoard, setItems])
+  }, [collection])
 
-      useEffect(() => {
+  const boardOperations = useBoardOperations(board!, collection, {})
+
+  useEffect(() => {
+    if (board && collection) {
+      setUpdateItem(() => boardOperations.updateItem)
+    } else {
+      setUpdateItem(undefined)
+    }
+  }, [board, collection, boardOperations])
+
+  useEffect(() => {
     if (!isLoading && collection) {
       loadItems()
     }
@@ -53,73 +64,59 @@ export default function PaintSchedulePage() {
 
   const toggleDateSelection = (date: Date) => {
     setSelectedDates(prev => {
-      const dateString = format(date, 'yyyy-MM-dd');
+      const dateString = format(date, 'yyyy-MM-dd')
       if (prev.some(d => format(d, 'yyyy-MM-dd') === dateString)) {
-        return prev.filter(d => format(d, 'yyyy-MM-dd') !== dateString);
+        return prev.filter(d => format(d, 'yyyy-MM-dd') !== dateString)
       } 
-      return [...prev, date];
-    });
-  };
-
-  const renderWeekView = () => (
-    <WeekView
-      currentWeekStart={currentWeekStart}
-      selectedDates={selectedDates}
-      schedule={weeklySchedules[format(currentWeekStart, 'yyyy-MM-dd')] || {}}
-      toggleDateSelection={toggleDateSelection}
-      isMobile={isMobile}
-    />
-  );  
+      return [...prev, date]
+    })
+  }
 
   const itemsNeedingPaint = useMemo(() => {
-    const selectedDateStrings = selectedDates.map(date => format(date, 'yyyy-MM-dd'));
-    const weekKey = format(currentWeekStart, 'yyyy-MM-dd');
-    const currentWeekSchedule = weeklySchedules[weekKey] || {};
+    const selectedDateStrings = selectedDates.map(date => format(date, 'yyyy-MM-dd'))
+    const weekKey = format(currentWeekStart, 'yyyy-MM-dd')
+    const currentWeekSchedule = weeklySchedules[weekKey] || {}
 
-    const scheduledItems = new Set<string>();
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const scheduledItems = new Set<string>()
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
     dayNames.forEach((dayName, index) => {
-      const dayDate = format(addDays(currentWeekStart, index), 'yyyy-MM-dd');
+      const dayDate = format(addDays(currentWeekStart, index), 'yyyy-MM-dd')
       if (selectedDateStrings.includes(dayDate) && currentWeekSchedule[dayName]) {
-        currentWeekSchedule[dayName].forEach(id => scheduledItems.add(id));
+        currentWeekSchedule[dayName].forEach(id => scheduledItems.add(id))
       }
-    });
-
-    return items.filter(item => {
-      if (!scheduledItems.has(item.id)) return false;
-      const paintedValue = item.values.find(value => value.columnName === ColumnTitles.Painted);
-      return paintedValue?.text !== 'Done';
     })
-  }, [items, selectedDates, weeklySchedules, currentWeekStart]);
+
+    return items.filter(item => scheduledItems.has(item.id))
+  }, [items, selectedDates, weeklySchedules, currentWeekStart])
 
   const filteredItemsNeedingPaint = useMemo(() => {
     return itemsNeedingPaint.filter(item => {
-      const designValue = item.values.find(value => value.columnName === 'Design')?.text || '';
-      const matchesDesign = filterDesign === 'all' || designValue === filterDesign;
+      const designValue = item.values.find(value => value.columnName === 'Design')?.text || ''
+      const matchesDesign = filterDesign === 'all' || designValue === filterDesign
       const matchesSearch = item.values.some(value => 
         String(value.text || "").toLowerCase().includes(searchTerm.toLowerCase())
       )
-      return matchesDesign && matchesSearch;
-    });
-  }, [itemsNeedingPaint, filterDesign, searchTerm]);
+      return matchesDesign && matchesSearch
+    })
+  }, [itemsNeedingPaint, filterDesign, searchTerm])
 
   const filteredPaintGroup: Group = useMemo(() => ({
     id: 'paint-group',
     title: ItemStatus.Paint,
     items: filteredItemsNeedingPaint,
-  }), [filteredItemsNeedingPaint]);
+  }), [filteredItemsNeedingPaint])
 
   useEffect(() => {
-    const requirements = calculatePaintRequirements(filteredPaintGroup);
-    setPaintRequirements(requirements);
-  }, [filteredPaintGroup]);
+    const requirements = calculatePaintRequirements(filteredPaintGroup)
+    setPaintRequirements(requirements)
+  }, [filteredPaintGroup])
 
-  const filteredRequirements = Object.entries(paintRequirements);
+  const filteredRequirements = Object.entries(paintRequirements)
 
   const totalPieces = filteredRequirements.reduce((total, [_, colorRequirements]) => {
-    return total + Object.values(colorRequirements).reduce((sum, pieces) => sum + pieces, 0);
-  }, 0);
+    return total + Object.values(colorRequirements).reduce((sum, pieces) => sum + pieces, 0)
+  }, 0)
 
   return (
     <SchedulePageLayout
@@ -138,7 +135,6 @@ export default function PaintSchedulePage() {
           isMobile={isMobile}
         />
       )}
-      renderWeekView={renderWeekView}
       tabs={[
         {
           value: 'overview',
@@ -170,7 +166,11 @@ export default function PaintSchedulePage() {
       weekStartsOn={0}
       isCurrentWeek={isCurrentWeek()}
       group={filteredPaintGroup}
-      board={board}
+      board={board!}
+      updateItem={updateItem!}
+      selectedDates={selectedDates}
+      schedule={weeklySchedules[format(currentWeekStart, 'yyyy-MM-dd')] || {}}
+      toggleDateSelection={toggleDateSelection}
     />
-  );
+  )
 }

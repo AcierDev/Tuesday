@@ -1,5 +1,5 @@
 import { ColumnTitles, Item, ItemDesigns, ItemSizes, Group } from '@/typings/types';
-import { DESIGN_COLORS, SIZE_MULTIPLIERS } from '@/utils/constants';
+import { DESIGN_COLOR_NAMES, SIZE_MULTIPLIERS } from '@/utils/constants';
 
 export type PaintRequirement = Record<string | number, number>;
 
@@ -12,16 +12,16 @@ export function calculatePaintRequirements(
     const design = item.values.find(v => v.columnName === ColumnTitles.Design)?.text as ItemDesigns;
     const size = item.values.find(v => v.columnName === ColumnTitles.Size)?.text as ItemSizes;
 
-    if (design && size && DESIGN_COLORS[design] && SIZE_MULTIPLIERS[size]) {
+    if (design && size && DESIGN_COLOR_NAMES[design] && SIZE_MULTIPLIERS[size]) {
       if (!requirements[design]) {
         requirements[design] = {};
       }
 
       const totalArea = SIZE_MULTIPLIERS[size];
-      const colorCount = DESIGN_COLORS[design].length;
+      const colorCount = DESIGN_COLOR_NAMES[design].length;
       const piecesPerColor = Math.ceil(totalArea / colorCount);
 
-      DESIGN_COLORS[design].forEach(color => {
+      DESIGN_COLOR_NAMES[design].forEach(color => {
         if (design === ItemDesigns.Coastal || design === ItemDesigns.Fade_To_Five || 
             (design === ItemDesigns.Lawyer && typeof color === 'number')) {
           requirements[ItemDesigns.Coastal][color] = (requirements[ItemDesigns.Coastal][color] || 0) + piecesPerColor;

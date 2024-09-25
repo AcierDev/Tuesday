@@ -94,9 +94,7 @@ export default function OrderManagementPage() {
           }
         } catch (error) {
           console.error("Watch stream error:", error)
-          toast.error("Error syncing board. Retrying...", {
-            style: { background: "#EF4444", color: "white" },
-          })
+          
           // Wait before attempting to reconnect
           await new Promise((resolve) => setTimeout(resolve, 5000))
         }
@@ -342,10 +340,12 @@ export default function OrderManagementPage() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onSearchChange={setSearchTerm}
       />
-      <div className="flex-grow overflow-auto">
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col lg:flex-row">
-            <div className="flex-grow lg:mr-4">
+      <div className="flex-grow overflow-hidden">
+        <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex h-full">
+            <div className={`flex-grow overflow-auto transition-all duration-300 ease-in-out ${
+              isWeeklyPlannerOpen ? "lg:w-[calc(100%-25rem)]" : "lg:w-full"
+            } pr-4`}>
               <ItemList
                 board={board!}
                 groups={sortedGroups}
@@ -358,35 +358,33 @@ export default function OrderManagementPage() {
               />
             </div>
             <div
-              className={`transition-all duration-300 ease-in-out ${
-                isWeeklyPlannerOpen ? "w-80 lg:ml-4" : "w-0"
-              }`}
+              className={`h-full transition-all duration-300 ease-in-out ${
+                isWeeklyPlannerOpen ? "w-96 pl-4" : "w-0"
+              } overflow-hidden`}
             >
-              {isWeeklyPlannerOpen && !isMobile ? (
+              {board && (
                 <div className="h-full bg-white shadow-lg rounded-lg overflow-hidden">
-                  {board ? (
-                    <WeeklySchedule
-                      boardId={board.id}
-                      items={board.items_page.items || []}
-                    />
-                  ) : null}
+                  <WeeklySchedule
+                    boardId={board.id}
+                    items={board.items_page.items || []}
+                  />
                 </div>
-              ) : null}
-            </div>
-            <Button
-              className="fixed top-1/2 right-0 transform -translate-y-1/2 bg-white shadow-md rounded-l-md p-2"
-              variant="ghost"
-              onClick={() => setIsWeeklyPlannerOpen(!isWeeklyPlannerOpen)}
-            >
-              {isWeeklyPlannerOpen ? (
-                <ChevronRight className="h-6 w-6" />
-              ) : (
-                <ChevronLeft className="h-6 w-6" />
               )}
-            </Button>
+            </div>
           </div>
         </div>
       </div>
+      <Button
+        className="fixed top-1/2 right-0 transform -translate-y-1/2 bg-white shadow-md rounded-l-md p-2 z-10"
+        variant="ghost"
+        onClick={() => setIsWeeklyPlannerOpen(!isWeeklyPlannerOpen)}
+      >
+        {isWeeklyPlannerOpen ? (
+          <ChevronRight className="h-6 w-6" />
+        ) : (
+          <ChevronLeft className="h-6 w-6" />
+        )}
+      </Button>
       {/* Modals and Dialogs */}
       {isSettingsOpen ? (
         <SettingsPanel

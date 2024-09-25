@@ -17,7 +17,7 @@ export function OverviewTab({ isMobile, totalPieces, filteredRequirements, selec
         <div className={cn("grid gap-6", isMobile ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3")}>
           <Card>
             <CardContent className={cn("flex flex-col justify-center", isMobile ? "p-4" : "p-6")}>
-              <h3 className={cn("font-semibold mb-2", isMobile ? "text-sm" : "text-lg")}>Total Pieces</h3>
+              <h3 className={cn("font-semibold mb-2", isMobile ? "text-sm" : "text-lg")}>Total Squares</h3>
               <p className={cn("font-bold", isMobile ? "text-2xl" : "text-4xl")}>{totalPieces}</p>
             </CardContent>
           </Card>
@@ -49,7 +49,7 @@ export function OverviewTab({ isMobile, totalPieces, filteredRequirements, selec
                   <p className={cn("font-bold", isMobile ? "text-lg" : "text-2xl")}>
                     {Object.values(colorRequirements).reduce((sum, pieces) => sum + pieces, 0)}
                   </p>
-                  <p className={cn("text-gray-600", isMobile ? "text-xs" : "text-sm")}>pieces</p>
+                  <p className={cn("text-gray-600", isMobile ? "text-xs" : "text-sm")}>Squares</p>
                 </div>
               ))}
             </div>

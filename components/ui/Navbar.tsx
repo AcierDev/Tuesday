@@ -1,6 +1,6 @@
 'use client'
 
-import { Calculator, Logs, Menu, PackageOpen, PaintbrushVertical, Scissors, Truck } from 'lucide-react'
+import { Calculator, Logs, Menu, PackageOpen, PaintbrushVertical, Scissors, Truck, Printer, DraftingCompass } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -15,6 +15,8 @@ const navItems = [
   { href: '/packaging', icon: PackageOpen, label: 'Packaging' },
   { href: '/backboards', icon: Scissors, label: 'Backboards' },
   { href: '/calculator', icon: Calculator, label: 'Calculator' },
+  { href: '/print', icon: Printer, label: 'Print' },
+  // { href: '/utilities', icon: DraftingCompass, label: 'Utilities' },
 ]
 
 export const Navbar = () => {

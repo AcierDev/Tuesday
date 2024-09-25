@@ -1,34 +1,33 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { format, addDays } from "date-fns";
-import { toast } from 'sonner';
+import { useEffect, useState, useCallback, useMemo } from 'react'
+import { format, addDays } from "date-fns"
+import { toast } from 'sonner'
 
-import { useRealmApp } from '@/hooks/useRealmApp';
-import { Item, Group, Board, ColumnTitles, ItemStatus } from '@/typings/types';
-import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
-import { useIsMobile } from '@/components/shared/UseIsMobile';
-import { SchedulePageLayout } from '@/components/shared/SchedulePageLayout';
-import { WeekView } from '@/components/shared/WeekView';
-import { Filters } from '@/components/shared/Filters';
-import { OverviewTab } from '@/components/packaging/OverviewTab';
-import { DetailsTab } from '@/components/packaging/DetailsTab';
-import { useBoardOperations } from '@/components/orders/OrderHooks';
-import { BoxRequirement } from '@/typings/interfaces';
-import { calculateBoxRequirements } from '@/components/packaging/BoxCalculations';
+import { useRealmApp } from '@/hooks/useRealmApp'
+import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule"
+import { useIsMobile } from '@/components/shared/UseIsMobile'
+import { SchedulePageLayout } from '@/components/shared/SchedulePageLayout'
+import { Filters } from '@/components/shared/Filters'
+import { OverviewTab } from '@/components/packaging/OverviewTab'
+import { DetailsTab } from '@/components/packaging/DetailsTab'
+import { useBoardOperations } from '@/components/orders/OrderHooks'
+import { calculateBoxRequirements } from '@/components/packaging/BoxCalculations'
+import { Board, Group, Item, ItemStatus } from '@/typings/types'
+import { BoxRequirement } from '@/typings/interfaces'
 
 export default function BoxSchedulePage() {
   const { collection, isLoading } = useRealmApp()
-  const [items, setItems] = useState<Item[]>([]);
-  const [board, setBoard] = useState<Board | null>(null);
-  const [boxRequirements, setBoxRequirements] = useState<Record<string, BoxRequirement>>({});
-  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-  const [filterSize, setFilterSize] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<string>('overview');
-  const isMobile = useIsMobile();
-  const { weeklySchedules, currentWeekStart, hasDataInPreviousWeek, hasDataInNextWeek, changeWeek, resetToCurrentWeek, isCurrentWeek } = useWeeklySchedule({ weekStartsOn: 0 });
-  const {updateItem} = useBoardOperations(board, collection, {})
+  const [items, setItems] = useState<Item[]>([])
+  const [board, setBoard] = useState<Board | null>(null)
+  const [boxRequirements, setBoxRequirements] = useState<Record<string, BoxRequirement>>({})
+  const [selectedDates, setSelectedDates] = useState<Date[]>([])
+  const [filterSize, setFilterSize] = useState<string>('all')
+  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [activeTab, setActiveTab] = useState<string>('overview')
+  const isMobile = useIsMobile()
+  const { weeklySchedules, currentWeekStart, hasDataInPreviousWeek, hasDataInNextWeek, changeWeek, resetToCurrentWeek, isCurrentWeek } = useWeeklySchedule({ weekStartsOn: 0 })
+  const [updateItem, setUpdateItem] = useState<(updatedItem: Item) => Promise<void>>()
 
   const loadItems = useCallback(async () => {
     if (!collection) return
@@ -52,77 +51,73 @@ export default function BoxSchedulePage() {
     }
   }, [isLoading, collection, loadItems])
 
+  const boardOperations = useBoardOperations(board, collection, {})
+
+  useEffect(() => {
+    if (board && collection) {
+      setUpdateItem(() => boardOperations.updateItem)
+    } else {
+      setUpdateItem(undefined)
+    }
+  }, [board, collection, boardOperations])
+
   const toggleDateSelection = (date: Date) => {
     setSelectedDates(prev => {
-      const dateString = format(date, 'yyyy-MM-dd');
+      const dateString = format(date, 'yyyy-MM-dd')
       if (prev.some(d => format(d, 'yyyy-MM-dd') === dateString)) {
-        return prev.filter(d => format(d, 'yyyy-MM-dd') !== dateString);
+        return prev.filter(d => format(d, 'yyyy-MM-dd') !== dateString)
       } 
-      return [...prev, date];
-    });
-  };
-
-  const renderWeekView = () => (
-    <WeekView
-      currentWeekStart={currentWeekStart}
-      selectedDates={selectedDates}
-      schedule={weeklySchedules[format(currentWeekStart, 'yyyy-MM-dd')] || {}}
-      toggleDateSelection={toggleDateSelection}
-      isMobile={isMobile}
-    />
-  );  
+      return [...prev, date]
+    })
+  }
 
   const itemsNeedingBoxes = useMemo(() => {
-    const selectedDateStrings = selectedDates.map(date => format(date, 'yyyy-MM-dd'));
-    const weekKey = format(currentWeekStart, 'yyyy-MM-dd');
-    const currentWeekSchedule = weeklySchedules[weekKey] || {};
+    const selectedDateStrings = selectedDates.map(date => format(date, 'yyyy-MM-dd'))
+    const weekKey = format(currentWeekStart, 'yyyy-MM-dd')
+    const currentWeekSchedule = weeklySchedules[weekKey] || {}
 
-    const scheduledItems = new Set<string>();
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const scheduledItems = new Set<string>()
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
     dayNames.forEach((dayName, index) => {
-      const dayDate = format(addDays(currentWeekStart, index), 'yyyy-MM-dd');
+      const dayDate = format(addDays(currentWeekStart, index), 'yyyy-MM-dd')
       if (selectedDateStrings.includes(dayDate) && currentWeekSchedule[dayName]) {
-        currentWeekSchedule[dayName].forEach(id => scheduledItems.add(id));
+        currentWeekSchedule[dayName]!.forEach(id => scheduledItems.add(id))
       }
-    });
-
-    return items.filter(item => {
-      if (!scheduledItems.has(item.id)) return false;
-      const boxedValue = item.values.find(value => value.columnName === ColumnTitles.Boxes);
-      return boxedValue?.text !== 'Done';
     })
-  }, [items, selectedDates, weeklySchedules, currentWeekStart]);
+
+    return items.filter(item => scheduledItems.has(item.id))
+  }, [items, selectedDates, weeklySchedules, currentWeekStart])
 
   const filteredItemsNeedingBoxes = useMemo(() => {
     return itemsNeedingBoxes.filter(item => {
-      const sizeValue = item.values.find(value => value.columnName === 'Size')?.text || '';
-      const matchesSize = filterSize === 'all' || sizeValue === filterSize;
+      const sizeValue = item.values.find(value => value.columnName === 'Size')?.text || ''
+      const matchesSize = filterSize === 'all' || sizeValue === filterSize
       const matchesSearch = item.values.some(value => 
         String(value.text || "").toLowerCase().includes(searchTerm.toLowerCase())
       )
-      return matchesSize && matchesSearch;
-    });
-  }, [itemsNeedingBoxes, filterSize, searchTerm]);
+      return matchesSize && matchesSearch
+    })
+  }, [itemsNeedingBoxes, filterSize, searchTerm])
 
   const filteredBoxGroup: Group = useMemo(() => ({
     id: 'box-group',
     title: ItemStatus.Packaging,
     items: filteredItemsNeedingBoxes,
-  }), [filteredItemsNeedingBoxes]);
+  }), [filteredItemsNeedingBoxes])
 
   useEffect(() => {
-  const requirements = calculateBoxRequirements(filteredBoxGroup);
-  setBoxRequirements(requirements);
-}, [filteredBoxGroup]);
+    const requirements = calculateBoxRequirements(filteredBoxGroup)
+    setBoxRequirements(requirements)
+  }, [filteredBoxGroup])
 
-  const filteredRequirements = Object.entries(boxRequirements);
+  const filteredRequirements = Object.entries(boxRequirements)
 
-const totalBoxes = useMemo(() => {
-  return filteredRequirements.reduce((total, [_, requirement]) => {
-    return total + requirement.count;
-  }, 0);
-}, [filteredRequirements]);
+  const totalBoxes = useMemo(() => {
+    return filteredRequirements.reduce((total, [_, requirement]) => {
+      return total + requirement.count!
+    }, 0)
+  }, [filteredRequirements])
 
   return (
     <SchedulePageLayout
@@ -141,7 +136,6 @@ const totalBoxes = useMemo(() => {
           isMobile={isMobile}
         />
       )}
-      renderWeekView={renderWeekView}
       tabs={[
         {
           value: 'overview',
@@ -173,11 +167,11 @@ const totalBoxes = useMemo(() => {
       weekStartsOn={0}
       isCurrentWeek={isCurrentWeek()}
       group={filteredBoxGroup}
-      board={board}
+      board={board!}
+      updateItem={updateItem!}
+      selectedDates={selectedDates}
+      schedule={weeklySchedules[format(currentWeekStart, 'yyyy-MM-dd')] || {}}
+      toggleDateSelection={toggleDateSelection}
     />
-  );
-}
-
-function BoxCalculations(filteredBoxGroup: Group) {
-  throw new Error('Function not implemented.');
+  )
 }

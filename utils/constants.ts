@@ -82,7 +82,16 @@ export const ALOE_COLORS: Record<number, { hex: string; name: string }> = {
   7: { hex: '#C6D5C9', name: 'Sea Mist' },
 };
 
-export const DESIGN_COLORS: Record<ItemDesigns, (number | string)[]> = {
+export const DESIGN_COLORS: Record<ItemDesigns, Record<number, { hex: string; name: string }>> = {
+  [ItemDesigns.Coastal]: COASTAL_COLORS,
+  [ItemDesigns.Amber]: AMBER_COLORS,
+  [ItemDesigns.Elemental]: ELEMENTAL_COLORS,
+  [ItemDesigns.Saphire]: SAPHIRE_COLORS,
+  [ItemDesigns.Timberline]: TIMBERLINE_COLORS,
+  [ItemDesigns.Aloe]: ALOE_COLORS,
+};
+
+export const DESIGN_COLOR_NAMES: Record<ItemDesigns, (number | string)[]> = {
   [ItemDesigns.Coastal]: [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16],
   [ItemDesigns.Lawyer]: [8, 10, 11, 12, 13, 14, 15, 16, 'L1', 'L2', 'L3'],
   [ItemDesigns.Fade_To_Five]: [5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16],
@@ -194,3 +203,21 @@ export const backboardData = {
   [ItemSizes.ThirtyOne_By_Fifteen]: { panels: 4, instructions: "4x H: 46 5/16\" W: 27 ¾\"", width: 111, height: 46.3125, blankSize: 29 },
   [ItemSizes.ThirtySix_By_Fifteen]: { panels: 4, instructions: "4x H: 46 5/16\" W: 27 ¾\"", width: 111, height: 46.3125, blankSize: 29 },
 }
+
+export const ItemDesignImages: Record<ItemDesigns, string> = {
+  [ItemDesigns.Coastal]: "/images/designs/coastal.webp?height=300&width=400",
+  [ItemDesigns.Lawyer]: "/images/designs/tidal.webp?height=300&width=400",
+  [ItemDesigns.Fade_To_Five]: "/images/designs/ft5.webp?height=300&width=400",
+  [ItemDesigns.Striped_Coastal]: "/images/designs/striped-coastal.webp?height=300&width=400",
+  [ItemDesigns.Amber]: "/images/designs/amber.webp?height=300&width=400",
+  [ItemDesigns.Saphire]: "/images/designs/sapphire.webp?height=300&width=400",
+  [ItemDesigns.Timberline]: "/images/designs/timberline.webp?height=300&width=400",
+  [ItemDesigns.Winter]: "/images/designs/winter.webp?height=300&width=400",
+  [ItemDesigns.Forest]: "/images/designs/forest.webp?height=300&width=400",
+  [ItemDesigns.Autumn]: "/images/designs/autumn.webp?height=300&width=400",
+  [ItemDesigns.Elemental]: "/images/designs/elemental.webp?height=300&width=400",
+  [ItemDesigns.Abyss]: "/images/designs/abyss.webp?height=300&width=400",
+  [ItemDesigns.Spectrum]: "/images/designs/spectrum.webp?height=300&width=400",
+  [ItemDesigns.Aloe]: "/images/designs/aloe.webp?height=300&width=400",
+  [ItemDesigns.Mirage]: "/images/designs/mirage.webp?height=300&width=400",
+};

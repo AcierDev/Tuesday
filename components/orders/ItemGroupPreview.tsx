@@ -1,7 +1,7 @@
 "use client"
 
 import { compareAsc, compareDesc, parseISO } from "date-fns"
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react"
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronUp, Maximize2, Minimize2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,7 @@ interface ItemGroupPreviewProps {
 
 export const ItemGroupPreview = ({ group, board, updateItem }: ItemGroupPreviewProps) => {
   const [isOpen, setIsOpen] = useState(true)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const { settings } = useOrderSettings()
   const [sortColumn, setSortColumn] = useState<ColumnTitles | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(null)
@@ -67,16 +68,107 @@ export const ItemGroupPreview = ({ group, board, updateItem }: ItemGroupPreviewP
   }, [orderedItems, sortColumn, sortDirection])
 
   const handleItemUpdate = useCallback(async (updatedItem: Item) => {
-    console.log("updating item: ", updatedItem)
     await updateItem(updatedItem)
     setOrderedItems(prevItems => 
       prevItems.map(item => item.id === updatedItem.id ? updatedItem : item)
     )
   }, [updateItem])
 
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen)
+  }
+
+  const renderContent = () => (
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-gray-100">
+            {visibleColumns.map((columnName) => (
+              <TableHead
+                key={columnName}
+                className={cn(
+                  "border border-gray-200 p-2 text-center",
+                  columnName === ColumnTitles.Customer_Name
+                    ? "w-1/3"
+                    : ""
+                )}
+              >
+                <Button
+                  className="h-8 flex items-center justify-between w-full"
+                  variant="ghost"
+                  onClick={() => handleSort(columnName)}
+                >
+                  {columnName}
+                  {settings.showSortingIcons ? (
+                    sortColumn === columnName ? (
+                      sortDirection === "asc" ? (
+                        <ArrowUp className="ml-2 h-4 w-4" />
+                      ) : sortDirection === "desc" ? (
+                        <ArrowDown className="ml-2 h-4 w-4" />
+                      ) : (
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    )
+                  ) : null}
+                </Button>
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sortedItems.map((item, index) => (
+            <TableRow
+              key={item.id}
+              className={cn(
+                index % 2 === 0 ? "bg-white" : "bg-gray-50",
+                isPastDue(item) && "relative"
+              )}
+            >
+              {item.values
+                .filter((value) =>
+                  visibleColumns.includes(
+                    value.columnName as ColumnTitles
+                  )
+                )
+                .map((columnValue, cellIndex) => (
+                  <TableCell
+                    key={`${item.id}-${columnValue.columnName}`}
+                    className={cn(
+                      "border border-gray-200 p-2",
+                      cellIndex === 0 ? "w-1/3" : "",
+                      getStatusColor(columnValue)
+                    )}
+                  >
+                    <CustomTableCell
+                      board={board}
+                      columnValue={columnValue}
+                      isNameColumn={cellIndex === 0}
+                      item={item}
+                      onUpdate={handleItemUpdate}
+                    />
+                  </TableCell>
+                ))}
+              {isPastDue(item) && (
+                <>
+                  <div className="absolute inset-x-0 top-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                  <div className="absolute inset-x-0 bottom-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                </>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </>
+  )
+
   return (
     <Collapsible
-      className="mb-6 bg-white rounded-lg shadow-md overflow-hidden"
+      className={cn(
+        "mb-6 bg-white rounded-lg shadow-md overflow-hidden",
+        isFullscreen && "fixed inset-0 z-50"
+      )}
       open={isOpen}
       onOpenChange={setIsOpen}
     >
@@ -86,94 +178,32 @@ export const ItemGroupPreview = ({ group, board, updateItem }: ItemGroupPreviewP
           variant="ghost"
         >
           <span className="font-semibold text-lg">{group.title}</span>
-          {isOpen ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleFullscreen()
+              }}
+              className="mr-2"
+            >
+              {isFullscreen ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+            </Button>
+            {isOpen ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </div>
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent>
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-gray-100">
-              {visibleColumns.map((columnName) => (
-                <TableHead
-                  key={columnName}
-                  className={cn(
-                    "border border-gray-200 p-2 text-center",
-                    columnName === ColumnTitles.Customer_Name
-                      ? "w-1/3"
-                      : ""
-                  )}
-                >
-                  <Button
-                    className="h-8 flex items-center justify-between w-full"
-                    variant="ghost"
-                    onClick={() => handleSort(columnName)}
-                  >
-                    {columnName}
-                    {settings.showSortingIcons ? (
-                      sortColumn === columnName ? (
-                        sortDirection === "asc" ? (
-                          <ArrowUp className="ml-2 h-4 w-4" />
-                        ) : sortDirection === "desc" ? (
-                          <ArrowDown className="ml-2 h-4 w-4" />
-                        ) : (
-                          <ArrowUpDown className="ml-2 h-4 w-4" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      )
-                    ) : null}
-                  </Button>
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedItems.map((item, index) => (
-              <TableRow
-                key={item.id}
-                className={cn(
-                  index % 2 === 0 ? "bg-white" : "bg-gray-50",
-                  isPastDue(item) && "relative"
-                )}
-              >
-                {item.values
-                  .filter((value) =>
-                    visibleColumns.includes(
-                      value.columnName as ColumnTitles
-                    )
-                  )
-                  .map((columnValue, cellIndex) => (
-                    <TableCell
-                      key={`${item.id}-${columnValue.columnName}`}
-                      className={cn(
-                        "border border-gray-200 p-2",
-                        cellIndex === 0 ? "w-1/3" : "",
-                        getStatusColor(columnValue)
-                      )}
-                    >
-                      <CustomTableCell
-                        board={board}
-                        columnValue={columnValue}
-                        isNameColumn={cellIndex === 0}
-                        item={item}
-                        onUpdate={handleItemUpdate}
-                      />
-                    </TableCell>
-                  ))}
-                {isPastDue(item) && (
-                  <>
-                    <div className="absolute inset-x-0 top-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                    <div className="absolute inset-x-0 bottom-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                  </>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <CollapsibleContent className={cn(isFullscreen && "h-full overflow-auto p-4")}>
+        {renderContent()}
       </CollapsibleContent>
     </Collapsible>
   )

@@ -33,7 +33,7 @@ export const getDueBadge = (dateString: string, range: number) => {
   const daysFromNow = addDays(now, range)
 
   if (isBefore(dueDate, now) || isEqual(dueDate, now)) {
-    return <Badge variant="destructive">Due</Badge>
+    return <Badge variant="destructive">Overdue</Badge>
   } else if (isAfter(dueDate, now) && isBefore(dueDate, daysFromNow)) {
     return <Badge variant="destructive">Due</Badge>
   }

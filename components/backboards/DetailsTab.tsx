@@ -39,7 +39,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                     <p className="text-sm whitespace-pre-line bg-gray-100 p-3 rounded-md">{sizeData.instructions}</p>
                     <div className="mt-4 grid grid-cols-3 gap-4">
                       <div>
-                        <p className="text-sm font-medium">Total Art Pieces:</p>
+                        <p className="text-sm font-medium">Total Art Squares:</p>
                         <p className="text-lg font-bold">{count}</p>
                       </div>
                       <div>

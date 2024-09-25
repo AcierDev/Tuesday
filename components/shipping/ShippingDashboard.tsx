@@ -170,6 +170,8 @@ export const ShippingDashboard = ({ item, onClose }: ShippingDashboardProps) => 
       const receipt = item.receipt;
       
       setCustomerName(receipt.name || '');
+
+      setFromAddress({...fromAddress, postalCode: '89012'})
       
       setToAddress({
         line1: receipt.first_line || '',
@@ -177,7 +179,7 @@ export const ShippingDashboard = ({ item, onClose }: ShippingDashboardProps) => 
         city: receipt.city || '',
         state: receipt.state.slice(0, 2).toUpperCase() || '',
         postalCode: receipt.zip || '',
-        country: receipt.country_iso || '',
+        country: receipt.country_iso || 'US',
       });
 
       const sizeValue = item.values.find(v => v.columnName === 'Size')?.text as ItemSizes;

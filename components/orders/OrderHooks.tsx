@@ -1,10 +1,14 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import { type Board, type Item, ItemStatus } from "@/typings/types"
 
-export function useBoardOperations(initialBoard: Board | null, collection: any, settings: any) {
+export function useBoardOperations(initialBoard: Board | null, collection: any, settings: Settings) {
   const [board, setBoard] = useState<Board | null>(initialBoard)
+
+  useEffect(() => {
+    setBoard(initialBoard);
+  }, [initialBoard]);
 
   const applyAutomatronRules = useCallback((item: Item) => {
     if (!settings.isAutomatronActive) return item

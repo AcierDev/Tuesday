@@ -1,35 +1,43 @@
-import { WeekSelector } from "@/components/weekly-schedule/WeekSelector";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/utils/functions";
-import { RefreshCw } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card } from "@/components/ui/card";
-import { Group, Board, Item } from "@/typings/types";
-import { ItemGroupPreview } from "../orders/ItemGroupPreview";
+"use client"
+
+import { useState, useRef, useEffect } from 'react'
+import { WeekSelector } from "@/components/weekly-schedule/WeekSelector"
+import { Button } from "@/components/ui/button"
+import { RefreshCw, LayoutGrid, Calendar as CalendarIcon, Maximize2 } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card } from "@/components/ui/card"
+import { ItemGroupPreview } from "../orders/ItemGroupPreview"
+import { WeeklySchedules } from "@/components/weekly-schedule/UseWeeklySchedule"
+import { WeekView } from "@/components/shared/WeekView"
+import { CalendarView } from "@/components/shared/CalendarView"
+import { Board, Group, Item } from '@/typings/types'
+import { cn } from '@/utils/functions'
 
 type SchedulePageLayoutProps = {
-  title: string;
-  isMobile: boolean;
-  currentWeekStart: Date;
-  changeWeek: (direction: 'prev' | 'next') => void;
-  resetToCurrentWeek: () => void;
-  renderFilters: () => React.ReactNode;
-  renderWeekView: () => React.ReactNode;
+  title: string
+  isMobile: boolean
+  currentWeekStart: Date
+  changeWeek: (direction: 'prev' | 'next') => void
+  resetToCurrentWeek: () => void
+  renderFilters: () => React.ReactNode
   tabs: {
-    value: string;
-    label: string;
-    content: React.ReactNode;
-  }[];
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-  hasDataInPreviousWeek: boolean;
-  hasDataInNextWeek: boolean;
-  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6;
-  isCurrentWeek: boolean;
-  group: Group;
-  board: Board;
-  updateItem: (updatedItem: Item) => Promise<void>;
-};
+    value: string
+    label: string
+    content: React.ReactNode
+  }[]
+  activeTab: string
+  setActiveTab: (tab: string) => void
+  hasDataInPreviousWeek: boolean
+  hasDataInNextWeek: boolean
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
+  isCurrentWeek: boolean
+  group: Group
+  board: Board
+  updateItem: (updatedItem: Item) => Promise<void>
+  selectedDates: Date[]
+  schedule: WeeklySchedules
+  toggleDateSelection: (date: Date) => void
+}
 
 export function SchedulePageLayout({ 
   title, 
@@ -38,7 +46,6 @@ export function SchedulePageLayout({
   changeWeek, 
   resetToCurrentWeek,
   renderFilters, 
-  renderWeekView, 
   tabs,
   activeTab,
   setActiveTab,
@@ -48,8 +55,126 @@ export function SchedulePageLayout({
   isCurrentWeek,
   group,
   board,
-  updateItem
+  updateItem,
+  selectedDates,
+  schedule,
+  toggleDateSelection
 }: SchedulePageLayoutProps) {
+  const [viewMode, setViewMode] = useState<'week' | 'calendar'>('week')
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const calendarRef = useRef<HTMLDivElement>(null)
+  const tabsCardRef = useRef<HTMLDivElement>(null)
+  const fullscreenRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const adjustTabsCardHeight = () => {
+      if (calendarRef.current && tabsCardRef.current) {
+        const calendarHeight = calendarRef.current.offsetHeight
+        tabsCardRef.current.style.maxHeight = `${calendarHeight}px`
+      }
+    }
+
+    adjustTabsCardHeight()
+    window.addEventListener('resize', adjustTabsCardHeight)
+
+    return () => {
+      window.removeEventListener('resize', adjustTabsCardHeight)
+    }
+  }, [viewMode])
+
+  const toggleFullscreen = () => {
+    if (!isFullscreen) {
+      if (fullscreenRef.current?.requestFullscreen) {
+        fullscreenRef.current.requestFullscreen()
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+      }
+    }
+    setIsFullscreen(!isFullscreen)
+  }
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }
+  }, [])
+
+  const renderWeekView = () => (
+    <WeekView
+      currentWeekStart={currentWeekStart}
+      selectedDates={selectedDates}
+      schedule={schedule}
+      toggleDateSelection={toggleDateSelection}
+      isMobile={isMobile}
+    />
+  )
+
+  const renderCalendarView = () => (
+    <div ref={calendarRef}>
+      <CalendarView
+        currentDate={currentWeekStart}
+        selectedDates={selectedDates}
+        schedule={schedule}
+        toggleDateSelection={toggleDateSelection}
+      />
+    </div>
+  )
+
+  const renderTabs = () => (
+    <Card 
+      ref={fullscreenRef} 
+      className={cn(
+        "flex-shrink-0 overflow-hidden shadow-lg h-full",
+        isFullscreen ? "fixed inset-0 z-50" : viewMode === 'week' ? "w-full" : "w-full"
+      )}
+    >
+      <Tabs className="h-full flex flex-col" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="flex w-full p-0 bg-muted">
+          <div className="flex-grow grid grid-cols-2">
+            {tabs.map((tab) => (
+              <TabsTrigger 
+                key={tab.value}
+                value={tab.value} 
+                className={cn(
+                  "flex-1 py-2 px-4 rounded-none",
+                  "data-[state=active]:bg-background data-[state=active]:shadow-[inset_0_-2px_0_0_var(--tw-shadow-color)]",
+                  "shadow-primary",
+                  "transition-all duration-200 ease-in-out",
+                  isMobile ? "text-sm" : "text-base"
+                )}
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleFullscreen}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            className="ml-auto px-2"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
+        </TabsList>
+        <div className="flex-grow overflow-auto">
+          {tabs.map((tab) => (
+            <TabsContent key={tab.value} className="h-full mt-0 p-4 flex-grow" value={tab.value}>
+              {tab.content}
+            </TabsContent>
+          ))}
+        </div>
+      </Tabs>
+    </Card>
+  )
+
   return (
     <div className={cn(
       "container mx-auto py-4 min-h-screen flex flex-col",
@@ -113,38 +238,51 @@ export function SchedulePageLayout({
         </div>
       )}
 
-      {renderWeekView()}
-
-      <div className="mt-6">
-        <ItemGroupPreview group={group} board={board} updateItem={updateItem}/>
+      <div className="flex justify-center space-x-2 mb-4">
+        <Button
+          variant={viewMode === 'week' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setViewMode('week')}
+        >
+          <LayoutGrid className="h-4 w-4 mr-2" />
+          Week
+        </Button>
+        <Button
+          variant={viewMode === 'calendar' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setViewMode('calendar')}
+        >
+          <CalendarIcon className="h-4 w-4 mr-2" />
+          Calendar
+        </Button>
       </div>
 
-      <Card className="flex-grow mt-4 overflow-hidden">
-        <Tabs className="h-full flex flex-col" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 p-0 bg-muted">
-            {tabs.map((tab) => (
-              <TabsTrigger 
-                key={tab.value}
-                value={tab.value} 
-                className={cn(
-                  "flex-1 py-2 px-4 rounded-none",
-                  "data-[state=active]:bg-background data-[state=active]:shadow-[inset_0_-2px_0_0_var(--tw-shadow-color)]",
-                  "shadow-primary",
-                  "transition-all duration-200 ease-in-out",
-                  isMobile ? "text-sm" : "text-base"
-                )}
-              >
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          {tabs.map((tab) => (
-            <TabsContent key={tab.value} className="flex-grow overflow-auto mt-0 p-4" value={tab.value}>
-              {tab.content}
-            </TabsContent>
-          ))}
-        </Tabs>
-      </Card>
+      <div className="flex flex-col space-y-6 flex-grow">
+        {viewMode === 'week' ? (
+          <>
+            {renderWeekView()}
+            <ItemGroupPreview group={group} board={board} updateItem={updateItem} />
+            <div className="flex-grow">
+              {renderTabs()}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={cn(
+              "flex flex-col lg:flex-row gap-4",
+              "lg:space-x-4 flex-grow"
+            )}>
+              <div className="flex-grow lg:w-2/3">
+                {renderCalendarView()}
+              </div>
+              <div ref={tabsCardRef} className="flex-shrink-0 lg:w-5/12 overflow-hidden flex flex-col">
+                {renderTabs()}
+              </div>
+            </div>
+            <ItemGroupPreview group={group} board={board} updateItem={updateItem} />
+          </>
+        )}
+      </div>
     </div>
-  );
+  )
 }
