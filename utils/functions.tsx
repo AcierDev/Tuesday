@@ -4,6 +4,7 @@ import { format, addDays, isWithinInterval, isBefore, isToday, isEqual, parseISO
 import { boardConfig } from '../config/boardconfig';
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { Box } from '@/typings/interfaces';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -49,7 +50,7 @@ export const isPastDue = (item: Item) => {
   return false
 }
 
-export function getBoxData(size: ItemSizes) {
+export function getBoxData(size: ItemSizes): Box[] {
   const [width, length] = size.split(" x ").map(Number);
 
   const dimensionConfigs: { [key: string]: any } = {
@@ -87,8 +88,7 @@ export function getBoxData(size: ItemSizes) {
 
   if (!configurations) {
     return [{
-      dimensions: { length: 0, width: 0, height: 0 },
-      weight: 0,
+       length: "0", width: "0", height: "0" , weight: "0",
     }]
   } else {
     return configurations

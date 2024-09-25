@@ -20,7 +20,7 @@ const TEMPLATES = [
 ]
 
 export default function LabelPrinter() {
-  const [selectedTemplate, setSelectedTemplate] = useState(TEMPLATES[0].id)
+  const [selectedTemplate, setSelectedTemplate] = useState(TEMPLATES[0]!.id)
   const printRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [pdfLoaded, setPdfLoaded] = useState(false)
@@ -118,8 +118,8 @@ export default function LabelPrinter() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
-        <CardTitle>High-Quality Label Printer</CardTitle>
-        <CardDescription>Select a template and print your high-quality 4&quot; x 6&quot; label or PDF</CardDescription>
+        <CardTitle>Label Printer</CardTitle>
+        <CardDescription>Select a template and print your label or PDF</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-center space-y-4">
         <div className="w-full max-w-xs">

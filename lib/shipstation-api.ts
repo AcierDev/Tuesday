@@ -1,4 +1,4 @@
-'use client'
+import { Address, Box, ShipmentDetails, ShippingRate } from "@/typings/interfaces";
 
 const SHIPSTATION_API_URL = 'https://ssapi.shipstation.com';
 
@@ -19,9 +19,9 @@ async function shipstationFetch(endpoint: string, method = 'GET', body?: any) {
   return response.json();
 }
 
-export async function getShippingRates(packageDetails: any, fromAddress: any, toAddress: any) {
+export async function getShippingRates(packageDetails: Box, fromAddress: Address, toAddress: Address): Promise<ShippingRate[]> {
   const carriers = ['ups_walleted', 'fedex'];
-  const ratesPromises = carriers.map(carrier => {
+  const ratesPromises = carriers.map(async carrier => {
     const rateOptions = {
       carrierCode: carrier,
       serviceCode: null,
@@ -43,37 +43,52 @@ export async function getShippingRates(packageDetails: any, fromAddress: any, to
       }
     };
 
-    console.log(rateOptions)
+    const rates = await shipstationFetch('/shipments/getrates', 'POST', rateOptions);
 
-    return shipstationFetch('/shipments/getrates', 'POST', rateOptions);
+    // Add carrierCode to each rate
+    return rates.map((rate: any) => ({
+      ...rate,
+      carrierCode: carrier
+    }));
   });
 
   const ratesResults = await Promise.all(ratesPromises);
   return ratesResults.flat();
 }
 
-export async function createShippingLabel(rateId: string, shipmentDetails: any) {
+
+export async function createShippingLabel(shipmentDetails: ShipmentDetails) {
   const labelOptions = {
     carrierCode: shipmentDetails.carrierCode,
     serviceCode: shipmentDetails.serviceCode,
     packageCode: 'package',
     confirmation: 'none',
     shipDate: new Date().toISOString(),
-    weight: shipmentDetails.weight,
-    dimensions: shipmentDetails.dimensions,
+    weight: shipmentDetails.weight[0],
+    dimensions: shipmentDetails.dimensions[0],
     shipFrom: shipmentDetails.fromAddress,
     shipTo: shipmentDetails.toAddress,
     testLabel: true // Set to false for production
   };
 
-  return shipstationFetch('/shipments/createlabel', 'POST', labelOptions);
+  console.log('label', labelOptions);
+
+  try {
+    const response = await shipstationFetch('/shipments/createlabel', 'POST', labelOptions);
+    console.log('response', response)
+    return response
+  } catch (error) {
+    console.log('FOO', error)
+  }
+
+  return 
 }
 
 export async function fetchShipmentStatus(trackingNumber: string): Promise<string> {
   try {
-    console.log(trackingNumber)
+    console.log(trackingNumber);
     const response = await shipstationFetch(`/shipments?trackingNumber=${trackingNumber}`);
-    console.log(response)
+    console.log(response);
     if (response.shipments && response.shipments.length > 0) {
       return response.shipments[0].shipmentStatus;
     }
