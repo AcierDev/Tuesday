@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, Download, Upload, File } from "lucide-react"
+import { AlertCircle, Download, Upload, File, Trash2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { checkPdfExists } from '@/utils/labelUtils'
@@ -84,14 +84,14 @@ export function ViewLabel({ orderId }: { orderId: string }) {
     }
   }
 
-  const updateItemLabels = async (orderId: string) => {
+  const updateItemLabels = async (orderId: string, hasLabel: boolean) => {
     if (collection) {
       try {
         const result = await collection.updateOne(
           { "items_page.items.id": orderId },
           { 
             $set: { 
-              "items_page.items.$[elem].values.$[val].text": "true"
+              "items_page.items.$[elem].values.$[val].text": hasLabel.toString()
             }
           },
           { 
@@ -137,8 +137,7 @@ export function ViewLabel({ orderId }: { orderId: string }) {
       if (response.ok) {
         setPdfExists(true)
         await fetchPdf()
-        // Update the item's Labels field
-        await updateItemLabels(orderId)
+        await updateItemLabels(orderId, true)
       } else {
         throw new Error('Upload failed')
       }
@@ -149,6 +148,27 @@ export function ViewLabel({ orderId }: { orderId: string }) {
       setUploading(false)
     }
   }
+
+  const handleDelete = async () => {
+    if (!pdfExists) return;
+
+    try {
+      const response = await fetch(`http://144.172.71.72:3003/pdf/${orderId}.pdf`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setPdfExists(false);
+        setPdfUrl(null);
+        await updateItemLabels(orderId, false);
+      } else {
+        throw new Error('Delete failed');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      setError("Failed to delete the file. Please try again.");
+    }
+  };
 
   if (pdfExists === null) {
     return (
@@ -179,9 +199,14 @@ export function ViewLabel({ orderId }: { orderId: string }) {
                 title={`Shipping Label for Order ${orderId}`}
               />
             </div>
-            <Button className="w-full sm:w-auto" onClick={() => window.open(pdfUrl, '_blank')}>
-              <Download className="mr-2 h-4 w-4" /> Download PDF
-            </Button>
+            <div className="flex justify-between">
+              <Button className="w-auto" onClick={() => window.open(pdfUrl, '_blank')}>
+                <Download className="mr-2 h-4 w-4" /> Download PDF
+              </Button>
+              <Button variant="destructive" className="w-auto" onClick={handleDelete}>
+                <Trash2 className="mr-2 h-4 w-4" /> Delete PDF
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
