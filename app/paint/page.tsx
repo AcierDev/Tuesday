@@ -13,7 +13,7 @@ import { PaintRequirement, calculatePaintRequirements } from '@/components/paint
 import { OverviewTab } from '@/components/paint/OverviewTab'
 import { DetailsTab } from '@/components/paint/DetailsTab'
 import { useBoardOperations } from '@/components/orders/OrderHooks'
-import { Board, Group, Item, ItemStatus } from '@/typings/types'
+import { Board, ColumnTitles, Group, Item, ItemStatus } from '@/typings/types'
 
 export default function PaintSchedulePage() {
   const { collection, isLoading } = useRealmApp()
@@ -25,7 +25,7 @@ export default function PaintSchedulePage() {
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [activeTab, setActiveTab] = useState<string>('overview')
   const isMobile = useIsMobile()
-  const [updateItem, setUpdateItem] = useState<(updatedItem: Item) => Promise<void>>()
+  const [updateItem, setUpdateItem] = useState<(updatedItem: Item, changedField: ColumnTitles) => Promise<void>>()
   const { weeklySchedules, currentWeekStart, hasDataInPreviousWeek, hasDataInNextWeek, changeWeek, resetToCurrentWeek, isCurrentWeek } = useWeeklySchedule({ weekStartsOn: 0 })
   
   const loadItems = useCallback(async () => {

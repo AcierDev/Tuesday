@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 
-import { type Board, type Item, ItemStatus, Settings } from "@/typings/types"
+import { type Board, type Item, ItemStatus, Settings, ColumnTitles } from "@/typings/types"
 
 export function useBoardOperations(initialBoard: Board | null, collection: any, settings: Settings) {
   const [board, setBoard] = useState<Board | null>(initialBoard)
@@ -10,13 +10,16 @@ export function useBoardOperations(initialBoard: Board | null, collection: any, 
     setBoard(initialBoard);
   }, [initialBoard]);
 
-  const applyAutomatronRules = useCallback((item: Item) => {
+  const applyAutomatronRules = useCallback((item: Item, changedField: ColumnTitles) => {
     if (!settings.isAutomatronActive) return item
 
     const updatedItem = { ...item }
     let statusChanged = false
 
-    for (const rule of settings.automatronRules) {
+    // Filter rules that apply to the changed field
+    const relevantRules = settings.automatronRules.filter(rule => rule.field === changedField)
+
+    for (const rule of relevantRules) {
       const value = item.values.find(
         (v) => v.columnName === rule.field
       )?.text
@@ -39,9 +42,9 @@ export function useBoardOperations(initialBoard: Board | null, collection: any, 
     return updatedItem
   }, [settings.isAutomatronActive, settings.automatronRules])
 
-  const updateItem = useCallback(async (updatedItem: Item) => {
+  const updateItem = useCallback(async (updatedItem: Item, changedField: ColumnTitles) => {
     if (!board) return
-    console.log(`Updating item: ${updatedItem.id}`)
+    console.log(`Updating item: ${updatedItem.id}, Changed field: ${changedField}`)
 
     const updatedItems = board.items_page.items.map((item) =>
       item.id === updatedItem.id ? updatedItem : item
@@ -59,9 +62,9 @@ export function useBoardOperations(initialBoard: Board | null, collection: any, 
       })
       console.log("Board state updated")
 
-      const itemWithRulesApplied = applyAutomatronRules(updatedItem)
+      const itemWithRulesApplied = applyAutomatronRules(updatedItem, changedField)
       if (itemWithRulesApplied.status !== updatedItem.status) {
-        await updateItem(itemWithRulesApplied)
+        await updateItem(itemWithRulesApplied, changedField)
       }
     } catch (err) {
       console.error("Failed to update item", err)
@@ -83,6 +86,7 @@ export function useBoardOperations(initialBoard: Board | null, collection: any, 
       vertical: newItem.vertical,
       visible: true,
       deleted: false,
+      isScheduled: false
     }
 
     console.log("Adding new item:", fullNewItem)

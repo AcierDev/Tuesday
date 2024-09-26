@@ -31,7 +31,7 @@ interface CustomTableCellProps {
   item: Item
   columnValue: ColumnValue
   board: Board
-  onUpdate: (item: Item) => Promise<void>
+  onUpdate: (updatedItem: Item, changedField: ColumnTitles) => Promise<void>
   isNameColumn?: boolean
 }
 
@@ -51,7 +51,7 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
     setHoveredDesign(option)
     hoverTimeoutRef.current = setTimeout(() => {
       setShowPopover(true)
-    }, 1000) // 2 seconds delay
+    }, 1000) // 1 second delay
   }, [])
 
   const handleMouseLeave = useCallback(() => {
@@ -86,7 +86,7 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
             : value
         )
       }
-      await onUpdate(updatedItem)
+      await onUpdate(updatedItem, columnValue.columnName)
       toast.success("Value updated successfully", {
         style: { background: '#10B981', color: 'white' }
       })
@@ -257,27 +257,27 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
         )
       case ColumnTypes.Text:
         if (columnValue.columnName === ColumnTitles.Labels) {
-  const isLabelGenerated = columnValue.text?.toLowerCase() === 'true'
-  return (
-    <Dialog open={isLabelDialogOpen} onOpenChange={setIsLabelDialogOpen}>
-      <DialogTrigger asChild>
-        <Button
-          className="w-8 h-8 p-0"
-          variant="ghost"
-          onClick={() => setIsLabelDialogOpen(true)}
-        >
-          <Barcode className={`h-4 w-4 ${isLabelGenerated ? 'text-yellow-500' : 'text-gray-500'}`} />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Shipping Label</DialogTitle>
-        </DialogHeader>
-        <ViewLabel orderId={item.id} />
-      </DialogContent>
-    </Dialog>
-  )
-}
+          const isLabelGenerated = columnValue.text?.toLowerCase() === 'true'
+          return (
+            <Dialog open={isLabelDialogOpen} onOpenChange={setIsLabelDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  className="w-8 h-8 p-0"
+                  variant="ghost"
+                  onClick={() => setIsLabelDialogOpen(true)}
+                >
+                  <Barcode className={`h-4 w-4 ${isLabelGenerated ? 'text-yellow-500' : 'text-gray-500'}`} />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle>Shipping Label</DialogTitle>
+                </DialogHeader>
+                <ViewLabel orderId={item.id} />
+              </DialogContent>
+            </Dialog>
+          )
+        }
         if (columnValue.columnName === 'Notes') {
           return (
             <TooltipProvider>
@@ -356,7 +356,7 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
     }
   }
 
-return (
+  return (
     <div className="w-full h-full flex items-center justify-center relative">
       {cellContent()}
     </div>

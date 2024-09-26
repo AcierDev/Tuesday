@@ -33,7 +33,7 @@ type SchedulePageLayoutProps = {
   isCurrentWeek: boolean
   group: Group
   board: Board
-  updateItem: (updatedItem: Item) => Promise<void>
+  updateItem: (updatedItem: Item, changedField: ColumnTitles) => Promise<void>
   selectedDates: Date[]
   schedule: WeeklySchedules
   toggleDateSelection: (date: Date) => void

@@ -17,7 +17,7 @@ import { CustomTableCell } from "../shipping/CustomTableCell"
 interface ItemGroupPreviewProps {
   group: Group
   board: Board
-  updateItem: (updatedItem: Item) => Promise<void>
+  updateItem: (updatedItem: Item, changedField: ColumnTitles) => Promise<void>
 }
 
 export const ItemGroupPreview = ({ group, board, updateItem }: ItemGroupPreviewProps) => {
@@ -67,8 +67,8 @@ export const ItemGroupPreview = ({ group, board, updateItem }: ItemGroupPreviewP
     return orderedItems
   }, [orderedItems, sortColumn, sortDirection])
 
-  const handleItemUpdate = useCallback(async (updatedItem: Item) => {
-    await updateItem(updatedItem)
+  const handleItemUpdate = useCallback(async (updatedItem: Item, changedField: ColumnTitles) => {
+    await updateItem(updatedItem, changedField)
     setOrderedItems(prevItems => 
       prevItems.map(item => item.id === updatedItem.id ? updatedItem : item)
     )
