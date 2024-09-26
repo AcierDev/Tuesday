@@ -44,12 +44,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
   )
 
   return (
-    <nav className="sticky top-0 z-40 w-full border-b bg-white">
+    <nav className="sticky top-0 z-40 w-full border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-200">
       <div className="w-full flex h-14 items-center px-4 sm:px-8">
         {/* Left Section: Logo */}
         <div className="flex-shrink-0 mr-4">
           <Link className="flex items-center space-x-2" href="/">
-            <span className="text-xl font-bold">Tuesday</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">Tuesday</span>
           </Link>
         </div>
 
@@ -82,7 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right">
+            <SheetContent side="right" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
               <div className="flex flex-col space-y-4">
                 {navItems.map((item) => (
                   <NavLink key={item.href} {...item} />

@@ -120,58 +120,60 @@ export default function BoxSchedulePage() {
   }, [filteredRequirements])
 
   return (
-    <SchedulePageLayout
-      title="Box Schedule"
-      isMobile={isMobile}
-      currentWeekStart={currentWeekStart}
-      changeWeek={changeWeek}
-      resetToCurrentWeek={resetToCurrentWeek}
-      renderFilters={() => (
-        <Filters
-          filterValue={filterSize}
-          onFilterChange={setFilterSize}
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
-          filterOptions={Object.keys(boxRequirements)}
-          isMobile={isMobile}
-        />
-      )}
-      tabs={[
-        {
-          value: 'overview',
-          label: 'Overview',
-          content: (
-            <OverviewTab
-              isMobile={isMobile}
-              totalBoxes={totalBoxes}
-              filteredRequirements={filteredRequirements}
-              selectedDates={selectedDates}
-            />
-          )
-        },
-        {
-          value: 'details',
-          label: 'Details',
-          content: (
-            <DetailsTab
-              isMobile={isMobile}
-              filteredRequirements={filteredRequirements}
-            />
-          )
-        }
-      ]}
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      hasDataInPreviousWeek={hasDataInPreviousWeek()}
-      hasDataInNextWeek={hasDataInNextWeek()}
-      weekStartsOn={0}
-      isCurrentWeek={isCurrentWeek()}
-      group={filteredBoxGroup}
-      board={board!}
-      updateItem={updateItem!}
-      selectedDates={selectedDates}
-      schedule={weeklySchedules[format(currentWeekStart, 'yyyy-MM-dd')] || {}}
-      toggleDateSelection={toggleDateSelection}
-    />
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <SchedulePageLayout
+        title="Box Schedule"
+        isMobile={isMobile}
+        currentWeekStart={currentWeekStart}
+        changeWeek={changeWeek}
+        resetToCurrentWeek={resetToCurrentWeek}
+        renderFilters={() => (
+          <Filters
+            filterValue={filterSize}
+            onFilterChange={setFilterSize}
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            filterOptions={Object.keys(boxRequirements)}
+            isMobile={isMobile}
+          />
+        )}
+        tabs={[
+          {
+            value: 'overview',
+            label: 'Overview',
+            content: (
+              <OverviewTab
+                isMobile={isMobile}
+                totalBoxes={totalBoxes}
+                filteredRequirements={filteredRequirements}
+                selectedDates={selectedDates}
+              />
+            )
+          },
+          {
+            value: 'details',
+            label: 'Details',
+            content: (
+              <DetailsTab
+                isMobile={isMobile}
+                filteredRequirements={filteredRequirements}
+              />
+            )
+          }
+        ]}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        hasDataInPreviousWeek={hasDataInPreviousWeek()}
+        hasDataInNextWeek={hasDataInNextWeek()}
+        weekStartsOn={0}
+        isCurrentWeek={isCurrentWeek()}
+        group={filteredBoxGroup}
+        board={board!}
+        updateItem={updateItem!}
+        selectedDates={selectedDates}
+        schedule={weeklySchedules[format(currentWeekStart, 'yyyy-MM-dd')] || {}}
+        toggleDateSelection={toggleDateSelection}
+      />
+    </div>
   )
 }

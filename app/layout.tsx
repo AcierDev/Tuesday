@@ -46,11 +46,11 @@ export default function RootLayout({
 
   return (
     <html className={`${geistSans.variable} ${geistMono.variable}`} lang="en">
-      <body>
+      <body className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <ThemeProvider enableSystem attribute="class" defaultTheme="system">
           <RealmAppProvider>
             <OrderSettingsProvider>
-              <div className="min-h-screen bg-gray-100">
+              <div className="min-h-screen bg-gray-100 dark:bg-gray-800">
                 <Navbar onOpenSettings={handleOpenSettings} />
                 <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
                   {children}

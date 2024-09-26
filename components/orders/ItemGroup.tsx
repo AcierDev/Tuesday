@@ -58,7 +58,7 @@ interface ItemGroupProps {
   onDragToWeeklySchedule: (itemId: string, day: string) => void
 }
 
-export  const ItemGroupSection = ({
+export const ItemGroupSection = ({
   group,
   board,
   onUpdate,
@@ -186,13 +186,13 @@ export  const ItemGroupSection = ({
 
   return (
     <Collapsible
-      className="mb-6 bg-white rounded-lg shadow-md overflow-hidden"
+      className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden"
       open={isOpen}
       onOpenChange={setIsOpen}
     >
       <CollapsibleTrigger asChild>
         <Button
-          className="w-full justify-between p-4 hover:bg-gray-50"
+          className="w-full justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
           variant="ghost"
         >
           <span className="font-semibold text-lg">{group.title}</span>
@@ -211,22 +211,22 @@ export  const ItemGroupSection = ({
               {...provided.droppableProps}
             >
               <TableHeader>
-                <TableRow className="bg-gray-100">
-                  <TableHead className="border border-gray-200 p-2 text-center">
+                <TableRow className="bg-gray-100 dark:bg-gray-700">
+                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
                     Order
                   </TableHead>
                   {visibleColumns.map((columnName) => (
                     <TableHead
                       key={columnName}
                       className={cn(
-                        "border border-gray-200 p-2 text-center",
+                        "border border-gray-200 dark:border-gray-600 p-2 text-center",
                         columnName === ColumnTitles.Customer_Name
                           ? "w-1/3"
                           : ""
                       )}
                     >
                       <Button
-                        className="h-8 flex items-center justify-between w-full"
+                        className="h-8 flex items-center justify-between w-full text-gray-900 dark:text-gray-100"
                         disabled={isDragging}
                         variant="ghost"
                         onClick={() =>
@@ -250,7 +250,7 @@ export  const ItemGroupSection = ({
                       </Button>
                     </TableHead>
                   ))}
-                  <TableHead className="border border-gray-200 p-2 text-center">
+                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -264,63 +264,63 @@ export  const ItemGroupSection = ({
                   >
                     {(provided, snapshot) => (
                       <TableRow
-  ref={provided.innerRef}
-  {...provided.draggableProps}
-  className={cn(
-    index % 2 === 0 ? "bg-white" : "bg-gray-50",
-    isPastDue(item) && "relative",
-    snapshot.isDragging ? "bg-blue-100 shadow-lg" : ""
-  )}
-  onContextMenu={(e) => handleContextMenu(e, item)}
->
-  <TableCell 
-    className="border border-gray-200 p-2 text-center"
-    {...provided.dragHandleProps}
-  >
-    <GripVertical className="cursor-grab inline-block" />
-  </TableCell>
-  {visibleColumns.map((columnName, cellIndex) => {
-    const columnValue = item.values.find(value => value.columnName === columnName) || {
-      columnName,
-      type: ColumnTypes.Text,
-      text: "\u00A0" // Unicode non-breaking space
-    };
-    return (
-      <TableCell
-        key={`${item.id}-${columnName}`}
-        className={cn(
-          "border border-gray-200 p-2",
-          cellIndex === 0 ? "w-1/3" : "",
-          getStatusColor(columnValue)
-        )}
-      >
-        <CustomTableCell
-          board={board}
-          columnValue={columnValue}
-          isNameColumn={cellIndex === 0}
-          item={item}
-          onUpdate={onUpdate}
-        />
-      </TableCell>
-    );
-  })}
-  <TableCell className="border border-gray-200 p-2 text-center">
-    <ItemActions
-      item={item}
-      onDelete={handleDelete}
-      onEdit={handleEdit}
-      onGetLabel={onGetLabel}
-      onMarkCompleted={onMarkCompleted}
-      onShip={onShip}
-    />
-  </TableCell>
-  {isPastDue(item) && (
-    <>
-      <div className="absolute inset-x-0 top-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-      <div className="absolute inset-x-0 bottom-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-    </>
-  )}
-</TableRow>
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className={cn(
+                          index % 2 === 0 ? "bg-white dark:bg-gray-800" : "bg-gray-50 dark:bg-gray-700",
+                          isPastDue(item) && "relative",
+                          snapshot.isDragging ? "bg-blue-100 dark:bg-blue-800 shadow-lg" : ""
+                        )}
+                        onContextMenu={(e) => handleContextMenu(e, item)}
+                      >
+                        <TableCell 
+                          className="border border-gray-200 dark:border-gray-600 p-2 text-center"
+                          {...provided.dragHandleProps}
+                        >
+                          <GripVertical className="cursor-grab inline-block" />
+                        </TableCell>
+                        {visibleColumns.map((columnName, cellIndex) => {
+                          const columnValue = item.values.find(value => value.columnName === columnName) || {
+                            columnName,
+                            type: ColumnTypes.Text,
+                            text: "\u00A0" // Unicode non-breaking space
+                          };
+                          return (
+                            <TableCell
+                              key={`${item.id}-${columnName}`}
+                              className={cn(
+                                "border border-gray-200 dark:border-gray-600 p-2",
+                                cellIndex === 0 ? "w-1/3" : "",
+                                getStatusColor(columnValue)
+                              )}
+                            >
+                              <CustomTableCell
+                                board={board}
+                                columnValue={columnValue}
+                                isNameColumn={cellIndex === 0}
+                                item={item}
+                                onUpdate={onUpdate}
+                              />
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+                          <ItemActions
+                            item={item}
+                            onDelete={handleDelete}
+                            onEdit={handleEdit}
+                            onGetLabel={onGetLabel}
+                            onMarkCompleted={onMarkCompleted}
+                            onShip={onShip}
+                          />
+                        </TableCell>
+                        {isPastDue(item) && (
+                          <>
+                            <div className="absolute inset-x-0 top-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                            <div className="absolute inset-x-0 bottom-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                          </>
+                        )}
+                      </TableRow>
                     )}
                   </Draggable>
                 ))}
@@ -345,7 +345,8 @@ export  const ItemGroupSection = ({
         onClose={() => setDeletingItem(null)}
         onConfirm={handleConfirmDelete}
       />
-      {contextMenu ? <div
+      {contextMenu ? (
+        <div
           ref={contextMenuRef}
           style={{
             position: 'fixed',
@@ -367,7 +368,8 @@ export  const ItemGroupSection = ({
               />
             </DropdownMenuContent>
           </DropdownMenu>
-        </div> : null}
+        </div>
+      ) : null}
     </Collapsible>
   )
 }
@@ -380,11 +382,11 @@ function getStatusColor(columnValue: {
   if (columnValue.type === ColumnTypes.Dropdown) {
     switch (columnValue.text?.toLowerCase()) {
       case "done":
-        return "bg-green-200"
+        return "bg-green-200 dark:bg-green-800"
       case "working on it":
-        return "bg-yellow-100"
+        return "bg-yellow-100 dark:bg-yellow-800"
       case "stuck":
-        return "bg-red-200"
+        return "bg-red-200 dark:bg-red-800"
       default:
         return ""
     }

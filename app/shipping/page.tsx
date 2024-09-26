@@ -93,7 +93,7 @@ export default function ShippingPage() {
   const getStatusIcon = (status: ShippingStatus) => {
     switch (status) {
       case 'unshipped':
-        return <Package className="h-5 w-5 text-gray-500" />
+        return <Package className="h-5 w-5 text-gray-500 dark:text-gray-400" />
       case 'pre_transit':
         return <Clock className="h-5 w-5 text-yellow-500" />
       case 'in_transit':
@@ -115,9 +115,9 @@ export default function ShippingPage() {
     const cardTitle = status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')
     
     return (
-      <Card className="w-full">
-        <CardHeader className="bg-gray-100">
-          <CardTitle className="text-lg font-semibold flex items-center">
+      <Card className="w-full bg-white dark:bg-gray-800">
+        <CardHeader className="bg-gray-100 dark:bg-gray-700">
+          <CardTitle className="text-lg font-semibold flex items-center text-gray-900 dark:text-gray-100">
             {getStatusIcon(status)}
             <span className="ml-2">{cardTitle} ({statusItems.length})</span>
           </CardTitle>
@@ -126,17 +126,17 @@ export default function ShippingPage() {
           <ScrollArea className="h-[300px]">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Action</TableHead>
+                <TableRow className="bg-gray-50 dark:bg-gray-700">
+                  <TableHead className="text-gray-700 dark:text-gray-300">Order ID</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300">Customer</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {statusItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.receipt?.receipt_id || 'N/A'}</TableCell>
-                    <TableCell>{item.receipt?.name || 'N/A'}</TableCell>
+                  <TableRow key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <TableCell className="text-gray-900 dark:text-gray-100">{item.receipt?.receipt_id || 'N/A'}</TableCell>
+                    <TableCell className="text-gray-900 dark:text-gray-100">{item.receipt?.name || 'N/A'}</TableCell>
                     <TableCell>
                       <Button size="sm" variant="outline" onClick={() => handleViewDetails(item)}>
                         View
@@ -153,8 +153,8 @@ export default function ShippingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <Card className="w-full max-w-7xl mx-auto mb-8">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-8">
+      <Card className="w-full max-w-7xl mx-auto mb-8 bg-white dark:bg-gray-800">
         <CardHeader className="bg-black text-white">
           <CardTitle className="text-2xl font-bold flex items-center">
             <Truck className="mr-2 h-6 w-6" />
@@ -164,9 +164,9 @@ export default function ShippingPage() {
         <CardContent className="p-6">
           <div className="mb-6 flex justify-between items-center">
             <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <Input
-                className="pl-10 pr-4 py-2 w-full border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="pl-10 pr-4 py-2 w-full border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                 placeholder="Search orders..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -186,7 +186,7 @@ export default function ShippingPage() {
         </CardContent>
       </Card>
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 bg-white dark:bg-gray-800">
           {selectedItem ? <ShippingDetails
               item={selectedItem}
               onClose={() => {

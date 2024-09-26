@@ -390,8 +390,8 @@ export default function OrderManagementPage() {
     )
   }
 
-  return (
-    <div className="flex flex-col min-h-[calc(100vh-3.5rem)]">
+return (
+    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-white dark:bg-gray-900 text-black dark:text-white">
       <Toaster position="top-center" />
       <Header
         isMobile={isMobile}
@@ -438,9 +438,10 @@ export default function OrderManagementPage() {
         </div>
       </div>
       <Button
-        className="fixed top-1/2 right-0 transform -translate-y-1/2 bg-white shadow-md rounded-l-md p-2 z-10"
+        className="fixed top-1/2 right-0 transform -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md rounded-l-md p-2 z-10"
         variant="ghost"
         onClick={() => setIsWeeklyPlannerOpen(!isWeeklyPlannerOpen)}
+        aria-label={isWeeklyPlannerOpen ? "Close weekly planner" : "Open weekly planner"}
       >
         {isWeeklyPlannerOpen ? (
           <ChevronRight className="h-6 w-6" />

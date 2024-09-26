@@ -116,15 +116,15 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto p-0">
-        <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b">
+      <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto p-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center">
             <DialogTitle>Create New Item</DialogTitle>
             <div className="flex items-center space-x-2">
-              <Button size="icon" variant="ghost" onClick={resetForm}>
+              <Button size="icon" variant="ghost" onClick={resetForm} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                 <RotateCcw className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="ghost" onClick={onClose}>
+              <Button size="icon" variant="ghost" onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -137,7 +137,7 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
                 Customer Name
               </Label>
               <Input
-                className="col-span-3"
+                className="col-span-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 id="customerName"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
@@ -150,10 +150,10 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
               {!customInputs[ColumnTitles.Size] ? (
                 <div className="col-span-3 flex items-center space-x-2">
                   <Select value={size} onValueChange={(value) => setSize(value as ItemSizes)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                       <SelectValue placeholder="Select size" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                       {Object.values(ItemSizes).map((size) => (
                         <SelectItem key={size} value={size}>
                           {size}
@@ -161,7 +161,7 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button size="icon" variant="outline" onClick={() => toggleCustomInput(ColumnTitles.Size)}>
+                  <Button size="icon" variant="outline" onClick={() => toggleCustomInput(ColumnTitles.Size)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </div>
@@ -171,8 +171,9 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
                     placeholder="Enter custom size"
                     value={size}
                     onChange={(e) => setSize(e.target.value)}
+                    className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
-                  <Button size="icon" variant="outline" onClick={() => toggleCustomInput(ColumnTitles.Size)}>
+                  <Button size="icon" variant="outline" onClick={() => toggleCustomInput(ColumnTitles.Size)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -185,10 +186,10 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
               {!customInputs[ColumnTitles.Design] ? (
                 <div className="col-span-3 flex items-center space-x-2">
                   <Select value={design} onValueChange={(value) => setDesign(value as ItemDesigns)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                       <SelectValue placeholder="Select design" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                       {Object.values(ItemDesigns).map((design) => (
                         <SelectItem key={design} value={design}>
                           {design}
@@ -196,7 +197,7 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button size="icon" variant="outline" onClick={() => toggleCustomInput(ColumnTitles.Design)}>
+                  <Button size="icon" variant="outline" onClick={() => toggleCustomInput(ColumnTitles.Design)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </div>
@@ -206,8 +207,9 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
                     placeholder="Enter custom design"
                     value={design}
                     onChange={(e) => setDesign(e.target.value)}
+                    className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
-                  <Button size="icon" variant="outline" onClick={() => toggleCustomInput(ColumnTitles.Design)}>
+                  <Button size="icon" variant="outline" onClick={() => toggleCustomInput(ColumnTitles.Design)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -233,7 +235,7 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
                   type="button"
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal",
+                    "w-full justify-start text-left font-normal bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",
                     !dueDate && "text-muted-foreground"
                   )}
                   onClick={() => setShowCalendar(!showCalendar)}
@@ -245,7 +247,7 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
             </div>
             {showCalendar ? <div className="col-span-4">
                 <Calendar
-                  className="rounded-md border"
+                  className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
                   mode="single"
                   selected={dueDate}
                   onSelect={handleDateSelect}
@@ -254,7 +256,7 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
           </div>
           <div className="mt-4">
             <Button
-              className="w-full"
+              className="w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600"
               variant="outline"
               onClick={() => setShowOptionalFields(!showOptionalFields)}
             >
@@ -288,10 +290,10 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
                             value={optionalFields[title]} 
                             onValueChange={(value) => handleOptionalFieldChange(title, value)}
                           >
-                            <SelectTrigger className="w-full">
+                            <SelectTrigger className="w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                               <SelectValue placeholder={`Select ${title}`} />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                               {column.options.map((option) => (
                                 <SelectItem key={option} value={option}>
                                   {option}
@@ -299,7 +301,7 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
                               ))}
                             </SelectContent>
                           </Select>
-                          <Button size="icon" variant="outline" onClick={() => toggleCustomInput(title)}>
+                          <Button size="icon" variant="outline" onClick={() => toggleCustomInput(title)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                             <Pencil className="h-4 w-4" />
                           </Button>
                         </div>
@@ -309,8 +311,9 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
                             placeholder={`Enter custom ${title.toLowerCase()}`}
                             value={optionalFields[title]}
                             onChange={(e) => handleOptionalFieldChange(title, e.target.value)}
+                            className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           />
-                          <Button size="icon" variant="outline" onClick={() => toggleCustomInput(title)}>
+                          <Button size="icon" variant="outline" onClick={() => toggleCustomInput(title)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
@@ -324,7 +327,7 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
                         {title}
                       </Label>
                       <Input
-                        className="col-span-3"
+                        className="col-span-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                         id={title}
                         value={optionalFields[title]}
                         onChange={(e) => handleOptionalFieldChange(title, e.target.value)}
@@ -335,8 +338,8 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
               })}
             </div> : null}
         </div>
-        <DialogFooter className="sticky bottom-0 bg-white z-10 px-6 py-4 border-t">
-          <Button type="submit" onClick={handleSubmit}>Create Item</Button>
+        <DialogFooter className="sticky bottom-0 bg-white dark:bg-gray-800 z-10 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+          <Button type="submit" onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700 text-white">Create Item</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

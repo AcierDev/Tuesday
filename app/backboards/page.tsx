@@ -124,59 +124,61 @@ export default function BackboardSchedulePage() {
   }, [filteredRequirements])
 
   return (
-    <SchedulePageLayout
-      title="Backboard Schedule"
-      isMobile={isMobile}
-      currentWeekStart={currentWeekStart}
-      changeWeek={changeWeek}
-      resetToCurrentWeek={resetToCurrentWeek}
-      renderFilters={() => (
-        <Filters
-          filterValue={filterSize}
-          onFilterChange={setFilterSize}
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
-          filterOptions={Object.keys(backboardRequirements)}
-          isMobile={isMobile}
-        />
-      )}
-      tabs={[
-        {
-          value: 'overview',
-          label: 'Overview',
-          content: (
-            <OverviewTab
-              isMobile={isMobile}
-              totalPanels={totalPanels}
-              filteredRequirements={filteredRequirements}
-              selectedDates={selectedDates}
-            />
-          )
-        },
-        {
-          value: 'details',
-          label: 'Details',
-          content: (
-            <DetailsTab
-              isMobile={isMobile}
-              filteredRequirements={filteredRequirements}
-              selectedItems={filteredItemsNeedingBackboards}
-            />
-          )
-        }
-      ]}
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      hasDataInPreviousWeek={hasDataInPreviousWeek()}
-      hasDataInNextWeek={hasDataInNextWeek()}
-      weekStartsOn={0}
-      isCurrentWeek={isCurrentWeek()}
-      group={filteredBackboardGroup}
-      board={board!}
-      updateItem={updateItem!}
-      selectedDates={selectedDates}
-      schedule={weeklySchedules[format(currentWeekStart, 'yyyy-MM-dd')] || {}}
-      toggleDateSelection={toggleDateSelection}
-    />
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <SchedulePageLayout
+        title="Backboard Schedule"
+        isMobile={isMobile}
+        currentWeekStart={currentWeekStart}
+        changeWeek={changeWeek}
+        resetToCurrentWeek={resetToCurrentWeek}
+        renderFilters={() => (
+          <Filters
+            filterValue={filterSize}
+            onFilterChange={setFilterSize}
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            filterOptions={Object.keys(backboardRequirements)}
+            isMobile={isMobile}
+          />
+        )}
+        tabs={[
+          {
+            value: 'overview',
+            label: 'Overview',
+            content: (
+              <OverviewTab
+                isMobile={isMobile}
+                totalPanels={totalPanels}
+                filteredRequirements={filteredRequirements}
+                selectedDates={selectedDates}
+              />
+            )
+          },
+          {
+            value: 'details',
+            label: 'Details',
+            content: (
+              <DetailsTab
+                isMobile={isMobile}
+                filteredRequirements={filteredRequirements}
+                selectedItems={filteredItemsNeedingBackboards}
+              />
+            )
+          }
+        ]}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        hasDataInPreviousWeek={hasDataInPreviousWeek()}
+        hasDataInNextWeek={hasDataInNextWeek()}
+        weekStartsOn={0}
+        isCurrentWeek={isCurrentWeek()}
+        group={filteredBackboardGroup}
+        board={board!}
+        updateItem={updateItem!}
+        selectedDates={selectedDates}
+        schedule={weeklySchedules[format(currentWeekStart, 'yyyy-MM-dd')] || {}}
+        toggleDateSelection={toggleDateSelection}
+      />
+    </div>
   )
 }

@@ -28,7 +28,7 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
     }
 })
 
- function UtilitiesContent() {
+function UtilitiesContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(null)
@@ -65,28 +65,23 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
     const colorCount = selectedDesign.colors.length
     const averagePiecesPerColor = totalPieces / colorCount
 
-    // Method 1: Round down and add
     const basePiecesPerColor1 = Math.floor(averagePiecesPerColor)
     const extrasToAdd = totalPieces - (basePiecesPerColor1 * colorCount)
 
-    // Method 2: Round up and subtract
     const basePiecesPerColor2 = Math.ceil(averagePiecesPerColor)
     const extrasToSubtract = (basePiecesPerColor2 * colorCount) - totalPieces
 
-    // Choose the method that requires fewer adjustments
     const useMethod1 = extrasToAdd <= extrasToSubtract
 
     const basePiecesPerColor = useMethod1 ? basePiecesPerColor1 : basePiecesPerColor2
     const adjustmentCount = useMethod1 ? extrasToAdd : extrasToSubtract
     const adjustmentType = useMethod1 ? 'add' : 'subtract'
 
-    // Distribute adjustments evenly
     const distribution = selectedDesign.colors.map((color) => ({
       color,
       count: basePiecesPerColor
     }))
 
-    // Spread out extra pieces
     for (let i = 0; i < adjustmentCount; i++) {
       const index = Math.floor(i * (colorCount / adjustmentCount))
       distribution[index].count += useMethod1 ? 1 : -1
@@ -140,10 +135,10 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <div className="container mx-auto p-4 space-y-6">
+      <div className="container mx-auto p-4 space-y-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       {showBackButton && (
-        <div className="bg-white p-2 rounded-md shadow-sm inline-block">
-          <Button variant="ghost" onClick={() => router.back()} className="p-0">
+        <div className="bg-white dark:bg-gray-800 p-2 rounded-md shadow-sm inline-block">
+          <Button variant="ghost" onClick={() => router.back()} className="p-0 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
         </div>
@@ -151,21 +146,21 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
 
       <h1 className="text-3xl font-bold">Setup Utility</h1>
       
-      <Card>
+      <Card className="bg-white dark:bg-gray-800">
         <CardHeader>
-          <CardTitle>Select a Design</CardTitle>
+          <CardTitle className="text-gray-900 dark:text-gray-100">Select a Design</CardTitle>
         </CardHeader>
         <CardContent>
           <Select 
             value={selectedDesign?.id || ''} 
             onValueChange={(value) => setSelectedDesign(designs.find(d => d.id === value) || null)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
               <SelectValue placeholder="Choose a design" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-700">
               {designs.map((design) => (
-                <SelectItem key={design.id} value={design.id}>{design.name}</SelectItem>
+                <SelectItem key={design.id} value={design.id} className="text-gray-900 dark:text-gray-100">{design.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -174,9 +169,9 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
 
       {selectedDesign && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
+          <Card className="bg-white dark:bg-gray-800">
             <CardHeader>
-              <CardTitle>{selectedDesign.name}</CardTitle>
+              <CardTitle className="text-gray-900 dark:text-gray-100">{selectedDesign.name}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="relative">
@@ -188,7 +183,7 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
                   className="w-full h-auto"
                 />
               </div>
-              <p>Number of colors: {selectedDesign.colors.length}</p>
+              <p className="text-gray-900 dark:text-gray-100">Number of colors: {selectedDesign.colors.length}</p>
               <div className="h-8 w-full flex">
                 {selectedDesign.colors.map((color, index) => (
                   <div key={index} style={{backgroundColor: color, width: `${100 / selectedDesign.colors.length}%`}} className="h-full" />
@@ -197,28 +192,28 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white dark:bg-gray-800">
             <CardHeader>
-              <CardTitle>Calculator</CardTitle>
+              <CardTitle className="text-gray-900 dark:text-gray-100">Calculator</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="size-select">Choose a size:</Label>
+                <Label htmlFor="size-select" className="text-gray-900 dark:text-gray-100">Choose a size:</Label>
                 <Select value={selectedSize} onValueChange={handleSizeChange}>
-                  <SelectTrigger id="size-select">
+                  <SelectTrigger id="size-select" className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                     <SelectValue placeholder="Choose a size" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-gray-700">
                     {Object.values(ItemSizes).map((size) => (
-                      <SelectItem key={size} value={size}>{size}</SelectItem>
+                      <SelectItem key={size} value={size} className="text-gray-900 dark:text-gray-100">{size}</SelectItem>
                     ))}
-                    <SelectItem value="custom">Custom</SelectItem>
+                    <SelectItem value="custom" className="text-gray-900 dark:text-gray-100">Custom</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="custom-width">Dimensions:</Label>
+                <Label htmlFor="custom-width" className="text-gray-900 dark:text-gray-100">Dimensions:</Label>
                 <div className="flex space-x-2">
                   <Input
                     id="custom-width"
@@ -226,6 +221,7 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
                     placeholder="Width"
                     value={width}
                     onChange={(e) => handleDimensionChange('width', e.target.value)}
+                    className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                   <Input
                     id="custom-height"
@@ -233,35 +229,36 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
                     placeholder="Height"
                     value={height}
                     onChange={(e) => handleDimensionChange('height', e.target.value)}
+                    className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
               </div>
 
               {colorDistribution && (
                 <>
-                  <Card>
+                  <Card className="bg-white dark:bg-gray-700">
                     <CardHeader>
-                      <CardTitle>Total Pieces</CardTitle>
+                      <CardTitle className="text-gray-900 dark:text-gray-100">Total Pieces</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p>{colorDistribution.totalPieces}</p>
+                      <p className="text-gray-900 dark:text-gray-100">{colorDistribution.totalPieces}</p>
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  <Card className="bg-white dark:bg-gray-700">
                     <CardHeader>
-                      <CardTitle>Adjustment</CardTitle>
+                      <CardTitle className="text-gray-900 dark:text-gray-100">Adjustment</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p>
+                      <p className="text-gray-900 dark:text-gray-100">
                         {colorDistribution.adjustmentCount} pieces {colorDistribution.adjustmentType === 'add' ? 'added to' : 'subtracted from'} colors, spread evenly across the design
                       </p>
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  <Card className="bg-white dark:bg-gray-700">
                     <CardHeader>
-                      <CardTitle>Distribution Diagram</CardTitle>
+                      <CardTitle className="text-gray-900 dark:text-gray-100">Distribution Diagram</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="w-full flex flex-wrap">

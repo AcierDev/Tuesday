@@ -11,9 +11,19 @@ export function ShippingDashboard({ item, onClose }: ShippingDashboardProps) {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="buy">Buy Labels</TabsTrigger>
-        <TabsTrigger value="view">View Label</TabsTrigger>
+      <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800">
+        <TabsTrigger 
+          value="buy"
+          className="data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-gray-100"
+        >
+          Buy Labels
+        </TabsTrigger>
+        <TabsTrigger 
+          value="view"
+          className="data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-gray-100"
+        >
+          View Label
+        </TabsTrigger>
       </TabsList>
       <TabsContent value="view">
         <ViewLabel orderId={item.id} />

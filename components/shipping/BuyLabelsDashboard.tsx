@@ -193,7 +193,7 @@ const handleBuyLabel = async (rate: ShippingRate) => {
   }, [item]);
 
   return (
-    <Card className="w-full max-w-4xl mx-auto bg-white shadow-lg">
+    <Card className="w-full max-w-4xl mx-auto bg-white dark:bg-gray-800 shadow-lg">
       <CardHeader className="bg-black text-white">
         <div className="flex justify-between items-center">
           <CardTitle className="text-2xl font-bold flex items-center">
@@ -222,24 +222,24 @@ const handleBuyLabel = async (rate: ShippingRate) => {
               updateToAddress={updateToAddress}
             />
 
-            <Separator className="my-6" />
+            <Separator className="my-6 bg-gray-200 dark:bg-gray-600" />
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Package Details</h3>
-                <Button className="border-black text-black hover:bg-gray-100" size="sm" variant="outline" onClick={addBox}>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Package Details</h3>
+                <Button className="border-black text-black dark:border-white dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700" size="sm" variant="outline" onClick={addBox}>
                   <Copy className="mr-2 h-4 w-4" /> Add Box
                 </Button>
               </div>
               <BoxInputs boxes={boxes} onAdd={addBox} onRemove={removeBox} onUpdate={updateBox} />
             </div>
 
-            <Separator className="my-6" />
+            <Separator className="my-6 bg-gray-200 dark:bg-gray-600" />
 
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Get Shipping Rates</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Get Shipping Rates</h3>
               <div className="flex items-end">
-                <Button className="w-full bg-black text-white hover:bg-gray-800" disabled={isLoading} onClick={() => {
+                <Button className="w-full bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200" disabled={isLoading} onClick={() => {
                   handleGetRates()
                 }}>
                   <DollarSign className="mr-2 h-4 w-4" /> {isLoading ? 'Loading...' : 'Get Rates'}
@@ -253,7 +253,7 @@ const handleBuyLabel = async (rate: ShippingRate) => {
               <ShippingRatesTable rates={rates} isLoading={isLoading} onPrintLabel={handleBuyLabel} />
             )}
 
-            <p className="text-sm text-gray-500 mt-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
               Rates are provided by ShipStation and may vary based on actual package dimensions and destination.
             </p>
           </div>

@@ -27,10 +27,10 @@ export const Header: React.FC<HeaderProps> = ({
   dueCounts,
 }) => {
   return (
-    <div className={`z-30 bg-white shadow-md ${isMobile ? '' : 'sticky top-14'}`}>
+    <div className={`z-30 bg-white dark:bg-gray-800 shadow-md ${isMobile ? '' : 'sticky top-14'}`}>
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-center justify-between py-4 space-y-4 sm:space-y-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 w-full sm:w-1/4">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 w-full sm:w-1/4">
             Order Management
           </h1>
           <div className="flex justify-center w-full sm:w-2/4">
@@ -47,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
                   key={mode} 
                   value={mode} 
                   aria-label={`Toggle ${mode} mode`} 
-                  className="px-3 py-1 relative"
+                  className="px-3 py-1 relative dark:text-gray-200 dark:data-[state=on]:bg-gray-700 dark:data-[state=on]:text-white"
                 >
                   <span className="relative z-10">
                     {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -63,16 +63,16 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full sm:w-1/4 sm:justify-end">
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <Input
-                className="pl-10 pr-4 py-2 w-full border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="pl-10 pr-4 py-2 w-full border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-blue-400"
                 placeholder="Search orders..."
                 value={searchTerm}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
               />
             </div>
             <Button
-              className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md transition duration-300 ease-in-out w-full sm:w-auto"
+              className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md transition duration-300 ease-in-out w-full sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700"
               onClick={onNewOrder}
             >
               <Plus className="mr-2 h-5 w-5" /> New Order

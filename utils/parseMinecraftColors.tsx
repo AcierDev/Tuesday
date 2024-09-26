@@ -25,11 +25,11 @@ interface TextSegment {
   color: string;
 }
 
-export const parseMinecraftColors = (input: string): React.ReactNode[] => {
+export const parseMinecraftColors = (input: string, darkMode: boolean): React.ReactNode[] => {
   const regex = /(&[0-9a-f])/gi;
   const segments: TextSegment[] = [];
   let lastIndex = 0;
-  let currentColor = minecraftColors['0']; // Default color is white
+  let currentColor = minecraftColors[darkMode ? 'f' : '0']; // Default color is white
 
   let match;
   while ((match = regex.exec(input)) !== null) {

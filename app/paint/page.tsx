@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { format, addDays } from "date-fns"
 import { toast } from 'sonner'
+import { useTheme } from 'next-themes'
 
 import { useRealmApp } from '@/hooks/useRealmApp'
 import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule"
@@ -27,6 +28,7 @@ export default function PaintSchedulePage() {
   const isMobile = useIsMobile()
   const [updateItem, setUpdateItem] = useState<(updatedItem: Item, changedField: ColumnTitles) => Promise<void>>()
   const { weeklySchedules, currentWeekStart, hasDataInPreviousWeek, hasDataInNextWeek, changeWeek, resetToCurrentWeek, isCurrentWeek } = useWeeklySchedule({ weekStartsOn: 0 })
+  const { theme } = useTheme()
   
   const loadItems = useCallback(async () => {
     if (!collection) return
@@ -39,12 +41,15 @@ export default function PaintSchedulePage() {
     } catch (err) {
       console.error("Failed to load board", err)
       toast.error("Failed to load board. Please refresh the page.", {
-        style: { background: "#EF4444", color: "white" },
+        style: { 
+          background: theme === 'dark' ? "#EF4444" : "#FEE2E2", 
+          color: theme === 'dark' ? "white" : "#991B1B"
+        },
       })
       setBoard(undefined)
       setItems([])
     }
-  }, [collection])
+  }, [collection, theme])
 
   const boardOperations = useBoardOperations(board!, collection, {})
 
@@ -119,58 +124,60 @@ export default function PaintSchedulePage() {
   }, 0)
 
   return (
-    <SchedulePageLayout
-      title="Paint Schedule"
-      isMobile={isMobile}
-      currentWeekStart={currentWeekStart}
-      changeWeek={changeWeek}
-      resetToCurrentWeek={resetToCurrentWeek}
-      renderFilters={() => (
-        <Filters
-          filterValue={filterDesign}
-          onFilterChange={setFilterDesign}
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
-          filterOptions={Object.keys(paintRequirements)}
-          isMobile={isMobile}
-        />
-      )}
-      tabs={[
-        {
-          value: 'overview',
-          label: 'Overview',
-          content: (
-            <OverviewTab
-              isMobile={isMobile}
-              totalPieces={totalPieces}
-              filteredRequirements={filteredRequirements}
-              selectedDates={selectedDates}
-            />
-          )
-        },
-        {
-          value: 'details',
-          label: 'Details',
-          content: (
-            <DetailsTab
-              isMobile={isMobile}
-              filteredRequirements={filteredRequirements}
-            />
-          )
-        }
-      ]}
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      hasDataInPreviousWeek={hasDataInPreviousWeek()}
-      hasDataInNextWeek={hasDataInNextWeek()}
-      weekStartsOn={0}
-      isCurrentWeek={isCurrentWeek()}
-      group={filteredPaintGroup}
-      board={board!}
-      updateItem={updateItem!}
-      selectedDates={selectedDates}
-      schedule={weeklySchedules[format(currentWeekStart, 'yyyy-MM-dd')] || {}}
-      toggleDateSelection={toggleDateSelection}
-    />
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <SchedulePageLayout
+        title="Paint Schedule"
+        isMobile={isMobile}
+        currentWeekStart={currentWeekStart}
+        changeWeek={changeWeek}
+        resetToCurrentWeek={resetToCurrentWeek}
+        renderFilters={() => (
+          <Filters
+            filterValue={filterDesign}
+            onFilterChange={setFilterDesign}
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            filterOptions={Object.keys(paintRequirements)}
+            isMobile={isMobile}
+          />
+        )}
+        tabs={[
+          {
+            value: 'overview',
+            label: 'Overview',
+            content: (
+              <OverviewTab
+                isMobile={isMobile}
+                totalPieces={totalPieces}
+                filteredRequirements={filteredRequirements}
+                selectedDates={selectedDates}
+              />
+            )
+          },
+          {
+            value: 'details',
+            label: 'Details',
+            content: (
+              <DetailsTab
+                isMobile={isMobile}
+                filteredRequirements={filteredRequirements}
+              />
+            )
+          }
+        ]}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        hasDataInPreviousWeek={hasDataInPreviousWeek()}
+        hasDataInNextWeek={hasDataInNextWeek()}
+        weekStartsOn={0}
+        isCurrentWeek={isCurrentWeek()}
+        group={filteredPaintGroup}
+        board={board!}
+        updateItem={updateItem!}
+        selectedDates={selectedDates}
+        schedule={weeklySchedules[format(currentWeekStart, 'yyyy-MM-dd')] || {}}
+        toggleDateSelection={toggleDateSelection}
+      />
+    </div>
   )
 }

@@ -82,12 +82,12 @@ export const ItemGroupPreview = ({ group, board, updateItem }: ItemGroupPreviewP
     <>
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-100">
+          <TableRow className="bg-gray-100 dark:bg-gray-800">
             {visibleColumns.map((columnName) => (
               <TableHead
                 key={columnName}
                 className={cn(
-                  "border border-gray-200 p-2 text-center",
+                  "border border-gray-200 dark:border-gray-700 p-2 text-center",
                   columnName === ColumnTitles.Customer_Name
                     ? "w-1/3"
                     : ""
@@ -122,7 +122,7 @@ export const ItemGroupPreview = ({ group, board, updateItem }: ItemGroupPreviewP
             <TableRow
               key={item.id}
               className={cn(
-                index % 2 === 0 ? "bg-white" : "bg-gray-50",
+                index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800",
                 isPastDue(item) && "relative"
               )}
             >
@@ -136,7 +136,7 @@ export const ItemGroupPreview = ({ group, board, updateItem }: ItemGroupPreviewP
                   <TableCell
                     key={`${item.id}-${columnValue.columnName}`}
                     className={cn(
-                      "border border-gray-200 p-2",
+                      "border border-gray-200 dark:border-gray-700 p-2",
                       cellIndex === 0 ? "w-1/3" : "",
                       getStatusColor(columnValue)
                     )}
@@ -166,7 +166,7 @@ export const ItemGroupPreview = ({ group, board, updateItem }: ItemGroupPreviewP
   return (
     <Collapsible
       className={cn(
-        "mb-6 bg-white rounded-lg shadow-md overflow-hidden",
+        "mb-6 bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden",
         isFullscreen && "fixed inset-0 z-50"
       )}
       open={isOpen}
@@ -174,7 +174,7 @@ export const ItemGroupPreview = ({ group, board, updateItem }: ItemGroupPreviewP
     >
       <CollapsibleTrigger asChild>
         <Button
-          className="w-full justify-between p-4 hover:bg-gray-50"
+          className="w-full justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-gray-100"
           variant="ghost"
         >
           <span className="font-semibold text-lg">{group.title}</span>
@@ -217,11 +217,11 @@ function getStatusColor(columnValue: {
   if (columnValue.type === ColumnTypes.Dropdown) {
     switch (columnValue.text?.toLowerCase()) {
       case "done":
-        return "bg-green-200"
+        return "bg-green-200 dark:bg-green-800"
       case "working on it":
-        return "bg-yellow-100"
+        return "bg-yellow-100 dark:bg-yellow-800"
       case "stuck":
-        return "bg-red-200"
+        return "bg-red-200 dark:bg-red-800"
       default:
         return ""
     }

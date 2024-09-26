@@ -16,47 +16,47 @@ const BoxInputs: React.FC<BoxInputsProps> = ({ boxes, onAdd, onRemove, onUpdate 
   return (
     <>
       {boxes.map((box, index) => (
-        <Card key={index} className="p-4 bg-gray-50 border border-gray-200">
+        <Card key={index} className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardContent>
             <div className="grid grid-cols-5 gap-4">
               <div className="col-span-1 relative">
                 <Input
-                  className="pr-12 border-gray-300 focus:ring-black focus:border-black"
+                  className="pr-12 border-gray-300 dark:border-gray-600 focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-gray-100"
                   placeholder="Length"
                   value={box.length}
                   onChange={(e) => onUpdate(index, 'length', e.target.value)}
                 />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">inches</span>
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">inches</span>
               </div>
               <div className="col-span-1 relative">
                 <Input
-                  className="pr-12 border-gray-300 focus:ring-black focus:border-black"
+                  className="pr-12 border-gray-300 dark:border-gray-600 focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-gray-100"
                   placeholder="Width"
                   value={box.width}
                   onChange={(e) => onUpdate(index, 'width', e.target.value)}
                 />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">inches</span>
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">inches</span>
               </div>
               <div className="col-span-1 relative">
                 <Input
-                  className="pr-12 border-gray-300 focus:ring-black focus:border-black"
+                  className="pr-12 border-gray-300 dark:border-gray-600 focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-gray-100"
                   placeholder="Height"
                   value={box.height}
                   onChange={(e) => onUpdate(index, 'height', e.target.value)}
                 />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">inches</span>
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">inches</span>
               </div>
               <div className="col-span-1 relative">
                 <Input
-                  className="pr-10 border-gray-300 focus:ring-black focus:border-black"
+                  className="pr-10 border-gray-300 dark:border-gray-600 focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-gray-100"
                   placeholder="Weight"
                   value={box.weight}
                   onChange={(e) => onUpdate(index, 'weight', e.target.value)}
                 />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">lbs</span>
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">lbs</span>
               </div>
               <Button 
-                className="col-span-1 border-black text-black hover:bg-gray-200" 
+                className="col-span-1 border-black dark:border-white text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700" 
                 size="icon" 
                 variant="outline" 
                 onClick={() => onRemove(index)}
@@ -68,7 +68,7 @@ const BoxInputs: React.FC<BoxInputsProps> = ({ boxes, onAdd, onRemove, onUpdate 
         </Card>
       ))}
       <Button 
-        className="border-black text-black hover:bg-gray-100 mt-2" 
+        className="border-black dark:border-white text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 mt-2" 
         size="sm" 
         variant="outline" 
         onClick={onAdd}

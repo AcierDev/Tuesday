@@ -25,7 +25,7 @@ import Image from 'next/image'
 import { ItemDesignImages } from '@/utils/constants'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog'
 import { ViewLabel } from './ViewLabel'
-import { useBoardOperations } from '../orders/OrderHooks'
+import { useTheme } from 'next-themes'
 
 interface CustomTableCellProps {
   item: Item
@@ -46,6 +46,9 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
   const [showPopover, setShowPopover] = useState(false)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [isLabelDialogOpen, setIsLabelDialogOpen] = useState(false)
+
+  const { theme } = useTheme()
+const isDarkMode = theme === 'dark'
 
   const handleMouseEnter = useCallback((option: string) => {
     setHoveredDesign(option)
@@ -123,12 +126,12 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
             <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
               <DropdownMenuTrigger asChild onClick={() => setIsOpen(true)} onPointerDown={(e) => e.preventDefault()}>
                 <Button 
-                  className="inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white bg-sky-500 rounded-full hover:bg-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 transition-colors"
+                  className="inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white bg-sky-500 dark:bg-sky-600 rounded-full hover:bg-sky-600 dark:hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:focus-visible:ring-sky-500 focus-visible:ring-offset-2 transition-colors"
                 >
                   {columnValue.text || "⠀"}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
                 {boardConfig.columns[columnValue.columnName].options?.map((option: string) => (
                   <Popover key={option} open={showPopover && hoveredDesign === option}>
                     <PopoverTrigger asChild>
@@ -138,11 +141,12 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
                         }}
                         onMouseEnter={() => handleMouseEnter(option)}
                         onMouseLeave={handleMouseLeave}
+                        className="hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         {option}
                       </DropdownMenuItem>
                     </PopoverTrigger>
-                    <PopoverContent side="right" sideOffset={5}>
+                    <PopoverContent side="right" sideOffset={5} className="bg-white dark:bg-gray-800">
                       <Image
                         src={ItemDesignImages[option as ItemDesigns]}
                         alt={`${option} design`}
@@ -153,11 +157,12 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
                     </PopoverContent>
                   </Popover>
                 ))}
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-600" />
                 <DropdownMenuItem
                   onSelect={() => {
                     handleUpdate("")
                   }}
+                  className="hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   <XCircleIcon className="mr-2 h-4 w-4" />
                   Reset
@@ -171,29 +176,31 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
             <DropdownMenuTrigger asChild onClick={() => setIsOpen(true)} onPointerDown={(e) => e.preventDefault()}>
               <Button 
                 className={columnValue.columnName === ColumnTitles.Design || columnValue.columnName === ColumnTitles.Size 
-                  ? "inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white bg-sky-500 rounded-full hover:bg-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 transition-colors"
-                  : "w-full h-full justify-center p-2"}
+                  ? "inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white bg-sky-500 dark:bg-sky-600 rounded-full hover:bg-sky-600 dark:hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:focus-visible:ring-sky-500 focus-visible:ring-offset-2 transition-colors"
+                  : "w-full h-full justify-center p-2 text-gray-900 dark:text-gray-100"}
                 variant="ghost"
               >
                 {columnValue.text || "⠀"}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
               {boardConfig.columns[columnValue.columnName].options?.map((option: string) => (
                 <DropdownMenuItem 
                   key={option}
                   onSelect={() => {
                     handleUpdate(option)
                   }}
+                  className="hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   {option}
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-600" />
               <DropdownMenuItem
                 onSelect={() => {
                   handleUpdate("")
                 }}
+                className="hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 <XCircleIcon className="mr-2 h-4 w-4" />
                 Reset
@@ -206,7 +213,7 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
           <div className="flex items-center justify-center space-x-2 h-full">
             <Popover>
               <PopoverTrigger asChild>
-                <Button className="w-full h-full justify-center p-2" variant="ghost">
+                <Button className="w-full h-full justify-center p-2 text-gray-900 dark:text-gray-100" variant="ghost">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? (
                     <span>{format(date, "MM/dd/yyyy")}</span>
@@ -215,7 +222,7 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-auto p-0">
+              <PopoverContent align="start" className="w-auto p-0 bg-white dark:bg-gray-800">
                 <Calendar
                   initialFocus
                   mode="single"
@@ -226,6 +233,7 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
                       handleUpdate(newDate.toISOString())
                     }
                   }}
+                  className="text-gray-900 dark:text-gray-100"
                 />
               </PopoverContent>
             </Popover>
@@ -236,12 +244,12 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
         return (
           <Popover>
             <PopoverTrigger asChild>
-              <Button className="w-full h-full justify-center p-2" variant="ghost">
+              <Button className="w-full h-full justify-center p-2 text-gray-900 dark:text-gray-100" variant="ghost">
                 <StarIcon className="mr-2 h-4 w-4" />
                 {ratingValue || 'Rate'}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80">
+            <PopoverContent className="w-80 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
               <div className="space-y-4">
                 <h4 className="font-medium text-center">Set Rating</h4>
                 <Slider
@@ -262,14 +270,14 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
             <Dialog open={isLabelDialogOpen} onOpenChange={setIsLabelDialogOpen}>
               <DialogTrigger asChild>
                 <Button
-                  className="w-8 h-8 p-0"
+                  className="w-8 h-8 p-0 text-gray-900 dark:text-gray-100"
                   variant="ghost"
                   onClick={() => setIsLabelDialogOpen(true)}
                 >
-                  <Barcode className={`h-4 w-4 ${isLabelGenerated ? 'text-yellow-500' : 'text-gray-500'}`} />
+                  <Barcode className={`h-4 w-4 ${isLabelGenerated ? 'text-yellow-500' : 'text-gray-500 dark:text-gray-400'}`} />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl">
+              <DialogContent className="max-w-4xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
                 <DialogHeader>
                   <DialogTitle>Shipping Label</DialogTitle>
                 </DialogHeader>
@@ -285,11 +293,11 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
                 <TooltipTrigger asChild>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button className="w-8 h-8 p-0" variant="ghost">
-                        <StickyNoteIcon className={`h-4 w-4 ${notesValue ? 'text-yellow-500' : 'text-gray-500'}`} />
+                      <Button className="w-8 h-8 p-0 text-gray-900 dark:text-gray-100" variant="ghost">
+                        <StickyNoteIcon className={`h-4 w-4 ${notesValue ? 'text-yellow-500' : 'text-gray-500 dark:text-gray-400'}`} />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-80">
+                    <PopoverContent className="w-80 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
                       <div className="space-y-2">
                         <h4 className="font-medium">Notes</h4>
                         <Textarea
@@ -297,6 +305,7 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
                           rows={4}
                           value={notesValue}
                           onChange={(e) => setNotesValue(e.target.value)}
+                          className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                         />
                         <div className="flex justify-end">
                           <Button onClick={handleNotesUpdate}>Save</Button>
@@ -305,7 +314,7 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
                     </PopoverContent>
                   </Popover>
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
                   <p>{notesValue ? notesValue.substring(0, 50) + (notesValue.length > 50 ? '...' : '') : 'No notes'}</p>
                 </TooltipContent>
               </Tooltip>
@@ -317,20 +326,20 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
             <div className="flex items-center justify-center w-full h-full relative">
               <div className="flex items-center space-x-2 w-full">
                 <Input
-                  className="font-medium border-0 p-2 bg-transparent w-full text-center text-transparent caret-black"
+                  className="font-medium border-0 p-2 bg-transparent w-full text-center text-transparent caret-black dark:caret-white"
                   value={inputValue}
                   onBlur={handleInputBlur}
                   onChange={(e) => setInputValue(e.target.value)}
                 />
                 {item.vertical ? (
-                  <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 whitespace-nowrap">
+                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100 hover:bg-blue-200 dark:hover:bg-blue-700 whitespace-nowrap">
                     Vertical
                   </Badge>
                 ) : null}
               </div>
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-gray-900 dark:text-gray-100">
                 <span className="whitespace-pre-wrap">
-                  {parseMinecraftColors(inputValue)}
+                  {parseMinecraftColors(inputValue, isDarkMode)}
                 </span>
               </div>
             </div>
@@ -338,7 +347,7 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
         }
         return (
           <Input
-            className="border-0 p-2 bg-transparent text-center h-full w-full"
+            className="border-0 p-2 bg-transparent text-center h-full w-full text-gray-900 dark:text-gray-100"
             value={inputValue}
             onBlur={handleInputBlur}
             onChange={(e) => setInputValue(e.target.value)}
@@ -347,7 +356,7 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
       default:
         return (
           <Input
-            className="border-0 p-2 bg-transparent text-center h-full w-full"
+            className="border-0 p-2 bg-transparent text-center h-full w-full text-gray-900 dark:text-gray-100"
             value={inputValue}
             onBlur={handleInputBlur}
             onChange={(e) => setInputValue(e.target.value)}

@@ -189,7 +189,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4 bg-white">
+    <div className="h-full overflow-y-auto p-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <div className="mb-6">
         <h2 className="text-2xl font-bold mb-2">Weekly Schedule</h2>
         <WeekSelector currentWeekStart={currentWeekStart} onChangeWeek={changeWeek} />
@@ -198,7 +198,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
         <div className="space-y-4">
           <DragDropContext onDragEnd={handleDragEnd}>
             {Object.entries(weeklySchedules[weekKey] || {}).map(([day, dayItemIds]) => (
-              <Card key={day} className="rounded-lg bg-gray-50 shadow-sm">
+              <Card key={day} className="rounded-lg bg-gray-50 dark:bg-gray-800 shadow-sm">
                 <CardHeader className="py-2">
                   <CardTitle className="text-lg">{day}</CardTitle>
                 </CardHeader>
@@ -216,13 +216,13 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  className="mb-2 p-2 bg-white rounded shadow-sm flex justify-between items-center"
+                                  className="mb-2 p-2 bg-white dark:bg-gray-700 rounded shadow-sm flex justify-between items-center"
                                 >
                                   <div className="flex items-center">
-                                    <GripVertical className="h-5 w-5 mr-2 text-gray-400" />
+                                    <GripVertical className="h-5 w-5 mr-2 text-gray-400 dark:text-gray-500" />
                                     <div>
                                       <p className="font-semibold">{getItemValue(item, ColumnTitles.Customer_Name)}</p>
-                                      <p className="text-sm text-gray-600">
+                                      <p className="text-sm text-gray-600 dark:text-gray-400">
                                         {getItemValue(item, ColumnTitles.Design)} - {getItemValue(item, ColumnTitles.Size)}
                                       </p>
                                     </div>
@@ -250,20 +250,20 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
       </div>
 
       <Dialog open={isAddingItem} onOpenChange={setIsAddingItem}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
           <DialogHeader>
             <DialogTitle>Add Item to {currentDay}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <Input
-              className="w-full"
+              className="w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               placeholder="Search items..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <div className="flex space-x-2">
               <Select value={filterDesign} onValueChange={setFilterDesign}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                   <SelectValue placeholder="Filter by design" />
                 </SelectTrigger>
                 <SelectContent>
@@ -274,7 +274,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
                 </SelectContent>
               </Select>
               <Select value={filterSize} onValueChange={setFilterSize}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                   <SelectValue placeholder="Filter by size" />
                 </SelectTrigger>
                 <SelectContent>
@@ -287,10 +287,10 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
             </div>
             <div className="max-h-[300px] overflow-y-auto">
               {filteredItems.map(item => (
-                <div key={item.id} className="flex justify-between items-center p-2 bg-gray-100 rounded mb-2">
+                <div key={item.id} className="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-700 rounded mb-2">
                   <div>
                     <p className="font-semibold">{getItemValue(item, ColumnTitles.Customer_Name)}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {getItemValue(item, ColumnTitles.Design)} - {getItemValue(item, ColumnTitles.Size)}
                     </p>
                   </div>
