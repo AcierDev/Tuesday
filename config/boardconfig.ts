@@ -77,12 +77,18 @@ export const boardConfig: BoardConfig = {
       type: ColumnTypes.Number,
       requiredForNewItem: false,
     },
+    Labels: {
+      title: ColumnTitles.Labels,
+      id: ColumnTitles.Due,
+      type: ColumnTypes.Text,
+      requiredForNewItem: true,
+    },
     "Due Date": {
       title: ColumnTitles.Due,
       id: ColumnTitles.Due,
       type: ColumnTypes.Date,
       requiredForNewItem: true,
-    },
+    }
   },
 
   // Map a group name to its overrides

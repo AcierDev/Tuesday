@@ -1,38 +1,67 @@
 "use client"
 
-import { Menu, Plus, Search, Settings as SettingsIcon } from "lucide-react"
-import { type ChangeEvent, useState } from "react"
+import { Plus, Search } from "lucide-react"
+import { type ChangeEvent } from "react"
 
-import { SettingsPanel } from "@/components/ui/SettingsPanel"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 interface HeaderProps {
   searchTerm: string
   onSearchChange: (term: string) => void
   onNewOrder: () => void
-  onOpenSettings: () => void
   isMobile: boolean
+  currentMode: string
+  onModeChange: (mode: string) => void
+  dueCounts: Record<string, number>
 }
 
 export const Header: React.FC<HeaderProps> = ({
   searchTerm,
   onSearchChange,
   onNewOrder,
-  onOpenSettings,
   isMobile,
+  currentMode,
+  onModeChange,
+  dueCounts,
 }) => {
-  const [isWeeklyPlannerOpen, setIsWeeklyPlannerOpen] = useState(false)
-
   return (
     <div className={`z-30 bg-white shadow-md ${isMobile ? '' : 'sticky top-14'}`}>
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-center justify-between py-4 space-y-4 sm:space-y-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 w-full sm:w-1/4">
             Order Management
           </h1>
-          <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+          <div className="flex justify-center w-full sm:w-2/4">
+            <ToggleGroup 
+              type="single" 
+              value={currentMode} 
+              onValueChange={(value) => {
+                if (value) onModeChange(value);
+              }} 
+              className="flex flex-wrap justify-center gap-3"
+            >
+              {["all", "geometric", "striped", "tiled", "mini", "custom"].map((mode) => (
+                <ToggleGroupItem 
+                  key={mode} 
+                  value={mode} 
+                  aria-label={`Toggle ${mode} mode`} 
+                  className="px-3 py-1 relative"
+                >
+                  <span className="relative z-10">
+                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                  </span>
+                  {(dueCounts[mode] ?? 0) > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center z-20">
+                      {dueCounts[mode]}
+                    </span>
+                  )}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full sm:w-1/4 sm:justify-end">
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <Input
@@ -42,46 +71,12 @@ export const Header: React.FC<HeaderProps> = ({
                 onChange={(e: ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
               />
             </div>
-            <div className="flex space-x-2 w-full sm:w-auto">
-              <Button
-                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md transition duration-300 ease-in-out flex-grow sm:flex-grow-0"
-                onClick={onNewOrder}
-              >
-                <Plus className="mr-2 h-5 w-5" /> New Order
-              </Button>
-              {isMobile ? (
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline">
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent>
-                    <SheetHeader>
-                      <SheetTitle>Menu</SheetTitle>
-                      <p className="text-sm">Access additional options</p>
-                    </SheetHeader>
-                    <div className="mt-4 space-y-4">
-                      <Button
-                        className="w-full"
-                        variant="outline"
-                        onClick={onOpenSettings}
-                      >
-                        <SettingsIcon className="mr-2 h-5 w-5" /> Settings
-                      </Button>
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              ) : (
-                <Button
-                  className="flex-grow sm:flex-grow-0"
-                  variant="outline"
-                  onClick={onOpenSettings}
-                >
-                  <SettingsIcon className="mr-2 h-5 w-5" /> Settings
-                </Button>
-              )}
-            </div>
+            <Button
+              className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md transition duration-300 ease-in-out w-full sm:w-auto"
+              onClick={onNewOrder}
+            >
+              <Plus className="mr-2 h-5 w-5" /> New Order
+            </Button>
           </div>
         </div>
       </div>

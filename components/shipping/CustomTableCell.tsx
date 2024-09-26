@@ -1,7 +1,7 @@
 "use client"
 
 import { format, parseISO } from 'date-fns'
-import { CalendarIcon, StarIcon, StickyNoteIcon, XCircleIcon } from 'lucide-react'
+import { Barcode, CalendarIcon, StarIcon, StickyNoteIcon, XCircleIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -15,7 +15,6 @@ import { Slider } from "@/components/ui/slider"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-import { automatron } from '../../config/automatron'
 import { boardConfig } from '../../config/boardconfig'
 import { useOrderSettings } from '../../contexts/OrderSettingsContext'
 import { type Board, ColumnTitles, ColumnTypes, type ColumnValue, type Item, type ProgressStatus, ItemDesigns } from '../../typings/types'
@@ -23,7 +22,10 @@ import { getDueBadge } from '../../utils/functions'
 import { parseMinecraftColors } from '../../utils/parseMinecraftColors'
 
 import Image from 'next/image'
-import { DESIGN_COLORS, ItemDesignImages } from '@/utils/constants'
+import { ItemDesignImages } from '@/utils/constants'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog'
+import { ViewLabel } from './ViewLabel'
+import { useBoardOperations } from '../orders/OrderHooks'
 
 interface CustomTableCellProps {
   item: Item
@@ -43,6 +45,7 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
   const [hoveredDesign, setHoveredDesign] = useState<string | null>(null)
   const [showPopover, setShowPopover] = useState(false)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [isLabelDialogOpen, setIsLabelDialogOpen] = useState(false)
 
   const handleMouseEnter = useCallback((option: string) => {
     setHoveredDesign(option)
@@ -95,28 +98,6 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
     }
   }, [item, columnValue, onUpdate])
 
-  const handleAutomatron = useCallback(async (option: ProgressStatus) => {
-    const newStatus = automatron[columnValue.columnName]?.[option]
-    if (newStatus && item.status !== newStatus) {
-      try {
-        const updatedItem = { ...item, status: newStatus }
-        await onUpdate(updatedItem)
-        toast.success(`${item.values[0]?.text} moved from "${item.status}" to "${newStatus}"`, {
-          style: { background: '#10B981', color: 'white' },
-          action: {
-            label: 'Undo',
-            onClick: () => onUpdate({ ...item, status: item.status })
-          }
-        })
-      } catch (err) {
-        console.error("Failed to update status", err)
-        toast.error("Failed to update the status. Please try again.", {
-          style: { background: '#EF4444', color: 'white' }
-        })
-      }
-    }
-  }, [item, columnValue, onUpdate])
-
   const handleInputBlur = useCallback(() => {
     if (inputValue !== columnValue.text) {
       handleUpdate(inputValue)
@@ -154,7 +135,6 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
                       <DropdownMenuItem 
                         onSelect={() => {
                           handleUpdate(option)
-                          handleAutomatron(option as ProgressStatus)
                         }}
                         onMouseEnter={() => handleMouseEnter(option)}
                         onMouseLeave={handleMouseLeave}
@@ -177,7 +157,6 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
                 <DropdownMenuItem
                   onSelect={() => {
                     handleUpdate("")
-                    handleAutomatron("" as ProgressStatus)
                   }}
                 >
                   <XCircleIcon className="mr-2 h-4 w-4" />
@@ -205,7 +184,6 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
                   key={option}
                   onSelect={() => {
                     handleUpdate(option)
-                    handleAutomatron(option as ProgressStatus)
                   }}
                 >
                   {option}
@@ -215,7 +193,6 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
               <DropdownMenuItem
                 onSelect={() => {
                   handleUpdate("")
-                  handleAutomatron("" as ProgressStatus)
                 }}
               >
                 <XCircleIcon className="mr-2 h-4 w-4" />
@@ -279,6 +256,28 @@ export const CustomTableCell = ({ item, columnValue, board, onUpdate, isNameColu
           </Popover>
         )
       case ColumnTypes.Text:
+        if (columnValue.columnName === ColumnTitles.Labels) {
+  const isLabelGenerated = columnValue.text?.toLowerCase() === 'true'
+  return (
+    <Dialog open={isLabelDialogOpen} onOpenChange={setIsLabelDialogOpen}>
+      <DialogTrigger asChild>
+        <Button
+          className="w-8 h-8 p-0"
+          variant="ghost"
+          onClick={() => setIsLabelDialogOpen(true)}
+        >
+          <Barcode className={`h-4 w-4 ${isLabelGenerated ? 'text-yellow-500' : 'text-gray-500'}`} />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Shipping Label</DialogTitle>
+        </DialogHeader>
+        <ViewLabel orderId={item.id} />
+      </DialogContent>
+    </Dialog>
+  )
+}
         if (columnValue.columnName === 'Notes') {
           return (
             <TooltipProvider>

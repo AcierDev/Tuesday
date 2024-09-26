@@ -66,8 +66,6 @@ export  const ItemGroupSection = ({
   onShip,
   onMarkCompleted,
   onGetLabel,
-  onReorder,
-  onDragToWeeklySchedule,
 }: ItemGroupProps) => {
   const [isOpen, setIsOpen] = useState(true)
   const [editingItem, setEditingItem] = useState<Item | null>(null)
@@ -81,7 +79,7 @@ export  const ItemGroupSection = ({
   const contextMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setOrderedItems(group.items)
+    setOrderedItems(group.items.filter(item => item.visible && item.deleted !== true))
   }, [group.items])
 
   const handleEdit = useCallback((item: Item) => {
@@ -186,36 +184,6 @@ export  const ItemGroupSection = ({
     return orderedItems
   }, [orderedItems, sortColumn, sortDirection])
 
-  const onDragEnd = useCallback(
-    (result: any) => {
-      const { source, destination, draggableId } = result
-
-      if (!destination) return
-
-      if (destination.droppableId.startsWith('weekly-')) {
-        // Item is being dragged to the weekly schedule
-        const day = destination.droppableId.replace('weekly-', '')
-        onDragToWeeklySchedule(draggableId, day)
-        return
-      }
-
-      if (
-        source.droppableId === destination.droppableId &&
-        source.index === destination.index
-      ) {
-        return
-      }
-
-      const newItems = Array.from(orderedItems)
-      const [reorderedItem] = newItems.splice(source.index, 1)
-      newItems.splice(destination.index, 0, reorderedItem)
-
-      setOrderedItems(newItems)
-      onReorder(newItems)
-    },
-    [orderedItems, onReorder, onDragToWeeklySchedule]
-  )
-
   return (
     <Collapsible
       className="mb-6 bg-white rounded-lg shadow-md overflow-hidden"
@@ -296,62 +264,63 @@ export  const ItemGroupSection = ({
                   >
                     {(provided, snapshot) => (
                       <TableRow
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className={cn(
-                          index % 2 === 0 ? "bg-white" : "bg-gray-50",
-                          isPastDue(item) && "relative",
-                          snapshot.isDragging ? "bg-blue-100 shadow-lg" : ""
-                        )}
-                        onContextMenu={(e) => handleContextMenu(e, item)}
-                      >
-                        <TableCell 
-                          className="border border-gray-200 p-2 text-center"
-                          {...provided.dragHandleProps}
-                        >
-                          <GripVertical className="cursor-grab inline-block" />
-                        </TableCell>
-                        {item.values
-                          .filter((value) =>
-                            visibleColumns.includes(
-                              value.columnName as ColumnTitles
-                            )
-                          )
-                          .map((columnValue, cellIndex) => (
-                            <TableCell
-                              key={`${item.id}-${columnValue.columnName}`}
-                              className={cn(
-                                "border border-gray-200 p-2",
-                                cellIndex === 0 ? "w-1/3" : "",
-                                getStatusColor(columnValue)
-                              )}
-                            >
-                              <CustomTableCell
-                                board={board}
-                                columnValue={columnValue}
-                                isNameColumn={cellIndex === 0}
-                                item={item}
-                                onUpdate={onUpdate}
-                              />
-                            </TableCell>
-                          ))}
-                        <TableCell className="border border-gray-200 p-2 text-center">
-                          <ItemActions
-                            item={item}
-                            onDelete={handleDelete}
-                            onEdit={handleEdit}
-                            onGetLabel={onGetLabel}
-                            onMarkCompleted={onMarkCompleted}
-                            onShip={onShip}
-                          />
-                        </TableCell>
-                        {isPastDue(item) && (
-                          <>
-                            <div className="absolute inset-x-0 top-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                            <div className="absolute inset-x-0 bottom-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                          </>
-                        )}
-                      </TableRow>
+  ref={provided.innerRef}
+  {...provided.draggableProps}
+  className={cn(
+    index % 2 === 0 ? "bg-white" : "bg-gray-50",
+    isPastDue(item) && "relative",
+    snapshot.isDragging ? "bg-blue-100 shadow-lg" : ""
+  )}
+  onContextMenu={(e) => handleContextMenu(e, item)}
+>
+  <TableCell 
+    className="border border-gray-200 p-2 text-center"
+    {...provided.dragHandleProps}
+  >
+    <GripVertical className="cursor-grab inline-block" />
+  </TableCell>
+  {visibleColumns.map((columnName, cellIndex) => {
+    const columnValue = item.values.find(value => value.columnName === columnName) || {
+      columnName,
+      type: ColumnTypes.Text,
+      text: "\u00A0" // Unicode non-breaking space
+    };
+    return (
+      <TableCell
+        key={`${item.id}-${columnName}`}
+        className={cn(
+          "border border-gray-200 p-2",
+          cellIndex === 0 ? "w-1/3" : "",
+          getStatusColor(columnValue)
+        )}
+      >
+        <CustomTableCell
+          board={board}
+          columnValue={columnValue}
+          isNameColumn={cellIndex === 0}
+          item={item}
+          onUpdate={onUpdate}
+        />
+      </TableCell>
+    );
+  })}
+  <TableCell className="border border-gray-200 p-2 text-center">
+    <ItemActions
+      item={item}
+      onDelete={handleDelete}
+      onEdit={handleEdit}
+      onGetLabel={onGetLabel}
+      onMarkCompleted={onMarkCompleted}
+      onShip={onShip}
+    />
+  </TableCell>
+  {isPastDue(item) && (
+    <>
+      <div className="absolute inset-x-0 top-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+      <div className="absolute inset-x-0 bottom-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+    </>
+  )}
+</TableRow>
                     )}
                   </Draggable>
                 ))}

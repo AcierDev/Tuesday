@@ -1,6 +1,6 @@
 'use client'
 
-import { Calculator, Logs, Menu, PackageOpen, PaintbrushVertical, Scissors, Truck, Printer, DraftingCompass } from 'lucide-react'
+import { Calculator, Logs, Menu, PackageOpen, PaintbrushVertical, Scissors, Truck, Printer, Settings, Power } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -16,10 +16,14 @@ const navItems = [
   { href: '/backboards', icon: Scissors, label: 'Backboards' },
   { href: '/calculator', icon: Calculator, label: 'Calculator' },
   { href: '/print', icon: Printer, label: 'Print' },
-  // { href: '/utilities', icon: DraftingCompass, label: 'Utilities' },
+  { href: '/outlets', icon: Power, label: 'Outlets' },
 ]
 
-export const Navbar = () => {
+interface NavbarProps {
+  onOpenSettings: () => void
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
   const pathname = usePathname()
   const [activeTab, setActiveTab] = useState(pathname)
 
@@ -28,7 +32,7 @@ export const Navbar = () => {
   }, [pathname])
 
   const NavLink = ({ href, icon: Icon, label }) => (
-    <Link passHref href={href}>
+    <Link href={href} passHref>
       <Button
         className="w-full justify-start"
         variant={activeTab === href ? 'default' : 'ghost'}
@@ -40,31 +44,61 @@ export const Navbar = () => {
   )
 
   return (
-    <nav className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center justify-between px-4 sm:px-8">
-        <Link className="mr-6 flex items-center space-x-2" href="/">
-          <span className="text-xl font-bold">Tuesday</span>
-        </Link>
-        <div className="hidden md:flex md:items-center md:space-x-4 mx-auto">
-          {navItems.map((item) => (
-            <NavLink key={item.href} {...item} />
-          ))}
+    <nav className="sticky top-0 z-40 w-full border-b bg-white">
+      <div className="w-full flex h-14 items-center px-4 sm:px-8">
+        {/* Left Section: Logo */}
+        <div className="flex-shrink-0 mr-4">
+          <Link className="flex items-center space-x-2" href="/">
+            <span className="text-xl font-bold">Tuesday</span>
+          </Link>
         </div>
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button className="md:hidden" size="icon" variant="ghost">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right">
-            <div className="flex flex-col space-y-4">
-              {navItems.map((item) => (
-                <NavLink key={item.href} {...item} />
-              ))}
-            </div>
-          </SheetContent>
-        </Sheet>
+
+        {/* Center Section: Nav Links */}
+        <div className="hidden md:flex md:items-center md:justify-center flex-grow">
+          <div className="flex space-x-1">
+            {navItems.map((item) => (
+              <NavLink key={item.href} {...item} />
+            ))}
+          </div>
+        </div>
+
+        {/* Right Section: Settings Button and Mobile Menu */}
+        <div className="flex items-center ml-4">
+          {/* Settings Button for Desktop */}
+          <Button
+            className="hidden md:flex"
+            variant="outline"
+            onClick={onOpenSettings}
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
+          </Button>
+
+          {/* Mobile Menu */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button className="md:hidden ml-4" size="icon" variant="ghost">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Toggle menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right">
+              <div className="flex flex-col space-y-4">
+                {navItems.map((item) => (
+                  <NavLink key={item.href} {...item} />
+                ))}
+                <Button
+                  className="w-full justify-start"
+                  variant="ghost"
+                  onClick={onOpenSettings}
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </nav>
   )

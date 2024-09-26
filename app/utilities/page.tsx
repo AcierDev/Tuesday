@@ -28,7 +28,7 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
     }
 })
 
-export function UtilitiesContent() {
+ function UtilitiesContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(null)

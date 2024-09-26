@@ -9,18 +9,18 @@ import { Header } from "@/components/orders/Header"
 import { ItemList } from "@/components/orders/ItemList"
 import { NewItemModal } from "@/components/orders/NewItemModal"
 import { WeeklySchedule } from "@/components/weekly-schedule/WeeklySchedule"
-import { ShippingDashboard } from "@/components/shipping/ShippingDashboard"
 import { SettingsPanel } from "@/components/ui/SettingsPanel"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useOrderSettings } from "@/contexts/OrderSettingsContext"
 import { useRealmApp } from "@/hooks/useRealmApp"
-import { Board, Group, Item, ItemStatus } from "@/typings/types"
+import { Group, Item, ItemStatus, ItemSizes, ItemDesigns } from "@/typings/types"
 import { useBoardOperations } from "@/components/orders/OrderHooks"
+import { ShippingDashboard } from "@/components/shipping/ShippingDashboard"
 
 export default function OrderManagementPage() {
-  // State Management
   const [searchTerm, setSearchTerm] = useState("")
+  const [currentMode, setCurrentMode] = useState("all")
   const { collection, user, isLoading } = useRealmApp()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false)
@@ -35,7 +35,6 @@ export default function OrderManagementPage() {
 
   const { board, setBoard, updateItem, addNewItem, deleteItem } = useBoardOperations(null, collection, settings)
 
-  // Responsive Handling
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
     checkMobile()
@@ -43,7 +42,6 @@ export default function OrderManagementPage() {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Load Board Data
   const loadBoard = useCallback(async () => {
     if (!collection) return
 
@@ -65,7 +63,52 @@ export default function OrderManagementPage() {
     }
   }, [isLoading, collection, loadBoard])
 
-  // Watch for Changes in Board
+  const isItemDue = useCallback((item: Item) => {
+    const dueDate = item.values[item.values.length - 1]?.text
+    if (!dueDate) return false
+
+    const dueDateObj = new Date(dueDate)
+    const currentDate = new Date()
+    const daysDifference = Math.abs(Math.ceil((dueDateObj.getTime() - currentDate.getTime()) / (1000 * 3600 * 24)))
+
+
+    return daysDifference <= settings.dueBadgeDays
+  }, [settings.dueBadgeDays])
+
+  const dueCounts = useMemo(() => {
+    if (!board) return {}
+
+    const counts: Record<string, number> = {
+      all: 0,
+      geometric: 0,
+      striped: 0,
+      tiled: 0,
+      mini: 0,
+      custom: 0,
+    }
+
+    board.items_page.items.forEach(item => {
+      if (isItemDue(item)) {
+        counts.all++
+
+
+        const design = item.values.find(v => v.columnName === "Design")?.text || ""
+        const size = item.values.find(v => v.columnName === "Size")?.text || ""
+
+        const isMini = size === ItemSizes.Fourteen_By_Seven
+
+        if (design.startsWith("Striped") && !isMini) counts.striped++
+        else if (design.startsWith("Tiled") && !isMini) counts.tiled++
+        else if (!design.startsWith("Striped") && !isMini && !design.startsWith("Tiled")) counts.geometric++
+
+        if (isMini) counts.mini++
+        if (!Object.values(ItemDesigns).includes(design as ItemDesigns)) counts.custom++
+      }
+    })
+
+    return counts
+  }, [board, isItemDue])
+
   useEffect(() => {
     if (!collection) return
 
@@ -89,13 +132,10 @@ export default function OrderManagementPage() {
                 }
                 break
               }
-              // Handle other operation types if needed
             }
           }
         } catch (error) {
           console.error("Watch stream error:", error)
-          
-          // Wait before attempting to reconnect
           await new Promise((resolve) => setTimeout(resolve, 5000))
         }
       }
@@ -131,10 +171,6 @@ export default function OrderManagementPage() {
   const onDragEnd = useCallback(
     async (result: DropResult, provided: ResponderProvided) => {
       const { source, destination, draggableId } = result
-
-      console.log(result)
-
-      console.log('Drag End:', { source, destination })
 
       if (!destination) return
 
@@ -288,13 +324,39 @@ export default function OrderManagementPage() {
         
         const group = groups.find(g => g.title === groupField)
         if (group && (settings.groupingField !== "Status" || settings.showCompletedOrders || item.status !== ItemStatus.Done)) {
-          group.items.push(item)
+          const design = item.values.find(v => v.columnName === "Design")?.text || ""
+          const size = item.values.find(v => v.columnName === "Size")?.text || ""
+
+          const isMini = size === ItemSizes.Fourteen_By_Seven
+
+          const shouldInclude = (() => {
+            switch (currentMode) {
+              case "all":
+                return true
+              case "striped":
+                return design.startsWith("Striped") && !isMini
+              case "tiled":
+                return design.startsWith("Tiled") && !isMini
+              case "geometric":
+                return !design.startsWith("Striped") && !design.startsWith("Tiled") && !isMini
+              case "mini":
+                return isMini
+              case "custom":
+                return !Object.values(ItemDesigns).includes(design as ItemDesigns) && !isMini
+              default:
+                return false
+            }
+          })()
+
+          if (shouldInclude) {
+            group.items.push(item)
+          }
         }
       }
     })
 
     return groups
-  }, [board, settings.groupingField, settings.showCompletedOrders, searchTerm, getUniqueGroupValues])
+  }, [board, settings.groupingField, settings.showCompletedOrders, searchTerm, getUniqueGroupValues, currentMode])
 
   const sortedGroups = useMemo(() => {
     return [...filteredGroups].sort((a, b) => {
@@ -306,8 +368,7 @@ export default function OrderManagementPage() {
         if (bIndex === -1) return -1
         return aIndex - bIndex
       } 
-        return a.title.localeCompare(b.title)
-      
+      return a.title.localeCompare(b.title)
     })
   }, [filteredGroups, settings.groupingField])
 
@@ -329,7 +390,6 @@ export default function OrderManagementPage() {
     )
   }
 
-  // Render
   return (
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)]">
       <Toaster position="top-center" />
@@ -339,6 +399,9 @@ export default function OrderManagementPage() {
         onNewOrder={() => setIsNewItemModalOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onSearchChange={setSearchTerm}
+        currentMode={currentMode}
+        onModeChange={setCurrentMode}
+        dueCounts={dueCounts}
       />
       <div className="flex-grow overflow-hidden">
         <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -385,7 +448,6 @@ export default function OrderManagementPage() {
           <ChevronLeft className="h-6 w-6" />
         )}
       </Button>
-      {/* Modals and Dialogs */}
       {isSettingsOpen ? (
         <SettingsPanel
           settings={settings}
@@ -407,7 +469,6 @@ export default function OrderManagementPage() {
           {selectedItem ? (
             <ShippingDashboard
               item={selectedItem}
-              onUpdateItem={updateItem}
               onClose={() => {
                 setIsShippingDashboardOpen(false)
                 setSelectedItem(null)

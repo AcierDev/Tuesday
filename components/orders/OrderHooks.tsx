@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 
-import { type Board, type Item, ItemStatus } from "@/typings/types"
+import { type Board, type Item, ItemStatus, Settings } from "@/typings/types"
 
 export function useBoardOperations(initialBoard: Board | null, collection: any, settings: Settings) {
   const [board, setBoard] = useState<Board | null>(initialBoard)
@@ -114,31 +114,37 @@ export function useBoardOperations(initialBoard: Board | null, collection: any, 
   const deleteItem = useCallback(async (itemId: string) => {
     if (!board) return
 
-    console.log(`Deleting item: ${itemId}`)
+    console.log(`Marking item as deleted: ${itemId}`)
 
     try {
+      // Update the item in the database
       await collection.updateOne(
-        { id: board.id },
-        { $pull: { "items_page.items": { id: itemId } } }
+        { id: board.id, "items_page.items.id": itemId },
+        { $set: { "items_page.items.$.deleted": true } }
       )
+
+      // Update the local state
       setBoard({
         ...board,
         items_page: {
           ...board.items_page,
-          items: board.items_page.items.filter((item) => item.id !== itemId),
+          items: board.items_page.items.map((item) =>
+            item.id === itemId ? { ...item, deleted: true } : item
+          ),
         },
       })
-      console.log("Item deleted successfully")
-      toast.success("Item deleted successfully", {
+
+      console.log("Item marked as deleted successfully")
+      toast.success("Item marked as deleted successfully", {
         style: { background: "#10B981", color: "white" },
       })
     } catch (err) {
-      console.error("Failed to delete item", err)
+      console.error("Failed to mark item as deleted", err)
       toast.error("Failed to delete item. Please try again.", {
         style: { background: "#EF4444", color: "white" },
       })
     }
-  }, [board, collection])
+  }, [board, collection, setBoard])
 
   return {
     board,

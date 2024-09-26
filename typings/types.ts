@@ -83,6 +83,7 @@ export enum ColumnTitles {
   Boxes = "Boxes",
   Notes = "Notes",
   Rating = "Rating",
+  Labels = "Labels",
   Due = "Due Date",
 }
 
@@ -98,8 +99,13 @@ export enum ItemDesigns {
   Lawyer = "Lawyer",
   Fade_To_Five = "Fade To Five",
   Striped_Coastal = "Striped Coastal",
+  Striped_Fade_To_Five = "Striped Fade To Five",
+  Striped_Timberline = "Striped Timberline",
+  Tiled_Coastal = "Tiled Coastal",
+  Tiled_Fade_To_Five = "Tiled Fade To Five",
+  Tiled_Timberline = "Tiled Timberline",
   Amber = "Amber",
-  Saphire = "Saphire",
+  Sapphire = "Sapphire",
   Timberline = "Timberline",
   Winter = "Winter",
   Forest = "Forest",

@@ -1,12 +1,17 @@
+// app/layout.tsx or app/layout.jsx
+
+"use client";
+
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { useState } from "react";
 
 import "./globals.css";
 import { Navbar } from "@/components/ui/Navbar";
 import { OrderSettingsProvider } from "@/contexts/OrderSettingsContext";
 import { RealmAppProvider } from "@/hooks/useRealmApp";
-
-import { ThemeProvider } from "../components/providers/ThemeProvider"
+import { ThemeProvider } from "../components/providers/ThemeProvider";
+import { SettingsPanel } from "@/components/ui/SettingsPanel";
 
 const geistSans = localFont({
   src: "../fonts/GeistVF.woff",
@@ -19,7 +24,7 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-export const metadata: Metadata = {
+const metadata: Metadata = {
   title: "Tuesday",
   description: "Replacing Monday",
 };
@@ -27,8 +32,18 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const handleOpenSettings = () => {
+    setIsSettingsOpen(true);
+  };
+
+  const handleCloseSettings = () => {
+    setIsSettingsOpen(false);
+  };
+
   return (
     <html className={`${geistSans.variable} ${geistMono.variable}`} lang="en">
       <body>
@@ -36,15 +51,19 @@ export default function RootLayout({
           <RealmAppProvider>
             <OrderSettingsProvider>
               <div className="min-h-screen bg-gray-100">
-                <Navbar />
+                <Navbar onOpenSettings={handleOpenSettings} />
                 <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
                   {children}
                 </main>
+                {/* Settings Panel */}
+                {isSettingsOpen && (
+                  <SettingsPanel onClose={handleCloseSettings} />
+                )}
               </div>
             </OrderSettingsProvider>
           </RealmAppProvider>
         </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }

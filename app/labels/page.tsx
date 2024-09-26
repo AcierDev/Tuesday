@@ -19,7 +19,7 @@ export default function ShippingLabelUpload() {
 
   const fetchUploadedFiles = async () => {
     try {
-      const response = await fetch('http://localhost:3003/pdfs')
+      const response = await fetch('http://144.172.71.72:3003/pdfs')
       if (response.ok) {
         const files = await response.json()
         setUploadedFiles(files)
@@ -55,7 +55,7 @@ export default function ShippingLabelUpload() {
       formData.append('label', file)
 
       try {
-        const response = await fetch('http://localhost:3003/upload-label', {
+        const response = await fetch('http://144.172.71.72:3003/upload-label', {
           method: 'POST',
           body: formData,
         })
@@ -78,7 +78,7 @@ export default function ShippingLabelUpload() {
 
   const handleDownload = async (filename: string) => {
     try {
-      const response = await fetch(`http://localhost:3003/pdf/${filename}`)
+      const response = await fetch(`http://144.172.71.72:3003/pdf/${filename}`)
       if (response.ok) {
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
