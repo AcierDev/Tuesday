@@ -40,7 +40,7 @@ import {
   type ItemSortFuncs,
 } from "../../typings/types"
 import { cn, isPastDue } from "../../utils/functions"
-import { CustomTableCell } from "../shipping/CustomTableCell"
+import { CustomTableCell } from "../cells/CustomTableCell"
 import { DeleteConfirmationDialog } from "../ui/DeleteConfirmationDialog"
 
 import { EditItemDialog } from "./EditItemDialog"

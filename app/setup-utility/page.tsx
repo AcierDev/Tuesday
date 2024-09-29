@@ -31,8 +31,8 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
 function UtilitiesContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [selectedDesign, setSelectedDesign] = useState<Design | null>(null)
-  const [selectedSize, setSelectedSize] = useState<ItemSizes | "custom">(ItemSizes.Fourteen_By_Seven)
+  const [selectedDesign, setSelectedDesign] = useState<Design | null>(designs[0]!)
+  const [selectedSize, setSelectedSize] = useState<ItemSizes | "custom">(ItemSizes.TwentySeven_By_Eleven)
   const [width, setWidth] = useState<string>('14')
   const [height, setHeight] = useState<string>('7')
   const [showBackButton, setShowBackButton] = useState(false)

@@ -241,7 +241,7 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }: NewItemModalProps) =
                   onClick={() => setShowCalendar(!showCalendar)}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
+                  {dueDate ? format(dueDate, "PPP") : ""}
                 </Button>
               </div>
             </div>

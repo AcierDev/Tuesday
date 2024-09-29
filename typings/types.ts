@@ -47,13 +47,27 @@ export type ColorColumnValue = {
   text?: ItemDesigns;
   type: ColumnTypes.Dropdown;
   columnName: ColumnTitles.Design;
+  lastModifiedTimestamp: number;
+  credit: EmployeeNames[];
 };
 
 export type GenericColumnValue = {
   text?: string;
   type: ColumnTypes;
   columnName: ColumnTitles;
+  lastModifiedTimestamp: number;
+  credit: EmployeeNames[];
 };
+
+export enum EmployeeNames {
+  Alex = "Alex Morell",
+  Ben = "Ben Clark",
+  Bentzi = "Ben Steele",
+  Akiva = "Akiva Weil",
+  Paris = "Paris Carver",
+  Dylan = "Dylan Carver",
+  Tyler = "Tyler Blancett"
+}
 
 export enum ItemStatus {
   New = "New",
@@ -96,17 +110,17 @@ export enum ColumnTypes {
 
 export enum ItemDesigns {
   Coastal = "Coastal",
+  Striped_Coastal = "Striped Coastal",
+  Tiled_Coastal = "Tiled Coastal",
   Lawyer = "Lawyer",
   Fade_To_Five = "Fade To Five",
-  Striped_Coastal = "Striped Coastal",
   Striped_Fade_To_Five = "Striped Fade To Five",
-  Striped_Timberline = "Striped Timberline",
-  Tiled_Coastal = "Tiled Coastal",
   Tiled_Fade_To_Five = "Tiled Fade To Five",
+  Timberline = "Timberline",
+  Striped_Timberline = "Striped Timberline",
   Tiled_Timberline = "Tiled Timberline",
   Amber = "Amber",
   Sapphire = "Sapphire",
-  Timberline = "Timberline",
   Winter = "Winter",
   Forest = "Forest",
   Autumn = "Autumn",
@@ -189,6 +203,7 @@ export type OrderSettings = {
   groupingField: string
   showCompletedOrders: boolean
   showSortingIcons: boolean
+  recentEditHours?: number
 }
 
 export type ShippingStatus = 'unshipped' | 'pre_transit' | 'in_transit' | 'delivered'

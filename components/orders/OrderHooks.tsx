@@ -42,38 +42,57 @@ export function useBoardOperations(initialBoard: Board | null, collection: any, 
     return updatedItem
   }, [settings.isAutomatronActive, settings.automatronRules])
 
-  const updateItem = useCallback(async (updatedItem: Item, changedField: ColumnTitles) => {
-    if (!board) return
-    console.log(`Updating item: ${updatedItem.id}, Changed field: ${changedField}`)
+ const updateItem = useCallback(async (updatedItem: Item, changedField: ColumnTitles) => {
+  if (!board) return
+  console.log(`Updating item: ${updatedItem.id}, Changed field: ${changedField}`)
+
+  const currentTimestamp = Date.now()
+
+  // Update the lastModifiedTimestamp for the changed column
+  const updatedValues = updatedItem.values.map(value => 
+    value.columnName === changedField 
+      ? { ...value, lastModifiedTimestamp: currentTimestamp }
+      : value
+  )
+
+  const itemWithUpdatedTimestamp = {
+    ...updatedItem,
+    values: updatedValues
+  }
+
+  try {
+    await collection.updateOne(
+      { id: board.id, "items_page.items.id": itemWithUpdatedTimestamp.id },
+      { 
+        $set: { 
+          "items_page.items.$": itemWithUpdatedTimestamp
+        } 
+      }
+    )
+    console.log("Database update successful")
 
     const updatedItems = board.items_page.items.map((item) =>
-      item.id === updatedItem.id ? updatedItem : item
+      item.id === itemWithUpdatedTimestamp.id ? itemWithUpdatedTimestamp : item
     )
 
-    try {
-      await collection.updateOne(
-        { id: board.id },
-        { $set: { "items_page.items": updatedItems } }
-      )
-      console.log("Database update successful")
-      setBoard({
-        ...board,
-        items_page: { ...board.items_page, items: updatedItems },
-      })
-      console.log("Board state updated")
+    setBoard({
+      ...board,
+      items_page: { ...board.items_page, items: updatedItems },
+    })
+    console.log("Board state updated")
 
-      const itemWithRulesApplied = applyAutomatronRules(updatedItem, changedField)
-      if (itemWithRulesApplied.status !== updatedItem.status) {
-        await updateItem(itemWithRulesApplied, changedField)
-      }
-    } catch (err) {
-      console.error("Failed to update item", err)
-      toast.error("Failed to update item. Please try again.", {
-        style: { background: "#EF4444", color: "white" },
-      })
-      throw err
+    const itemWithRulesApplied = applyAutomatronRules(itemWithUpdatedTimestamp, changedField)
+    if (itemWithRulesApplied.status !== itemWithUpdatedTimestamp.status) {
+      await updateItem(itemWithRulesApplied, changedField)
     }
-  }, [board, collection, applyAutomatronRules])
+  } catch (err) {
+    console.error("Failed to update item", err)
+    toast.error("Failed to update item. Please try again.", {
+      style: { background: "#EF4444", color: "white" },
+    })
+    throw err
+  }
+}, [board, collection, applyAutomatronRules])
 
   const addNewItem = useCallback(async (newItem: Partial<Item>) => {
     if (!board) return

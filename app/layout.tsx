@@ -11,7 +11,7 @@ import { Navbar } from "@/components/ui/Navbar";
 import { OrderSettingsProvider } from "@/contexts/OrderSettingsContext";
 import { RealmAppProvider } from "@/hooks/useRealmApp";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
-import { SettingsPanel } from "@/components/ui/SettingsPanel";
+import { SettingsPanel } from "@/components/setttings/SettingsPanel";
 
 const geistSans = localFont({
   src: "../fonts/GeistVF.woff",

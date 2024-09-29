@@ -13,7 +13,7 @@ const defaultColumnVisibility: ColumnVisibility = {}
 Object.values(ItemStatus).forEach(group => {
   defaultColumnVisibility[group] = {}
   Object.values(ColumnTitles).forEach(field => {
-    defaultColumnVisibility[group][field] = true
+    defaultColumnVisibility[group]![field] = true
   })
 })
 
@@ -31,6 +31,7 @@ const defaultSettings: OrderSettings = {
   groupingField: 'Status',
   showCompletedOrders: true,
   showSortingIcons: false,
+  recentEditHours: undefined,
 }
 
 function orderSettingsReducer(state: OrderSettings, action: OrderSettingsAction): OrderSettings {

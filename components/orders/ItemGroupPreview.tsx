@@ -12,7 +12,7 @@ import { itemSortFuncs } from "@/utils/itemSortFuncs"
 import { useOrderSettings } from "../../contexts/OrderSettingsContext"
 import { type Board, ColumnTitles, ColumnTypes, type Group, type Item } from "../../typings/types"
 import { cn, isPastDue } from "../../utils/functions"
-import { CustomTableCell } from "../shipping/CustomTableCell"
+import { CustomTableCell } from "../cells/CustomTableCell"
 
 interface ItemGroupPreviewProps {
   group: Group
