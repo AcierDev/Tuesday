@@ -73,14 +73,9 @@ export const ItemGroupSection = ({
   const { settings } = useOrderSettings()
   const [sortColumn, setSortColumn] = useState<ColumnTitles | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(null)
-  const [orderedItems, setOrderedItems] = useState<Item[]>(group.items)
   const [isDragging, setIsDragging] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: Item } | null>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setOrderedItems(group.items.filter(item => item.visible && item.deleted !== true))
-  }, [group.items])
 
   const handleEdit = useCallback((item: Item) => {
     console.log("Editing item:", item)
@@ -177,12 +172,12 @@ export const ItemGroupSection = ({
   const sortedItems = useMemo(() => {
     if (sortColumn && sortDirection && itemSortFuncs[sortColumn]) {
       return itemSortFuncs[sortColumn](
-        orderedItems,
+        group.items,
         sortDirection === "asc"
       )
     }
-    return orderedItems
-  }, [orderedItems, sortColumn, sortDirection])
+    return group.items
+  }, [group.items, sortColumn, sortDirection])
 
   return (
     <Collapsible

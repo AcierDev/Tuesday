@@ -314,7 +314,7 @@ export default function OrderManagementPage() {
       items: [] as Item[]
     }))
 
-    board.items_page.items.forEach(item => {
+    board.items_page.items.filter(item => !item.deleted && item.visible).forEach(item => {
       if (item.values.some(value => 
         String(value.text || "").toLowerCase().includes(searchTerm.toLowerCase())
       )) {
@@ -429,7 +429,7 @@ return (
                 <div className="h-full bg-white shadow-lg rounded-lg overflow-hidden">
                   <WeeklySchedule
                     boardId={board.id}
-                    items={board.items_page.items || []}
+                    items={board.items_page.items.filter(item => !item.deleted && item.visible) || []}
                   />
                 </div>
               )}

@@ -1,14 +1,14 @@
 "use client"
 
 import { DragDropContext, Draggable, Droppable } from '@hello-pangea/dnd'
-import { GripVertical, Minus, Plus } from 'lucide-react'
+import { GripVertical, Minus, Plus, Check } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { format, startOfWeek, addWeeks, subWeeks, parseISO } from 'date-fns'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRealmApp } from '@/hooks/useRealmApp'
@@ -32,9 +32,11 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterDesign, setFilterDesign] = useState('all')
   const [filterSize, setFilterSize] = useState('all')
+  const [confirmCompleteItem, setConfirmCompleteItem] = useState<Item | null>(null)
 
   useEffect(() => {
     loadSchedules()
+    console.log(items.map(item => item.values[0]?.text))
   }, [boardId])
 
   const loadSchedules = async () => {
@@ -161,6 +163,37 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
     await saveSchedules(newSchedules)
   }
 
+  const handleMarkAsCompleted = async (item: Item) => {
+    if (!collection) return
+
+    try {
+      await collection.updateOne(
+        { id: boardId },
+        { $set: { "items_page.items.$[elem].status": ItemStatus.Done } },
+        { arrayFilters: [{ "elem.id": item.id }] }
+      )
+
+      // Update the local state
+      const updatedItems = items.map(i => 
+        i.id === item.id ? { ...i, status: ItemStatus.Done } : i
+      )
+      // You might need to update the parent component's state here
+      // For now, we'll just update the local items
+      //setItems(updatedItems)
+
+      toast.success("Item marked as completed", {
+        style: { background: '#10B981', color: 'white' }
+      })
+    } catch (err) {
+      console.error("Failed to mark item as completed", err)
+      toast.error("Failed to mark item as completed. Please try again.", {
+        style: { background: '#EF4444', color: 'white' }
+      })
+    } finally {
+      setConfirmCompleteItem(null)
+    }
+  }
+
   const getItemValue = (item: Item, columnName: ColumnTitles): string => {
     return item.values.find(v => v.columnName === columnName)?.text || ''
   }
@@ -218,8 +251,8 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
                                   {...provided.dragHandleProps}
                                   className="mb-2 p-2 bg-white dark:bg-gray-700 rounded shadow-sm flex justify-between items-center"
                                 >
-                                  <div className="flex items-center">
-                                    <GripVertical className="h-5 w-5 mr-2 text-gray-400 dark:text-gray-500" />
+                                  <div className="flex items-center space-x-2">
+                                    <GripVertical className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                                     <div>
                                       <p className="font-semibold">{getItemValue(item, ColumnTitles.Customer_Name)}</p>
                                       <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -227,9 +260,24 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
                                       </p>
                                     </div>
                                   </div>
-                                  <Button size="sm" variant="outline" onClick={() => handleRemoveItem(day, item.id)}>
-                                    <Minus className="h-4 w-4" />
-                                  </Button>
+                                  <div className="flex items-center space-x-2">
+                                    {item.status !== ItemStatus.Done && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setConfirmCompleteItem(item)}
+                                      >
+                                        <Check className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleRemoveItem(day, item.id)}
+                                    >
+                                      <Minus className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </div>
                               )}
                             </Draggable>
@@ -306,6 +354,31 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
           </div>
           <DialogFooter>
             <Button onClick={() => setIsAddingItem(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirmCompleteItem} onOpenChange={() => setConfirmCompleteItem(null)}>
+        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+          <DialogHeader>
+            <DialogTitle>Confirm Completion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to mark this item as completed?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {confirmCompleteItem && (
+              <div>
+                <p className="font-semibold">{getItemValue(confirmCompleteItem, ColumnTitles.Customer_Name)}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {getItemValue(confirmCompleteItem, ColumnTitles.Design)} - {getItemValue(confirmCompleteItem, ColumnTitles.Size)}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmCompleteItem(null)}>Cancel</Button>
+            <Button onClick={() => confirmCompleteItem && handleMarkAsCompleted(confirmCompleteItem)}>Confirm</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
