@@ -1,6 +1,6 @@
 'use client'
 
-import { Calculator, Logs, Menu, PackageOpen, PaintbrushVertical, Scissors, Truck, Printer, Settings, Power, Wrench, Accessibility } from 'lucide-react'
+import { Calculator, Logs, Menu, PackageOpen, PaintbrushVertical, Scissors, Truck, Printer, Settings, Power, Wrench, Accessibility, ChartLine } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 const mainNavItems = [
+  { href: '/dashboard', icon: ChartLine, label: 'Overview' },
   { href: '/orders', icon: Logs, label: 'Orders' },
   { href: '/shipping', icon: Truck, label: 'Shipping' },
   { href: '/paint', icon: PaintbrushVertical, label: 'Paint' },

@@ -33,6 +33,7 @@ export type Item = {
   id: string;
   values: ColumnValue[];
   createdAt: number;
+  completedAt: number;
   status: ItemStatus;
   receipt?: Receipt;
   vertical?: boolean;

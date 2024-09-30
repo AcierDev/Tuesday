@@ -36,7 +36,6 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
 
   useEffect(() => {
     loadSchedules()
-    console.log(items.map(item => item.values[0]?.text))
   }, [boardId])
 
   const loadSchedules = async () => {
@@ -168,18 +167,20 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
 
     try {
       await collection.updateOne(
-        { id: boardId },
-        { $set: { "items_page.items.$[elem].status": ItemStatus.Done } },
-        { arrayFilters: [{ "elem.id": item.id }] }
-      )
+  { id: boardId },
+  { 
+    $set: { 
+      "items_page.items.$[elem].status": ItemStatus.Done,
+      "items_page.items.$[elem].completedAt": Date.now()
+    } 
+  },
+  { arrayFilters: [{ "elem.id": item.id }] }
+)
 
       // Update the local state
       const updatedItems = items.map(i => 
         i.id === item.id ? { ...i, status: ItemStatus.Done } : i
       )
-      // You might need to update the parent component's state here
-      // For now, we'll just update the local items
-      //setItems(updatedItems)
 
       toast.success("Item marked as completed", {
         style: { background: '#10B981', color: 'white' }

@@ -38,6 +38,7 @@ import {
   type Group,
   type Item,
   type ItemSortFuncs,
+  ItemStatus,
 } from "../../typings/types"
 import { cn, isPastDue } from "../../utils/functions"
 import { CustomTableCell } from "../cells/CustomTableCell"
@@ -263,7 +264,7 @@ export const ItemGroupSection = ({
                         {...provided.draggableProps}
                         className={cn(
                           index % 2 === 0 ? "bg-white dark:bg-gray-800" : "bg-gray-50 dark:bg-gray-700",
-                          isPastDue(item) && "relative",
+                          isPastDue(item) && item.status !== ItemStatus.Done && "relative",
                           snapshot.isDragging ? "bg-blue-100 dark:bg-blue-800 shadow-lg" : ""
                         )}
                         onContextMenu={(e) => handleContextMenu(e, item)}
@@ -309,7 +310,7 @@ export const ItemGroupSection = ({
                             onShip={onShip}
                           />
                         </TableCell>
-                        {isPastDue(item) && (
+                        {isPastDue(item) && item.status !== ItemStatus.Done &&  (
                           <>
                             <div className="absolute inset-x-0 top-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
                             <div className="absolute inset-x-0 bottom-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />

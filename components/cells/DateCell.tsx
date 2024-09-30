@@ -9,6 +9,7 @@ import { format, parseISO } from 'date-fns';
 import { getDueBadge } from '../../utils/functions';
 import { useOrderSettings } from '../../contexts/OrderSettingsContext';
 import { toast } from 'sonner';
+import { ItemStatus } from '@/typings/types';
 
 export const DateCell = ({ item, columnValue, onUpdate }) => {
   const [date, setDate] = useState(null);
@@ -65,7 +66,7 @@ export const DateCell = ({ item, columnValue, onUpdate }) => {
           />
         </PopoverContent>
       </Popover>
-      {date ? getDueBadge(date.toISOString(), settings.dueBadgeDays) : null}
+      {date ? item.status !== ItemStatus.Done && getDueBadge(date.toISOString(), settings.dueBadgeDays) : null}
     </div>
   );
 };

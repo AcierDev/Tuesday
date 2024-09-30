@@ -200,6 +200,12 @@ export const TIMBERLINE_COLORS: Record<number, { hex: string; name: string }> = 
   5: { hex: '#BBA595', name: 'Thatch' },
   6: { hex: '#CBB9AB', name: 'Vanilla' },
   7: { hex: '#D9CDC3', name: 'Wafer' },
+  8: { hex: '#CBB9AB', name: 'Wafer' },
+  9: { hex: '#BBA595', name: 'Wafer' },
+  10: { hex: '#A58C7B', name: 'Wafer' },
+  11: { hex: '#967A6A', name: 'Wafer' },
+  12: { hex: '#715243', name: 'Wafer' },
+  13: { hex: '#4F3426', name: 'Wafer' },
 };
 
 export const ALOE_COLORS: Record<number, { hex: string; name: string }> = {
