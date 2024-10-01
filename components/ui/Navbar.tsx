@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 const mainNavItems = [
-  { href: '/dashboard', icon: ChartLine, label: 'Overview' },
   { href: '/orders', icon: Logs, label: 'Orders' },
   { href: '/shipping', icon: Truck, label: 'Shipping' },
   { href: '/paint', icon: PaintbrushVertical, label: 'Paint' },
@@ -99,7 +98,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
         <div className="flex items-center ml-4">
           {/* Settings Button for Desktop */}
           <Button
-            className="hidden md:flex"
+            className="hidden md:flex dark:bg-white dark:text-black"
             variant="outline"
             onClick={onOpenSettings}
           >

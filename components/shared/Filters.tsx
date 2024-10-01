@@ -18,33 +18,33 @@ export function Filters({ filterValue, onFilterChange, searchTerm, onSearchTermC
     return (
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" className="dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
             <Menu className="h-4 w-4" />
           </Button>
         </SheetTrigger>
-        <SheetContent>
+        <SheetContent className="dark:bg-gray-800 dark:text-gray-200">
           <SheetHeader>
-            <SheetTitle>Filters</SheetTitle>
-            <SheetDescription>
+            <SheetTitle className="dark:text-gray-200">Filters</SheetTitle>
+            <SheetDescription className="dark:text-gray-200">
               Adjust your schedule filters
             </SheetDescription>
           </SheetHeader>
           <div className="mt-4 space-y-4">
             <Select value={filterValue} onValueChange={onFilterChange}>
-              <SelectTrigger>
+              <SelectTrigger className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
                 <SelectValue placeholder="Filter" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
+              <SelectContent className="dark:bg-gray-800 dark:text-gray-200">
+                <SelectItem value="all" className="dark:text-gray-200 dark:focus:bg-gray-600">All</SelectItem>
                 {filterOptions.map(option => (
-                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                  <SelectItem key={option} value={option} className="dark:text-gray-200 dark:focus:bg-gray-600">{option}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-200" />
               <Input
-                className="pl-10 pr-4 py-2 w-full"
+                className="pl-10 pr-4 py-2 w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
                 placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => onSearchTermChange(e.target.value)}
@@ -59,20 +59,20 @@ export function Filters({ filterValue, onFilterChange, searchTerm, onSearchTermC
   return (
     <div className="flex space-x-4">
       <Select value={filterValue} onValueChange={onFilterChange}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-[180px] dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
           <SelectValue placeholder="Filter" />
         </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All</SelectItem>
+        <SelectContent className="dark:bg-gray-800 dark:text-gray-200">
+          <SelectItem value="all" className="dark:text-gray-200 dark:focus:bg-gray-600">All</SelectItem>
           {filterOptions.map(option => (
-            <SelectItem key={option} value={option}>{option}</SelectItem>
+            <SelectItem key={option} value={option} className="dark:text-gray-200 dark:focus:bg-gray-600">{option}</SelectItem>
           ))}
         </SelectContent>
       </Select>
       <div className="relative flex-grow">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-200" />
         <Input
-          className="pl-10 pr-4 py-2 w-full"
+          className="pl-10 pr-4 py-2 w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
           placeholder="Search..."
           value={searchTerm}
           onChange={(e) => onSearchTermChange(e.target.value)}

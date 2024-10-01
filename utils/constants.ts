@@ -1,4 +1,4 @@
-import { ItemDesigns, ItemSizes } from '@/typings/types'
+import { EmployeeNames, ItemDesigns, ItemSizes } from '@/typings/types'
 
 export const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -378,3 +378,30 @@ export const DesignBlends: Record<ItemDesigns, string[]> = Object.fromEntries(
     Object.values(colors).map(color => color.hex)
   ])
 );
+
+export const CREDIT_OPTIONS = ['AM', 'BC', 'AW'] as const
+export type CreditOption = typeof CREDIT_OPTIONS[number]
+
+export const OPTION_IMAGES: Record<CreditOption, string> = {
+  'AM': '/images/alex.png',
+  'BC': '/images/peter.png',
+  'AW': '/images/akiva2.png',
+}
+
+export const EMPLOYEE_MAP: Record<CreditOption, EmployeeNames> = {
+  'AW': EmployeeNames.Akiva,
+  'AM': EmployeeNames.Alex,
+  'BC': EmployeeNames.Ben,
+}
+
+export const INITIALS_MAP: Record<EmployeeNames, CreditOption> = {
+  [EmployeeNames.Akiva]: 'AW',
+  [EmployeeNames.Alex]: 'AM',
+  [EmployeeNames.Ben]: 'BC',
+}
+
+export const CREDIT_COLORS: Record<CreditOption, string> = {
+  'AW': 'bg-orange-500',
+  'AM': 'bg-blue-500',
+  'BC': 'bg-green-500',
+}

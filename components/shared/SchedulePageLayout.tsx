@@ -10,7 +10,7 @@ import { ItemGroupPreview } from "../orders/ItemGroupPreview"
 import { WeeklySchedules } from "@/components/weekly-schedule/UseWeeklySchedule"
 import { WeekView } from "@/components/shared/WeekView"
 import { CalendarView } from "@/components/shared/CalendarView"
-import { Board, Group, Item } from '@/typings/types'
+import { Board, ColumnTitles, Group, Item } from '@/typings/types'
 import { cn } from '@/utils/functions'
 
 type SchedulePageLayoutProps = {
@@ -132,11 +132,12 @@ export function SchedulePageLayout({
       ref={fullscreenRef} 
       className={cn(
         "flex-shrink-0 overflow-hidden shadow-lg h-full",
+        "dark:bg-gray-900 dark:text-gray-200",
         isFullscreen ? "fixed inset-0 z-50" : viewMode === 'week' ? "w-full" : "w-full"
       )}
     >
       <Tabs className="h-full flex flex-col" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex w-full p-0 bg-muted">
+        <TabsList className="flex w-full p-0 bg-muted dark:bg-gray-800">
           <div className="flex-grow grid grid-cols-2">
             {tabs.map((tab) => (
               <TabsTrigger 
@@ -147,6 +148,7 @@ export function SchedulePageLayout({
                   "data-[state=active]:bg-background data-[state=active]:shadow-[inset_0_-2px_0_0_var(--tw-shadow-color)]",
                   "shadow-primary",
                   "transition-all duration-200 ease-in-out",
+                  "dark:text-gray-200 dark:data-[state=active]:bg-gray-800",
                   isMobile ? "text-sm" : "text-base"
                 )}
               >
@@ -159,7 +161,7 @@ export function SchedulePageLayout({
             size="sm"
             onClick={toggleFullscreen}
             aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            className="ml-auto px-2"
+            className="ml-auto px-2 dark:text-gray-200 dark:hover:bg-gray-700"
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
@@ -178,6 +180,7 @@ export function SchedulePageLayout({
   return (
     <div className={cn(
       "container mx-auto py-4 min-h-screen flex flex-col",
+      "dark:bg-gray-900 dark:text-gray-200",
       isMobile ? "px-2" : "px-4"
     )}>
       <div className={cn(
@@ -208,6 +211,7 @@ export function SchedulePageLayout({
                 size="icon"
                 onClick={resetToCurrentWeek}
                 aria-label="Reset to current week"
+                className="dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -231,6 +235,7 @@ export function SchedulePageLayout({
               size="icon"
               onClick={resetToCurrentWeek}
               aria-label="Reset to current week"
+              className="dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
@@ -243,6 +248,7 @@ export function SchedulePageLayout({
           variant={viewMode === 'week' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setViewMode('week')}
+          className="dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
         >
           <LayoutGrid className="h-4 w-4 mr-2" />
           Week
@@ -251,6 +257,7 @@ export function SchedulePageLayout({
           variant={viewMode === 'calendar' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setViewMode('calendar')}
+          className="dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
         >
           <CalendarIcon className="h-4 w-4 mr-2" />
           Calendar

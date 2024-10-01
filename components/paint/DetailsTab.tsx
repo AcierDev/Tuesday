@@ -15,9 +15,9 @@ export function DetailsTab({ isMobile, filteredRequirements }: DetailsTabProps) 
     <ScrollArea className="h-full">
       <div className={cn("space-y-6", isMobile ? "p-4" : "p-6")}>
         {filteredRequirements.map(([design, colorRequirements]) => (
-          <Card key={design}>
+          <Card key={design} className="bg-background dark:bg-gray-800">
             <CardContent className={cn(isMobile ? "p-4" : "p-6")}>
-              <h3 className={cn("font-semibold mb-4", isMobile ? "text-sm" : "text-lg")}>{design}</h3>
+              <h3 className={cn("font-semibold mb-4 text-foreground dark:text-gray-200", isMobile ? "text-sm" : "text-lg")}>{design}</h3>
               <div className={cn(
                 "grid gap-4",
                 isMobile ? "grid-cols-3 sm:grid-cols-4" : "grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10"

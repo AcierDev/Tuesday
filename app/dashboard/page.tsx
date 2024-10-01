@@ -14,7 +14,8 @@ import { toast } from 'sonner'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { AverageCompletionTimeChart } from '@/components/dashboard/AverageCompletionTime'
 import { GluingActivityChart } from '@/components/dashboard/GluingActicityChart'
-import { TopPerformers } from '@/components/dashboard/TopPerformers'
+import { cn } from '@/utils/functions'
+import TopPerformers from '@/components/dashboard/TopPerformers'
 
 type TimeRange = 'daily' | 'weekly' | 'monthly' | 'yearly'
 
@@ -22,7 +23,7 @@ interface DashboardCard {
   id: string
   title: string
   icon: React.ReactNode
-  content: (board: Board, timeRange: TimeRange) => React.ReactNode
+  content: (board: Board, timeRange: TimeRange, selectedEmployee: string | null) => React.ReactNode
   visible: boolean
 }
 
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const [board, setBoard] = useState<Board | undefined>(undefined)
   const { collection, isLoading } = useRealmApp()
   const [cards, setCards] = useState<DashboardCard[]>([])
+  const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)
 
   const loadBoard = useCallback(async () => {
     if (!collection) return
@@ -63,35 +65,52 @@ export default function Dashboard() {
         id: 'orderCompletions',
         title: 'Order Completions',
         icon: <CalendarDays className="h-4 w-4 text-muted-foreground dark:text-gray-400" />,
-        content: (board, timeRange) => <OrderCompletionChart board={board} timeRange={timeRange} />,
+        content: (board, timeRange, selectedEmployee) => (
+          <OrderCompletionChart board={board} timeRange={timeRange} selectedEmployee={selectedEmployee} />
+        ),
         visible: true
       },
       {
         id: 'gluingActivity',
         title: 'Gluing Activity',
         icon: <TrendingUp className="h-4 w-4 text-muted-foreground dark:text-gray-400" />,
-        content: (board, timeRange) => <GluingActivityChart board={board} timeRange={timeRange} />,
+        content: (board, timeRange, selectedEmployee) => (
+          <GluingActivityChart board={board} timeRange={timeRange} selectedEmployee={selectedEmployee} />
+        ),
         visible: true
       },
       {
         id: 'topPerformers',
         title: 'Top Performers',
         icon: <Users className="h-4 w-4 text-muted-foreground dark:text-gray-400" />,
-        content: (board, timeRange) => <TopPerformers board={board} timeRange={timeRange} />,
+        content: (board, timeRange, selectedEmployee) => (
+          <TopPerformers 
+            board={board} 
+            timeRange={timeRange} 
+            selectedEmployee={selectedEmployee}
+            onEmployeeClick={(employee: string) => { 
+              setSelectedEmployee(selectedEmployee === employee ? null : employee)
+            }}
+          />
+        ),
         visible: true
       },
       {
         id: 'recentActivity',
         title: 'Recent Activity',
         icon: <Activity className="h-4 w-4 text-muted-foreground dark:text-gray-400" />,
-        content: (board) => <RecentActivityFeed board={board} />,
+        content: (board, _, selectedEmployee) => (
+          <RecentActivityFeed board={board} selectedEmployee={selectedEmployee} />
+        ),
         visible: true
       },
       {
         id: 'averageCompletionTime',
         title: 'Average Completion Time',
         icon: <Clock className="h-4 w-4 text-muted-foreground dark:text-gray-400" />,
-        content: (board, timeRange) => <AverageCompletionTimeChart board={board} timeRange={timeRange} />,
+        content: (board, timeRange, selectedEmployee) => (
+          <AverageCompletionTimeChart board={board} timeRange={timeRange} selectedEmployee={selectedEmployee} />
+        ),
         visible: true
       }
     ]
@@ -155,11 +174,47 @@ export default function Dashboard() {
       <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-gray-100">Everwood Overview</h1>
       
       <Tabs defaultValue="daily" onValueChange={(value) => setTimeRange(value as TimeRange)}>
-        <TabsList className="grid w-full grid-cols-4 mb-8">
-          <TabsTrigger value="daily">Daily</TabsTrigger>
-          <TabsTrigger value="weekly">Weekly</TabsTrigger>
-          <TabsTrigger value="monthly">Monthly</TabsTrigger>
-          <TabsTrigger value="yearly">Yearly</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 mb-8 dark:bg-gray-800">
+          <TabsTrigger 
+            value="daily"
+            className={cn(
+              "data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700",
+              "data-[state=active]:text-primary dark:data-[state=active]:text-white",
+              "dark:text-gray-300"
+            )}
+          >
+            Daily
+          </TabsTrigger>
+          <TabsTrigger 
+            value="weekly"
+            className={cn(
+              "data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700",
+              "data-[state=active]:text-primary dark:data-[state=active]:text-white",
+              "dark:text-gray-300"
+            )}
+          >
+            Weekly
+          </TabsTrigger>
+          <TabsTrigger 
+            value="monthly"
+            className={cn(
+              "data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700",
+              "data-[state=active]:text-primary dark:data-[state=active]:text-white",
+              "dark:text-gray-300"
+            )}
+          >
+            Monthly
+          </TabsTrigger>
+          <TabsTrigger 
+            value="yearly"
+            className={cn(
+              "data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700",
+              "data-[state=active]:text-primary dark:data-[state=active]:text-white",
+              "dark:text-gray-300"
+            )}
+          >
+            Yearly
+          </TabsTrigger>
         </TabsList>
 
         <DragDropContext onDragEnd={onDragEnd}>
@@ -192,7 +247,7 @@ export default function Dashboard() {
                           </CardHeader>
                           {card.visible && (
                             <CardContent className="flex-grow overflow-auto">
-                              {card.content(board, timeRange)}
+                              {card.content(board, timeRange, selectedEmployee)}
                             </CardContent>
                           )}
                         </Card>

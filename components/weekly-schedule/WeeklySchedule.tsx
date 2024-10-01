@@ -45,12 +45,8 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
       const board = await collection.findOne({ id: boardId })
       if (board?.weeklySchedules) {
         setWeeklySchedules(board.weeklySchedules)
-        const latestWeek = Object.keys(board.weeklySchedules).sort().pop()
-        if (latestWeek) {
-          const parsedDate = parseISO(latestWeek)
-          const weekStart = startOfWeek(parsedDate, { weekStartsOn: 0 })
-          setCurrentWeekStart(weekStart)
-        } else {
+        const currentWeekKey = format(currentWeekStart, 'yyyy-MM-dd')
+        if (!board.weeklySchedules[currentWeekKey]) {
           createNewWeek(currentWeekStart)
         }
       } else {
@@ -212,7 +208,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
     item.status !== ItemStatus.Done
   )
 
-  const changeWeek = (direction: 'prev' | 'next') => {
+const changeWeek = (direction: 'prev' | 'next') => {
     const newWeekStart = direction === 'prev' 
       ? subWeeks(currentWeekStart, 1)
       : addWeeks(currentWeekStart, 1)
@@ -222,10 +218,22 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
     }
   }
 
+  const calculateTotalSquares = (dayItemIds: string[]) => {
+  return dayItemIds.reduce((total, itemId) => {
+    const item = items.find(i => i.id === itemId)
+    if (item) {
+      const size = getItemValue(item, ColumnTitles.Size)
+      const [width, height] = size.split('x').map(Number)
+      return total + (width * height)
+    }
+    return total
+  }, 0)
+}
+
   return (
     <div className="h-full overflow-y-auto p-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-2">Weekly Schedule</h2>
+        <h2 className="text-2xl font-bold mb-2">Weekly Planner</h2>
         <WeekSelector currentWeekStart={currentWeekStart} onChangeWeek={changeWeek} />
       </div>
       <div className="rounded-lg">
@@ -234,8 +242,13 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
             {Object.entries(weeklySchedules[weekKey] || {}).map(([day, dayItemIds]) => (
               <Card key={day} className="rounded-lg bg-gray-50 dark:bg-gray-800 shadow-sm">
                 <CardHeader className="py-2">
-                  <CardTitle className="text-lg">{day}</CardTitle>
-                </CardHeader>
+  <CardTitle className="text-lg flex justify-between items-center">
+    <span>{day}</span>
+    <span className="text-sm font-normal">
+      Total Squares: {calculateTotalSquares(dayItemIds)}
+    </span>
+  </CardTitle>
+</CardHeader>
                 <CardContent className="py-2">
                   <Droppable droppableId={day}>
                     {(provided) => (

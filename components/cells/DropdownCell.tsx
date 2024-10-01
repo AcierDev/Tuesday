@@ -7,34 +7,9 @@ import { Button } from "@/components/ui/button"
 import { XCircle, UserX, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 import { boardConfig } from '@/config/boardconfig'
-import { Board, ColumnTitles, EmployeeNames, GenericColumnValue, Item } from '@/typings/types'
-
-const CREDIT_OPTIONS = ['AM', 'BC', 'AW'] as const
-type CreditOption = typeof CREDIT_OPTIONS[number]
-
-const OPTION_IMAGES: Record<CreditOption, string> = {
-  'AM': '/images/alex.png',
-  'BC': '/images/akiva1.png',
-  'AW': '/images/akiva2.png',
-}
-
-const EMPLOYEE_MAP: Record<CreditOption, EmployeeNames> = {
-  'AW': EmployeeNames.Akiva,
-  'AM': EmployeeNames.Alex,
-  'BC': EmployeeNames.Ben,
-}
-
-const INITIALS_MAP: Record<EmployeeNames, CreditOption> = {
-  [EmployeeNames.Akiva]: 'AW',
-  [EmployeeNames.Alex]: 'AM',
-  [EmployeeNames.Ben]: 'BC',
-}
-
-const CREDIT_COLORS: Record<CreditOption, string> = {
-  'AW': 'bg-orange-500',
-  'AM': 'bg-blue-500',
-  'BC': 'bg-green-500',
-}
+import { Board, ColumnTitles, GenericColumnValue, Item } from '@/typings/types'
+import { CREDIT_COLORS, CREDIT_OPTIONS, CreditOption, EMPLOYEE_MAP, INITIALS_MAP } from '@/utils/constants'
+import { combineImages, getEmployeeInfoFromInitials } from '@/utils/functions'
 
 interface DropdownCellProps {
   item: Item
@@ -61,14 +36,18 @@ export function DropdownCell({ item, columnValue, onUpdate, board }: DropdownCel
     const generateCombinedImage = async () => {
       if (selectedCredits.length === 2) {
         try {
-          const combined = await combineImages(OPTION_IMAGES[selectedCredits[0]], OPTION_IMAGES[selectedCredits[1]])
-          setCombinedImageUrl(combined)
+          const image1 = getEmployeeInfoFromInitials(selectedCredits[0]).image
+          const image2 = getEmployeeInfoFromInitials(selectedCredits[1]).image
+          if (image1 && image2) {
+            const combined = await combineImages(image1, image2)
+            setCombinedImageUrl(combined)
+          }
         } catch (error) {
           console.error('Error combining images:', error)
           setCombinedImageUrl(null)
         }
       } else if (selectedCredits.length === 1) {
-        setCombinedImageUrl(OPTION_IMAGES[selectedCredits[0]])
+        setCombinedImageUrl(getEmployeeInfoFromInitials(selectedCredits[0]).image || null)
       } else {
         setCombinedImageUrl(null)
       }
@@ -129,7 +108,9 @@ export function DropdownCell({ item, columnValue, onUpdate, board }: DropdownCel
   }, [])
 
   const buttonStyle = columnValue.columnName === 'Design' || columnValue.columnName === 'Size'
-    ? 'inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white bg-primary rounded-full hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-colors'
+    ? `inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-full hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-colors ${
+        columnValue.columnName === 'Size' ? 'bg-sky-500 dark:bg-sky-600 hover:bg-sky-600 dark:hover:bg-sky-700 focus-visible:ring-sky-600 dark:focus-visible:ring-sky-500' : 'bg-primary'
+      }`
     : 'w-full h-full justify-center p-2 text-foreground'
 
   return (
@@ -191,19 +172,20 @@ export function DropdownCell({ item, columnValue, onUpdate, board }: DropdownCel
           <div className="grid gap-4 py-4">
             {CREDIT_OPTIONS.map((credit) => {
               const isSelected = selectedCredits.includes(credit)
+              const employeeInfo = getEmployeeInfoFromInitials(credit)
               return (
                 <Button
                   key={credit}
                   onClick={() => toggleCredit(credit)}
                   variant={isSelected ? "default" : "secondary"}
-                  className={`justify-start ${isSelected ? CREDIT_COLORS[credit] : ''}`}
+                  className={`justify-start ${isSelected ? employeeInfo.color : ''}`}
                 >
                   <div
                     className="w-8 h-8 rounded-full bg-cover bg-center mr-2"
-                    style={{ backgroundImage: `url(${OPTION_IMAGES[credit]})` }}
+                    style={{ backgroundImage: `url(${employeeInfo.image})` }}
                   />
                   <span className={`text-base font-medium ${isSelected ? 'text-white' : ''}`}>
-                    {EMPLOYEE_MAP[credit]}
+                    {employeeInfo.name}
                   </span>
                 </Button>
               )
@@ -224,47 +206,4 @@ export function DropdownCell({ item, columnValue, onUpdate, board }: DropdownCel
       </Dialog>
     </>
   )
-}
-
-async function combineImages(imageUrl1: string, imageUrl2: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img1 = new Image()
-    const img2 = new Image()
-
-    img1.crossOrigin = "anonymous"
-    img2.crossOrigin = "anonymous"
-
-    img1.src = imageUrl1
-    img2.src = imageUrl2
-
-    img1.onload = () => {
-      img2.onload = () => {
-        const targetHeight = Math.max(img1.height, img2.height)
-        const img1AspectRatio = img1.width / img1.height
-        const img2AspectRatio = img2.width / img2.height
-        const img1TargetWidth = targetHeight * img1AspectRatio
-        const img2TargetWidth = targetHeight * img2AspectRatio
-
-        const canvas = document.createElement("canvas")
-        const totalWidth = img1TargetWidth + img2TargetWidth
-        canvas.width = totalWidth
-        canvas.height = targetHeight
-        const ctx = canvas.getContext("2d")
-
-        if (!ctx) {
-          reject(new Error("Failed to get canvas context"))
-          return
-        }
-
-        ctx.drawImage(img1, 0, 0, img1TargetWidth, targetHeight)
-        ctx.drawImage(img2, img1TargetWidth, 0, img2TargetWidth, targetHeight)
-
-        resolve(canvas.toDataURL("image/png"))
-      }
-
-      img2.onerror = () => reject(new Error(`Failed to load image: ${imageUrl2}`))
-    }
-
-    img1.onerror = () => reject(new Error(`Failed to load image: ${imageUrl1}`))
-  })
 }

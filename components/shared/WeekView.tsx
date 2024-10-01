@@ -26,14 +26,14 @@ export function WeekView({ currentWeekStart, selectedDates, schedule, toggleDate
             <Card
               key={day}
               className={cn(
-                "flex-shrink-0 w-20 cursor-pointer transition-all",
-                isSelected ? "ring-2 ring-primary" : "hover:bg-gray-50"
+                "flex-shrink-0 w-20 cursor-pointer transition-all dark:bg-gray-800 dark:text-gray-200",
+                isSelected ? "ring-2 ring-primary dark:ring-blue-400" : "hover:bg-gray-50 dark:hover:bg-gray-700"
               )}
               onClick={() => toggleDateSelection(date)}
             >
               <CardContent className="p-2 text-center">
                 <p className="font-semibold text-sm">{day.slice(0, 3)}</p>
-                <p className="text-xs text-gray-600">{format(date, "MMM d")}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{format(date, "MMM d")}</p>
                 <p className="mt-1 text-lg font-bold">{itemCount}</p>
               </CardContent>
             </Card>
@@ -57,16 +57,16 @@ export function WeekView({ currentWeekStart, selectedDates, schedule, toggleDate
           <Card
             key={day}
             className={cn(
-              "cursor-pointer transition-all",
-              isSelected ? "ring-2 ring-primary" : "hover:bg-gray-50"
+              "cursor-pointer transition-all dark:bg-gray-800 dark:text-gray-200",
+              isSelected ? "ring-2 ring-primary dark:ring-blue-400" : "hover:bg-gray-50 dark:hover:bg-gray-700"
             )}
             onClick={() => toggleDateSelection(date)}
           >
             <CardContent className="p-4">
               <p className="font-semibold">{day}</p>
-              <p className="text-sm text-gray-600">{format(date, "MMM d")}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{format(date, "MMM d")}</p>
               <p className="mt-2 text-lg font-bold">{itemCount}</p>
-              <p className="text-xs text-gray-600">items</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">items</p>
             </CardContent>
           </Card>
         )
