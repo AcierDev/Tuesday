@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { parseMinecraftColors } from '../../utils/parseMinecraftColors';
+import { parseMinecraftColors } from '../../parseMinecraftColors';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 

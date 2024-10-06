@@ -126,11 +126,6 @@ export interface EtsyReceiptResponse {
   results: Receipt[];
 }
 
-export interface ShippingItem extends Item {
-  receipt?: Receipt
-  shipmentStatus?: ShippingStatus
-}
-
 export interface BoxRequirement {
   [color: string]: number
 }
@@ -193,4 +188,26 @@ export interface ShipmentDetails {
 
 export interface GroupedRates {
   [key: string]: ShippingRate;
+}
+
+export interface ShippingItem extends Item {
+  receipt?: Receipt;
+  shipmentStatus?: ShippingStatus;
+  trackingInfo?: {
+    carrier: 'UPS' | 'FedEx';
+    status: string;
+    estimatedDelivery: string;
+    weight?: string;
+    dimensions?: string;
+    serviceDescription?: string;
+    referenceNumbers?: string[];
+  };
+  activity?: Activity[];
+}
+
+export interface Activity {
+  date: string;
+  time: string;
+  description: string;
+  location: string;
 }

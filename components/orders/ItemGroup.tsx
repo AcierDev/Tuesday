@@ -1,7 +1,4 @@
-"use client"
-
 import { Draggable, Droppable } from "@hello-pangea/dnd"
-import { compareAsc, compareDesc, parseISO } from "date-fns"
 import {
   ArrowDown,
   ArrowUp,
@@ -37,7 +34,6 @@ import {
   ColumnTypes,
   type Group,
   type Item,
-  type ItemSortFuncs,
   ItemStatus,
 } from "../../typings/types"
 import { cn, isPastDue } from "../../utils/functions"
@@ -79,7 +75,6 @@ export const ItemGroupSection = ({
   const contextMenuRef = useRef<HTMLDivElement>(null)
 
   const handleEdit = useCallback((item: Item) => {
-    console.log("Editing item:", item)
     setEditingItem(item)
     setContextMenu(null)
   }, [])
@@ -87,11 +82,9 @@ export const ItemGroupSection = ({
   const handleSaveEdit = useCallback(
     async (updatedItem: Item) => {
       if (updatedItem) {
-        console.log("Saving edited item:", updatedItem)
         try {
           await onUpdate(updatedItem)
           setEditingItem(null)
-          console.log("Item updated successfully")
           toast.success("Item updated successfully", {
             style: { background: "#10B981", color: "white" },
           })
@@ -107,14 +100,12 @@ export const ItemGroupSection = ({
   )
 
   const handleDelete = useCallback((item: Item) => {
-    console.log("Deleting item:", item)
     setDeletingItem(item)
     setContextMenu(null)
   }, [])
 
   const handleConfirmDelete = useCallback(async () => {
     if (deletingItem) {
-      console.log("Confirming delete for item:", deletingItem)
       await onDelete(deletingItem.id)
       setDeletingItem(null)
     }
@@ -200,131 +191,143 @@ export const ItemGroupSection = ({
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <Droppable droppableId={group.title}>
-          {(provided, snapshot) => (
-            <Table
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-            >
-              <TableHeader>
-                <TableRow className="bg-gray-100 dark:bg-gray-700">
-                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
-                    Order
-                  </TableHead>
-                  {visibleColumns.map((columnName) => (
-                    <TableHead
-                      key={columnName}
-                      className={cn(
-                        "border border-gray-200 dark:border-gray-600 p-2 text-center",
-                        columnName === ColumnTitles.Customer_Name
-                          ? "w-1/3"
-                          : ""
-                      )}
+        <div className="w-full">
+          <Table className="min-w-full">
+            <TableHeader>
+              <TableRow>
+                <TableHead
+                  className="bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 p-2 text-center"
+                >
+                  Order
+                </TableHead>
+                {visibleColumns.map((columnName) => (
+                  <TableHead
+                    key={columnName}
+                    className={cn(
+                      "bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 p-2 text-center",
+                      columnName === ColumnTitles.Customer_Name
+                        ? "w-1/3"
+                        : ""
+                    )}
+                  >
+                    <Button
+                      className="h-8 flex items-center justify-between w-full text-gray-900 dark:text-gray-100"
+                      disabled={isDragging}
+                      variant="ghost"
+                      onClick={() =>
+                        !isDragging && handleSort(columnName)
+                      }
                     >
-                      <Button
-                        className="h-8 flex items-center justify-between w-full text-gray-900 dark:text-gray-100"
-                        disabled={isDragging}
-                        variant="ghost"
-                        onClick={() =>
-                          !isDragging && handleSort(columnName)
-                        }
-                      >
-                        {columnName}
-                        {settings.showSortingIcons ? (
-                          sortColumn === columnName ? (
-                            sortDirection === "asc" ? (
-                              <ArrowUp className="ml-2 h-4 w-4" />
-                            ) : sortDirection === "desc" ? (
-                              <ArrowDown className="ml-2 h-4 w-4" />
-                            ) : (
-                              <ArrowUpDown className="ml-2 h-4 w-4" />
-                            )
+                      {columnName}
+                      {settings.showSortingIcons ? (
+                        sortColumn === columnName ? (
+                          sortDirection === "asc" ? (
+                            <ArrowUp className="ml-2 h-4 w-4" />
+                          ) : sortDirection === "desc" ? (
+                            <ArrowDown className="ml-2 h-4 w-4" />
                           ) : (
                             <ArrowUpDown className="ml-2 h-4 w-4" />
                           )
-                        ) : null}
-                      </Button>
-                    </TableHead>
-                  ))}
-                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
-                    Actions
+                        ) : (
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        )
+                      ) : null}
+                    </Button>
                   </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedItems.map((item, index) => (
-                  <Draggable
-                    key={item.id}
-                    draggableId={item.id}
-                    index={index}
-                  >
-                    {(provided, snapshot) => (
-                      <TableRow
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className={cn(
-                          index % 2 === 0 ? "bg-white dark:bg-gray-800" : "bg-gray-50 dark:bg-gray-700",
-                          isPastDue(item) && item.status !== ItemStatus.Done && "relative",
-                          snapshot.isDragging ? "bg-blue-100 dark:bg-blue-800 shadow-lg" : ""
-                        )}
-                        onContextMenu={(e) => handleContextMenu(e, item)}
+                ))}
+                <TableHead
+                  className="bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 p-2 text-center"
+                >
+                  Actions
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+          </Table>
+
+          <div className="overflow-y-auto max-h-[60vh]">
+            <Droppable droppableId={group.title}>
+              {(provided, snapshot) => (
+                <Table
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="min-w-full"
+                >
+                  <TableBody>
+                    {sortedItems.map((item, index) => (
+                      <Draggable
+                        key={item.id}
+                        draggableId={item.id}
+                        index={index}
                       >
-                        <TableCell 
-                          className="border border-gray-200 dark:border-gray-600 p-2 text-center"
-                          {...provided.dragHandleProps}
-                        >
-                          <GripVertical className="cursor-grab inline-block" />
-                        </TableCell>
-                        {visibleColumns.map((columnName, cellIndex) => {
-                          const columnValue = item.values.find(value => value.columnName === columnName) || {
-                            columnName,
-                            type: ColumnTypes.Text,
-                            text: "\u00A0" // Unicode non-breaking space
-                          };
-                          return (
+                        {(provided, snapshot) => (
+                          <TableRow
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={cn(
+                              index % 2 === 0 ? "bg-white dark:bg-gray-800" : "bg-gray-50 dark:bg-gray-700",
+                              isPastDue(item) && item.status !== ItemStatus.Done && "relative",
+                              snapshot.isDragging ? "bg-blue-100 dark:bg-blue-800 shadow-lg" : ""
+                            )}
+                            onContextMenu={(e) => handleContextMenu(e, item)}
+                          >
                             <TableCell
-                              key={`${item.id}-${columnName}`}
-                              className={cn(
-                                "border border-gray-200 dark:border-gray-600 p-2",
-                                cellIndex === 0 ? "w-1/3" : "",
-                                getStatusColor(columnValue)
-                              )}
+                              className="border border-gray-200 dark:border-gray-600 p-2 text-center"
+                              {...provided.dragHandleProps}
                             >
-                              <CustomTableCell
-                                board={board}
-                                columnValue={columnValue}
-                                isNameColumn={cellIndex === 0}
+                              <GripVertical className="cursor-grab inline-block" />
+                            </TableCell>
+                            {visibleColumns.map((columnName, cellIndex) => {
+                              const columnValue = item.values.find(value => value.columnName === columnName) || {
+                                columnName,
+                                type: ColumnTypes.Text,
+                                text: "\u00A0" // Unicode non-breaking space
+                              };
+                              return (
+                                <TableCell
+                                  key={`${item.id}-${columnName}`}
+                                  className={cn(
+                                    "border border-gray-200 dark:border-gray-600 p-2",
+                                    cellIndex === 0 ? "w-1/3" : "",
+                                    getStatusColor(columnValue)
+                                  )}
+                                >
+                                  <CustomTableCell
+                                    board={board}
+                                    columnValue={columnValue}
+                                    isNameColumn={cellIndex === 0}
+                                    item={item}
+                                    onUpdate={onUpdate}
+                                  />
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+                              <ItemActions
                                 item={item}
-                                onUpdate={onUpdate}
+                                onDelete={handleDelete}
+                                onEdit={handleEdit}
+                                onGetLabel={onGetLabel}
+                                onMarkCompleted={onMarkCompleted}
+                                onShip={onShip}
                               />
                             </TableCell>
-                          );
-                        })}
-                        <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
-                          <ItemActions
-                            item={item}
-                            onDelete={handleDelete}
-                            onEdit={handleEdit}
-                            onGetLabel={onGetLabel}
-                            onMarkCompleted={onMarkCompleted}
-                            onShip={onShip}
-                          />
-                        </TableCell>
-                        {isPastDue(item) && item.status !== ItemStatus.Done &&  (
-                          <>
-                            <div className="absolute inset-x-0 top-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                            <div className="absolute inset-x-0 bottom-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                          </>
+                            {isPastDue(item) && item.status !== ItemStatus.Done && (
+                              <>
+                                <div className="absolute inset-x-0 top-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                                <div className="absolute inset-x-0 bottom-0 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                              </>
+                            )}
+                          </TableRow>
                         )}
-                      </TableRow>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </TableBody>
-            </Table>
-          )}
-        </Droppable>
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </TableBody>
+                </Table>
+              )}
+            </Droppable>
+          </div>
+        </div>
       </CollapsibleContent>
       <EditItemDialog
         editingItem={editingItem}

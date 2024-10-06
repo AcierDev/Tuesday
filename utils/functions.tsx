@@ -1,4 +1,4 @@
-import { ColumnValue, Item, ColumnTypes, ProgressStatus, ColumnTitles, ItemSizes, EmployeeNames } from '../typings/types'
+import { ColumnValue, Item, ColumnTypes, ProgressStatus, ColumnTitles, ItemSizes, EmployeeNames, ShippingStatus } from '../typings/types'
 import { Badge } from "@/components/ui/badge"
 import { format, addDays, isWithinInterval, isBefore, isToday, isEqual, parseISO, isAfter } from 'date-fns'
 import { boardConfig } from '../config/boardconfig';
@@ -6,6 +6,7 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { Box } from '@/typings/interfaces';
 import { CREDIT_COLORS, CreditOption, EMPLOYEE_MAP, INITIALS_MAP, OPTION_IMAGES } from './constants';
+import { AlertCircle, CheckCircle2, Clock, Package, Truck } from 'lucide-react';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -173,4 +174,19 @@ export async function combineImages(imageUrl1: string, imageUrl2: string): Promi
 
     img1.onerror = () => reject(new Error(`Failed to load image: ${imageUrl1}`))
   })
+}
+
+export const getStatusIcon = (status: ShippingStatus) => {
+  switch (status) {
+    case 'unshipped':
+      return <Package className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+    case 'pre_transit':
+      return <Clock className="h-5 w-5 text-yellow-500" />
+    case 'in_transit':
+      return <Truck className="h-5 w-5 text-blue-500" />
+    case 'delivered':
+      return <CheckCircle2 className="h-5 w-5 text-green-500" />
+    default:
+      return <AlertCircle className="h-5 w-5 text-red-500" />
+  }
 }

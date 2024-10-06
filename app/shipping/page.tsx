@@ -1,6 +1,9 @@
 'use client'
 
-import { AlertCircle, CheckCircle2, Clock, Loader2, Package, Search, Truck } from 'lucide-react'
+import { 
+  AlertCircle, CheckCircle2, Clock, Loader2, Package, Search, Truck, 
+  List, Info, PackageIcon 
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { ShippingDetails } from '@/components/shipping/ShippingDetails'
@@ -12,15 +15,69 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from '@/hooks/UseToast'
 import { useRealmApp } from '@/hooks/useRealmApp'
-import { fetchShipmentStatus } from '@/lib/shipstation-api'
-import { type Receipt } from '@/typings/interfaces'
-import { type Board, type Item } from '@/typings/types'
+import { Activity, ShippingItem, type Receipt } from '@/typings/interfaces'
+import { ShippingStatus, type Board, type Item } from '@/typings/types'
 
-type ShippingStatus = 'unshipped' | 'pre_transit' | 'in_transit' | 'delivered'
+interface UPSTrackingResponse {
+  trackingNumber: string
+  status: string
+  estimatedDelivery: string
+  currentStatusDescription?: string
+  trackingHistory?: TrackingEvent[]
+  weight?: string
+  dimension?: string
+  serviceDescription?: string
+  referenceNumbers?: string[]
+}
 
-interface ShippingItem extends Item {
-  receipt?: Receipt
-  shipmentStatus?: ShippingStatus
+interface TrackingEvent {
+  location: string
+  status: string
+  date: string
+  time: string
+  gmtDate: string
+  gmtOffset: string
+  gmtTime: string
+}
+
+async function fetchTrackingData(trackingNumber: string): Promise<UPSTrackingResponse> {
+  try {
+    const response = await fetch(`/api/ups-tracking?trackingNumber=${trackingNumber}`)
+    if (!response.ok) {
+      throw new Error('Failed to fetch tracking information')
+    }
+    const data = await response.json()
+    
+    // Extract additional details from the response if available
+    const shipment = data.package?.[0]
+    const currentStatusDescription = shipment?.currentStatus?.description || ''
+    const weight = shipment?.weight?.weight
+    const dimension = shipment?.dimension ? `${shipment.dimension.length}x${shipment.dimension.width}x${shipment.dimension.height} ${shipment.dimension.unitOfDimension}` : ''
+    const serviceDescription = shipment?.service?.description || ''
+    const referenceNumbers = shipment?.referenceNumber?.map((ref: any) => ref.number) || []
+    const trackingHistory = shipment?.activity?.map((activity: any) => ({
+      location: activity.location?.address?.city || 'N/A',
+      status: activity.status?.description || 'N/A',
+      date: activity.date,
+      time: activity.time,
+      gmtDate: activity.gmtDate,
+      gmtOffset: activity.gmtOffset,
+      gmtTime: activity.gmtTime,
+    })) || []
+
+    return {
+      ...data,
+      currentStatusDescription,
+      trackingHistory,
+      weight,
+      dimension,
+      serviceDescription,
+      referenceNumbers,
+    }
+  } catch (error: any) {
+    console.error('Error fetching UPS tracking data:', error)
+    throw error
+  }
 }
 
 export default function ShippingPage() {
@@ -56,7 +113,7 @@ export default function ShippingPage() {
         const itemsWithReceipts = board.items_page.items.map(item => ({
           ...item,
           receipt: item.receipt || undefined
-        })) as ShippingItem[]
+        })).filter(item => !item.deleted && item.visible) as ShippingItem[]
         setItems(itemsWithReceipts)
         updateShipmentStatuses(itemsWithReceipts)
       }
@@ -77,18 +134,90 @@ export default function ShippingPage() {
         const trackingCode = shipment.tracking_code;
         if (trackingCode) {
           try {
-          const status = await fetchShipmentStatus(shipment.tracking_code)
-          return { ...item, shipmentStatus: status as ShippingStatus }
-        } catch (error) {
-          console.error(`Failed to fetch status for item ${item.id}`, error)
-          return item
-        }
+            const trackingData = await fetchTrackingData(trackingCode)
+            return { 
+              ...item, 
+              shipmentStatus: mapUPSStatusToShippingStatus(trackingData.status),
+              trackingInfo: {
+                carrier: 'UPS',
+                status: trackingData.status,
+                estimatedDelivery: trackingData.trackingInfo?.estimatedDelivery,
+                currentStatusDescription: trackingData,
+                weight: trackingData.trackingInfo?.weight,
+                dimension: trackingData.trackingInfo?.dimensions,
+                serviceDescription: trackingData.trackingInfo?.serviceDescription,
+                referenceNumbers: trackingData.trackingInfo?.referenceNumbers,
+                trackingHistory: trackingData.activity,
+              }
+            }
+          } catch (error) {
+            console.error(`Failed to fetch status for item ${item.id} tracking code ${trackingCode}`, error)
+            return item
+          }
         }
       }
       return { ...item, shipmentStatus: 'unshipped' }
     }))
     setItems(updatedItems)
   }
+
+  // ShippingPage.tsx
+
+const mapUPSStatusToShippingStatus = (upsStatus: string): ShippingStatus => {
+  switch (upsStatus.toLowerCase()) {
+    case 'delivered':
+      return 'delivered';
+    case 'in transit':
+      return 'in_transit';
+    case 'origin scan':
+    case 'pickup':
+      return 'pre_transit';
+    case 'customs clearance in progress':
+      return 'pre_transit'; // Example mapping
+    default:
+      return 'unshipped';
+  }
+};
+
+async function fetchTrackingData(trackingNumber: string): Promise<ShippingItem> {
+  try {
+    const response = await fetch(`/api/ups-tracking?trackingNumber=${trackingNumber}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch tracking information');
+    }
+    const data = await response.json();
+
+    // Parse additional details
+    const shipment = data.package[0];
+    const weight = shipment.weight ? `${shipment.weight.weight} ${shipment.weight.unitOfMeasurement}` : undefined;
+    const dimensions = shipment.dimension
+      ? `${shipment.dimension.length}x${shipment.dimension.width}x${shipment.dimension.height} ${shipment.dimension.unitOfDimension}`
+      : undefined;
+    const serviceDescription = shipment.service?.description;
+    const referenceNumbers = shipment.referenceNumber?.map((ref: any) => ref.number) || [];
+    const activity: Activity[] = shipment.activity.map((act: any) => ({
+      date: act.date,
+      time: act.time,
+      description: act.status.description,
+      location: act.location.address?.city || 'Unknown Location',
+    }));
+
+    return {
+      trackingNumber: data.trackingNumber,
+      status: data.status,
+      estimatedDelivery: data.estimatedDelivery,
+      weight,
+      dimensions,
+      serviceDescription,
+      referenceNumbers,
+      activity,
+    };
+  } catch (error: any) {
+    console.error('Error fetching UPS tracking data:', error);
+    throw error;
+  }
+}
+
 
   const getStatusIcon = (status: ShippingStatus) => {
     switch (status) {
@@ -100,6 +229,8 @@ export default function ShippingPage() {
         return <Truck className="h-5 w-5 text-blue-500" />
       case 'delivered':
         return <CheckCircle2 className="h-5 w-5 text-green-500" />
+      case 'customs_clearance':
+        return <AlertCircle className="h-5 w-5 text-orange-500" />
       default:
         return <AlertCircle className="h-5 w-5 text-red-500" />
     }
@@ -113,9 +244,9 @@ export default function ShippingPage() {
   const renderStatusCard = (status: ShippingStatus) => {
     const statusItems = filteredItems.filter(item => item.shipmentStatus === status)
     const cardTitle = status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')
-    
+
     return (
-      <Card className="w-full bg-white dark:bg-gray-800">
+      <Card key={status} className="w-full bg-white dark:bg-gray-800">
         <CardHeader className="bg-gray-100 dark:bg-gray-700">
           <CardTitle className="text-lg font-semibold flex items-center text-gray-900 dark:text-gray-100">
             {getStatusIcon(status)}
@@ -123,30 +254,44 @@ export default function ShippingPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <ScrollArea className="h-[300px]">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50 dark:bg-gray-700">
-                  <TableHead className="text-gray-700 dark:text-gray-300">Order ID</TableHead>
-                  <TableHead className="text-gray-700 dark:text-gray-300">Customer</TableHead>
-                  <TableHead className="text-gray-700 dark:text-gray-300">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {statusItems.map((item) => (
-                  <TableRow key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <TableCell className="text-gray-900 dark:text-gray-100">{item.receipt?.receipt_id || 'N/A'}</TableCell>
-                    <TableCell className="text-gray-900 dark:text-gray-100">{item.receipt?.name || 'N/A'}</TableCell>
-                    <TableCell>
-                      <Button size="sm" variant="outline" onClick={() => handleViewDetails(item)}>
-                        View
-                      </Button>
-                    </TableCell>
+          {statusItems.length > 0 ? (
+            <ScrollArea className="h-[300px]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50 dark:bg-gray-700">
+                    <TableHead className="text-gray-700 dark:text-gray-300">Order ID</TableHead>
+                    <TableHead className="text-gray-700 dark:text-gray-300">Customer</TableHead>
+                    <TableHead className="text-gray-700 dark:text-gray-300">Carrier</TableHead>
+                    <TableHead className="text-gray-700 dark:text-gray-300">Service</TableHead>
+                    <TableHead className="text-gray-700 dark:text-gray-300">Est. Delivery</TableHead>
+                    <TableHead className="text-gray-700 dark:text-gray-300">Status</TableHead>
+                    <TableHead className="text-gray-700 dark:text-gray-300">Action</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </ScrollArea>
+                </TableHeader>
+                <TableBody>
+                  {statusItems.map((item) => (
+                    <TableRow key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <TableCell className="text-gray-900 dark:text-gray-100">{item.receipt?.receipt_id || 'N/A'}</TableCell>
+                      <TableCell className="text-gray-900 dark:text-gray-100">{item.receipt?.name || 'N/A'}</TableCell>
+                      <TableCell className="text-gray-900 dark:text-gray-100">{item.trackingInfo?.carrier || 'N/A'}</TableCell>
+                      <TableCell className="text-gray-900 dark:text-gray-100">{item.trackingInfo?.serviceDescription || 'N/A'}</TableCell>
+                      <TableCell className="text-gray-900 dark:text-gray-100">{item.trackingInfo?.estimatedDelivery || 'N/A'}</TableCell>
+                      <TableCell className="text-gray-900 dark:text-gray-100">
+                        {item.trackingInfo?.status || item.trackingInfo?.status || 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        <Button size="sm" variant="outline" onClick={() => handleViewDetails(item)}>
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          ) : (
+            <div className="text-center text-gray-500 dark:text-gray-400">No orders in this status.</div>
+          )}
         </CardContent>
       </Card>
     )
@@ -162,8 +307,8 @@ export default function ShippingPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="mb-6 flex justify-between items-center">
-            <div className="relative w-64">
+          <div className="mb-6 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            <div className="relative w-full md:w-1/3">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <Input
                 className="pl-10 pr-4 py-2 w-full border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
@@ -173,14 +318,15 @@ export default function ShippingPage() {
               />
             </div>
             <Button className="flex items-center" variant="outline" onClick={loadItems}>
-              <Loader2 className="mr-2 h-4 w-4" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Refresh
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {renderStatusCard('unshipped')}
             {renderStatusCard('pre_transit')}
             {renderStatusCard('in_transit')}
+            {renderStatusCard('customs_clearance')}
             {renderStatusCard('delivered')}
           </div>
         </CardContent>
