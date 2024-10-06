@@ -12,6 +12,7 @@ import { OrderSettingsProvider } from "@/contexts/OrderSettingsContext";
 import { RealmAppProvider } from "@/hooks/useRealmApp";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { SettingsPanel } from "@/components/setttings/SettingsPanel";
+import { UserIdentificationMenu } from "@/components/identification/identificationMenu";
 
 const geistSans = localFont({
   src: "../fonts/GeistVF.woff",
@@ -53,6 +54,7 @@ export default function RootLayout({
               <div className="min-h-screen bg-gray-100 dark:bg-gray-800">
                 <Navbar onOpenSettings={handleOpenSettings} />
                 <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
+                <UserIdentificationMenu/>
                   {children}
                 </main>
                 {/* Settings Panel */}

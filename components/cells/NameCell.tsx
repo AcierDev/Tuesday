@@ -1,20 +1,40 @@
-// NameCell.jsx
+"use client"
 
-import { useState, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { parseMinecraftColors } from '../../parseMinecraftColors';
-import { useTheme } from 'next-themes';
-import { toast } from 'sonner';
+import { useState, useEffect } from 'react'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command'
+import { parseMinecraftColors } from '../../parseMinecraftColors'
+import { useTheme } from 'next-themes'
+import { toast } from 'sonner'
+import { Plus } from 'lucide-react'
 
-export const NameCell = ({ item, columnValue, onUpdate }) => {
-  const [inputValue, setInputValue] = useState(columnValue.text || '');
-  const { theme } = useTheme();
-  const isDarkMode = theme === 'dark';
+interface Tag {
+  id: string
+  name: string
+}
+
+interface NameCellProps {
+  item: any
+  columnValue: {
+    text: string
+    columnName: string
+  }
+  onUpdate: (updatedItem: any, columnName: string) => Promise<void>
+  allTags: Tag[]
+  onAddTag: (itemId: string, tagId: string) => void
+}
+
+export const NameCell: React.FC<NameCellProps> = ({ item, columnValue, onUpdate, allTags, onAddTag }) => {
+  const [inputValue, setInputValue] = useState(columnValue.text || '')
+  const [isHovered, setIsHovered] = useState(false)
+  const { theme } = useTheme()
+  const isDarkMode = theme === 'dark'
 
   useEffect(() => {
-    setInputValue(columnValue.text || '');
-  }, [columnValue.text]);
+    setInputValue(columnValue.text || '')
+  }, [columnValue.text])
 
   const handleUpdate = async () => {
     if (inputValue !== columnValue.text) {
@@ -26,19 +46,52 @@ export const NameCell = ({ item, columnValue, onUpdate }) => {
               ? { ...value, text: inputValue, lastModifiedTimestamp: Date.now() }
               : value
           )
-        };
-        await onUpdate(updatedItem, columnValue.columnName);
-        toast.success("Name updated successfully");
+        }
+        await onUpdate(updatedItem, columnValue.columnName)
+        toast.success("Name updated successfully")
       } catch (err) {
-        console.error("Failed to update ColumnValue", err);
-        toast.error("Failed to update the name. Please try again.");
+        console.error("Failed to update ColumnValue", err)
+        toast.error("Failed to update the name. Please try again.")
       }
     }
-  };
+  }
+
+  const handleAddTag = (tag: Tag) => {
+    onAddTag(item.id, tag.id)
+    toast.success(`Tag "${tag.name}" added successfully`)
+  }
 
   return (
-    <div className="flex items-center justify-center w-full h-full relative">
-      <div className="flex items-center space-x-2 w-full">
+    <div 
+      className="flex items-center w-full h-full relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {isHovered && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Plus className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-pointer absolute left-2" />
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Search tags..." />
+              <CommandEmpty>No tags found.</CommandEmpty>
+              <CommandGroup>
+                {[{name: 'Test', id: 1}, {name: 'Test 2', id: 2}].filter(tag => !item.tags?.some((t: Tag) => t.id === tag.id)).map((tag) => (
+                  <CommandItem
+                    key={tag.id}
+                    onSelect={() => handleAddTag(tag)}
+                    className="cursor-pointer"
+                  >
+                    {tag.name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      )}
+      <div className="flex items-center space-x-2 w-full pl-8">
         <Input
           className="font-medium border-0 p-2 bg-transparent w-full text-center text-transparent caret-black dark:caret-white"
           value={inputValue}
@@ -57,5 +110,5 @@ export const NameCell = ({ item, columnValue, onUpdate }) => {
         </span>
       </div>
     </div>
-  );
-};
+  )
+}

@@ -1,9 +1,9 @@
 'use client'
 
-import { Calculator, Logs, Menu, PackageOpen, PaintbrushVertical, Scissors, Truck, Printer, Settings, Power, Wrench, Accessibility, ChartLine } from 'lucide-react'
+import { Calculator, Logs, Menu, PackageOpen, PaintbrushVertical, Scissors, Truck, Printer, Settings, Power, Wrench, Accessibility } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState, useCallback } from 'react'
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -15,18 +15,18 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 const mainNavItems = [
-  { href: '/orders', icon: Logs, label: 'Orders' },
-  { href: '/shipping', icon: Truck, label: 'Shipping' },
-  { href: '/paint', icon: PaintbrushVertical, label: 'Paint' },
-  { href: '/packaging', icon: PackageOpen, label: 'Packaging' },
-  { href: '/backboards', icon: Scissors, label: 'Backboards' },
+  { href: '/orders', icon: Logs, label: 'Orders', hotkey: '1' },
+  { href: '/shipping', icon: Truck, label: 'Shipping', hotkey: '2' },
+  { href: '/paint', icon: PaintbrushVertical, label: 'Paint', hotkey: '3' },
+  { href: '/packaging', icon: PackageOpen, label: 'Packaging', hotkey: '4' },
+  { href: '/backboards', icon: Scissors, label: 'Backboards', hotkey: '5' },
 ]
 
 const toolsNavItems = [
-  { href: '/calculator', icon: Calculator, label: 'Calculator' },
-  { href: '/print', icon: Printer, label: 'Print' },
-  { href: '/outlets', icon: Power, label: 'Outlets' },
-  { href: '/setup-utility', icon: Accessibility, label: 'Setup Utility' }, // New route
+  { href: '/calculator', icon: Calculator, label: 'Calculator', hotkey: '6' },
+  { href: '/print', icon: Printer, label: 'Print', hotkey: '7' },
+  { href: '/outlets', icon: Power, label: 'Outlets', hotkey: '8' },
+  { href: '/setup-utility', icon: Accessibility, label: 'Setup Utility', hotkey: '9' },
 ]
 
 interface NavbarProps {
@@ -35,11 +35,49 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
   const pathname = usePathname()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState(pathname)
 
   useEffect(() => {
     setActiveTab(pathname)
   }, [pathname])
+
+  const isInputElement = (element: Element | null): boolean => {
+    if (!element) return false
+    const tagName = element.tagName.toLowerCase()
+    return tagName === 'input' || tagName === 'textarea' || element.getAttribute('contenteditable') === 'true'
+  }
+
+  const handleHotkey = useCallback((key: string) => {
+    const allNavItems = [...mainNavItems, ...toolsNavItems]
+    const navItem = allNavItems.find(item => item.hotkey === key)
+    if (navItem) {
+      router.push(navItem.href)
+    }
+  }, [router])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isInputElement(document.activeElement)) {
+        return
+      }
+
+      if (event.ctrlKey || event.altKey || event.metaKey) {
+        return
+      }
+
+      const key = event.key
+      if (/^[1-9]$/.test(key)) {
+        event.preventDefault()
+        handleHotkey(key)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleHotkey])
 
   const NavLink = ({ href, icon: Icon, label }) => (
     <Link href={href} passHref>
@@ -64,7 +102,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
       <DropdownMenuContent>
         {toolsNavItems.map((item) => (
           <DropdownMenuItem key={item.href}>
-            <Link href={item.href} className="flex items-center">
+            <Link href={item.href} className="flex items-center w-full">
               <item.icon className="mr-2 h-4 w-4" />
               {item.label}
             </Link>
