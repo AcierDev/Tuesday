@@ -61,7 +61,7 @@ export type GenericColumnValue = {
 };
 
 export enum EmployeeNames {
-  Alex = "Alex Morell",
+  Alex = "Alex Morrell",
   Ben = "Ben Clark",
   Bentzi = "Ben Steele",
   Akiva = "Akiva Weil",
