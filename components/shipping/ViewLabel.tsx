@@ -5,63 +5,84 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, Download, Upload, File, Trash2 } from "lucide-react"
+import { AlertCircle, Download, Upload, File, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
-import { checkPdfExists } from '@/utils/labelUtils'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { useRealmApp } from '@/hooks/useRealmApp'
-import { ColumnTitles, ColumnTypes } from '@/typings/types'
+import { ColumnTitles } from '@/typings/types'
 
 export function ViewLabel({ orderId }: { orderId: string }) {
   const [pdfExists, setPdfExists] = useState<boolean | null>(null)
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [dragActive, setDragActive] = useState(false)
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [pdfUrls, setPdfUrls] = useState<string[]>([])
+  const [currentPdfIndex, setCurrentPdfIndex] = useState(0)
 
-  const { collection } = useRealmApp();
+  const { collection } = useRealmApp()
 
   useEffect(() => {
-    async function checkLabel() {
+    async function checkLabels() {
       const exists = await checkPdfExists(orderId)
       setPdfExists(exists)
       if (exists) {
-        fetchPdf()
+        fetchPdfs()
       }
     }
-    checkLabel()
+    checkLabels()
   }, [orderId])
 
-  const fetchPdf = async () => {
+  const checkPdfExists = async (orderId: string) => {
     try {
-      const response = await fetch(`http://144.172.71.72:3003/pdf/${orderId}.pdf`)
+      const response = await fetch(`http://144.172.71.72:3003/pdfs/${orderId}`)
       if (response.ok) {
-        const blob = await response.blob()
-        const url = URL.createObjectURL(blob)
-        setPdfUrl(url)
-      } else {
-        throw new Error('Failed to fetch PDF')
+        const pdfList = await response.json()
+        return pdfList.length > 0
       }
+      return false
     } catch (error) {
-      console.error('Error fetching PDF:', error)
-      setError('Failed to load the PDF. Please try again.')
+      console.error('Error checking PDF existence:', error)
+      return false
     }
   }
 
-  const handleFile = useCallback((file: File) => {
-    if (file.type !== 'application/pdf') {
-      setError('Please upload a PDF file.')
+  const fetchPdfs = async () => {
+    try {
+      const response = await fetch(`http://144.172.71.72:3003/pdfs/${orderId}`)
+      if (response.ok) {
+        const pdfList = await response.json()
+        const urls = await Promise.all(pdfList.map(async (pdfName: string) => {
+          const pdfResponse = await fetch(`http://144.172.71.72:3003/pdf/${pdfName}`)
+          const blob = await pdfResponse.blob()
+          return URL.createObjectURL(blob)
+        }))
+        setPdfUrls(urls)
+      } else {
+        throw new Error('Failed to fetch PDFs')
+      }
+    } catch (error) {
+      console.error('Error fetching PDFs:', error)
+      setError('Failed to load the PDFs. Please try again.')
+    }
+  }
+
+  const handleFiles = useCallback((newFiles: FileList) => {
+    const pdfFiles = Array.from(newFiles).filter(file => file.type === 'application/pdf')
+    if (pdfFiles.length === 0) {
+      setError('Please upload PDF files only.')
       return
     }
-    setFile(file)
+    setFiles(prevFiles => [...prevFiles, ...pdfFiles])
     setError(null)
   }, [])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      handleFile(event.target.files[0])
+    if (event.target.files) {
+      handleFiles(event.target.files)
     }
   }
 
@@ -79,8 +100,8 @@ export function ViewLabel({ orderId }: { orderId: string }) {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0])
+    if (e.dataTransfer.files) {
+      handleFiles(e.dataTransfer.files)
     }
   }
 
@@ -100,24 +121,24 @@ export function ViewLabel({ orderId }: { orderId: string }) {
               { "val.columnName": ColumnTitles.Labels }
             ]
           }
-        );
+        )
 
         if (result.modifiedCount === 1) {
-          console.log('Labels field updated successfully');
+          console.log('Labels field updated successfully')
         } else {
-          console.log('No document was updated');
+          console.log('No document was updated')
         }
       } catch (error) {
-        console.error('Error updating Labels field:', error);
+        console.error('Error updating Labels field:', error)
       }
     } else {
-      console.error('Collection is not available');
+      console.error('Collection is not available')
     }
   }
 
   const handleUpload = async () => {
-    if (!file) {
-      setError("Please select a file to upload.")
+    if (files.length === 0) {
+      setError("Please select files to upload.")
       return
     }
 
@@ -125,54 +146,80 @@ export function ViewLabel({ orderId }: { orderId: string }) {
     setUploadProgress(0)
     setError(null)
 
-    const formData = new FormData()
-    formData.append('label', file)
-
     try {
-      const response = await fetch(`http://144.172.71.72:3003/upload-label?filename=${orderId}.pdf`, {
-        method: 'POST',
-        body: formData,
-      })
+      const existingLabels = await fetch(`http://144.172.71.72:3003/pdfs/${orderId}`)
+      const existingLabelsList = await existingLabels.json()
+      const startIndex = existingLabelsList.length
 
-      if (response.ok) {
-        setPdfExists(true)
-        await fetchPdf()
-        await updateItemLabels(orderId, true)
-      } else {
-        throw new Error('Upload failed')
+      for (let i = 0; i < files.length; i++) {
+        const formData = new FormData()
+        formData.append('label', files[i])
+
+        let filename
+        if (startIndex === 0 && i === 0) {
+          filename = `${orderId}.pdf`
+        } else {
+          filename = `${orderId}-${startIndex + i}.pdf`
+        }
+
+        const response = await fetch(`http://144.172.71.72:3003/upload-label?filename=${filename}`, {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!response.ok) {
+          throw new Error(`Upload failed for file ${i + 1}`)
+        }
+
+        setUploadProgress(((i + 1) / files.length) * 100)
       }
+
+      setPdfExists(true)
+      await fetchPdfs()
+      await updateItemLabels(orderId, true)
+      setFiles([])
     } catch (error) {
       console.error('Upload error:', error)
-      setError("Failed to upload the file. Please try again.")
+      setError("Failed to upload one or more files. Please try again.")
     } finally {
       setUploading(false)
     }
   }
 
-  const handleDelete = async () => {
-    if (!pdfExists) return;
-
+  const handleDelete = async (index: number) => {
     try {
-      const response = await fetch(`http://144.172.71.72:3003/pdf/${orderId}.pdf`, {
+      let filename
+      if (index === 0 && pdfUrls.length === 1) {
+        filename = `${orderId}.pdf`
+      } else {
+        filename = `${orderId}-${index}.pdf`
+      }
+
+      const response = await fetch(`http://144.172.71.72:3003/pdf/${filename}`, {
         method: 'DELETE',
-      });
+      })
 
       if (response.ok) {
-        setPdfExists(false);
-        setPdfUrl(null);
-        await updateItemLabels(orderId, false);
+        await fetchPdfs()
+        if (pdfUrls.length === 1) {
+          setPdfExists(false)
+          await updateItemLabels(orderId, false)
+        }
+        if (currentPdfIndex >= pdfUrls.length - 1) {
+          setCurrentPdfIndex(Math.max(0, pdfUrls.length - 2))
+        }
       } else {
-        throw new Error('Delete failed');
+        throw new Error('Delete failed')
       }
     } catch (error) {
-      console.error('Delete error:', error);
-      setError("Failed to delete the file. Please try again.");
+      console.error('Delete error:', error)
+      setError("Failed to delete the file. Please try again.")
     }
-  };
+  }
 
   if (pdfExists === null) {
     return (
-      <Card className="w-full max-w-3xl mx-auto">
+      <Card className="w-full max-w-3xl mx-auto bg-background dark:bg-gray-800">
         <CardContent className="pt-6">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
@@ -183,98 +230,137 @@ export function ViewLabel({ orderId }: { orderId: string }) {
   }
 
   return (
-    <Card className="w-full max-w-3xl mx-auto">
+    <Card className="w-full max-w-3xl mx-auto bg-background dark:bg-gray-800">
       <CardHeader>
-        <CardTitle className="text-2xl font-bold">Shipping Label for Order {orderId}</CardTitle>
+        <CardTitle className="text-2xl font-bold text-foreground dark:text-gray-100">Shipping Labels for Order {orderId}</CardTitle>
       </CardHeader>
-      <CardContent>
-        {pdfExists && pdfUrl ? (
-          <div className="space-y-4">
-            <div className="border rounded-lg overflow-hidden">
-              <iframe 
-                src={pdfUrl}
-                width="100%" 
-                height="600px" 
-                className="border-0"
-                title={`Shipping Label for Order ${orderId}`}
-              />
-            </div>
-            <div className="flex justify-between">
-              <Button className="w-auto" onClick={() => window.open(pdfUrl, '_blank')}>
-                <Download className="mr-2 h-4 w-4" /> Download PDF
-              </Button>
-              <Button variant="destructive" className="w-auto" onClick={handleDelete}>
-                <Trash2 className="mr-2 h-4 w-4" /> Delete PDF
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No Label Found</AlertTitle>
-              <AlertDescription>
-                No shipping label has been uploaded for this order yet. You can upload one below.
-              </AlertDescription>
-            </Alert>
-            <div 
-              className={`border-2 border-dashed rounded-lg p-6 text-center ${
-                dragActive ? 'border-primary bg-primary/10' : 'border-muted-foreground/25'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              <Input 
-                id="pdf-upload" 
-                type="file" 
-                accept=".pdf" 
-                onChange={handleFileChange} 
-                className="hidden"
-              />
-              <Label htmlFor="pdf-upload" className="cursor-pointer">
-                <div className="flex flex-col items-center">
-                  <File className="h-10 w-10 text-muted-foreground mb-2" />
-                  <p className="text-lg font-semibold mb-1">Drag & Drop your PDF here</p>
-                  <p className="text-sm text-muted-foreground mb-2">or click to select a file</p>
-                  {file && (
-                    <p className="text-sm font-medium text-primary">{file.name}</p>
-                  )}
+      <CardContent className="p-4">
+        <Tabs defaultValue={pdfExists ? "view" : "manage"} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="view" disabled={!pdfExists}>View Labels</TabsTrigger>
+            <TabsTrigger value="manage">Manage Labels</TabsTrigger>
+          </TabsList>
+          <TabsContent value="view">
+            {pdfExists && pdfUrls.length > 0 ? (
+              <div className="space-y-4">
+                <div className="border rounded-lg overflow-hidden dark:border-gray-700" style={{ height: 'calc(100vh - 300px)', minHeight: '400px' }}>
+                  <iframe 
+                    src={pdfUrls[currentPdfIndex]}
+                    width="100%" 
+                    height="100%" 
+                    className="border-0"
+                    title={`Shipping Label ${currentPdfIndex + 1} for Order ${orderId}`}
+                  />
                 </div>
-              </Label>
-            </div>
-            {error && (
-              <Alert variant="destructive">
+                <div className="flex justify-between items-center">
+                  <Button
+                    onClick={() => setCurrentPdfIndex(prev => Math.max(0, prev - 1))}
+                    disabled={currentPdfIndex === 0}
+                  >
+                    <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+                  </Button>
+                  <span className="text-sm font-medium text-foreground dark:text-gray-300">
+                    Label {currentPdfIndex + 1} of {pdfUrls.length}
+                  </span>
+                  <Button
+                    onClick={() => setCurrentPdfIndex(prev => Math.min(pdfUrls.length - 1, prev + 1))}
+                    disabled={currentPdfIndex === pdfUrls.length - 1}
+                  >
+                    Next <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Alert>
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
+                <AlertTitle>No Labels Found</AlertTitle>
+                <AlertDescription>
+                  No shipping labels have been uploaded for this order yet. You can upload them in the "Manage Labels" tab.
+                </AlertDescription>
               </Alert>
             )}
-            {uploading && (
-              <div className="space-y-2">
-                <Progress value={uploadProgress} className="w-full" />
-                <p className="text-sm text-muted-foreground text-center">{uploadProgress}% uploaded</p>
-              </div>
-            )}
-            <Button 
-              onClick={handleUpload} 
-              disabled={!file || uploading} 
-              className="w-full sm:w-auto"
-            >
-              {uploading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-2"></div>
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" /> Upload Label
-                </>
+          </TabsContent>
+          <TabsContent value="manage">
+            <div className="space-y-4">
+              {pdfUrls.length > 0 && (
+                <ScrollArea className="h-[200px] overflow-y-auto">
+                  <div className="space-y-4">
+                    {pdfUrls.map((url, index) => (
+                      <div key={index} className="flex justify-between items-center p-4 border rounded-lg dark:border-gray-700">
+                        <span className="font-medium text-foreground dark:text-gray-200">Label {index + 1}</span>
+                        <div className="space-x-2">
+                          <Button variant="outline" size="sm" onClick={() => window.open(url, '_blank')}>
+                            <Download className="mr-2 h-4 w-4" /> Download
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={() => handleDelete(index)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               )}
-            </Button>
-          </div>
-        )}
+              <div 
+                className={`border-2 border-dashed rounded-lg p-8 text-center ${
+                  dragActive ? 'border-primary bg-primary/10 dark:bg-primary/5' : 'border-muted-foreground/25 dark:border-gray-600'
+                }`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+              >
+                <Input 
+                  id="pdf-upload" 
+                  type="file" 
+                  accept=".pdf" 
+                  onChange={handleFileChange} 
+                  multiple
+                  className="hidden"
+                />
+                <Label htmlFor="pdf-upload" className="cursor-pointer">
+                  <div className="flex flex-col items-center">
+                    <File className="h-16 w-16 text-muted-foreground mb-4" />
+                    <p className="text-lg font-semibold mb-2 text-foreground dark:text-gray-200">Drag & Drop your PDF files here</p>
+                    <p className="text-sm text-muted-foreground mb-4 dark:text-gray-400">or click to select files</p>
+                    {files.length > 0 && (
+                      <p className="text-sm font-medium text-primary">{files.length} file(s) selected</p>
+                    )}
+                  </div>
+                </Label>
+              </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              {uploading && (
+                <div className="space-y-2">
+                  <Progress value={uploadProgress} className="w-full" />
+                  <p className="text-xs text-muted-foreground text-center dark:text-gray-400">{Math.round(uploadProgress)}% uploaded</p>
+                </div>
+              )}
+              <Button 
+                onClick={handleUpload} 
+                disabled={files.length === 0 || uploading} 
+                className="w-full"
+              >
+                {uploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-2"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload  className="mr-2 h-4 w-4" /> Upload Labels
+                  </>
+                )}
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   )
