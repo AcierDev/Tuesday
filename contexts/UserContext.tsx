@@ -50,6 +50,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const login = async (formData: FormData) => {
+    console.log("BOO")
+    console.log(formData)
     const result = await authenticate(formData)
     if (result.success) {
       setUser(formData.get('user') as EmployeeNames)
@@ -117,7 +119,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             )}
             <span className="sr-only">Toggle dark mode</span>
           </Button>
-          <Toaster />
         </div>
       </div>
     </UserContext.Provider>

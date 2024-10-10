@@ -16,7 +16,7 @@ import { EmployeeAvatar } from './EmployeeAvatar'
 import { useUser } from '@/contexts/UserContext'
 
 export function UserIdentificationMenu() {
-  const { user: currentUser, login: onLogin, logout: onLogout } = useUser()
+  const { user: currentUser, login, logout } = useUser()
   const [isLogoutHovered, setIsLogoutHovered] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
   const [selectedUser, setSelectedUser] = useState<CreditOption | null>(null)
@@ -121,11 +121,15 @@ export function UserIdentificationMenu() {
     const isProtected = await isUserPasswordProtected(EMPLOYEE_MAP[credit])
     if (!isProtected) {
       // Immediately log in non-password-protected users
-      const formData = new FormData()
-      formData.append('user', EMPLOYEE_MAP[credit])
+      const formData = new FormData();
+      formData.append('user', EMPLOYEE_MAP[credit]);
+
+      console.log('User value:', formData.get('user'));
+
       const result = await authenticate(formData)
+      console.log(result)
       if (result.success) {
-        onLogin(EMPLOYEE_MAP[credit])
+        login(formData)
         handleClose()
       } else {
         setError(result.error || 'Authentication failed. Please try again.')
@@ -142,7 +146,7 @@ export function UserIdentificationMenu() {
       const result = await authenticate(formData)
 
       if (result.success) {
-        onLogin(EMPLOYEE_MAP[selectedUser])
+        login(formData)
         handleClose()
       } else {
         setError(result.error || 'Authentication failed. Please try again.')
@@ -157,7 +161,7 @@ export function UserIdentificationMenu() {
   }
 
   const handleLogout = async () => {
-    await onLogout()
+    await logout()
     handleClose()
   }
 
