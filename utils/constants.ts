@@ -1,4 +1,4 @@
-import { EmployeeNames, ItemDesigns, ItemSizes } from '@/typings/types'
+import { EmployeeNames, ItemDesigns, ItemSizes, ItemStatus } from '@/typings/types'
 
 export const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -405,3 +405,13 @@ export const CREDIT_COLORS: Record<CreditOption, string> = {
   'AM': 'bg-blue-500',
   'BC': 'bg-green-500',
 }
+
+export const STATUS_COLORS: Record<ItemStatus, string> = {
+  [ItemStatus.New]: 'gray-50', // Placeholder
+  [ItemStatus.OnDeck]: 'yellow-500',
+  [ItemStatus.Wip]: 'green-600',
+  [ItemStatus.Packaging]: 'lime-300',
+  [ItemStatus.Shipping]: 'yellow-900', // Placeholder
+  [ItemStatus.At_The_Door]: 'yellow-900',
+  [ItemStatus.Done]: 'orange-600',
+};

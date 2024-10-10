@@ -17,7 +17,7 @@ export const DueBadgeSettings = ({
 }: DueBadgeSettingsProps) => {
 
   return (
-    <Card>
+    <Card className="dark:bg-gray-900">
       <CardHeader>
         <CardTitle className="flex items-center">
           <Clock className="mr-2 h-5 w-5" />
@@ -40,7 +40,7 @@ export const DueBadgeSettings = ({
                 onValueChange={(value) => updateSettings({ dueBadgeDays: value[0] })}
               />
               <Input
-                className="w-20"
+                className="w-20 dark:bg-gray-800"
                 type="number"
                 value={dueBadgeDays}
                 onChange={(e) => updateSettings({ dueBadgeDays: Number(e.target.value) })}

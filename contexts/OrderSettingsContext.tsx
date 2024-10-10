@@ -78,7 +78,7 @@ export function OrderSettingsProvider({ children }: { children: React.ReactNode 
           try {
             const parsedSettings = JSON.parse(savedSettings);
             // Merge saved settings with default settings to ensure all properties exist
-            const mergedSettings = { ...defaultSettings, ...parsedSettings };
+            const mergedSettings = { ...defaultSettings, ...parsedSettings,  };
             dispatch({ type: 'SET_SETTINGS', payload: mergedSettings });
           } catch (error) {
             dispatch({ type: 'SET_SETTINGS', payload: defaultSettings });

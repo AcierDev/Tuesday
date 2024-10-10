@@ -62,7 +62,7 @@ export const AutomatronSettings = ({
       </div>
       <div className="space-y-4">
         {automatronRules.map((rule) => (
-          <Card key={rule.id}>
+          <Card key={rule.id} className="dark:bg-gray-900">
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
@@ -71,7 +71,7 @@ export const AutomatronSettings = ({
                     value={rule.field}
                     onValueChange={(value) => updateRule(rule.id, 'field', value)}
                   >
-                    <SelectTrigger id={`field-${rule.id}`}>
+                    <SelectTrigger id={`field-${rule.id}`} className="dark:bg-gray-800">
                       <SelectValue placeholder="Select field" />
                     </SelectTrigger>
                     <SelectContent>
@@ -90,7 +90,7 @@ export const AutomatronSettings = ({
                       value={rule.value}
                       onValueChange={(value) => updateRule(rule.id, 'value', value)}
                     >
-                      <SelectTrigger id={`value-${rule.id}`}>
+                      <SelectTrigger id={`value-${rule.id}`} className="dark:bg-gray-800">
                         <SelectValue placeholder="Select value" />
                       </SelectTrigger>
                       <SelectContent>
@@ -108,6 +108,7 @@ export const AutomatronSettings = ({
                       type={getInputTypeForField(rule.field)}
                       value={rule.value}
                       onChange={(e) => updateRule(rule.id, 'value', e.target.value)}
+                       className="dark:bg-gray-800"
                     />
                   )}
                 </div>
@@ -117,7 +118,7 @@ export const AutomatronSettings = ({
                     value={rule.newStatus}
                     onValueChange={(value) => updateRule(rule.id, 'newStatus', value)}
                   >
-                    <SelectTrigger id={`status-${rule.id}`}>
+                    <SelectTrigger id={`status-${rule.id}`} className="dark:bg-gray-800">
                       <SelectValue placeholder="Select new status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -143,7 +144,7 @@ export const AutomatronSettings = ({
             </CardContent>
           </Card>
         ))}
-        <Button className="w-full" variant="outline" onClick={addRule}>
+        <Button className="w-full dark:bg-gray-900" variant="outline" onClick={addRule}>
           <Plus className="mr-2 h-4 w-4" /> Add Rule
         </Button>
       </div>

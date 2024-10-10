@@ -72,11 +72,10 @@ export enum EmployeeNames {
 
 export enum ItemStatus {
   New = "New",
-  Paint = "Paint",
   OnDeck = "On Deck",
   Wip = "Wip",
   Packaging = "Packaging",
-  Shipping = "Shipping",
+  At_The_Door = "At The Door",
   Done = "Done",
 }
 
@@ -91,6 +90,7 @@ export enum ColumnTitles {
   Customer_Name = "Customer Name",
   Design = "Design",
   Size = "Size",
+  Due = "Due Date",
   Painted = "Painted",
   Backboard = "Backboard",
   Glued = "Glued",
@@ -99,7 +99,6 @@ export enum ColumnTitles {
   Notes = "Notes",
   Rating = "Rating",
   Labels = "Labels",
-  Due = "Due Date",
 }
 
 export enum ColumnTypes {

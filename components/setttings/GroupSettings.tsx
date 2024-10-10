@@ -20,7 +20,7 @@ export const GroupingSettings = ({
 }: GroupingSettingsProps) => {
 
   return (
-    <Card>
+    <Card className="dark:bg-gray-900">
       <CardHeader>
         <CardTitle className="flex items-center">
           <Layers className="mr-2 h-5 w-5" />
@@ -36,7 +36,7 @@ export const GroupingSettings = ({
               value={groupingField}
               onValueChange={(value) => updateSettings({ groupingField: value })}
             >
-              <SelectTrigger id="grouping-field">
+              <SelectTrigger id="grouping-field"  className="dark:bg-gray-800">
                 <SelectValue placeholder="Select grouping field" />
               </SelectTrigger>
               <SelectContent>

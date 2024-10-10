@@ -22,7 +22,7 @@ export const RecentEditsSettings = ({
   }
 
   return (
-    <Card>
+    <Card className="dark:bg-gray-900">
       <CardHeader>
         <CardTitle className="flex items-center">
           <Edit className="mr-2 h-5 w-5" />
@@ -54,7 +54,7 @@ export const RecentEditsSettings = ({
                   onValueChange={(value) => updateSettings({ recentEditHours: value[0] })}
                 />
                 <Input
-                  className="w-20"
+                  className="w-20 dark:bg-gray-800"
                   type="number"
                   value={recentEditHours}
                   onChange={(e) => {
