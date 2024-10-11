@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { type Receipt, type Shipment } from "@/typings/interfaces"
 
 import { type Item } from '../../typings/types'
 
@@ -21,12 +20,12 @@ interface EditItemDialogProps {
 
 export const EditItemDialog = ({ editingItem, setEditingItem, handleSaveEdit }: EditItemDialogProps) => {
   const [activeTab, setActiveTab] = useState("item")
-  const [localReceipt, setLocalReceipt] = useState<Partial<Receipt> | null>(null)
+  const [localReceipt, setLocalReceipt] = useState<Partial<Address> | null>(null)
   const [isVertical, setIsVertical] = useState(false)
 
   useEffect(() => {
     if (editingItem) {
-      setLocalReceipt(editingItem.receipt || {})
+      setLocalReceipt(editingItem.shippingDetails || {})
       setIsVertical(editingItem.vertical || false)
     } else {
       setLocalReceipt(null)
@@ -42,7 +41,7 @@ export const EditItemDialog = ({ editingItem, setEditingItem, handleSaveEdit }: 
     setEditingItem({ ...editingItem, values: newValues })
   }
 
-  const updateReceiptValue = (key: keyof Receipt, value: any) => {
+  const updateReceiptValue = (key: keyof Address, value: any) => {
     if (!localReceipt) return
     setLocalReceipt(prevReceipt => ({
       ...prevReceipt,
@@ -122,7 +121,7 @@ export const EditItemDialog = ({ editingItem, setEditingItem, handleSaveEdit }: 
                   <Input
                     className="col-span-3"
                     id="receipt_id"
-                    value={localReceipt?.receipt_id || ''}
+                    value={localReceipt?.id || ''}
                     onChange={(e) => updateReceiptValue('receipt_id', parseInt(e.target.value) || '')}
                   />
                 </div>
@@ -149,8 +148,8 @@ export const EditItemDialog = ({ editingItem, setEditingItem, handleSaveEdit }: 
                   <Input
                     className="col-span-3"
                     id="first_line"
-                    value={localReceipt?.first_line || ''}
-                    onChange={(e) => updateReceiptValue('first_line', e.target.value)}
+                    value={localReceipt?.street1 || ''}
+                    onChange={(e) => updateReceiptValue('street1', e.target.value)}
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -176,8 +175,8 @@ export const EditItemDialog = ({ editingItem, setEditingItem, handleSaveEdit }: 
                   <Input
                     className="col-span-3"
                     id="zip"
-                    value={localReceipt?.zip || ''}
-                    onChange={(e) => updateReceiptValue('zip', e.target.value)}
+                    value={localReceipt?.postalCode || ''}
+                    onChange={(e) => updateReceiptValue('postalCode', e.target.value)}
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">

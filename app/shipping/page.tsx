@@ -15,7 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from '@/hooks/UseToast'
 import { useRealmApp } from '@/hooks/useRealmApp'
-import { Activity, ShippingItem, type Receipt } from '@/typings/interfaces'
+import { Activity, ShippingItem } from '@/typings/interfaces'
 import { ShippingStatus, type Board, type Item } from '@/typings/types'
 
 interface UPSTrackingResponse {
@@ -100,8 +100,8 @@ export default function ShippingPage() {
       item.values.some(value => 
         String(value.text || '').toLowerCase().includes(searchTerm.toLowerCase())
       ) || 
-      item.receipt?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.receipt?.receipt_id.toString().includes(searchTerm)
+      item.shippingDetails?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.shippingDetails?.city.toString().includes(searchTerm)
     )
     setFilteredItems(filtered)
   }, [items, searchTerm])
@@ -112,7 +112,7 @@ export default function ShippingPage() {
       if (board) {
         const itemsWithReceipts = board.items_page.items.map(item => ({
           ...item,
-          receipt: item.receipt || undefined
+          shippingDetails: item.shippingDetails || undefined
         })).filter(item => !item.deleted && item.visible) as ShippingItem[]
         setItems(itemsWithReceipts)
         updateShipmentStatuses(itemsWithReceipts)

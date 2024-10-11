@@ -55,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
   }
 
   return (
-    <div className={`z-30 bg-white dark:bg-gray-800 shadow-md ${isMobile ? '' : 'sticky top-14'}`}>
+    <div className={`z-30 bg-white dark:bg-gray-900 ${isMobile ? '' : 'sticky top-14'}`}>
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-center justify-between py-4 space-y-4 sm:space-y-0">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 w-full sm:w-1/4">

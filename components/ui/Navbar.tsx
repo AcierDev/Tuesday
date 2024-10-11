@@ -113,7 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
   )
 
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-200">
+    <nav className="sticky top-0 z-40 w-full border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors duration-200">
       <div className="w-full flex h-14 items-center px-4 sm:px-8">
         {/* Left Section: Logo */}
         <div className="flex-shrink-0 mr-4">

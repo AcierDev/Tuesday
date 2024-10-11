@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 
-import { ShippingDashboardProps, type Receipt, Box, Address, ShippingRate, GroupedRates } from '@/typings/interfaces'
+import { ShippingDashboardProps, Box, Address, ShippingRate, GroupedRates } from '@/typings/interfaces'
 import { getBoxData } from '@/utils/functions'
 
 import { createShippingLabel, getShippingRates } from '../../lib/shipstation-api'
@@ -162,20 +162,19 @@ const handleBuyLabel = async (rate: ShippingRate) => {
   }
 
   useEffect(() => {
-    if (item.receipt) {
-      const receipt = item.receipt;
+    if (item.shippingDetails) {
       
-      setCustomerName(receipt.name || '');
+      setCustomerName(item.shippingDetails.name || '');
 
       setFromAddress(prev => ({ ...prev, postalCode: '89074', line1: '1111 mary crest rd', city: 'henderson', country: "US", state: "NV" }))
       
       setToAddress({
-        line1: receipt.first_line || '',
-        line2: receipt.second_line || '',
-        city: receipt.city || '',
-        state: receipt.state?.slice(0, 2)?.toUpperCase() || '',
-        postalCode: receipt.zip || '',
-        country: receipt.country_iso || 'US',
+        line1: item.shippingDetails.street1 || '',
+        line2: item.shippingDetails.street2 || '',
+        city: item.shippingDetails.city || '',
+        state: item.shippingDetails.state?.slice(0, 2)?.toUpperCase() || '',
+        postalCode: item.shippingDetails.postalCode || '',
+        country: item.shippingDetails.country || 'US',
       });
 
       const sizeValue = item.values.find(v => v.columnName === 'Size')?.text as ItemSizes;

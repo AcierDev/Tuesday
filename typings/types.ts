@@ -1,5 +1,4 @@
 import { WeeklySchedules } from "@/components/weekly-schedule/UseWeeklySchedule";
-import { Receipt } from "./interfaces";
 
 export type Maybe<T> = T | null | undefined;
 
@@ -33,13 +32,13 @@ export type Item = {
   id: string;
   values: ColumnValue[];
   createdAt: number;
-  completedAt: number;
+  completedAt?: number;
   status: ItemStatus;
-  receipt?: Receipt;
   vertical?: boolean;
   visible: boolean;
   deleted: boolean;
-  isScheduled: boolean;
+  isScheduled?: boolean;
+  shippingDetails: Address;
 };
 
 export type ColumnValue = ColorColumnValue | GenericColumnValue;
@@ -48,16 +47,16 @@ export type ColorColumnValue = {
   text?: ItemDesigns;
   type: ColumnTypes.Dropdown;
   columnName: ColumnTitles.Design;
-  lastModifiedTimestamp: number;
-  credit: EmployeeNames[];
+  lastModifiedTimestamp?: number;
+  credit?: EmployeeNames[];
 };
 
 export type GenericColumnValue = {
   text?: string;
   type: ColumnTypes;
   columnName: ColumnTitles;
-  lastModifiedTimestamp: number;
-  credit: EmployeeNames[];
+  lastModifiedTimestamp?: number;
+  credit?: EmployeeNames[];
 };
 
 export enum EmployeeNames {
@@ -71,6 +70,7 @@ export enum EmployeeNames {
 }
 
 export enum ItemStatus {
+  Hidden = "Hidden",
   New = "New",
   OnDeck = "On Deck",
   Wip = "Wip",

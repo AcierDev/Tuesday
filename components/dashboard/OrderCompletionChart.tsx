@@ -38,7 +38,7 @@ export function OrderCompletionChart({ board, timeRange }: { board: Board; timeR
           designColumn && 'text' in designColumn &&
           sizeColumn && 'text' in sizeColumn &&
           customerNameColumn && 'text' in customerNameColumn) {
-        const date = new Date(dueColumn.text)
+        const date = new Date(dueColumn.text || "")
         let key: string
 
         switch (timeRange) {
@@ -63,9 +63,9 @@ export function OrderCompletionChart({ board, timeRange }: { board: Board; timeR
 
         groupedData[key].completions += 1
         groupedData[key].items.push({
-          customerName: customerNameColumn.text,
-          design: designColumn.text,
-          size: sizeColumn.text,
+          customerName: customerNameColumn.text!,
+          design: designColumn.text!,
+          size: sizeColumn.text!,
           completedDate: date.toISOString().split('T')[0]
         })
       }

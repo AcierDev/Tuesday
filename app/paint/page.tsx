@@ -108,7 +108,7 @@ export default function PaintSchedulePage() {
 
   const filteredPaintGroup: Group = useMemo(() => ({
     id: 'paint-group',
-    title: ItemStatus.Paint,
+    title: "Paint",
     items: filteredItemsNeedingPaint,
   }), [filteredItemsNeedingPaint])
 

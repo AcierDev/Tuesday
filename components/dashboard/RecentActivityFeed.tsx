@@ -19,7 +19,7 @@ export function RecentActivityFeed({ board }: { board: Board }) {
           allActivities.push({
             id: item.id,
             action: `Updated ${value.columnName}`,
-            timestamp: value.lastModifiedTimestamp,
+            timestamp: value.lastModifiedTimestamp!,
           })
         }
       })

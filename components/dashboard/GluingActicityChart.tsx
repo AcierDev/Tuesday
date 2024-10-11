@@ -47,13 +47,13 @@ export function GluingActivityChart({
           sizeColumn && 'text' in sizeColumn &&
           designColumn && 'text' in designColumn &&
           customerNameColumn && 'text' in customerNameColumn) {
-        const [width, height] = sizeColumn.text.split('x').map(dim => parseInt(dim.trim(), 10))
+        const [width, height] = sizeColumn.text?.split('x').map(dim => parseInt(dim.trim(), 10))!
         const squares = width * height
 
         gluedColumn.credit.forEach((employee: string) => {
           if (selectedEmployee && employee !== selectedEmployee) return
 
-          const date = new Date(gluedColumn.lastModifiedTimestamp)
+          const date = new Date(gluedColumn.lastModifiedTimestamp || "")
           let key: string
 
           switch (timeRange) {
@@ -78,11 +78,11 @@ export function GluingActivityChart({
 
           groupedData[key].squares += squares
           groupedData[key].items.push({
-            customerName: customerNameColumn.text,
-            design: designColumn.text,
-            size: sizeColumn.text,
+            customerName: customerNameColumn.text!,
+            design: designColumn.text!,
+            size: sizeColumn.text!,
             completedDate: date.toISOString().split('T')[0],
-            gluedBy: gluedColumn.credit
+            gluedBy: gluedColumn.credit!
           })
         })
       }

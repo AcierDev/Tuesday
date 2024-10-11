@@ -40,9 +40,9 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background text-foreground rounded-lg shadow-lg w-full max-w-4xl h-[90vh] overflow-hidden flex dark:bg-gray-800">
+      <div className="bg-background text-foreground rounded-lg shadow-lg w-full max-w-4xl h-[90vh] overflow-hidden flex dark:bg-gray-700">
         <Tabs defaultValue="automatron" className="flex h-full w-full">
-          <TabsList className="h-full w-64 flex flex-col items-stretch space-y-1 rounded-l-lg border-r bg-muted p-4 dark:bg-gray-900">
+          <TabsList className="h-full w-64 flex flex-col items-stretch space-y-1 rounded-l-lg border-r bg-muted p-4 dark:bg-gray-800">
             <div className="mb-6 px-2">
               <h2 className="text-lg font-semibold">Settings</h2>
               <p className="text-sm text-muted-foreground">Manage your preferences</p>

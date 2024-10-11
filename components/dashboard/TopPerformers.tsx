@@ -31,10 +31,10 @@ export default function TopPerformers({
       
       if (gluedColumn && !item.deleted && 'credit' in gluedColumn && Array.isArray(gluedColumn.credit) &&
           sizeColumn && 'text' in sizeColumn) {
-        const [width, height] = sizeColumn.text.split('x').map(dim => parseInt(dim.trim(), 10))
+        const [width, height] = sizeColumn.text?.split('x').map(dim => parseInt(dim.trim(), 10))!
         const totalSquares = width * height
 
-        const date = new Date(gluedColumn.lastModifiedTimestamp)
+        const date = new Date(gluedColumn.lastModifiedTimestamp || "")
         const isInRange = (date: Date) => {
           const now = new Date()
           switch (timeRange) {
