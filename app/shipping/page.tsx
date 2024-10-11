@@ -86,7 +86,7 @@ export default function ShippingPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedItem, setSelectedItem] = useState<ShippingItem | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const { collection } = useRealmApp()
+  const { boardCollection: collection } = useRealmApp()
   const { toast } = useToast()
 
   useEffect(() => {

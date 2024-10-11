@@ -20,7 +20,7 @@ export interface UseWeeklyScheduleReturn {
 }
 
 export const useWeeklySchedule = ({weekStartsOn = 0 }: { weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 }): UseWeeklyScheduleReturn => {
-  const { collection } = useRealmApp()
+  const { boardCollection: collection } = useRealmApp()
   const [weeklySchedules, setWeeklySchedules] = useState<WeeklySchedules>({})
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => 
     startOfWeek(new Date(), { weekStartsOn })

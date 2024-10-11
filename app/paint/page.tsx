@@ -17,7 +17,7 @@ import { useBoardOperations } from '@/components/orders/OrderHooks'
 import { Board, ColumnTitles, Group, Item, ItemStatus } from '@/typings/types'
 
 export default function PaintSchedulePage() {
-  const { collection, isLoading } = useRealmApp()
+  const { boardCollection: collection, isLoading } = useRealmApp()
   const [items, setItems] = useState<Item[]>([])
   const [board, setBoard] = useState<Board | undefined>(undefined)
   const [paintRequirements, setPaintRequirements] = useState<Record<string, PaintRequirement>>({})

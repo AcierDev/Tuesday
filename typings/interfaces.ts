@@ -84,3 +84,8 @@ export interface Activity {
   description: string;
   location: string;
 }
+
+export interface CuttingData {
+  date: Date
+  count: number
+}

@@ -17,7 +17,7 @@ import { Board, Group, Item, ItemStatus } from '@/typings/types'
 import { BoxRequirement } from '@/typings/interfaces'
 
 export default function BoxSchedulePage() {
-  const { collection, isLoading } = useRealmApp()
+  const { boardCollection: collection, isLoading } = useRealmApp()
   const [items, setItems] = useState<Item[]>([])
   const [board, setBoard] = useState<Board | null>(null)
   const [boxRequirements, setBoxRequirements] = useState<Record<string, BoxRequirement>>({})

@@ -1,4 +1,5 @@
 import { WeeklySchedules } from "@/components/weekly-schedule/UseWeeklySchedule";
+import { CuttingData } from "./interfaces";
 
 export type Maybe<T> = T | null | undefined;
 

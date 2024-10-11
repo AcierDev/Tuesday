@@ -23,7 +23,7 @@ export function ViewLabel({ orderId }: { orderId: string }) {
   const [pdfUrls, setPdfUrls] = useState<string[]>([])
   const [currentPdfIndex, setCurrentPdfIndex] = useState(0)
 
-  const { collection } = useRealmApp()
+  const { boardCollection: collection } = useRealmApp()
 
   useEffect(() => {
     async function checkLabels() {

@@ -17,7 +17,7 @@ import { backboardData } from '@/utils/constants'
 import { BackboardRequirement, Board, Group, Item, ItemSizes } from '@/typings/types'
 
 export default function BackboardSchedulePage() {
-  const { collection, isLoading } = useRealmApp()
+  const { boardCollection: collection, isLoading } = useRealmApp()
   const [items, setItems] = useState<Item[]>([])
   const [board, setBoard] = useState<Board | null>(null)
   const [selectedDates, setSelectedDates] = useState<Date[]>([])

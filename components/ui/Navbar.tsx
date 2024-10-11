@@ -14,19 +14,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
+import { GiCircularSaw } from "react-icons/gi";
+
 const mainNavItems = [
   { href: '/orders', icon: Logs, label: 'Orders', hotkey: '1' },
   { href: '/shipping', icon: Truck, label: 'Shipping', hotkey: '2' },
   { href: '/paint', icon: PaintbrushVertical, label: 'Paint', hotkey: '3' },
   { href: '/packaging', icon: PackageOpen, label: 'Packaging', hotkey: '4' },
   { href: '/backboards', icon: Scissors, label: 'Backboards', hotkey: '5' },
-]
-
-const toolsNavItems = [
-  { href: '/calculator', icon: Calculator, label: 'Calculator', hotkey: '6' },
+  { href: '/cutting', icon: GiCircularSaw, label: 'Cutting' },
+    { href: '/calculator', icon: Calculator, label: 'Calculator', hotkey: '6' },
   { href: '/print', icon: Printer, label: 'Print', hotkey: '7' },
   { href: '/outlets', icon: Power, label: 'Outlets', hotkey: '8' },
   { href: '/setup-utility', icon: Accessibility, label: 'Setup Utility', hotkey: '9' },
+]
+
+const toolsNavItems = [
+
 ]
 
 interface NavbarProps {
@@ -128,7 +132,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
             {mainNavItems.map((item) => (
               <NavLink key={item.href} {...item} />
             ))}
-            <ToolsDropdown />
+            {/* <ToolsDropdown /> */}
           </div>
         </div>
 

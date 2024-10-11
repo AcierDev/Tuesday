@@ -30,7 +30,7 @@ interface DashboardCard {
 export default function Dashboard() {
   const [timeRange, setTimeRange] = useState<TimeRange>('daily')
   const [board, setBoard] = useState<Board | undefined>(undefined)
-  const { collection, isLoading } = useRealmApp()
+  const { boardCollection: collection, isLoading } = useRealmApp()
   const [cards, setCards] = useState<DashboardCard[]>([])
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)
 

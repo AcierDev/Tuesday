@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react"
 import { Toaster, toast } from "sonner"
 import { DropResult, ResponderProvided } from "@hello-pangea/dnd"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react"
 
 import { Header } from "@/components/orders/Header"
 import { ItemList } from "@/components/orders/ItemList"
@@ -21,7 +21,7 @@ import { ShippingDashboard } from "@/components/shipping/ShippingDashboard"
 export default function OrderManagementPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentMode, setCurrentMode] = useState("all")
-  const { collection, user, isLoading } = useRealmApp()
+  const { boardCollection: collection, user, isLoading } = useRealmApp()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false)
   const [isShippingDashboardOpen, setIsShippingDashboardOpen] = useState(false)
@@ -367,7 +367,7 @@ export default function OrderManagementPage() {
   }
 
 return (
-    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-white dark:bg-gray-900 text-black dark:text-white">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-black dark:text-white">
       <Toaster position="top-center" />
       <Header
         isMobile={isMobile}
@@ -379,59 +379,55 @@ return (
         onModeChange={setCurrentMode}
         dueCounts={dueCounts}
       />
-      <div className="flex-grow overflow-hidden">
-        <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex h-full">
-            <div className={`flex-grow overflow-auto transition-all duration-300 ease-in-out ${
-              isWeeklyPlannerOpen ? "lg:w-[calc(100%-25rem)]" : "lg:w-full"
-            } pr-4`}>
-              <ItemList
-                board={board!}
-                groups={sortedGroups}
-                onDelete={deleteItem}
-                onDragEnd={onDragEnd}
-                onGetLabel={onGetLabel}
-                onMarkCompleted={markItemCompleted}
-                onShip={shipItem}
-                onUpdate={updateItem}
+      <div className="relative">
+        <div
+          className={`transition-all duration-300 ease-in-out overflow-hidden ${
+            isWeeklyPlannerOpen ? "h-64" : "h-0"
+          }`}
+        >
+          {board && (
+            <div className="h-full bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
+              <WeeklySchedule
+                boardId={board.id}
+                items={board.items_page.items.filter(item => !item.deleted && item.visible) || []}
               />
             </div>
-            <div
-              className={`h-full transition-all duration-300 ease-in-out ${
-                isWeeklyPlannerOpen ? "w-96 pl-4" : "w-0"
-              } overflow-hidden`}
-            >
-              {board && (
-                <div className="h-full bg-white shadow-lg rounded-lg overflow-hidden">
-                  <WeeklySchedule
-                    boardId={board.id}
-                    items={board.items_page.items.filter(item => !item.deleted && item.visible) || []}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
+          )}
+        </div>
+        <Button
+          className="absolute left-1/2 transform -translate-x-1/2 -bottom-4 bg-white dark:bg-gray-800 shadow-md rounded-full p-2 z-10"
+          variant="ghost"
+          onClick={() => setIsWeeklyPlannerOpen(!isWeeklyPlannerOpen)}
+          aria-label={isWeeklyPlannerOpen ? "Close weekly planner" : "Open weekly planner"}
+        >
+          {isWeeklyPlannerOpen ? (
+            <ChevronUp className="h-6 w-6" />
+          ) : (
+            <ChevronDown className="h-6 w-6" />
+          )}
+        </Button>
+      </div>
+      <div className="flex-grow overflow-hidden">
+        <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <ItemList
+            board={board!}
+            groups={sortedGroups}
+            onDelete={deleteItem}
+            onDragEnd={onDragEnd}
+            onGetLabel={onGetLabel}
+            onMarkCompleted={markItemCompleted}
+            onShip={shipItem}
+            onUpdate={updateItem}
+          />
         </div>
       </div>
-      <Button
-        className="fixed top-1/2 right-0 transform -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md rounded-l-md p-2 z-10"
-        variant="ghost"
-        onClick={() => setIsWeeklyPlannerOpen(!isWeeklyPlannerOpen)}
-        aria-label={isWeeklyPlannerOpen ? "Close weekly planner" : "Open weekly planner"}
-      >
-        {isWeeklyPlannerOpen ? (
-          <ChevronRight className="h-6 w-6" />
-        ) : (
-          <ChevronLeft className="h-6 w-6" />
-        )}
-      </Button>
-      {isSettingsOpen ? (
+      {isSettingsOpen && (
         <SettingsPanel
           settings={settings}
           updateSettings={updateSettings}
           onClose={() => setIsSettingsOpen(false)}
         />
-      ) : null}
+      )}
       <NewItemModal
         board={board}
         isOpen={isNewItemModalOpen}
@@ -439,11 +435,12 @@ return (
         onSubmit={addNewItem}
       />
       <Dialog
+        
         open={isShippingDashboardOpen}
         onOpenChange={setIsShippingDashboardOpen}
       >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          {selectedItem ? (
+          {selectedItem && (
             <ShippingDashboard
               item={selectedItem}
               onClose={() => {
@@ -451,7 +448,7 @@ return (
                 setSelectedItem(null)
               }}
             />
-          ) : null}
+          )}
         </DialogContent>
       </Dialog>
     </div>

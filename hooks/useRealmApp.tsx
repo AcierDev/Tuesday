@@ -2,19 +2,22 @@
 
 import { useState, useContext, createContext, useEffect } from "react";
 import * as Realm from "realm-web";
-import { Board } from "../typings/types";
+import { Board, Records } from "../typings/types";
+import { CuttingData } from "@/typings/interfaces";
 
 interface RealmContextType {
   app: Realm.App | null;
   user: Realm.User | null;
-  collection: globalThis.Realm.Services.MongoDB.MongoDBCollection<Board> | null;
+  boardCollection: globalThis.Realm.Services.MongoDB.MongoDBCollection<Board> | null;
+  cuttingHistoryCollection: globalThis.Realm.Services.MongoDB.MongoDBCollection<CuttingData> | null;
   isLoading: boolean;
 }
 
 const RealmAppContext = createContext<RealmContextType>({
   app: null,
   user: null,
-  collection: null,
+  boardCollection: null,
+  cuttingHistoryCollection: null,
   isLoading: true,
 });
 
@@ -25,11 +28,12 @@ export function useRealmApp() {
 export function RealmAppProvider({ children }) {
   const [app, setApp] = useState<Realm.App | null>(null);
   const [user, setUser] = useState<Realm.User | null>(null);
-  const [collection, setCollection] = useState<globalThis.Realm.Services.MongoDB.MongoDBCollection<Board> | null>(null);
+  const [boardCollection, setBoardCollection] = useState<globalThis.Realm.Services.MongoDB.MongoDBCollection<Board> | null>(null);
+  const [cuttingHistoryCollection, setCuttingHistoryCollection] = useState<globalThis.Realm.Services.MongoDB.MongoDBCollection<Records> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-        console.log(process.env.NEXT_PUBLIC_MODE)
+    console.log(process.env.NEXT_PUBLIC_MODE)
 
     const initRealm = async () => {
       const realmApp = new Realm.App({ id: "new-db-realm-sbrnzvh" });
@@ -42,8 +46,10 @@ export function RealmAppProvider({ children }) {
 
 
         const mongo = loggedInUser.mongoClient("mongodb-atlas");
-        const userCollection = mongo.db("react-web-app").collection(process.env.NEXT_PUBLIC_MODE);
-        setCollection(userCollection);
+        const userCollection = mongo.db("react-web-app").collection(process.env.NEXT_PUBLIC_MODE!);
+        setBoardCollection(userCollection);
+        const cuttingHistoryCollection = mongo.db("react-web-app").collection("cuttingHistory-" + process.env.NEXT_PUBLIC_MODE);
+        setCuttingHistoryCollection(cuttingHistoryCollection);
       } catch (err) {
         console.error("Failed to log in", err);
       } finally {
@@ -57,7 +63,8 @@ export function RealmAppProvider({ children }) {
   const value = {
     app,
     user,
-    collection,
+    boardCollection,
+    cuttingHistoryCollection,
     isLoading,
   };
 
