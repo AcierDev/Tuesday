@@ -11,7 +11,7 @@ import { useIdleTimer } from 'react-idle-timer'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CREDIT_COLORS, CreditOption, EMPLOYEE_MAP, INITIALS_MAP, OPTION_IMAGES } from '@/utils/constants'
 import { EmployeeNames } from '@/typings/types'
-import { authenticate, isUserPasswordProtected, getPasswordProtectedUsers } from '@/app/actions/auth'
+import { authenticate, isUserPasswordProtected, getPasswordProtectedUsers, getUserPermissions } from '@/app/actions/auth'
 import { EmployeeAvatar } from './EmployeeAvatar'
 import { useUser } from '@/contexts/UserContext'
 
@@ -28,16 +28,38 @@ export function UserIdentificationMenu() {
   const containerRef = useRef<HTMLDivElement>(null)
   const passwordInputRef = useRef<HTMLInputElement>(null)
   const [passwordProtectedUsers, setPasswordProtectedUsers] = useState<EmployeeNames[]>([])
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      if (currentUser) {
+        const permissions = await getUserPermissions(currentUser)
+        setIsAdmin(permissions.includes("admin"))
+      } else {
+        setIsAdmin(false)
+      }
+    }
+
+    fetchPermissions()
+  }, [currentUser])
 
   const handleIdle = () => {
     setIsVisible(true)
   }
 
-  const { reset } = useIdleTimer({
+  const { reset, pause, resume } = useIdleTimer({
     timeout: 30000,
     onIdle: handleIdle,
     debounce: 500
   })
+
+  useEffect(() => {
+    if (isAdmin) {
+      pause()
+    } else {
+      resume()
+    }
+  }, [isAdmin, pause, resume])
 
   useEffect(() => {
     const fetchPasswordProtectedUsers = async () => {
