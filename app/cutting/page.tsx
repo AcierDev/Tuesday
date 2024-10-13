@@ -277,9 +277,7 @@ export default function Dashboard() {
               className="h-[300px]"
             >
               {chartType === "line" ? (
-                <LineChart width={chartWidth} 
-
- height={chartHeight} data={chartData}>
+                <LineChart width={chartWidth} height={chartHeight} data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" stroke="#888888" />
                   <YAxis stroke="#888888" />

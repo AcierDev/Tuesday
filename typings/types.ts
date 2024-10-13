@@ -210,3 +210,24 @@ export type OrderSettings = {
 export type ShippingStatus = 'unshipped' | 'pre_transit' | 'in_transit' | 'delivered'
 
 export type BackboardRequirement = Record<ItemSizes, number>;
+
+export type InventoryItem = {
+  _id: number
+  name: string
+  quantity: number
+  restockQuantity: number
+  countType: string
+  countFrequency: CountFrequency
+  countHistory: InventoryCount[]
+}
+
+export type InventoryCount = {
+  quantity: number
+  timestamp: Date
+}
+
+export enum CountFrequency {
+  Daily = "Daily",
+  Weekly = "Weekly",
+  Monthly = "Monthly"
+}

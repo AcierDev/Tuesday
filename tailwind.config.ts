@@ -9,6 +9,7 @@ const config: Config = {
     'bg-yellow-500',
     'bg-yellow-900',
     'bg-orange-600',
+    'bg-gray-400',
     'bg-lime-300',
 	'text-orange-600',
 	'text-lime-300',

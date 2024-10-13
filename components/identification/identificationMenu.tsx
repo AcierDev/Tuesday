@@ -16,7 +16,7 @@ import { EmployeeAvatar } from './EmployeeAvatar'
 import { useUser } from '@/contexts/UserContext'
 
 export function UserIdentificationMenu() {
-  const { user: currentUser, login, logout } = useUser()
+  const { user: currentUser, isAdmin, login, logout } = useUser()
   const [isLogoutHovered, setIsLogoutHovered] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
   const [selectedUser, setSelectedUser] = useState<CreditOption | null>(null)
@@ -28,20 +28,7 @@ export function UserIdentificationMenu() {
   const containerRef = useRef<HTMLDivElement>(null)
   const passwordInputRef = useRef<HTMLInputElement>(null)
   const [passwordProtectedUsers, setPasswordProtectedUsers] = useState<EmployeeNames[]>([])
-  const [isAdmin, setIsAdmin] = useState(false)
 
-  useEffect(() => {
-    const fetchPermissions = async () => {
-      if (currentUser) {
-        const permissions = await getUserPermissions(currentUser)
-        setIsAdmin(permissions.includes("admin"))
-      } else {
-        setIsAdmin(false)
-      }
-    }
-
-    fetchPermissions()
-  }, [currentUser])
 
   const handleIdle = () => {
     setIsVisible(true)

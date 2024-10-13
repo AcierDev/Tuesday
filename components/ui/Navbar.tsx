@@ -102,7 +102,7 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 ease-in-out overflow-y-auto border-r bg-muted/40 hidden lg:flex lg:flex-col`}>
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 ease-in-out overflow-y-auto border-r bg-background dark:bg-gray-800 hidden lg:flex lg:flex-col`}>
         <div className="flex items-center justify-between px-4 py-4">
           {sidebarOpen && <span className="text-lg font-bold">Tuesday</span>}
           <Button
@@ -151,7 +151,7 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
       </aside>
 
       {/* Mobile Navbar */}
-      <nav className="lg:hidden sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <nav className="lg:hidden fixed top-0 left-0 right-0 z-40 border-b bg-background dark:bg-gray-800 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="w-full flex h-14 items-center px-4">
           <span className="text-xl font-bold mr-4">Tuesday</span>
           <Sheet>

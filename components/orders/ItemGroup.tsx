@@ -242,7 +242,7 @@ export const ItemGroupSection = ({
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           className={cn(
-                            index % 2 === 0 ? "bg-white dark:bg-gray-800" : "bg-gray-50 dark:bg-gray-700",
+                            index % 2 === 0 ? "bg-gray-200 dark:bg-gray-800" : "bg-gray-100 dark:bg-gray-700",
                             isPastDue(item) && item.status !== ItemStatus.Done && "relative",
                             snapshot.isDragging ? "bg-blue-100 dark:bg-blue-800 shadow-lg" : ""
                           )}

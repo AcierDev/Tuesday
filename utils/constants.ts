@@ -407,7 +407,7 @@ export const CREDIT_COLORS: Record<CreditOption, string> = {
 }
 
 export const STATUS_COLORS: Record<ItemStatus, string> = {
-  [ItemStatus.New]: 'gray-50', // Placeholder
+  [ItemStatus.New]: 'gray-400', // Placeholder
   [ItemStatus.OnDeck]: 'yellow-500',
   [ItemStatus.Wip]: 'green-600',
   [ItemStatus.Packaging]: 'lime-300',
