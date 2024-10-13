@@ -108,12 +108,7 @@
   z-index: 1000 !important;
 }
 
-.sticky {
-  position: -webkit-sticky;
-  position: sticky;
-}
-
-/* Customize the scrollbar for Webkit browsers */
+Customize the scrollbar for Webkit browsers
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -192,4 +187,16 @@
       background-color: rgba(255, 255, 255, 0.1);
     }
   }
+}
+
+/* In your globals.css or equivalent */
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+#__next {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }

@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useOrderSettings } from "@/contexts/OrderSettingsContext"
 import { useRealmApp } from "@/hooks/useRealmApp"
-import { Group, Item, ItemStatus, ItemSizes, ItemDesigns } from "@/typings/types"
+import { Group, Item, ItemStatus, ItemSizes, ItemDesigns, ColumnTitles, ColumnValue } from "@/typings/types"
 import { useBoardOperations } from "@/components/orders/OrderHooks"
 import { ShippingDashboard } from "@/components/shipping/ShippingDashboard"
 

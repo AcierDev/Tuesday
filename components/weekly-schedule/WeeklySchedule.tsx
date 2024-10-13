@@ -1,18 +1,17 @@
 'use client'
 
-import { DragDropContext, Draggable, Droppable } from '@hello-pangea/dnd'
-import { GripVertical, Minus, Plus, Check, ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { DragDropContext } from '@hello-pangea/dnd'
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { toast } from 'sonner'
 import { format, startOfWeek, addWeeks, subWeeks } from 'date-fns'
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRealmApp } from '@/hooks/useRealmApp'
 import { ColumnTitles, type Item, ItemStatus } from '@/typings/types'
+import { ConfirmCompletionDialog } from './ConfirmCompletionDialog'
+import { AddItemDialog } from './AddItemDialog'
+import { DayColumn } from './DayColumn'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 type DaySchedule = Record<string, string[]>;
 type WeeklySchedules = Record<string, DaySchedule>;
@@ -217,9 +216,8 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   }, [items, getItemValue])
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 sticky top-30">
       <div className="p-4 bg-white dark:bg-gray-800 shadow-md">
-        <h2 className="text-2xl font-bold mb-2">Weekly Planner</h2>
         <div className="flex items-center justify-between">
           <Button variant="outline" size="sm" onClick={() => changeWeek('prev')}>
             <ChevronLeft className="mr-1 h-4 w-4" /> Previous
@@ -277,246 +275,5 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
         getItemValue={getItemValue}
       />
     </div>
-  )
-}
-
-interface DayColumnProps {
-  day: string
-  dayItemIds: string[]
-  items: Item[]
-  calculateTotalSquares: (dayItemIds: string[]) => number
-  handleAddItem: (day: string) => void
-  handleRemoveItem: (day: string, itemId: string) => void
-  setConfirmCompleteItem: (item: Item | null) => void
-  getItemValue: (item: Item, columnName: ColumnTitles) => string
-}
-
-function DayColumn({
-  day,
-  dayItemIds,
-  items,
-  calculateTotalSquares,
-  handleAddItem,
-  handleRemoveItem,
-  setConfirmCompleteItem,
-  getItemValue
-}: DayColumnProps) {
-  return (
-    <Card className="flex-1 flex flex-col m-1 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
-      <CardHeader className="py-2 px-3 bg-gray-50 dark:bg-gray-700">
-        <CardTitle className="text-sm flex justify-between items-center">
-          <span>{day}</span>
-          <span className="text-xs font-normal">
-            Squares: {calculateTotalSquares(dayItemIds)}
-          </span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-grow p-2 overflow-y-auto">
-        <Droppable droppableId={day}>
-          {(provided) => (
-            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2 min-h-full">
-              {dayItemIds.map((itemId, index) => {
-                const item = items.find(i => i.id === itemId)
-                if (!item) return null
-                return (
-                  <Draggable key={item.id} draggableId={item.id} index={index}>
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 text-xs"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          
-                          <GripVertical className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-                          <div className="flex space-x-1">
-                            {item.status !== ItemStatus.Done && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setConfirmCompleteItem(item)}
-                                className="h-6 w-6 p-0"
-                              >
-                                <Check className="h-3 w-3" />
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleRemoveItem(day, item.id)}
-                              className="h-6 w-6 p-0"
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                        <p className="font-semibold truncate">{getItemValue(item, ColumnTitles.Customer_Name)}</p>
-                        <p className="text-gray-600 dark:text-gray-400 truncate">
-                          {getItemValue(item, ColumnTitles.Design)} - {getItemValue(item, ColumnTitles.Size)}
-                        </p>
-                      </div>
-                    )}
-                  </Draggable>
-                )
-              })}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </CardContent>
-      <Button 
-        className="m-2" 
-        size="sm" 
-        variant="outline" 
-        onClick={() => handleAddItem(day)}
-      >
-        <Plus className="mr-1 h-3 w-3" /> Add
-      </Button>
-    </Card>
-  )
-}
-
-interface AddItemDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  currentDay: string
-  searchTerm: string
-  setSearchTerm: (term: string) => void
-  filterDesign: string
-  setFilterDesign: (design: string) => void
-  filterSize: string
-  setFilterSize: (size: string) => void
-  designs: string[]
-  sizes: string[]
-  filteredItems: Item[]
-  handleQuickAdd: (day: string, item: Item) => void
-  getItemValue: (item: Item, columnName: ColumnTitles) => string
-}
-
-function AddItemDialog({
-  isOpen,
-  onClose,
-  currentDay,
-  searchTerm,
-  setSearchTerm,
-  filterDesign,
-  setFilterDesign,
-  filterSize,
-  setFilterSize,
-  designs,
-  sizes,
-  filteredItems,
-  handleQuickAdd,
-  getItemValue
-}: AddItemDialogProps) {
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Add Item to {currentDay}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="flex items-center space-x-2">
-            <Search className="h-4 w-4 text-gray-400" />
-            <Input
-              className="flex-grow"
-              placeholder="Search items..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="flex space-x-2">
-            <Select value={filterDesign} onValueChange={setFilterDesign}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by design" />
-              </SelectTrigger>
-              
-              <SelectContent>
-                <SelectItem value="all">All Designs</SelectItem>
-                {designs.map(design => (
-                  <SelectItem key={design} value={design}>{design}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterSize} onValueChange={setFilterSize}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by size" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sizes</SelectItem>
-                {sizes.map(size => (
-                  <SelectItem key={size} value={size}>{size}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="max-h-[300px] overflow-y-auto space-y-2">
-            {filteredItems.map(item => (
-              <div key={item.id} className="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-700 rounded-md">
-                <div>
-                  <p className="font-semibold text-sm">{getItemValue(item, ColumnTitles.Customer_Name)}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {getItemValue(item, ColumnTitles.Design)} - {getItemValue(item, ColumnTitles.Size)}
-                  </p>
-                </div>
-                <Button size="sm" onClick={() => {
-                  handleQuickAdd(currentDay, item)
-                  onClose()
-                }}>
-                  Add
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-        <DialogFooter>
-          <Button onClick={onClose}>Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-interface ConfirmCompletionDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  item: Item | null
-  handleMarkAsCompleted: (item: Item) => void
-  getItemValue: (item: Item, columnName: ColumnTitles) => string
-}
-
-function ConfirmCompletionDialog({
-  isOpen,
-  onClose,
-  item,
-  handleMarkAsCompleted,
-  getItemValue
-}: ConfirmCompletionDialogProps) {
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Confirm Completion</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to mark this item as completed?
-          </DialogDescription>
-        </DialogHeader>
-        <div className="py-4">
-          {item && (
-            <div>
-              <p className="font-semibold">{getItemValue(item, ColumnTitles.Customer_Name)}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {getItemValue(item, ColumnTitles.Design)} - {getItemValue(item, ColumnTitles.Size)}
-              </p>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => item && handleMarkAsCompleted(item)}>Confirm</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }
