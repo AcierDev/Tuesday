@@ -300,7 +300,7 @@ async function fetchTrackingData(trackingNumber: string): Promise<ShippingItem> 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-8">
       <Card className="w-full max-w-7xl mx-auto mb-8 bg-white dark:bg-gray-800">
-        <CardHeader className="bg-black text-white">
+        <CardHeader className="bg-black text-white dark:bg-gray-800">
           <CardTitle className="text-2xl font-bold flex items-center">
             <Truck className="mr-2 h-6 w-6" />
             Shipping Dashboard

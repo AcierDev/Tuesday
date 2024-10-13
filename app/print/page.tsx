@@ -116,7 +116,7 @@ export default function LabelPrinter() {
   const selectedTemplateData = TEMPLATES.find(t => t.id === selectedTemplate)
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto dark:bg-gray-800">
       <CardHeader className="text-center">
         <CardTitle>Label Printer</CardTitle>
         <CardDescription>Select a template and print your label or PDF</CardDescription>
@@ -125,7 +125,7 @@ export default function LabelPrinter() {
         <div className="w-full max-w-xs">
           <Label htmlFor="template" className="text-center block mb-2">Label Template</Label>
           <Select value={selectedTemplate.toString()} onValueChange={(value) => setSelectedTemplate(Number(value))}>
-            <SelectTrigger id="template">
+            <SelectTrigger id="template" className='dark:bg-gray-700'>
               <SelectValue placeholder="Select a template" />
             </SelectTrigger>
             <SelectContent>

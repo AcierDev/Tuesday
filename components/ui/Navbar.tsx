@@ -1,43 +1,40 @@
-'use client'
+"use client"
 
-import { Calculator, Logs, Menu, PackageOpen, PaintbrushVertical, Scissors, Truck, Printer, Settings, Power, Wrench, Accessibility } from 'lucide-react'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from "react"
+import { Moon, Sun, Logs, Truck, PaintbrushVertical, PackageOpen, Layers3, Calculator, Printer, Power, Accessibility, Settings, ChevronLeft, ChevronRight, Menu, ClipboardList } from "lucide-react"
+import { GiCircularSaw } from "react-icons/gi"
+import { useTheme } from "next-themes"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
+import { Separator } from "@/components/ui/separator"
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-
-import { GiCircularSaw } from "react-icons/gi";
 
 const mainNavItems = [
   { href: '/orders', icon: Logs, label: 'Orders', hotkey: '1' },
   { href: '/shipping', icon: Truck, label: 'Shipping', hotkey: '2' },
+  { type: 'divider' },
   { href: '/paint', icon: PaintbrushVertical, label: 'Paint', hotkey: '3' },
   { href: '/packaging', icon: PackageOpen, label: 'Packaging', hotkey: '4' },
-  { href: '/backboards', icon: Scissors, label: 'Backboards', hotkey: '5' },
-  { href: '/cutting', icon: GiCircularSaw, label: 'Cutting' },
-    { href: '/calculator', icon: Calculator, label: 'Calculator', hotkey: '6' },
+  { href: '/backboards', icon: Layers3, label: 'Backboards', hotkey: '5' },
+  { href: '/cutting', icon: GiCircularSaw, label: 'Cutting'},
+  { type: 'divider' },
+  { href: '/inventory', icon: ClipboardList, label: 'Inventory' },
+  { type: 'divider' },
+  { href: '/setup-utility', icon: Accessibility, label: 'Setup Utility', hotkey: '9' },
   { href: '/print', icon: Printer, label: 'Print', hotkey: '7' },
   { href: '/outlets', icon: Power, label: 'Outlets', hotkey: '8' },
-  { href: '/setup-utility', icon: Accessibility, label: 'Setup Utility', hotkey: '9' },
-]
-
-const toolsNavItems = [
-
+  { href: '/calculator', icon: Calculator, label: 'Calculator', hotkey: '6' },
 ]
 
 interface NavbarProps {
   onOpenSettings: () => void
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
+export function Navbar({ onOpenSettings }: NavbarProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const { theme, setTheme } = useTheme()
   const pathname = usePathname()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState(pathname)
@@ -53,8 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
   }
 
   const handleHotkey = useCallback((key: string) => {
-    const allNavItems = [...mainNavItems, ...toolsNavItems]
-    const navItem = allNavItems.find(item => item.hotkey === key)
+    const navItem = mainNavItems.find(item => item.hotkey === key)
     if (navItem) {
       router.push(navItem.href)
     }
@@ -83,98 +79,119 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
     }
   }, [handleHotkey])
 
-  const NavLink = ({ href, icon: Icon, label }) => (
-    <Link href={href} passHref>
-      <Button
-        className="w-full justify-start"
-        variant={activeTab === href ? 'default' : 'ghost'}
-      >
-        <Icon className="mr-2 h-4 w-4" />
-        {label}
-      </Button>
-    </Link>
-  )
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
 
-  const ToolsDropdown = () => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="w-full justify-start">
-          <Wrench className="mr-2 h-4 w-4" />
-          Tools
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {toolsNavItems.map((item) => (
-          <DropdownMenuItem key={item.href}>
-            <Link href={item.href} className="flex items-center w-full">
-              <item.icon className="mr-2 h-4 w-4" />
-              {item.label}
-            </Link>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
+  const NavLink = ({ href, icon: Icon, label }) => {
+    if (!href) return null;
+    return (
+      <Link
+        href={href}
+        className={`flex items-center rounded-lg px-3 py-4 text-sm font-medium ${
+          activeTab === href
+            ? "bg-secondary text-secondary-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-primary"
+        }`}
+        onClick={() => setActiveTab(href)}
+      >
+        <Icon className="h-5 w-5 flex-shrink-0" />
+        {sidebarOpen && <span className="ml-3">{label}</span>}
+      </Link>
+    )
+  }
 
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors duration-200">
-      <div className="w-full flex h-14 items-center px-4 sm:px-8">
-        {/* Left Section: Logo */}
-        <div className="flex-shrink-0 mr-4">
-          <Link className="flex items-center space-x-2" href="/">
-            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">Tuesday</span>
-          </Link>
+    <>
+      {/* Desktop Sidebar */}
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 ease-in-out overflow-y-auto border-r bg-muted/40 hidden lg:flex lg:flex-col`}>
+        <div className="flex items-center justify-between px-4 py-4">
+          {sidebarOpen && <span className="text-lg font-bold">Tuesday</span>}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className={sidebarOpen ? "" : "ml-auto"}
+          >
+            {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <span className="sr-only">Toggle sidebar</span>
+          </Button>
         </div>
-
-        {/* Center Section: Nav Links */}
-        <div className="hidden md:flex md:items-center md:justify-center flex-grow">
-          <div className="flex space-x-1">
-            {mainNavItems.map((item) => (
-              <NavLink key={item.href} {...item} />
+        <div className="flex-1 flex flex-col justify-between py-2">
+          <div className="flex-1 flex flex-col space-y-1 px-3">
+            {mainNavItems.map((item, index) => (
+              item.type === 'divider' ? (
+                <Separator key={index} className="my-2" />
+              ) : (
+                <NavLink key={item.href} {...item} />
+              )
             ))}
-            {/* <ToolsDropdown /> */}
+          </div>
+          <div className="mt-auto">
+            <div className="p-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="w-full flex items-center justify-center"
+              >
+                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                {sidebarOpen && <span className="sr-only">{theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}</span>}
+              </Button>
+            </div>
+            <div className="p-3">
+              <Button 
+                className="w-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={onOpenSettings}
+              >
+                <Settings className="h-5 w-5 flex-shrink-0" />
+                {sidebarOpen && <span className="ml-2">Settings</span>}
+              </Button>
+            </div>
           </div>
         </div>
+      </aside>
 
-        {/* Right Section: Settings Button and Mobile Menu */}
-        <div className="flex items-center ml-4">
-          {/* Settings Button for Desktop */}
-          <Button
-            className="hidden md:flex dark:bg-white dark:text-black"
-            variant="outline"
-            onClick={onOpenSettings}
-          >
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </Button>
-
-          {/* Mobile Menu */}
+      {/* Mobile Navbar */}
+      <nav className="lg:hidden sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="w-full flex h-14 items-center px-4">
+          <span className="text-xl font-bold mr-4">Tuesday</span>
           <Sheet>
             <SheetTrigger asChild>
-              <Button className="md:hidden ml-4" size="icon" variant="ghost">
+              <Button size="icon" variant="ghost">
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-              <div className="flex flex-col space-y-4">
-                {mainNavItems.map((item) => (
-                  <NavLink key={item.href} {...item} />
-                ))}
-                <ToolsDropdown />
-                <Button
-                  className="w-full justify-start"
-                  variant="ghost"
-                  onClick={onOpenSettings}
-                >
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Button>
+            <SheetContent side="left" className="w-64 p-0">
+              <div className="flex flex-col h-full">
+                <div className="flex-1 flex flex-col space-y-1 py-2">
+                  {mainNavItems.map((item, index) => (
+                    item.type === 'divider' ? (
+                      <Separator key={index} className="my-2" />
+                    ) : (
+                      <NavLink key={item.href} {...item} />
+                    )
+                  ))}
+                </div>
+                <div className="p-4">
+                  <Button className="w-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90" onClick={onOpenSettings}>
+                    <Settings className="mr-2 h-5 w-5" />
+                    Settings
+                  </Button>
+                </div>
               </div>
             </SheetContent>
           </Sheet>
+          <div className="ml-auto">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   )
 }
