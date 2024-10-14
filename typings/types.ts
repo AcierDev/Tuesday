@@ -218,6 +218,7 @@ export type InventoryItem = {
   restockQuantity: number
   countType: string
   countFrequency: CountFrequency
+  category: InventoryCategory
   countHistory: InventoryCount[]
 }
 
@@ -230,4 +231,11 @@ export enum CountFrequency {
   Daily = "Daily",
   Weekly = "Weekly",
   Monthly = "Monthly"
+}
+
+export enum InventoryCategory {
+  Woodworking = "Woodworking",
+  Assembly = "Assembly",
+  Packaging = "Packaging",
+  Misc = "Miscellaneous"
 }

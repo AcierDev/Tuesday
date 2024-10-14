@@ -46,7 +46,7 @@ export const ItemList: React.FC<ItemListProps> = ({
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex-grow overflow-x-auto">
+      <div className="flex-grow">
         {groups
           .filter(group => isAdmin ? true : group.title !== ItemStatus.Hidden)
           .map((group) => (

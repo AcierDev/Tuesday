@@ -7,7 +7,6 @@ import { useTheme } from "next-themes"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Separator } from "@/components/ui/separator"
-
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
@@ -90,11 +89,11 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
           activeTab === href
             ? "bg-secondary text-secondary-foreground"
             : "text-muted-foreground hover:bg-muted hover:text-primary"
-        }`}
+        } ${!sidebarOpen ? 'justify-center' : ''}`}
         onClick={() => setActiveTab(href)}
       >
-        <Icon className="h-5 w-5 flex-shrink-0" />
-        {sidebarOpen && <span className="ml-3">{label}</span>}
+        <Icon className={`h-5 w-5 flex-shrink-0 ${!sidebarOpen ? 'mr-0' : 'mr-3'}`} />
+        {sidebarOpen && <span>{label}</span>}
       </Link>
     )
   }
@@ -109,7 +108,7 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className={sidebarOpen ? "" : "ml-auto"}
+            className={sidebarOpen ? "" : "mx-auto"}
           >
             {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             <span className="sr-only">Toggle sidebar</span>
@@ -119,7 +118,7 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
           <div className="flex-1 flex flex-col space-y-1 px-3">
             {mainNavItems.map((item, index) => (
               item.type === 'divider' ? (
-                <Separator key={index} className="my-2" />
+                <Separator key={index} className="my-2 dark:bg-gray-600" decorative/>
               ) : (
                 <NavLink key={item.href} {...item} />
               )
@@ -134,7 +133,7 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
                 className="w-full flex items-center justify-center"
               >
                 {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                {sidebarOpen && <span className="sr-only">{theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}</span>}
+                <span className="sr-only">{theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}</span>
               </Button>
             </div>
             <div className="p-3">

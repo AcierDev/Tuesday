@@ -407,8 +407,8 @@ return (
           )}
         </Button>
       </div>
-      <div className="flex-grow overflow-hidden">
-        <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex-grow">
+        <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <ItemList
             board={board!}
             groups={sortedGroups}

@@ -1,13 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useState } from "react"
-import { CountFrequency, InventoryItem } from "@/typings/types"
 import { useRealmApp } from "@/hooks/useRealmApp"
-import { toast } from "sonner"
+import { Toaster, toast } from "sonner"
 import InventoryTable from "@/components/inventory/InventoryTable"
 import AddInventoryItemDialog from "@/components/inventory/AddInventoryItemDialog"
 import SearchAndFilter from "@/components/inventory/SearchAndFilter"
 import SummaryCards from "@/components/inventory/SummaryCards"
+import { CountFrequency, InventoryCategory, InventoryItem } from "@/typings/types"
 
 export default function InventoryManagement() {
   const [inventory, setInventory] = useState<InventoryItem[]>([])
@@ -123,8 +123,15 @@ export default function InventoryManagement() {
     setCountFilter(prevFilter => prevFilter === filter ? "All" : filter)
   }
 
+  const categoriesWithItems = Object.values(InventoryCategory).filter(category =>
+    filteredInventory.some(item => item.category === category)
+  )
+
+  const uncategorizedItems = filteredInventory.filter(item => !item.category || !Object.values(InventoryCategory).includes(item.category))
+
   return (
     <div className="p-8 bg-background text-foreground dark:bg-gray-900">
+      <Toaster position="top-center"/>
       <h1 className="text-3xl font-bold mb-6">Inventory Management</h1>
 
       <SummaryCards
@@ -148,11 +155,27 @@ export default function InventoryManagement() {
         addItem={addItem}
       />
 
-      <InventoryTable
-        filteredInventory={filteredInventory}
-        updateItem={updateItem}
-        deleteItem={deleteItem}
-      />
+      {categoriesWithItems.map(category => (
+        <div key={category} className="mt-8">
+          <h2 className="text-2xl font-semibold mb-4 sticky top-0 dark:bg-gray-900 z-10 pt-3 pb-2">{category}</h2>
+          <InventoryTable
+            filteredInventory={filteredInventory.filter(item => item.category === category)}
+            updateItem={updateItem}
+            deleteItem={deleteItem}
+          />
+        </div>
+      ))}
+
+      {uncategorizedItems.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-2xl font-semibold mb-4">Uncategorized</h2>
+          <InventoryTable
+            filteredInventory={uncategorizedItems}
+            updateItem={updateItem}
+            deleteItem={deleteItem}
+          />
+        </div>
+      )}
     </div>
   )
 }

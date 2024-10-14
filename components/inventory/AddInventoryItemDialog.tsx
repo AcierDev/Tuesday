@@ -3,8 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CountFrequency, InventoryItem } from "@/typings/types"
+import { CountFrequency, InventoryCategory, InventoryItem } from "@/typings/types"
 import { useState } from "react"
+import {toast, Toaster} from 'sonner'
 
 interface AddItemDialogProps {
   showAddItemDialog: boolean
@@ -19,12 +20,13 @@ export default function AddItemDialog({ showAddItemDialog, setShowAddItemDialog,
     restockQuantity: 0, 
     countType: "", 
     countFrequency: CountFrequency.Daily,
+    category: InventoryCategory.Misc,
     countHistory: []
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (newItem.name && newItem.quantity !== undefined && newItem.restockQuantity !== undefined && newItem.countType && newItem.countFrequency) {
+    if (newItem.name && newItem.quantity !== undefined && newItem.restockQuantity !== undefined && newItem.countType && newItem.countFrequency && newItem.category) {
       const itemToAdd: InventoryItem = {
         ...newItem as InventoryItem,
         countHistory: [{
@@ -33,7 +35,19 @@ export default function AddItemDialog({ showAddItemDialog, setShowAddItemDialog,
         }]
       }
       addItem(itemToAdd)
-      setNewItem({ name: "", quantity: 0, restockQuantity: 0, countType: "", countFrequency: CountFrequency.Daily, countHistory: [] })
+      setNewItem({ 
+        name: "", 
+        quantity: 0, 
+        restockQuantity: 0, 
+        countType: "", 
+        countFrequency: CountFrequency.Daily, 
+        category: InventoryCategory.Misc,
+        countHistory: [] 
+      })
+    } else {
+      toast.error("Please fill in all fields", {
+        style: { background: "#EF4444", color: "white" },
+      })
     }
   }
 
@@ -69,7 +83,6 @@ export default function AddItemDialog({ showAddItemDialog, setShowAddItemDialog,
             <div className="space-y-2">
               <Label htmlFor="item-restock">Restock Quantity</Label>
               <Input
-                
                 id="item-restock"
                 type="number"
                 placeholder="Restock Quantity"
@@ -99,6 +112,22 @@ export default function AddItemDialog({ showAddItemDialog, setShowAddItemDialog,
                 </SelectTrigger>
                 <SelectContent className="dark:bg-gray-700">
                   {Object.values(CountFrequency).map(option => 
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="item-category">Category</Label>
+              <Select 
+                value={newItem.category} 
+                onValueChange={(value: InventoryCategory) => setNewItem({ ...newItem, category: value })}
+              >
+                <SelectTrigger id="item-category" className="bg-input dark:bg-gray-700">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-gray-700">
+                  {Object.values(InventoryCategory).map(option => 
                     <SelectItem key={option} value={option}>{option}</SelectItem>
                   )}
                 </SelectContent>

@@ -53,7 +53,7 @@ export default function RootLayout({
                 <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
                   <Navbar onOpenSettings={handleOpenSettings} />
                   <div className="flex-1 overflow-auto">
-                    <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
+                    <main className="w-full px-4 sm:px-6 lg:px-8">
                       {children}
                     </main>
                   </div>
