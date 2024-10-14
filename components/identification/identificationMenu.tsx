@@ -238,7 +238,7 @@ export function UserIdentificationMenu() {
                   exit={{ opacity: 0, y: 20 }}
                   className="flex flex-col items-center space-y-4"
                 >
-                  <Avatar className={`w-24 h-24 ${CREDIT_COLORS[selectedUser]} ${theme === 'dark' ? 'border-gray-700' : 'border-white'} border-2`}>
+                  <Avatar className={`w-24 h-24 ${theme === 'dark' ? 'border-gray-700' : 'border-white'} border-2`}>
                     <AvatarImage src={OPTION_IMAGES[selectedUser]} alt={EMPLOYEE_MAP[selectedUser]} />
                     <AvatarFallback>{selectedUser}</AvatarFallback>
                   </Avatar>

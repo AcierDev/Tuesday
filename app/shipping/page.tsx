@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { 
   AlertCircle, CheckCircle2, Clock, Loader2, Package, Search, Truck, 
   List, Info, PackageIcon 
@@ -298,51 +299,60 @@ async function fetchTrackingData(trackingNumber: string): Promise<ShippingItem> 
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-8">
-      <Card className="w-full max-w-7xl mx-auto mb-8 bg-white dark:bg-gray-800">
-        <CardHeader className="bg-black text-white dark:bg-gray-800">
-          <CardTitle className="text-2xl font-bold flex items-center">
-            <Truck className="mr-2 h-6 w-6" />
-            Shipping Dashboard
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="mb-6 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="relative w-full md:w-1/3">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-              <Input
-                className="pl-10 pr-4 py-2 w-full border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
-                placeholder="Search orders..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Button className="flex items-center" variant="outline" onClick={loadItems}>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Refresh
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {renderStatusCard('unshipped')}
-            {renderStatusCard('pre_transit')}
-            {renderStatusCard('in_transit')}
-            {renderStatusCard('customs_clearance')}
-            {renderStatusCard('delivered')}
-          </div>
-        </CardContent>
-      </Card>
-      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 bg-white dark:bg-gray-800">
-          {selectedItem ? <ShippingDetails
-              item={selectedItem}
-              onClose={() => {
-                setIsDetailsOpen(false)
-                setSelectedItem(null)
-                loadItems() // Reload items after closing the shipping details
-              }}
-            /> : null}
-        </DialogContent>
-      </Dialog>
+    <div className="relative w-full h-full min-h-[300px] bg-white dark:bg-gray-800">
+      <Image
+        src="/images/thoon.gif"
+        alt="Centered GIF"
+        layout="fill"
+        objectFit="contain"
+        className="mx-auto"
+      />
     </div>
+    // <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-8">
+    //   <Card className="w-full max-w-7xl mx-auto mb-8 bg-white dark:bg-gray-800">
+    //     <CardHeader className="bg-black text-white dark:bg-gray-800">
+    //       <CardTitle className="text-2xl font-bold flex items-center">
+    //         <Truck className="mr-2 h-6 w-6" />
+    //         Shipping Dashboard
+    //       </CardTitle>
+    //     </CardHeader>
+    //     <CardContent className="p-6">
+    //       <div className="mb-6 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+    //         <div className="relative w-full md:w-1/3">
+    //           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+    //           <Input
+    //             className="pl-10 pr-4 py-2 w-full border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+    //             placeholder="Search orders..."
+    //             value={searchTerm}
+    //             onChange={(e) => setSearchTerm(e.target.value)}
+    //           />
+    //         </div>
+    //         <Button className="flex items-center" variant="outline" onClick={loadItems}>
+    //           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+    //           Refresh
+    //         </Button>
+    //       </div>
+    //       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    //         {renderStatusCard('unshipped')}
+    //         {renderStatusCard('pre_transit')}
+    //         {renderStatusCard('in_transit')}
+    //         {renderStatusCard('customs_clearance')}
+    //         {renderStatusCard('delivered')}
+    //       </div>
+    //     </CardContent>
+    //   </Card>
+    //   <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+    //     <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 bg-white dark:bg-gray-800">
+    //       {selectedItem ? <ShippingDetails
+    //           item={selectedItem}
+    //           onClose={() => {
+    //             setIsDetailsOpen(false)
+    //             setSelectedItem(null)
+    //             loadItems() // Reload items after closing the shipping details
+    //           }}
+    //         /> : null}
+    //     </DialogContent>
+    //   </Dialog>
+    // </div>
   )
 }

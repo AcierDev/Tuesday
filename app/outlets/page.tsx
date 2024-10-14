@@ -8,8 +8,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import Image from 'next/image'
 
-const API_BASE_URL = 'http://75.222.68.173:3004'
+const API_BASE_URL = 'http://everwoodbackend.ddns.net:3004'
 
 const controlOutlet = async (ip: string, action: 'on' | 'off') => {
   try {
@@ -43,10 +44,12 @@ export default function OutletControl() {
   const mountedRef = useRef(false)
 
   const devices = [
-    { name: "Air Compressor 1", ip: '192.168.1.182' },
-    { name: "Air Compressor 2", ip: '192.168.1.183' },
-    { name: "Paint Lights", ip: '192.168.1.184' },
-    { name: "Stage 1 Lights", ip: '192.168.1.185' }
+    { name: "New Compressor", ip: '192.168.1.182', icon: '/icons/air-compressor.png' },
+    { name: "Old Compressor", ip: '192.168.1.183', icon: '/icons/air-compressor.png' },
+    { name: "Paint Lights", ip: '192.168.1.184', icon: '/icons/led.png' },
+    { name: "Stage 1 Lights", ip: '192.168.1.185', icon: '/icons/led.png' },
+    { name: "Stage 1 Compressor", ip: '192.168.1.203', icon: '/icons/small-compressor.png' },
+    { name: "Stage 1 Motor", ip: '192.168.1.204', icon: '/icons/stepper.png' },
   ]
 
   const handleControl = async (index: number, action: 'on' | 'off') => {
@@ -159,16 +162,21 @@ export default function OutletControl() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {devices.map((device, index) => (
           <Card key={index} className="overflow-hidden">
-            <CardHeader className="bg-secondary">
-              <CardTitle className="flex justify-between items-center">
-                {device.name}
+            <CardHeader className="bg-secondary dark:bg-gray-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <Image src={device.icon} alt={device.name} width={48} height={48} className="dark:invert" />
+                  <div>
+                    <CardTitle>{device.name}</CardTitle>
+                    <CardDescription>IP: {device.ip}</CardDescription>
+                  </div>
+                </div>
                 <Badge variant={status[index] === 'on' ? 'default' : 'secondary'}>
                   {status[index] === 'unknown' ? 'Unknown' : status[index] === 'on' ? 'ON' : 'OFF'}
                 </Badge>
-              </CardTitle>
-              <CardDescription>IP: {device.ip}</CardDescription>
+              </div>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className={`pt-6 bg-${status[index] === "on" ? "green-700" : "red-900"} dark:bg-${status[index] === "on" ? "green-700" : "red-900"}`}>
               {loading ? (
                 <Skeleton className="h-8 w-full" />
               ) : (
@@ -182,26 +190,6 @@ export default function OutletControl() {
                 </div>
               )}
             </CardContent>
-            <CardFooter className="flex justify-between bg-secondary/50">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => getOutletStatus(index)}
-                disabled={refreshing.includes(index)}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing.includes(index) ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <Button
-                variant={status[index] === 'on' ? 'destructive' : 'default'}
-                size="sm"
-                onClick={() => handleControl(index, status[index] === 'on' ? 'off' : 'on')}
-                disabled={refreshing.includes(index)}
-              >
-                <Power className="h-4 w-4 mr-2" />
-                {status[index] === 'on' ? 'Turn Off' : 'Turn On'}
-              </Button>
-            </CardFooter>
           </Card>
         ))}
       </div>

@@ -90,7 +90,7 @@ export const EmployeeAvatar: React.FC<EmployeeAvatarProps> = ({
             <Lock className="w-4 h-4 text-white" />
           </div>
         )}
-        <Avatar className={`w-20 h-20 ${CREDIT_COLORS[credit]} ${theme === 'dark' ? 'border-gray-700' : 'border-white'} border-2 cursor-pointer`}>
+        <Avatar className={`w-20 h-20 cursor-pointer`}>
           <AvatarImage src={OPTION_IMAGES[credit]} alt={employeeName} />
           <AvatarFallback>{credit}</AvatarFallback>
         </Avatar>

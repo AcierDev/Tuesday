@@ -379,31 +379,47 @@ export const DesignBlends: Record<ItemDesigns, string[]> = Object.fromEntries(
   ])
 );
 
+export const EMPLOYEE_INITIALS = ['AM', 'BC', 'AW', 'BS', 'TB', 'PC', 'DC'] as const
+export type EmployeeOption = typeof EMPLOYEE_INITIALS[number]
 export const CREDIT_OPTIONS = ['AM', 'BC', 'AW'] as const
 export type CreditOption = typeof CREDIT_OPTIONS[number]
 
-export const OPTION_IMAGES: Record<CreditOption, string> = {
-  'AM': '/images/alex.png',
-  'BC': '/images/peter.png',
-  'AW': '/images/akiva2.png',
+export const OPTION_IMAGES: Record<EmployeeOption, string> = {
+  'AM': '/images/pfp/alex.png',
+  'BC': '/images/pfp/peter4.png',
+  'AW': '/images/pfp/akiva2-3.png',
+  BS: '/images/pfp/bentzi.png',
+  TB: '/images/pfp/stewie.png',
+  PC: '',
+  DC: ''
 }
 
-export const EMPLOYEE_MAP: Record<CreditOption, EmployeeNames> = {
-  'AW': EmployeeNames.Akiva,
+export const EMPLOYEE_MAP: Record<EmployeeOption, EmployeeNames> = {
   'AM': EmployeeNames.Alex,
+  'BS': EmployeeNames.Bentzi,
+  'AW': EmployeeNames.Akiva,
   'BC': EmployeeNames.Ben,
+  'TB': EmployeeNames.Tyler,
 }
 
-export const INITIALS_MAP: Record<EmployeeNames, CreditOption> = {
+export const INITIALS_MAP: Record<EmployeeNames, EmployeeOption> = {
   [EmployeeNames.Akiva]: 'AW',
   [EmployeeNames.Alex]: 'AM',
   [EmployeeNames.Ben]: 'BC',
+  [EmployeeNames.Bentzi]: "BS",
+  [EmployeeNames.Paris]: "PC",
+  [EmployeeNames.Dylan]: "DC",
+  [EmployeeNames.Tyler]: "TB"
 }
 
-export const CREDIT_COLORS: Record<CreditOption, string> = {
+export const CREDIT_COLORS: Record<EmployeeOption, string> = {
   'AW': 'bg-orange-500',
   'AM': 'bg-blue-500',
   'BC': 'bg-green-500',
+  'BS': 'bg-red-500',
+  TB: '',
+  PC: '',
+  DC: ''
 }
 
 export const STATUS_COLORS: Record<ItemStatus, string> = {
@@ -411,7 +427,6 @@ export const STATUS_COLORS: Record<ItemStatus, string> = {
   [ItemStatus.OnDeck]: 'yellow-500',
   [ItemStatus.Wip]: 'green-600',
   [ItemStatus.Packaging]: 'lime-300',
-  [ItemStatus.Shipping]: 'yellow-900', // Placeholder
   [ItemStatus.At_The_Door]: 'yellow-900',
   [ItemStatus.Done]: 'orange-600',
 };
