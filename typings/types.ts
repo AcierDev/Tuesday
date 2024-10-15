@@ -234,8 +234,13 @@ export enum CountFrequency {
 }
 
 export enum InventoryCategory {
+  Operations = "Operations",
   Woodworking = "Woodworking",
   Assembly = "Assembly",
   Packaging = "Packaging",
   Misc = "Miscellaneous"
+}
+
+export enum LockedInventory {
+  Boards = "Uncut Boards"
 }

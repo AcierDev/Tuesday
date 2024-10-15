@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRealmApp } from "@/hooks/useRealmApp"
 import { Toaster, toast } from "sonner"
-import InventoryTable from "@/components/inventory/InventoryTable"
 import AddInventoryItemDialog from "@/components/inventory/AddInventoryItemDialog"
-import SearchAndFilter from "@/components/inventory/SearchAndFilter"
 import SummaryCards from "@/components/inventory/SummaryCards"
 import { CountFrequency, InventoryCategory, InventoryItem } from "@/typings/types"
+import { useUser } from "@/contexts/UserContext"
+import { SearchAndFilter } from "@/components/inventory/SearchAndFilter"
+import { InventoryTable } from "@/components/inventory/InventoryTable"
 
 export default function InventoryManagement() {
   const [inventory, setInventory] = useState<InventoryItem[]>([])
