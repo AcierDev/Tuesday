@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, ReactNode, useEffect } from 'react'
+import { useState, ReactNode, useEffect, KeyboardEvent } from 'react'
 import { EmployeeNames } from '@/typings/types'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { checkAdminPassword, hasPermission } from '@/app/actions/auth'
 import { AlertCircle } from 'lucide-react'
-import { toast } from 'sonner'
 
 export type AdminActionHandlerProps = {
   user: EmployeeNames | null
@@ -100,12 +99,20 @@ export function AdminActionHandler({
     }
   }
 
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      onOpenChange(false)
+    } else if (e.key === 'Enter') {
+      handleConfirm()
+    }
+  }
+
   return (
     <>
       {children({ onClick: handleAction, disabled: isLoading })}
 
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[425px] dark:bg-gray-800">
+        <DialogContent className="sm:max-w-[425px] dark:bg-gray-800" onKeyDown={handleKeyDown}>
           <DialogHeader>
             <DialogTitle>{actionName}</DialogTitle>
             <DialogDescription>
@@ -121,6 +128,7 @@ export function AdminActionHandler({
               value={adminPassword}
               onChange={(e) => setAdminPassword(e.target.value)}
               className="dark:bg-gray-700 dark:text-white"
+              onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
             />
           )}
           {error && (

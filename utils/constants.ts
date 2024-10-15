@@ -417,7 +417,7 @@ export const CREDIT_COLORS: Record<EmployeeOption, string> = {
   'AM': 'bg-blue-500',
   'BC': 'bg-green-500',
   'BS': 'bg-red-500',
-  TB: '',
+  TB: 'bg-yellow-500',
   PC: '',
   DC: ''
 }

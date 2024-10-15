@@ -11,12 +11,15 @@ import { RealmAppProvider } from "@/hooks/useRealmApp"
 import { ThemeProvider } from "../components/providers/ThemeProvider"
 import { SettingsPanel } from "@/components/setttings/SettingsPanel"
 import { UserProvider } from "@/contexts/UserContext"
+import { InventoryProvider } from "@/contexts/InventoryContext"
 
+// Load custom fonts
 const geistSans = localFont({
   src: "../fonts/GeistVF.woff",
   variable: "--font-geist-sans",
   weight: "100 900",
 })
+
 const geistMono = localFont({
   src: "../fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
@@ -28,6 +31,7 @@ const metadata: Metadata = {
   description: "Replacing Monday",
 }
 
+// Root layout component
 export default function RootLayout({
   children,
 }: {
@@ -35,13 +39,9 @@ export default function RootLayout({
 }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
-  const handleOpenSettings = () => {
-    setIsSettingsOpen(true)
-  }
-
-  const handleCloseSettings = () => {
-    setIsSettingsOpen(false)
-  }
+  // Handlers for opening/closing settings panel
+  const handleOpenSettings = () => setIsSettingsOpen(true)
+  const handleCloseSettings = () => setIsSettingsOpen(false)
 
   return (
     <html className={`${geistSans.variable} ${geistMono.variable}`} lang="en">
@@ -50,17 +50,19 @@ export default function RootLayout({
           <RealmAppProvider>
             <OrderSettingsProvider>
               <UserProvider>
-                <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
-                  <Navbar onOpenSettings={handleOpenSettings} />
-                  <div className="flex-1 overflow-auto">
-                    <main className="w-full px-4 sm:px-6 lg:px-8">
-                      {children}
-                    </main>
+                <InventoryProvider>
+                  <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
+                    <Navbar onOpenSettings={handleOpenSettings} />
+                    <div className="flex-1 overflow-auto">
+                      <main className="w-full px-4 sm:px-6 lg:px-8">
+                        {children}
+                      </main>
+                    </div>
+                    {isSettingsOpen && (
+                      <SettingsPanel onClose={handleCloseSettings} />
+                    )}
                   </div>
-                  {isSettingsOpen && (
-                    <SettingsPanel onClose={handleCloseSettings} />
-                  )}
-                </div>
+                </InventoryProvider>
               </UserProvider>
             </OrderSettingsProvider>
           </RealmAppProvider>
