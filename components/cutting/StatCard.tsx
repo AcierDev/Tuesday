@@ -1,8 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface StatCardProps {
-  title: string;
-  value: string | number | React.ReactNode;
+  title: string
+  value: string | number | React.ReactNode
 }
 
 export default function StatCard({ title, value }: StatCardProps) {
@@ -15,5 +15,5 @@ export default function StatCard({ title, value }: StatCardProps) {
         <div className="text-4xl font-bold">{value}</div>
       </CardContent>
     </Card>
-  );
+  )
 }

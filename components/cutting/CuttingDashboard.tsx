@@ -1,77 +1,63 @@
-import { useEffect, useState } from "react";
-import { format, isSameDay, startOfDay } from "date-fns";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { CalendarIcon, MinusCircle, PlusCircle } from "lucide-react";
-import { cn } from "@/utils/functions";
-import { CuttingData } from "@/typings/interfaces";
+import { useState, useEffect } from "react"
+import { format, isSameDay, startOfDay } from "date-fns"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { CalendarIcon, PlusCircle, MinusCircle } from "lucide-react"
+import { cn } from "@/utils/functions"
+import { CuttingData } from "@/typings/interfaces"
 
 interface CuttingDashboardProps {
-  data: CuttingData[];
-  date: Date;
-  setDate: (date: Date) => void;
-  cuttingHistoryCollection: any;
+  data: CuttingData[]
+  date: Date
+  setDate: (date: Date) => void
+  cuttingHistoryCollection: any
 }
 
-export default function CuttingDashboard(
-  { data, date, setDate, cuttingHistoryCollection }: CuttingDashboardProps,
-) {
-  const [count, setCount] = useState<string>("");
-  const [selectedDateCount, setSelectedDateCount] = useState<number>(0);
+export default function CuttingDashboard({ data, date, setDate, cuttingHistoryCollection }: CuttingDashboardProps) {
+  const [count, setCount] = useState<string>("")
+  const [selectedDateCount, setSelectedDateCount] = useState<number>(0)
 
   useEffect(() => {
-    const selectedEntry = data.find((entry) => isSameDay(entry.date, date));
-    setSelectedDateCount(selectedEntry ? selectedEntry.count : 0);
-    setCount(selectedEntry ? selectedEntry.count.toString() : "");
-  }, [data, date]);
+    const selectedEntry = data.find(entry => isSameDay(entry.date, date))
+    setSelectedDateCount(selectedEntry ? selectedEntry.count : 0)
+    setCount(selectedEntry ? selectedEntry.count.toString() : "")
+  }, [data, date])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (count && cuttingHistoryCollection) {
-      const newCount = parseInt(count, 10);
-      await updateCuttingCount(newCount);
+      const newCount = parseInt(count, 10)
+      await updateCuttingCount(newCount)
     }
-  };
+  }
 
   const handleQuickUpdate = async (increment: number) => {
     if (cuttingHistoryCollection) {
-      const newCount = Math.max(0, selectedDateCount + increment);
-      await updateCuttingCount(newCount);
+      const newCount = Math.max(0, selectedDateCount + increment)
+      await updateCuttingCount(newCount)
     }
-  };
+  }
 
   const updateCuttingCount = async (newCount: number) => {
     if (cuttingHistoryCollection) {
-      const existingEntry = data.find((item) => isSameDay(item.date, date));
-
+      const existingEntry = data.find(item => isSameDay(item.date, date))
+      
       if (existingEntry) {
         await cuttingHistoryCollection.updateOne(
           { date: startOfDay(date).toISOString() },
-          { $set: { count: newCount } },
-        );
+          { $set: { count: newCount } }
+        )
       } else {
-        await cuttingHistoryCollection.insertOne({
-          date: startOfDay(date).toISOString(),
-          count: newCount,
-        });
+        await cuttingHistoryCollection.insertOne({ date: startOfDay(date).toISOString(), count: newCount })
       }
 
-      setSelectedDateCount(newCount);
-      setCount(newCount.toString());
+      setSelectedDateCount(newCount)
+      setCount(newCount.toString())
     }
-  };
+  }
 
   return (
     <>
@@ -89,7 +75,7 @@ export default function CuttingDashboard(
                     variant={"outline"}
                     className={cn(
                       "w-[280px] justify-start text-left font-normal dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600",
-                      !date && "text-muted-foreground dark:text-gray-400",
+                      !date && "text-muted-foreground dark:text-gray-400"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -100,8 +86,7 @@ export default function CuttingDashboard(
                   <Calendar
                     mode="single"
                     selected={date}
-                    onSelect={(newDate) =>
-                      newDate && setDate(startOfDay(newDate))}
+                    onSelect={(newDate) => newDate && setDate(startOfDay(newDate))}
                     initialFocus
                     className="dark:bg-gray-800 dark:text-gray-200"
                   />
@@ -122,65 +107,32 @@ export default function CuttingDashboard(
                 className="dark:bg-gray-700 dark:text-gray-200"
               />
             </div>
-            <Button
-              onClick={handleSubmit}
-              className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-            >
+            <Button onClick={handleSubmit} className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
               Update
             </Button>
           </div>
           <div className="flex justify-between items-center">
-            <Button
-              onClick={() => handleQuickUpdate(-10)}
-              variant="outline"
-              size="lg"
-              className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-            >
+            <Button onClick={() => handleQuickUpdate(-10)} variant="outline" size="lg" className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
               <MinusCircle className="mr-2 h-4 w-4" />
               -10
             </Button>
-            <Button
-              onClick={() => handleQuickUpdate(-5)}
-              variant="outline"
-              size="lg"
-              className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-            >
+            <Button onClick={() => handleQuickUpdate(-5)} variant="outline" size="lg" className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
               <MinusCircle className="mr-2 h-4 w-4" />
               -5
             </Button>
-            <Button
-              onClick={() => handleQuickUpdate(-1)}
-              variant="outline"
-              size="lg"
-              className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-            >
+            <Button onClick={() => handleQuickUpdate(-1)} variant="outline" size="lg" className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
               <MinusCircle className="mr-2 h-4 w-4" />
               -1
             </Button>
-            <Button
-              onClick={() => handleQuickUpdate(1)}
-              variant="outline"
-              size="lg"
-              className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-            >
+            <Button onClick={() => handleQuickUpdate(1)} variant="outline" size="lg" className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
               <PlusCircle className="mr-2 h-4 w-4" />
               +1
             </Button>
-            <Button
-              onClick={() => handleQuickUpdate(5)}
-              variant="outline"
-              size="lg"
-              className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-            >
+            <Button onClick={() => handleQuickUpdate(5)} variant="outline" size="lg" className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
               <PlusCircle className="mr-2 h-4 w-4" />
               +5
             </Button>
-            <Button
-              onClick={() => handleQuickUpdate(10)}
-              variant="outline"
-              size="lg"
-              className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-            >
+            <Button onClick={() => handleQuickUpdate(10)} variant="outline" size="lg" className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
               <PlusCircle className="mr-2 h-4 w-4" />
               +10
             </Button>
@@ -188,5 +140,5 @@ export default function CuttingDashboard(
         </div>
       </CardContent>
     </>
-  );
+  )
 }

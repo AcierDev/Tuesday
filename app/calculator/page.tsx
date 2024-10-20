@@ -1,50 +1,33 @@
-"use client";
+"use client"
 
-import { ExternalLink, Info, Mail, ShoppingCart } from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
+import { ExternalLink, Info, Mail, ShoppingCart } from "lucide-react"
+import React, { useEffect, useRef, useState } from "react"
 
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface CostBreakdown {
-  basePrice: number;
+  basePrice: number
   shipping: {
-    base: number;
-    additionalHeight: number;
-    expedited: number;
-    total: number;
-  };
-  tax: number;
-  total: number;
+    base: number
+    additionalHeight: number
+    expedited: number
+    total: number
+  }
+  tax: number
+  total: number
 }
 
-const BLOCK_SIZE = 3; // Block size in inches
-const DEFAULT_CARD_WIDTH = 400; // Default card width in pixels
-const DIAGRAM_PADDING = 40; // Padding around the diagram
+const BLOCK_SIZE = 3 // Block size in inches
+const DEFAULT_CARD_WIDTH = 400 // Default card width in pixels
+const DIAGRAM_PADDING = 40 // Padding around the diagram
 
 enum ItemSizes {
   Fourteen_By_Seven = "14 x 7",
@@ -61,22 +44,18 @@ enum ItemSizes {
 }
 
 const ArtDiagram: React.FC<{
-  height: number;
-  width: number;
-  unit: "inches" | "feet";
-  scale: number;
-  showBlocks: boolean;
+  height: number
+  width: number
+  unit: "inches" | "feet"
+  scale: number
+  showBlocks: boolean
 }> = ({ height, width, unit, scale, showBlocks }) => {
-  const diagramHeight = height * (unit === "feet" ? 12 : 1) * scale;
-  const diagramWidth = width * (unit === "feet" ? 12 : 1) * scale;
-  const blockSizePx = BLOCK_SIZE * scale;
+  const diagramHeight = height * (unit === "feet" ? 12 : 1) * scale
+  const diagramWidth = width * (unit === "feet" ? 12 : 1) * scale
+  const blockSizePx = BLOCK_SIZE * scale
 
-  const blocksHeight = Math.floor(
-    (height * (unit === "feet" ? 12 : 1)) / BLOCK_SIZE,
-  );
-  const blocksWidth = Math.floor(
-    (width * (unit === "feet" ? 12 : 1)) / BLOCK_SIZE,
-  );
+  const blocksHeight = Math.floor((height * (unit === "feet" ? 12 : 1)) / BLOCK_SIZE)
+  const blocksWidth = Math.floor((width * (unit === "feet" ? 12 : 1)) / BLOCK_SIZE)
 
   return (
     <div className="px-6 pb-6">
@@ -107,8 +86,7 @@ const ArtDiagram: React.FC<{
             height: diagramHeight,
           }}
         >
-          {showBlocks
-            ? Array.from({ length: blocksHeight }).map((_, rowIndex) =>
+          {showBlocks ? Array.from({ length: blocksHeight }).map((_, rowIndex) =>
               Array.from({ length: blocksWidth }).map((_, colIndex) => (
                 <div
                   key={`${rowIndex}-${colIndex}`}
@@ -123,13 +101,12 @@ const ArtDiagram: React.FC<{
                   }}
                 />
               ))
-            )
-            : null}
+            ) : null}
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 export default function CustomArtRequest() {
   const [formData, setFormData] = useState({
@@ -138,7 +115,7 @@ export default function CustomArtRequest() {
     unit: "inches" as "inches" | "feet",
     isExpedited: false,
     selectedSize: "custom" as ItemSizes | "custom",
-  });
+  })
   const [costBreakdown, setCostBreakdown] = useState<CostBreakdown>({
     basePrice: 0,
     shipping: {
@@ -149,69 +126,62 @@ export default function CustomArtRequest() {
     },
     tax: 0,
     total: 0,
-  });
-  const [showBlocks, setShowBlocks] = useState(false);
-  const [scale, setScale] = useState(1);
-  const cardRef = useRef<HTMLDivElement>(null);
+  })
+  const [showBlocks, setShowBlocks] = useState(false)
+  const [scale, setScale] = useState(1)
+  const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    updateCostBreakdown(formData.height, formData.width);
-  }, []);
+    updateCostBreakdown(formData.height, formData.width)
+  }, [])
 
   useEffect(() => {
     const calculateScale = () => {
-      if (!cardRef.current) return 1;
+      if (!cardRef.current) return 1
 
-      const cardWidth = cardRef.current.offsetWidth;
-      const maxWidth = cardWidth - DIAGRAM_PADDING;
-      const maxHeight = window.innerHeight * 0.6;
-      const widthInInches = parseFloat(formData.width) *
-        (formData.unit === "feet" ? 12 : 1);
-      const heightInInches = parseFloat(formData.height) *
-        (formData.unit === "feet" ? 12 : 1);
-      const aspectRatio = widthInInches / heightInInches;
+      const cardWidth = cardRef.current.offsetWidth
+      const maxWidth = cardWidth - DIAGRAM_PADDING
+      const maxHeight = window.innerHeight * 0.6
+      const widthInInches = parseFloat(formData.width) * (formData.unit === "feet" ? 12 : 1)
+      const heightInInches = parseFloat(formData.height) * (formData.unit === "feet" ? 12 : 1)
+      const aspectRatio = widthInInches / heightInInches
 
-      let newScale: number;
+      let newScale: number
       if (maxWidth / aspectRatio <= maxHeight) {
-        newScale = maxWidth / widthInInches;
+        newScale = maxWidth / widthInInches
       } else {
-        newScale = maxHeight / heightInInches;
+        newScale = maxHeight / heightInInches
       }
 
-      return newScale;
-    };
+      return newScale
+    }
 
     const handleResize = () => {
-      setScale(calculateScale());
-    };
-
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [formData.width, formData.height, formData.unit]);
-
-  const calculateCost = (
-    h: number,
-    w: number,
-    expedited: boolean,
-  ): CostBreakdown => {
-    const pricePerSquareInch = 0.5;
-    const basePrice = h * w * pricePerSquareInch;
-
-    const baseShipping = 20;
-    let additionalHeightCharge = 0;
-    if (h > 65) {
-      const extraHeight = h - 65;
-      additionalHeightCharge = Math.ceil(extraHeight / 16) * 100;
+      setScale(calculateScale())
     }
-    const expeditedCharge = expedited ? 75 : 0;
-    const totalShipping = baseShipping + additionalHeightCharge +
-      expeditedCharge;
 
-    const taxRate = 0.1;
-    const tax = (basePrice + totalShipping) * taxRate;
+    handleResize()
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [formData.width, formData.height, formData.unit])
 
-    const total = basePrice + totalShipping + tax;
+  const calculateCost = (h: number, w: number, expedited: boolean): CostBreakdown => {
+    const pricePerSquareInch = 0.5
+    const basePrice = h * w * pricePerSquareInch
+
+    const baseShipping = 20
+    let additionalHeightCharge = 0
+    if (h > 65) {
+      const extraHeight = h - 65
+      additionalHeightCharge = Math.ceil(extraHeight / 16) * 100
+    }
+    const expeditedCharge = expedited ? 75 : 0
+    const totalShipping = baseShipping + additionalHeightCharge + expeditedCharge
+
+    const taxRate = 0.1
+    const tax = (basePrice + totalShipping) * taxRate
+
+    const total = basePrice + totalShipping + tax
 
     return {
       basePrice,
@@ -223,114 +193,94 @@ export default function CustomArtRequest() {
       },
       tax,
       total,
-    };
-  };
+    }
+  }
 
   const updateCostBreakdown = (h: string, w: string) => {
-    const heightInInches = parseFloat(h) * (formData.unit === "feet" ? 12 : 1);
-    const widthInInches = parseFloat(w) * (formData.unit === "feet" ? 12 : 1);
+    const heightInInches = parseFloat(h) * (formData.unit === "feet" ? 12 : 1)
+    const widthInInches = parseFloat(w) * (formData.unit === "feet" ? 12 : 1)
     if (!isNaN(heightInInches) && !isNaN(widthInInches) && widthInInches > 0) {
-      setCostBreakdown(
-        calculateCost(heightInInches, widthInInches, formData.isExpedited),
-      );
+      setCostBreakdown(calculateCost(heightInInches, widthInInches, formData.isExpedited))
     } else {
       setCostBreakdown({
         basePrice: 0,
         shipping: { base: 0, additionalHeight: 0, expedited: 0, total: 0 },
         tax: 0,
         total: 0,
-      });
+      })
     }
-  };
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
       [name]: value,
       selectedSize: "custom",
-    }));
-    updateCostBreakdown(
-      name === "height" ? value : formData.height,
-      name === "width" ? value : formData.width,
-    );
-  };
+    }))
+    updateCostBreakdown(name === "height" ? value : formData.height, name === "width" ? value : formData.width)
+  }
 
   const handleUnitChange = (newUnit: "inches" | "feet") => {
-    const factor = newUnit === "feet" ? 1 / 12 : 12;
-    const newHeight = (parseFloat(formData.height) * factor).toFixed(
-      newUnit === "feet" ? 2 : 0,
-    );
-    const newWidth = (parseFloat(formData.width) * factor).toFixed(
-      newUnit === "feet" ? 2 : 0,
-    );
+    const factor = newUnit === "feet" ? 1 / 12 : 12
+    const newHeight = (parseFloat(formData.height) * factor).toFixed(newUnit === "feet" ? 2 : 0)
+    const newWidth = (parseFloat(formData.width) * factor).toFixed(newUnit === "feet" ? 2 : 0)
     setFormData((prev) => ({
       ...prev,
       unit: newUnit,
       height: newHeight,
       width: newWidth,
-    }));
-    updateCostBreakdown(newHeight, newWidth);
-  };
+    }))
+    updateCostBreakdown(newHeight, newWidth)
+  }
 
   const handleExpeditedChange = (checked: boolean) => {
     setFormData((prev) => ({
       ...prev,
       isExpedited: checked,
-    }));
-    updateCostBreakdown(formData.height, formData.width);
-  };
+    }))
+    updateCostBreakdown(formData.height, formData.width)
+  }
 
   const handleSizeSelect = (size: ItemSizes | "custom") => {
     if (size !== "custom") {
-      const [w, h] = size.split(" x ").map((s) => parseInt(s) * BLOCK_SIZE);
-      const newWidth = w.toString();
-      const newHeight = h.toString();
+      const [w, h] = size.split(" x ").map((s) => parseInt(s) * BLOCK_SIZE)
+      const newWidth = w.toString()
+      const newHeight = h.toString()
       setFormData((prev) => ({
         ...prev,
         selectedSize: size,
         width: newWidth,
         height: newHeight,
         unit: "inches",
-      }));
-      updateCostBreakdown(newHeight, newWidth);
+      }))
+      updateCostBreakdown(newHeight, newWidth)
     } else {
       setFormData((prev) => ({
         ...prev,
         selectedSize: "custom",
-      }));
+      }))
     }
-  };
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     alert(
-      `Request submitted for a ${formData.height} ${formData.unit} x ${formData.width} ${formData.unit} art piece. Total cost: $${
-        costBreakdown.total.toFixed(
-          2,
-        )
-      }`,
-    );
-  };
+      `Request submitted for a ${formData.height} ${formData.unit} x ${formData.width} ${formData.unit} art piece. Total cost: $${costBreakdown.total.toFixed(
+        2
+      )}`
+    )
+  }
 
   return (
     <Card
       ref={cardRef}
       className="w-full mx-auto"
-      style={{
-        maxWidth: `${
-          Math.max(
-            scale * parseFloat(formData.width) + DIAGRAM_PADDING * 2,
-            DEFAULT_CARD_WIDTH,
-          )
-        }px`,
-      }}
+      style={{ maxWidth: `${Math.max(scale * parseFloat(formData.width) + DIAGRAM_PADDING * 2, DEFAULT_CARD_WIDTH)}px` }}
     >
       <CardHeader>
         <CardTitle>Custom Art Request</CardTitle>
-        <CardDescription>
-          Enter the dimensions for your custom art piece
-        </CardDescription>
+        <CardDescription>Enter the dimensions for your custom art piece</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="dimensions">
@@ -343,10 +293,7 @@ export default function CustomArtRequest() {
               <div className="grid w-full items-center gap-4">
                 <div>
                   <Label htmlFor="size-select">Select Size</Label>
-                  <Select
-                    value={formData.selectedSize}
-                    onValueChange={handleSizeSelect}
-                  >
+                  <Select value={formData.selectedSize} onValueChange={handleSizeSelect}>
                     <SelectTrigger id="size-select">
                       <SelectValue placeholder="Choose a size" />
                     </SelectTrigger>
@@ -386,10 +333,7 @@ export default function CustomArtRequest() {
                 </div>
                 <div>
                   <Label>Unit</Label>
-                  <RadioGroup
-                    value={formData.unit}
-                    onValueChange={handleUnitChange}
-                  >
+                  <RadioGroup value={formData.unit} onValueChange={handleUnitChange}>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem id="inches" value="inches" />
                       <Label htmlFor="inches">Inches</Label>
@@ -401,11 +345,7 @@ export default function CustomArtRequest() {
                   </RadioGroup>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={formData.isExpedited}
-                    id="expedited"
-                    onCheckedChange={handleExpeditedChange}
-                  />
+                  <Checkbox checked={formData.isExpedited} id="expedited" onCheckedChange={handleExpeditedChange} />
                   <Label htmlFor="expedited">Expedited Shipping (+$75)</Label>
                 </div>
                 <Button className="mt-4" type="submit">
@@ -417,11 +357,7 @@ export default function CustomArtRequest() {
           <TabsContent value="preview">
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
-                <Checkbox
-                  checked={showBlocks}
-                  id="showBlocks"
-                  onCheckedChange={setShowBlocks}
-                />
+                <Checkbox checked={showBlocks} id="showBlocks" onCheckedChange={setShowBlocks} />
                 <Label htmlFor="showBlocks">Show Blocks</Label>
               </div>
               <ArtDiagram
@@ -438,9 +374,7 @@ export default function CustomArtRequest() {
       <CardFooter className="flex flex-col items-start">
         <div className="w-full space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-lg font-semibold">
-              Total Cost: ${costBreakdown.total.toFixed(2)}
-            </span>
+            <span className="text-lg font-semibold">Total Cost: ${costBreakdown.total.toFixed(2)}</span>
             <Popover>
               <PopoverTrigger asChild>
                 <Button size="icon" variant="outline">
@@ -467,15 +401,11 @@ export default function CustomArtRequest() {
                       </div>
                       <div className="flex justify-between">
                         <span>Additional Height:</span>
-                        <span>
-                          ${costBreakdown.shipping.additionalHeight.toFixed(2)}
-                        </span>
+                        <span>${costBreakdown.shipping.additionalHeight.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Expedited:</span>
-                        <span>
-                          ${costBreakdown.shipping.expedited.toFixed(2)}
-                        </span>
+                        <span>${costBreakdown.shipping.expedited.toFixed(2)}</span>
                       </div>
                     </div>
                     <div className="flex justify-between">
@@ -504,5 +434,5 @@ export default function CustomArtRequest() {
         </div>
       </CardFooter>
     </Card>
-  );
+  )
 }

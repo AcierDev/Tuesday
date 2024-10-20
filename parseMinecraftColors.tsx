@@ -1,23 +1,23 @@
 // utils/parseMinecraftColors.tsx
-import React from "react";
+import React from 'react';
 
 export const minecraftColors: { [key: string]: string } = {
-  "0": "#000000", // Black
-  "1": "#0000AA", // Dark Blue
-  "2": "#00AA00", // Dark Green
-  "3": "#00AAAA", // Dark Aqua
-  "4": "#AA0000", // Dark Red
-  "5": "#AA00AA", // Dark Purple
-  "6": "#FFAA00", // Gold
-  "7": "#AAAAAA", // Gray
-  "8": "#555555", // Dark Gray
-  "9": "#5555FF", // Blue
-  "a": "#55FF55", // Green
-  "b": "#55FFFF", // Aqua
-  "c": "#FF5555", // Red
-  "d": "#FF55FF", // Light Purple
-  "e": "#FFFF55", // Yellow
-  "f": "#FFFFFF", // White
+  '0': '#000000', // Black
+  '1': '#0000AA', // Dark Blue
+  '2': '#00AA00', // Dark Green
+  '3': '#00AAAA', // Dark Aqua
+  '4': '#AA0000', // Dark Red
+  '5': '#AA00AA', // Dark Purple
+  '6': '#FFAA00', // Gold
+  '7': '#AAAAAA', // Gray
+  '8': '#555555', // Dark Gray
+  '9': '#5555FF', // Blue
+  'a': '#55FF55', // Green
+  'b': '#55FFFF', // Aqua
+  'c': '#FF5555', // Red
+  'd': '#FF55FF', // Light Purple
+  'e': '#FFFF55', // Yellow
+  'f': '#FFFFFF', // White
 };
 
 interface TextSegment {
@@ -25,14 +25,11 @@ interface TextSegment {
   color: string;
 }
 
-export const parseMinecraftColors = (
-  input: string,
-  darkMode: boolean,
-): React.ReactNode[] => {
+export const parseMinecraftColors = (input: string, darkMode: boolean): React.ReactNode[] => {
   const regex = /(&[0-9a-f])/gi;
   const segments: TextSegment[] = [];
   let lastIndex = 0;
-  let currentColor = minecraftColors[darkMode ? "f" : "0"]; // Default color is white
+  let currentColor = minecraftColors[darkMode ? 'f' : '0']; // Default color is white
 
   let match;
   while ((match = regex.exec(input)) !== null) {

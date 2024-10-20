@@ -4,10 +4,7 @@ declare namespace google {
       class AutocompleteService {
         getPlacePredictions(
           request: AutocompletionRequest,
-          callback: (
-            results: AutocompletePrediction[] | null,
-            status: PlacesServiceStatus,
-          ) => void,
+          callback: (results: AutocompletePrediction[] | null, status: PlacesServiceStatus) => void
         ): void;
       }
 
@@ -15,10 +12,7 @@ declare namespace google {
         constructor(attrContainer: HTMLDivElement);
         getDetails(
           request: PlaceDetailsRequest,
-          callback: (
-            result: PlaceResult | null,
-            status: PlacesServiceStatus,
-          ) => void,
+          callback: (result: PlaceResult | null, status: PlacesServiceStatus) => void
         ): void;
       }
 

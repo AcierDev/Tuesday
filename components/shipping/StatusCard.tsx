@@ -1,31 +1,21 @@
 // components/shipping/StatusCard.tsx
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { ShippingStatus } from "@/typings/types";
-import { ShippingItem } from "@/typings/interfaces";
-import { getStatusIcon } from "@/utils/functions";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Button } from "@/components/ui/button"
+import { ShippingStatus } from "@/typings/types"
+import { ShippingItem } from "@/typings/interfaces"
+import { getStatusIcon } from "@/utils/functions"
 
 interface StatusCardProps {
-  status: ShippingStatus;
-  items: ShippingItem[];
-  onViewDetails: (item: ShippingItem) => void;
+  status: ShippingStatus
+  items: ShippingItem[]
+  onViewDetails: (item: ShippingItem) => void
 }
 
-export const StatusCard: React.FC<StatusCardProps> = (
-  { status, items, onViewDetails },
-) => {
-  const cardTitle = status.charAt(0).toUpperCase() +
-    status.slice(1).replace("_", " ");
+export const StatusCard: React.FC<StatusCardProps> = ({ status, items, onViewDetails }) => {
+  const cardTitle = status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')
 
   return (
     <Card className="w-full bg-white dark:bg-gray-800">
@@ -40,47 +30,22 @@ export const StatusCard: React.FC<StatusCardProps> = (
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50 dark:bg-gray-700">
-                <TableHead className="text-gray-700 dark:text-gray-300">
-                  Order ID
-                </TableHead>
-                <TableHead className="text-gray-700 dark:text-gray-300">
-                  Customer
-                </TableHead>
-                <TableHead className="text-gray-700 dark:text-gray-300">
-                  Carrier
-                </TableHead>
-                <TableHead className="text-gray-700 dark:text-gray-300">
-                  Est. Delivery
-                </TableHead>
-                <TableHead className="text-gray-700 dark:text-gray-300">
-                  Action
-                </TableHead>
+                <TableHead className="text-gray-700 dark:text-gray-300">Order ID</TableHead>
+                <TableHead className="text-gray-700 dark:text-gray-300">Customer</TableHead>
+                <TableHead className="text-gray-700 dark:text-gray-300">Carrier</TableHead>
+                <TableHead className="text-gray-700 dark:text-gray-300">Est. Delivery</TableHead>
+                <TableHead className="text-gray-700 dark:text-gray-300">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((item) => (
-                <TableRow
-                  key={item.id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  <TableCell className="text-gray-900 dark:text-gray-100">
-                    {item.receipt?.receipt_id || "N/A"}
-                  </TableCell>
-                  <TableCell className="text-gray-900 dark:text-gray-100">
-                    {item.receipt?.name || "N/A"}
-                  </TableCell>
-                  <TableCell className="text-gray-900 dark:text-gray-100">
-                    {item.trackingInfo?.carrier || "N/A"}
-                  </TableCell>
-                  <TableCell className="text-gray-900 dark:text-gray-100">
-                    {item.trackingInfo?.estimatedDelivery || "N/A"}
-                  </TableCell>
+                <TableRow key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <TableCell className="text-gray-900 dark:text-gray-100">{item.receipt?.receipt_id || 'N/A'}</TableCell>
+                  <TableCell className="text-gray-900 dark:text-gray-100">{item.receipt?.name || 'N/A'}</TableCell>
+                  <TableCell className="text-gray-900 dark:text-gray-100">{item.trackingInfo?.carrier || 'N/A'}</TableCell>
+                  <TableCell className="text-gray-900 dark:text-gray-100">{item.trackingInfo?.estimatedDelivery || 'N/A'}</TableCell>
                   <TableCell>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onViewDetails(item)}
-                    >
+                    <Button size="sm" variant="outline" onClick={() => onViewDetails(item)}>
                       View
                     </Button>
                   </TableCell>
@@ -91,5 +56,5 @@ export const StatusCard: React.FC<StatusCardProps> = (
         </ScrollArea>
       </CardContent>
     </Card>
-  );
-};
+  )
+}

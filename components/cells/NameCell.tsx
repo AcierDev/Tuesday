@@ -1,74 +1,65 @@
-"use client";
+"use client"
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { parseMinecraftColors } from "../../parseMinecraftColors";
-import { useTheme } from "next-themes";
-import { toast } from "sonner";
-import { ChevronRight, Plus, X } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { parseMinecraftColors } from '../../parseMinecraftColors'
+import { useTheme } from 'next-themes'
+import { toast } from 'sonner'
+import { Plus, X, ChevronRight } from 'lucide-react'
 
 interface Tag {
-  id: string;
-  name: string;
+  id: string
+  name: string
 }
 
 interface NameCellProps {
-  item: any;
+  item: any
   columnValue: {
-    text: string;
-    columnName: string;
-  };
-  onUpdate: (updatedItem: any, columnName: string) => Promise<void>;
-  onAddTag: (itemId: string, tagName: string) => void;
-  onRemoveTag: (itemId: string, tagId: string) => void;
-  initialTags: Tag[];
+    text: string
+    columnName: string
+  }
+  onUpdate: (updatedItem: any, columnName: string) => Promise<void>
+  onAddTag: (itemId: string, tagName: string) => void
+  onRemoveTag: (itemId: string, tagId: string) => void
+  initialTags: Tag[]
 }
 
-export const NameCell: React.FC<NameCellProps> = ({
-  item,
-  columnValue,
-  onUpdate,
-  onAddTag,
-  onRemoveTag,
-  initialTags,
+export const NameCell: React.FC<NameCellProps> = ({ 
+  item, 
+  columnValue, 
+  onUpdate, 
+  onAddTag, 
+  onRemoveTag, 
+  initialTags 
 }) => {
-  const [inputValue, setInputValue] = useState(columnValue.text || "");
-  const [isHovered, setIsHovered] = useState(false);
-  const [isAddingTag, setIsAddingTag] = useState(false);
-  const [newTagName, setNewTagName] = useState("");
-  const [showAllTags, setShowAllTags] = useState(false);
-  const [tags, setTags] = useState<Tag[]>(initialTags);
-  const { theme } = useTheme();
-  const isDarkMode = theme === "dark";
-  const tagInputRef = useRef<HTMLInputElement>(null);
+  const [inputValue, setInputValue] = useState(columnValue.text || '')
+  const [isHovered, setIsHovered] = useState(false)
+  const [isAddingTag, setIsAddingTag] = useState(false)
+  const [newTagName, setNewTagName] = useState('')
+  const [showAllTags, setShowAllTags] = useState(false)
+  const [tags, setTags] = useState<Tag[]>(initialTags)
+  const { theme } = useTheme()
+  const isDarkMode = theme === 'dark'
+  const tagInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setInputValue(columnValue.text || "");
-  }, [columnValue.text]);
+    setInputValue(columnValue.text || '')
+  }, [columnValue.text])
 
   useEffect(() => {
-    setTags(initialTags);
-  }, [initialTags]);
+    setTags(initialTags)
+  }, [initialTags])
 
   useEffect(() => {
     if (isAddingTag && tagInputRef.current) {
-      tagInputRef.current.focus();
+      tagInputRef.current.focus()
     }
-  }, [isAddingTag]);
+  }, [isAddingTag])
 
   const handleUpdate = useCallback(async () => {
     if (inputValue !== columnValue.text) {
@@ -77,48 +68,44 @@ export const NameCell: React.FC<NameCellProps> = ({
           ...item,
           values: item.values.map((value) =>
             value.columnName === columnValue.columnName
-              ? {
-                ...value,
-                text: inputValue,
-                lastModifiedTimestamp: Date.now(),
-              }
+              ? { ...value, text: inputValue, lastModifiedTimestamp: Date.now() }
               : value
-          ),
-        };
-        await onUpdate(updatedItem, columnValue.columnName);
-        toast.success("Name updated successfully");
+          )
+        }
+        await onUpdate(updatedItem, columnValue.columnName)
+        toast.success("Name updated successfully")
       } catch (err) {
-        console.error("Failed to update ColumnValue", err);
-        toast.error("Failed to update the name. Please try again.");
+        console.error("Failed to update ColumnValue", err)
+        toast.error("Failed to update the name. Please try again.")
       }
     }
-  }, [inputValue, columnValue.text, columnValue.columnName, item, onUpdate]);
+  }, [inputValue, columnValue.text, columnValue.columnName, item, onUpdate])
 
   const handleAddTag = useCallback(() => {
     if (newTagName.trim()) {
-      const newTag = { id: Date.now().toString(), name: newTagName.trim() };
-      setTags((prevTags) => [...(prevTags || []), newTag]);
-      onAddTag(item.id, newTagName.trim());
-      toast.success(`Tag "${newTagName.trim()}" added successfully`);
-      setNewTagName("");
-      setIsAddingTag(false);
+      const newTag = { id: Date.now().toString(), name: newTagName.trim() }
+      setTags(prevTags => [...(prevTags || []), newTag])
+      onAddTag(item.id, newTagName.trim())
+      toast.success(`Tag "${newTagName.trim()}" added successfully`)
+      setNewTagName('')
+      setIsAddingTag(false)
     }
-  }, [newTagName, item.id, onAddTag]);
+  }, [newTagName, item.id, onAddTag])
 
   const handleRemoveTag = useCallback((tagId: string) => {
-    setTags((prevTags) => prevTags?.filter((tag) => tag.id !== tagId));
-    onRemoveTag(item.id, tagId);
-    toast.success("Tag removed successfully");
-  }, [item.id, onRemoveTag]);
+    setTags(prevTags => prevTags?.filter(tag => tag.id !== tagId))
+    onRemoveTag(item.id, tagId)
+    toast.success("Tag removed successfully")
+  }, [item.id, onRemoveTag])
 
   const toggleShowAllTags = useCallback(() => {
-    setShowAllTags((prev) => !prev);
-  }, []);
+    setShowAllTags(prev => !prev)
+  }, [])
 
-  const displayedTags = showAllTags ? tags : tags?.slice(0, 1);
+  const displayedTags = showAllTags ? tags : tags?.slice(0, 1)
 
   return (
-    <div
+    <div 
       className="flex items-center w-full h-full relative group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -136,12 +123,7 @@ export const NameCell: React.FC<NameCellProps> = ({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[200px] p-2" align="start">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleAddTag();
-            }}
-          >
+          <form onSubmit={(e) => { e.preventDefault(); handleAddTag(); }}>
             <Input
               ref={tagInputRef}
               placeholder="Enter new tag"
@@ -167,8 +149,8 @@ export const NameCell: React.FC<NameCellProps> = ({
             <TooltipProvider key={tag.id}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge
-                    variant="secondary"
+                  <Badge 
+                    variant="secondary" 
                     className="text-xs px-1 max-w-[60px] truncate cursor-pointer"
                   >
                     {tag.name}
@@ -206,10 +188,7 @@ export const NameCell: React.FC<NameCellProps> = ({
               <PopoverContent className="w-[200px] p-2" align="end">
                 <ScrollArea className="h-[200px] w-full">
                   {tags.map((tag: Tag) => (
-                    <div
-                      key={tag.id}
-                      className="flex items-center justify-between py-1"
-                    >
+                    <div key={tag.id} className="flex items-center justify-between py-1">
                       <span className="truncate">{tag.name}</span>
                       <Button
                         variant="ghost"
@@ -238,5 +217,5 @@ export const NameCell: React.FC<NameCellProps> = ({
         </span>
       </div>
     </div>
-  );
-};
+  )
+}

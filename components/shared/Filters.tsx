@@ -1,21 +1,8 @@
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Menu, Search } from "lucide-react";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Search, Menu } from "lucide-react";
 
 type FiltersProps = {
   filterValue: string;
@@ -26,25 +13,12 @@ type FiltersProps = {
   isMobile: boolean;
 };
 
-export function Filters(
-  {
-    filterValue,
-    onFilterChange,
-    searchTerm,
-    onSearchTermChange,
-    filterOptions,
-    isMobile,
-  }: FiltersProps,
-) {
+export function Filters({ filterValue, onFilterChange, searchTerm, onSearchTermChange, filterOptions, isMobile }: FiltersProps) {
   if (isMobile) {
     return (
       <Sheet>
         <SheetTrigger asChild>
-          <Button
-            variant="outline"
-            size="icon"
-            className="dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-          >
+          <Button variant="outline" size="icon" className="dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
             <Menu className="h-4 w-4" />
           </Button>
         </SheetTrigger>
@@ -61,20 +35,9 @@ export function Filters(
                 <SelectValue placeholder="Filter" />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:text-gray-200">
-                <SelectItem
-                  value="all"
-                  className="dark:text-gray-200 dark:focus:bg-gray-600"
-                >
-                  All
-                </SelectItem>
-                {filterOptions.map((option) => (
-                  <SelectItem
-                    key={option}
-                    value={option}
-                    className="dark:text-gray-200 dark:focus:bg-gray-600"
-                  >
-                    {option}
-                  </SelectItem>
+                <SelectItem value="all" className="dark:text-gray-200 dark:focus:bg-gray-600">All</SelectItem>
+                {filterOptions.map(option => (
+                  <SelectItem key={option} value={option} className="dark:text-gray-200 dark:focus:bg-gray-600">{option}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -100,20 +63,9 @@ export function Filters(
           <SelectValue placeholder="Filter" />
         </SelectTrigger>
         <SelectContent className="dark:bg-gray-800 dark:text-gray-200">
-          <SelectItem
-            value="all"
-            className="dark:text-gray-200 dark:focus:bg-gray-600"
-          >
-            All
-          </SelectItem>
-          {filterOptions.map((option) => (
-            <SelectItem
-              key={option}
-              value={option}
-              className="dark:text-gray-200 dark:focus:bg-gray-600"
-            >
-              {option}
-            </SelectItem>
+          <SelectItem value="all" className="dark:text-gray-200 dark:focus:bg-gray-600">All</SelectItem>
+          {filterOptions.map(option => (
+            <SelectItem key={option} value={option} className="dark:text-gray-200 dark:focus:bg-gray-600">{option}</SelectItem>
           ))}
         </SelectContent>
       </Select>

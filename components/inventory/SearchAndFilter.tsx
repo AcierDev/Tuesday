@@ -1,26 +1,20 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { CountFrequency, EmployeeNames } from "@/typings/types";
-import { Plus, Search } from "lucide-react";
-import { useUser } from "@/contexts/UserContext";
-import { AdminActionHandler } from "../auth/AdminActionHandler";
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CountFrequency, EmployeeNames } from "@/typings/types"
+import { Plus, Search } from "lucide-react"
+import { useUser } from "@/contexts/UserContext"
+import { AdminActionHandler } from "../auth/AdminActionHandler"
 
 interface SearchAndFilterProps {
-  countFilter: "All" | CountFrequency;
-  handleCountFilterChange: (filter: "All" | CountFrequency) => void;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
-  setShowAddItemDialog: (show: boolean) => void;
+  countFilter: "All" | CountFrequency
+  handleCountFilterChange: (filter: "All" | CountFrequency) => void
+  searchTerm: string
+  setSearchTerm: (term: string) => void
+  setShowAddItemDialog: (show: boolean) => void
 }
 
 export function SearchAndFilter({
@@ -28,23 +22,19 @@ export function SearchAndFilter({
   handleCountFilterChange,
   searchTerm,
   setSearchTerm,
-  setShowAddItemDialog,
+  setShowAddItemDialog
 }: SearchAndFilterProps) {
-  const { user } = useUser();
-  const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
+  const { user } = useUser()
+  const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false)
 
   const handleAddItem = async () => {
-    setShowAddItemDialog(true);
-  };
+    setShowAddItemDialog(true)
+  }
 
   return (
     <div className="flex flex-col sm:flex-row justify-between items-center mb-4 space-y-4 sm:space-y-0 sm:space-x-4">
       <div className="flex flex-col sm:flex-row gap-4 w-full">
-        <Select
-          value={countFilter}
-          onValueChange={(value: "All" | CountFrequency) =>
-            handleCountFilterChange(value)}
-        >
+        <Select value={countFilter} onValueChange={(value: "All" | CountFrequency) => handleCountFilterChange(value)}>
           <SelectTrigger className="w-[180px] bg-input dark:bg-gray-800">
             <SelectValue placeholder="Filter by count frequency" />
           </SelectTrigger>
@@ -52,9 +42,7 @@ export function SearchAndFilter({
             <SelectItem value="All">All</SelectItem>
             <SelectItem value={CountFrequency.Daily}>Daily Count</SelectItem>
             <SelectItem value={CountFrequency.Weekly}>Weekly Count</SelectItem>
-            <SelectItem value={CountFrequency.Monthly}>
-              Monthly Count
-            </SelectItem>
+            <SelectItem value={CountFrequency.Monthly}>Monthly Count</SelectItem>
           </SelectContent>
         </Select>
         <div className="relative flex-grow">
@@ -86,5 +74,5 @@ export function SearchAndFilter({
         )}
       </AdminActionHandler>
     </div>
-  );
+  )
 }

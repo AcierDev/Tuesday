@@ -1,20 +1,20 @@
-import { ColumnTitles, Item, ItemStatus } from "@/typings/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Draggable, Droppable } from "@hello-pangea/dnd";
-import { Button } from "@/components/ui/button";
-import { Check, GripVertical, Minus, Plus } from "lucide-react";
+import { ColumnTitles, Item, ItemStatus } from "@/typings/types"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Draggable, Droppable } from "@hello-pangea/dnd"
+import { Button } from "@/components/ui/button"
+import { Check, GripVertical, Minus, Plus } from "lucide-react"
 
-type NewType = Item;
+type NewType = Item
 
 interface DayColumnProps {
-  day: string;
-  dayItemIds: string[];
-  items: Item[];
-  calculateTotalSquares: (dayItemIds: string[]) => number;
-  handleAddItem: (day: string) => void;
-  handleRemoveItem: (day: string, itemId: string) => void;
-  setConfirmCompleteItem: (item: Item | null) => void;
-  getItemValue: (item: NewType, columnName: ColumnTitles) => string;
+  day: string
+  dayItemIds: string[]
+  items: Item[]
+  calculateTotalSquares: (dayItemIds: string[]) => number
+  handleAddItem: (day: string) => void
+  handleRemoveItem: (day: string, itemId: string) => void
+  setConfirmCompleteItem: (item: Item | null) => void
+  getItemValue: (item: NewType, columnName: ColumnTitles) => string
 }
 
 export function DayColumn({
@@ -25,7 +25,7 @@ export function DayColumn({
   handleAddItem,
   handleRemoveItem,
   setConfirmCompleteItem,
-  getItemValue,
+  getItemValue
 }: DayColumnProps) {
   return (
     <Card className="flex-1 flex flex-col m-1 bg-background shadow-sm overflow-hidden dark:bg-gray-800">
@@ -40,16 +40,10 @@ export function DayColumn({
       <CardContent className="flex-grow p-2 overflow-y-auto">
         <Droppable droppableId={day}>
           {(provided) => (
-            <div
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              className="space-y-2 min-h-full"
-            >
+            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2 min-h-full">
               {dayItemIds.map((itemId, index) => {
-                const item = items.find((i) => i.id === itemId);
-                if (!item) {
-                  return null;
-                }
+                const item = items.find(i => i.id === itemId)
+                if (!item) return null
                 return (
                   <Draggable key={item.id} draggableId={item.id} index={index}>
                     {(provided) => (
@@ -64,12 +58,9 @@ export function DayColumn({
                               <GripVertical className="h-4 w-4 text-muted-foreground" />
                             </div>
                             <div className="flex-grow">
-                              <p className="font-semibold truncate">
-                                {getItemValue(item, ColumnTitles.Customer_Name)}
-                              </p>
+                              <p className="font-semibold truncate">{getItemValue(item, ColumnTitles.Customer_Name)}</p>
                               <p className="text-muted-foreground truncate">
-                                {getItemValue(item, ColumnTitles.Design)} -{" "}
-                                {getItemValue(item, ColumnTitles.Size)}
+                                {getItemValue(item, ColumnTitles.Design)} - {getItemValue(item, ColumnTitles.Size)}
                               </p>
                             </div>
                           </div>
@@ -88,8 +79,7 @@ export function DayColumn({
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() =>
-                                handleRemoveItem(day, item.id)}
+                              onClick={() => handleRemoveItem(day, item.id)}
                               className="h-6 w-6 p-0"
                             >
                               <Minus className="h-3 w-3" />
@@ -100,21 +90,21 @@ export function DayColumn({
                       </div>
                     )}
                   </Draggable>
-                );
+                )
               })}
               {provided.placeholder}
             </div>
           )}
         </Droppable>
       </CardContent>
-      <Button
-        className="m-2"
-        size="sm"
-        variant="outline"
+      <Button 
+        className="m-2" 
+        size="sm" 
+        variant="outline" 
         onClick={() => handleAddItem(day)}
       >
         <Plus className="mr-1 h-3 w-3" /> Add
       </Button>
     </Card>
-  );
+  )
 }

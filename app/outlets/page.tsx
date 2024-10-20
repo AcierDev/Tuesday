@@ -37,7 +37,7 @@ const controlOutlet = async (ip: string, action: 'on' | 'off') => {
 }
 
 export default function OutletControl() {
-  const [status, setStatus] = useState(Array(4).fill('unknown'))
+  const [status, setStatus] = useState(Array(7).fill('unknown'))
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState<number[]>([])
@@ -72,6 +72,20 @@ export default function OutletControl() {
       console.error(err)
     } finally {
       setRefreshing(prev => prev.filter(i => i !== index))
+    }
+  }
+
+  const handleControlAll = async (action: 'on' | 'off') => {
+    setError(null)
+    setRefreshing(devices.map((_, i) => i))
+    try {
+      const results = await Promise.all(devices.map(device => controlOutlet(device.ip, action)))
+      setStatus(prev => prev.map((_, i) => results[i] ? action : prev[i]))
+    } catch (err) {
+      setError(`Failed to ${action} all devices`)
+      console.error(err)
+    } finally {
+      setRefreshing([])
     }
   }
 
@@ -114,14 +128,14 @@ export default function OutletControl() {
         setRefreshing(prev => prev.filter(i => i !== index))
       }
     }
-  }, [devices])
+  }, []) // Remove devices from the dependency array
 
   const fetchAllStatuses = useCallback(async () => {
     if (!mountedRef.current) return;
     setLoading(true)
     setError(null)
     try {
-      await Promise.all(devices.map((_, index) => getOutletStatus(index)))
+      await Promise.all(devices.map((device, index) => getOutletStatus(index)))
     } catch (err) {
       if (mountedRef.current) {
         setError('Failed to fetch statuses for all devices')
@@ -132,7 +146,7 @@ export default function OutletControl() {
         setLoading(false)
       }
     }
-  }, [devices, getOutletStatus])
+  }, []) // Remove devices and getOutletStatus from the dependency array
 
   useEffect(() => {
     mountedRef.current = true;
@@ -148,7 +162,7 @@ export default function OutletControl() {
       mountedRef.current = false;
       clearInterval(intervalId);
     }
-  }, [])
+  }, []) // Remove fetchAllStatuses from the dependency array
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
@@ -160,6 +174,16 @@ export default function OutletControl() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+      <div className="flex justify-between mb-6">
+        <Button onClick={() => handleControlAll('on')} disabled={loading || refreshing.length > 0} size="lg">
+          <Power className="h-5 w-5 mr-2" />
+          Turn All On
+        </Button>
+        <Button onClick={() => handleControlAll('off')} disabled={loading || refreshing.length > 0} size="lg" variant="outline">
+          <Power className="h-5 w-5 mr-2" />
+          Turn All Off
+        </Button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {devices.map((device, index) => (
           <Card key={index} className="overflow-hidden">

@@ -1,20 +1,20 @@
 // LabelCell.jsx
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Barcode } from "lucide-react";
-import { ViewLabel } from "../shipping/ViewLabel";
+  DialogTrigger
+} from '@/components/ui/dialog';
+import { Barcode } from 'lucide-react';
+import { ViewLabel } from '../shipping/ViewLabel';
 
 export const LabelCell = ({ item, columnValue }) => {
   const [isLabelDialogOpen, setIsLabelDialogOpen] = useState(false);
-  const isLabelGenerated = columnValue.text?.toLowerCase() === "true";
+  const isLabelGenerated = columnValue.text?.toLowerCase() === 'true';
 
   return (
     <Dialog open={isLabelDialogOpen} onOpenChange={setIsLabelDialogOpen}>
@@ -26,9 +26,7 @@ export const LabelCell = ({ item, columnValue }) => {
         >
           <Barcode
             className={`h-4 w-4 ${
-              isLabelGenerated
-                ? "text-yellow-500"
-                : "text-gray-500 dark:text-gray-400"
+              isLabelGenerated ? 'text-yellow-500' : 'text-gray-500 dark:text-gray-400'
             }`}
           />
         </Button>

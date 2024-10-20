@@ -1,37 +1,25 @@
-import { ColumnTitles, Item } from "@/typings/types";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
-import { Input } from "../ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { Button } from "../ui/button";
-import { Search } from "lucide-react";
+import { ColumnTitles, Item } from "@/typings/types"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog"
+import { Input } from "../ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import { Button } from "../ui/button"
+import { Search } from "lucide-react"
 
 interface AddItemDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  currentDay: string;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
-  filterDesign: string;
-  setFilterDesign: (design: string) => void;
-  filterSize: string;
-  setFilterSize: (size: string) => void;
-  designs: string[];
-  sizes: string[];
-  filteredItems: Item[];
-  handleQuickAdd: (day: string, item: Item) => void;
-  getItemValue: (item: Item, columnName: ColumnTitles) => string;
+  isOpen: boolean
+  onClose: () => void
+  currentDay: string
+  searchTerm: string
+  setSearchTerm: (term: string) => void
+  filterDesign: string
+  setFilterDesign: (design: string) => void
+  filterSize: string
+  setFilterSize: (size: string) => void
+  designs: string[]
+  sizes: string[]
+  filteredItems: Item[]
+  handleQuickAdd: (day: string, item: Item) => void
+  getItemValue: (item: Item, columnName: ColumnTitles) => string
 }
 
 export function AddItemDialog({
@@ -48,7 +36,7 @@ export function AddItemDialog({
   sizes,
   filteredItems,
   handleQuickAdd,
-  getItemValue,
+  getItemValue
 }: AddItemDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -71,10 +59,10 @@ export function AddItemDialog({
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by design" />
               </SelectTrigger>
-
+              
               <SelectContent>
                 <SelectItem value="all">All Designs</SelectItem>
-                {designs.map((design) => (
+                {designs.map(design => (
                   <SelectItem key={design} value={design}>{design}</SelectItem>
                 ))}
               </SelectContent>
@@ -85,34 +73,25 @@ export function AddItemDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sizes</SelectItem>
-                {sizes.map((size) => (
+                {sizes.map(size => (
                   <SelectItem key={size} value={size}>{size}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="max-h-[300px] overflow-y-auto space-y-2">
-            {filteredItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-700 rounded-md"
-              >
+            {filteredItems.map(item => (
+              <div key={item.id} className="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-700 rounded-md">
                 <div>
-                  <p className="font-semibold text-sm">
-                    {getItemValue(item, ColumnTitles.Customer_Name)}
-                  </p>
+                  <p className="font-semibold text-sm">{getItemValue(item, ColumnTitles.Customer_Name)}</p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {getItemValue(item, ColumnTitles.Design)} -{" "}
-                    {getItemValue(item, ColumnTitles.Size)}
+                    {getItemValue(item, ColumnTitles.Design)} - {getItemValue(item, ColumnTitles.Size)}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    handleQuickAdd(currentDay, item);
-                    onClose();
-                  }}
-                >
+                <Button size="sm" onClick={() => {
+                  handleQuickAdd(currentDay, item)
+                  onClose()
+                }}>
                   Add
                 </Button>
               </div>
@@ -124,5 +103,5 @@ export function AddItemDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

@@ -1,3 +1,4 @@
+
 const domesticOrder: ShipStationOrder = {
   orderId: 123456,
   orderNumber: "TEST-001",
@@ -22,7 +23,7 @@ const domesticOrder: ShipStationOrder = {
     postalCode: "10001",
     country: "US",
     phone: "212-555-1234",
-    residential: true,
+    residential: true
   },
   shipTo: {
     name: "John Doe",
@@ -35,7 +36,7 @@ const domesticOrder: ShipStationOrder = {
     postalCode: "90001",
     country: "US",
     phone: "323-555-6789",
-    residential: true,
+    residential: true
   },
   items: [
     {
@@ -46,7 +47,7 @@ const domesticOrder: ShipStationOrder = {
       imageUrl: "https://example.com/images/tshirt-l.jpg",
       weight: {
         value: 6,
-        units: "ounces",
+        units: "ounces"
       },
       quantity: 2,
       unitPrice: 15.99,
@@ -55,14 +56,14 @@ const domesticOrder: ShipStationOrder = {
       warehouseLocation: "Aisle 3, Shelf 2",
       options: [
         { name: "Color", value: "Blue" },
-        { name: "Size", value: "Large" },
+        { name: "Size", value: "Large" }
       ],
       productId: 100,
       fulfillmentSku: "TSHIRT-L-BLU",
       adjustment: false,
       upc: "123456789012",
       createDate: "2023-05-15T10:30:00.000Z",
-      modifyDate: "2023-05-15T10:30:00.000Z",
+      modifyDate: "2023-05-15T10:30:00.000Z"
     },
     {
       orderItemId: 2,
@@ -72,7 +73,7 @@ const domesticOrder: ShipStationOrder = {
       imageUrl: "https://example.com/images/mug.jpg",
       weight: {
         value: 10,
-        units: "ounces",
+        units: "ounces"
       },
       quantity: 1,
       unitPrice: 12.99,
@@ -85,8 +86,8 @@ const domesticOrder: ShipStationOrder = {
       adjustment: false,
       upc: "123456789013",
       createDate: "2023-05-15T10:30:00.000Z",
-      modifyDate: "2023-05-15T10:30:00.000Z",
-    },
+      modifyDate: "2023-05-15T10:30:00.000Z"
+    }
   ],
   orderTotal: 50.57,
   amountPaid: 50.57,
@@ -106,23 +107,23 @@ const domesticOrder: ShipStationOrder = {
   holdUntilDate: "2023-05-16T08:00:00.000Z",
   weight: {
     value: 22,
-    units: "ounces",
+    units: "ounces"
   },
   dimensions: {
     length: 12,
     width: 8,
     height: 6,
-    units: "inches",
+    units: "inches"
   },
   insuranceOptions: {
     provider: "carrier",
     insureShipment: true,
-    insuredValue: 50.57,
+    insuredValue: 50.57
   },
   internationalOptions: {
     contents: "merchandise",
     customsItems: [],
-    nonDelivery: "return_to_sender",
+    nonDelivery: "return_to_sender"
   },
   advancedOptions: {
     warehouseId: 12345,
@@ -140,12 +141,12 @@ const domesticOrder: ShipStationOrder = {
     billToParty: "my_account",
     billToAccount: "",
     billToPostalCode: "",
-    billToCountryCode: "",
+    billToCountryCode: ""
   },
   tagIds: [1, 4],
   userId: "user_123",
   externallyFulfilled: false,
-  externallyFulfilledBy: "",
+  externallyFulfilledBy: ""
 };
 
 // Sample 2: International order with customs information
@@ -173,7 +174,7 @@ const internationalOrder: ShipStationOrder = {
     postalCode: "SW1A 1AA",
     country: "GB",
     phone: "+44 20 1234 5678",
-    residential: false,
+    residential: false
   },
   shipTo: {
     name: "Emily Brown",
@@ -186,7 +187,7 @@ const internationalOrder: ShipStationOrder = {
     postalCode: "75001",
     country: "FR",
     phone: "+33 1 23 45 67 89",
-    residential: false,
+    residential: false
   },
   items: [
     {
@@ -197,7 +198,7 @@ const internationalOrder: ShipStationOrder = {
       imageUrl: "https://example.com/images/business-book.jpg",
       weight: {
         value: 2,
-        units: "pounds",
+        units: "pounds"
       },
       quantity: 1,
       unitPrice: 49.99,
@@ -210,8 +211,8 @@ const internationalOrder: ShipStationOrder = {
       adjustment: false,
       upc: "123456789014",
       createDate: "2023-05-16T09:15:00.000Z",
-      modifyDate: "2023-05-16T09:15:00.000Z",
-    },
+      modifyDate: "2023-05-16T09:15:00.000Z"
+    }
   ],
   orderTotal: 74.99,
   amountPaid: 74.99,
@@ -231,18 +232,18 @@ const internationalOrder: ShipStationOrder = {
   holdUntilDate: "2023-05-17T09:00:00.000Z",
   weight: {
     value: 2,
-    units: "pounds",
+    units: "pounds"
   },
   dimensions: {
     length: 11,
     width: 8.5,
     height: 2,
-    units: "inches",
+    units: "inches"
   },
   insuranceOptions: {
     provider: "carrier",
     insureShipment: true,
-    insuredValue: 74.99,
+    insuredValue: 74.99
   },
   internationalOptions: {
     contents: "merchandise",
@@ -253,10 +254,10 @@ const internationalOrder: ShipStationOrder = {
         quantity: 1,
         value: 49.99,
         harmonizedTariffCode: "4901.99.0000",
-        countryOfOrigin: "US",
-      },
+        countryOfOrigin: "US"
+      }
     ],
-    nonDelivery: "return_to_sender",
+    nonDelivery: "return_to_sender"
   },
   advancedOptions: {
     warehouseId: 67890,
@@ -274,10 +275,10 @@ const internationalOrder: ShipStationOrder = {
     billToParty: "recipient",
     billToAccount: "",
     billToPostalCode: "75001",
-    billToCountryCode: "FR",
+    billToCountryCode: "FR"
   },
   tagIds: [2, 5],
   userId: "user_456",
   externallyFulfilled: false,
-  externallyFulfilledBy: "",
+  externallyFulfilledBy: ""
 };

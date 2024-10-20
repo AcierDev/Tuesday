@@ -1,22 +1,22 @@
 import { Item, ShippingStatus } from "./types";
 
 export interface BoxRequirement {
-  [color: string]: number;
+  [color: string]: number
 }
 
 export interface HardwareBagRequirement {
-  [bagType: string]: number;
+  [bagType: string]: number
 }
 
 export interface MountingRailRequirement {
-  [railType: string]: number;
+  [railType: string]: number
 }
 
 export interface BoxColor {
-  color: string;
-  count: number;
-  hardwareBag: string;
-  mountingRail: string;
+  color: string
+  count: number
+  hardwareBag: string
+  mountingRail: string
 }
 
 export interface Box {
@@ -49,18 +49,13 @@ export type ShippingRate = {
   totalCost: number;
   boxes: number;
   rateId: string;
-};
+}
 
 export interface ShipmentDetails {
   carrierCode: string;
   serviceCode: string;
   weight: { value: number; units: string }[];
-  dimensions: {
-    length: number;
-    width: number;
-    height: number;
-    units: string;
-  }[];
+  dimensions: { length: number; width: number; height: number; units: string }[];
   fromAddress: Address;
   toAddress: Address & { name: string };
 }
@@ -72,7 +67,7 @@ export interface GroupedRates {
 export interface ShippingItem extends Item {
   shipmentStatus?: ShippingStatus;
   trackingInfo?: {
-    carrier: "UPS" | "FedEx";
+    carrier: 'UPS' | 'FedEx';
     status: string;
     estimatedDelivery: string;
     weight?: string;
@@ -91,6 +86,6 @@ export interface Activity {
 }
 
 export interface CuttingData {
-  date: Date;
-  count: number;
+  date: Date
+  count: number
 }
