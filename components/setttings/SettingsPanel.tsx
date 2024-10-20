@@ -1,42 +1,52 @@
-"use client"
+"use client";
 
-import { X, Moon, Sun, Settings, Columns, Clock, Group, Edit } from 'lucide-react'
-import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
+import {
+  Clock,
+  Columns,
+  Edit,
+  Group,
+  Moon,
+  Settings,
+  Sun,
+  X,
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { AutomatronSettings } from './AutomatronSettings'
-import { ColumnVisibilitySettings } from './ColumnVisibilitySettings'
-import { DueBadgeSettings } from './DueBadgeSettings'
-import { RecentEditsSettings } from './RecentEditsSettings'
-import { GroupingSettings } from './GroupSettings'
+import { AutomatronSettings } from "./AutomatronSettings";
+import { ColumnVisibilitySettings } from "./ColumnVisibilitySettings";
+import { DueBadgeSettings } from "./DueBadgeSettings";
+import { RecentEditsSettings } from "./RecentEditsSettings";
+import { GroupingSettings } from "./GroupSettings";
 
-import { useOrderSettings } from '../../contexts/OrderSettingsContext'
+import { useOrderSettings } from "../../contexts/OrderSettingsContext";
 
 interface SettingsPanelProps {
-  onClose: () => void
+  onClose: () => void;
 }
 
 export function SettingsPanel({ onClose }: SettingsPanelProps) {
-  const { settings, updateSettings, updateColumnVisibility } = useOrderSettings()
-  const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
+  const { settings, updateSettings, updateColumnVisibility } =
+    useOrderSettings();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   if (!mounted) {
-    return null
+    return null;
   }
 
   const saveSettings = () => {
-    toast.success('Settings saved successfully')
-    onClose()
-  }
+    toast.success("Settings saved successfully");
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -45,25 +55,42 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
           <TabsList className="h-full w-64 flex flex-col items-stretch space-y-1 rounded-l-lg border-r bg-muted p-4 dark:bg-gray-800">
             <div className="mb-6 px-2">
               <h2 className="text-lg font-semibold">Settings</h2>
-              <p className="text-sm text-muted-foreground">Manage your preferences</p>
+              <p className="text-sm text-muted-foreground">
+                Manage your preferences
+              </p>
             </div>
-            <TabsTrigger value="automatron" className="justify-start py-2 px-3 text-sm font-medium rounded-md transition-colors hover:bg-primary/10 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+            <TabsTrigger
+              value="automatron"
+              className="justify-start py-2 px-3 text-sm font-medium rounded-md transition-colors hover:bg-primary/10 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+            >
               <Settings className="w-4 h-4 mr-2" />
               Automatron
             </TabsTrigger>
-            <TabsTrigger value="columns" className="justify-start py-2 px-3 text-sm font-medium rounded-md transition-colors hover:bg-primary/10 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+            <TabsTrigger
+              value="columns"
+              className="justify-start py-2 px-3 text-sm font-medium rounded-md transition-colors hover:bg-primary/10 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+            >
               <Columns className="w-4 h-4 mr-2" />
               Column Visibility
             </TabsTrigger>
-            <TabsTrigger value="due-badge" className="justify-start py-2 px-3 text-sm font-medium rounded-md transition-colors hover:bg-primary/10 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+            <TabsTrigger
+              value="due-badge"
+              className="justify-start py-2 px-3 text-sm font-medium rounded-md transition-colors hover:bg-primary/10 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+            >
               <Clock className="w-4 h-4 mr-2" />
               Due Badge
             </TabsTrigger>
-            <TabsTrigger value="grouping" className="justify-start py-2 px-3 text-sm font-medium rounded-md transition-colors hover:bg-primary/10 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+            <TabsTrigger
+              value="grouping"
+              className="justify-start py-2 px-3 text-sm font-medium rounded-md transition-colors hover:bg-primary/10 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+            >
               <Group className="w-4 h-4 mr-2" />
               Grouping
             </TabsTrigger>
-            <TabsTrigger value="recent-edits" className="justify-start py-2 px-3 text-sm font-medium rounded-md transition-colors hover:bg-primary/10 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+            <TabsTrigger
+              value="recent-edits"
+              className="justify-start py-2 px-3 text-sm font-medium rounded-md transition-colors hover:bg-primary/10 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+            >
               <Edit className="w-4 h-4 mr-2" />
               Recent Edits
             </TabsTrigger>
@@ -75,9 +102,11 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
                 <Button
                   size="icon"
                   variant="ghost"
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 >
-                  {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                  {theme === "dark"
+                    ? <Sun className="h-5 w-5" />
+                    : <Moon className="h-5 w-5" />}
                   <span className="sr-only">Toggle theme</span>
                 </Button>
                 <Button size="icon" variant="ghost" onClick={onClose}>
@@ -127,5 +156,5 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
         </Tabs>
       </div>
     </div>
-  )
+  );
 }

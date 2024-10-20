@@ -47,6 +47,7 @@ export default function OutletControl() {
     { name: "New Compressor", ip: '192.168.1.182', icon: '/icons/air-compressor.png' },
     { name: "Old Compressor", ip: '192.168.1.183', icon: '/icons/air-compressor.png' },
     { name: "Paint Lights", ip: '192.168.1.184', icon: '/icons/led.png' },
+    { name: "Paint AC", ip: '192.168.1.211', icon: '/icons/portable-ac.png' },
     { name: "Stage 1 Lights", ip: '192.168.1.185', icon: '/icons/led.png' },
     { name: "Stage 1 Compressor", ip: '192.168.1.203', icon: '/icons/small-compressor.png' },
     { name: "Stage 1 Motor", ip: '192.168.1.204', icon: '/icons/stepper.png' },
@@ -162,7 +163,7 @@ export default function OutletControl() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {devices.map((device, index) => (
           <Card key={index} className="overflow-hidden">
-            <CardHeader className="bg-secondary dark:bg-gray-800">
+            <CardHeader className="bg-secondary bg-white dark:bg-gray-800">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <Image src={device.icon} alt={device.name} width={48} height={48} className="dark:invert" />
@@ -176,7 +177,11 @@ export default function OutletControl() {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className={`pt-6 bg-${status[index] === "on" ? "green-700" : "red-900"} dark:bg-${status[index] === "on" ? "green-700" : "red-900"}`}>
+            <CardContent className={`pt-6 ${
+              status[index] === "on" 
+                ? "bg-green-300 dark:bg-green-700" 
+                : "bg-red-300 dark:bg-red-700"
+            }`}>
               {loading ? (
                 <Skeleton className="h-8 w-full" />
               ) : (

@@ -1,14 +1,19 @@
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@radix-ui/react-dialog"
-import { DialogFooter, DialogHeader } from "../ui/dialog"
-import { ColumnTitles, Item } from "@/typings/types"
-import { Button } from "../ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@radix-ui/react-dialog";
+import { DialogFooter, DialogHeader } from "../ui/dialog";
+import { ColumnTitles, Item } from "@/typings/types";
+import { Button } from "../ui/button";
 
 interface ConfirmCompletionDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  item: Item | null
-  handleMarkAsCompleted: (item: Item) => void
-  getItemValue: (item: Item, columnName: ColumnTitles) => string
+  isOpen: boolean;
+  onClose: () => void;
+  item: Item | null;
+  handleMarkAsCompleted: (item: Item) => void;
+  getItemValue: (item: Item, columnName: ColumnTitles) => string;
 }
 
 export function ConfirmCompletionDialog({
@@ -16,7 +21,7 @@ export function ConfirmCompletionDialog({
   onClose,
   item,
   handleMarkAsCompleted,
-  getItemValue
+  getItemValue,
 }: ConfirmCompletionDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -30,18 +35,23 @@ export function ConfirmCompletionDialog({
         <div className="py-4">
           {item && (
             <div>
-              <p className="font-semibold">{getItemValue(item, ColumnTitles.Customer_Name)}</p>
+              <p className="font-semibold">
+                {getItemValue(item, ColumnTitles.Customer_Name)}
+              </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {getItemValue(item, ColumnTitles.Design)} - {getItemValue(item, ColumnTitles.Size)}
+                {getItemValue(item, ColumnTitles.Design)} -{" "}
+                {getItemValue(item, ColumnTitles.Size)}
               </p>
             </div>
           )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => item && handleMarkAsCompleted(item)}>Confirm</Button>
+          <Button onClick={() => item && handleMarkAsCompleted(item)}>
+            Confirm
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

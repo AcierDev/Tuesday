@@ -1,39 +1,69 @@
-'use client'
+"use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import InventoryHistoryChart from "@/components/inventory/InventoryHistoryChart"
-import { Trash2, Lock } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import InventoryHistoryChart from "@/components/inventory/InventoryHistoryChart";
+import { Lock, Trash2 } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
-import { toast } from "sonner"
-import { CountFrequency, InventoryCategory, InventoryItem, LockedInventory } from "@/typings/types";
+import { toast } from "sonner";
+import {
+  CountFrequency,
+  InventoryCategory,
+  InventoryItem,
+  LockedInventory,
+} from "@/typings/types";
 import { AdminActionHandler } from "../auth/AdminActionHandler";
 
 interface InventoryTableProps {
-  filteredInventory: InventoryItem[]
-  updateItem: (itemId: number, field: string, value: string | number) => void
-  deleteItem: (itemId: number) => void
+  filteredInventory: InventoryItem[];
+  updateItem: (itemId: number, field: string, value: string | number) => void;
+  deleteItem: (itemId: number) => void;
 }
 
-export function InventoryTable({ filteredInventory, updateItem, deleteItem }: InventoryTableProps) {
-  const [localQuantities, setLocalQuantities] = useState<Record<string, number>>({});
+export function InventoryTable(
+  { filteredInventory, updateItem, deleteItem }: InventoryTableProps,
+) {
+  const [localQuantities, setLocalQuantities] = useState<
+    Record<string, number>
+  >({});
   const { user } = useUser();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [itemToEdit, setItemToEdit] = useState<{ id: number, field: string, value: string | number } | null>(null);
+  const [itemToEdit, setItemToEdit] = useState<
+    { id: number; field: string; value: string | number } | null
+  >(null);
 
   const isLockedItem = (item: InventoryItem) => {
-    return Object.values(LockedInventory).includes(item.name as LockedInventory);
+    return Object.values(LockedInventory).includes(
+      item.name as LockedInventory,
+    );
   };
 
-  const handleUpdateItem = (itemId: number, field: string, value: string | number) => {
-    const item = filteredInventory.find(i => i._id === itemId);
+  const handleUpdateItem = (
+    itemId: number,
+    field: string,
+    value: string | number,
+  ) => {
+    const item = filteredInventory.find((i) => i._id === itemId);
     if (item && isLockedItem(item)) {
       setItemToEdit({ id: itemId, field, value });
       setEditDialogOpen(true);
@@ -48,7 +78,7 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
   };
 
   return (
-    <Card className="rounded-lg" style={{"contain": "paint"}}>
+    <Card className="rounded-lg" style={{ "contain": "paint" }}>
       <CardContent className="p-0">
         <Table>
           <TableHeader className="sticky top-12 z-10">
@@ -57,7 +87,9 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
               <TableHead className="z-[100]">Quantity</TableHead>
               <TableHead>Restock Quantity</TableHead>
               <TableHead className="hidden sm:table-cell">Count Type</TableHead>
-              <TableHead className="hidden sm:table-cell">Count Frequency</TableHead>
+              <TableHead className="hidden sm:table-cell">
+                Count Frequency
+              </TableHead>
               <TableHead className="hidden sm:table-cell">Category</TableHead>
               <TableHead>History</TableHead>
               <TableHead>Delete</TableHead>
@@ -65,34 +97,44 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
           </TableHeader>
           <TableBody>
             {filteredInventory?.map((item, index) => {
-              const latestCount = item.countHistory[item.countHistory.length - 1]
+              const latestCount =
+                item.countHistory[item.countHistory.length - 1];
               const quantity = latestCount ? latestCount.quantity : 0;
               const isLocked = isLockedItem(item);
               return (
-                <TableRow 
-                  key={item._id} 
-                  className={index % 2 === 0 ? 'bg-gray-100 dark:bg-gray-800' : 'bg-white dark:bg-gray-700'}
+                <TableRow
+                  key={item._id}
+                  className={index % 2 === 0
+                    ? "bg-gray-100 dark:bg-gray-800"
+                    : "bg-white dark:bg-gray-700"}
                 >
                   <TableCell className="font-medium">
                     {item.name}
-                    {isLocked && <Lock className="inline-block ml-2 h-4 w-4 text-gray-500" />}
+                    {isLocked && (
+                      <Lock className="inline-block ml-2 h-4 w-4 text-gray-500" />
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
                       <Input
                         type="number"
-                        value={localQuantities[item._id] !== undefined ? localQuantities[item._id] : quantity}
+                        value={localQuantities[item._id] !== undefined
+                          ? localQuantities[item._id]
+                          : quantity}
                         onChange={(e) => {
                           const newValue = parseInt(e.target.value);
                           if (!isNaN(newValue)) {
-                            setLocalQuantities(prev => ({ ...prev, [item._id]: newValue }));
+                            setLocalQuantities((prev) => ({
+                              ...prev,
+                              [item._id]: newValue,
+                            }));
                           }
                         }}
                         onBlur={(e) => {
                           const newValue = localQuantities[item._id];
                           if (newValue !== undefined) {
-                            handleUpdateItem(item._id, 'quantity', newValue);
-                            setLocalQuantities(prev => {
+                            handleUpdateItem(item._id, "quantity", newValue);
+                            setLocalQuantities((prev) => {
                               const updated = { ...prev };
                               delete updated[item._id];
                               return updated;
@@ -107,7 +149,10 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
                         </Badge>
                       )}
                       {quantity > 0 && quantity <= item.restockQuantity && (
-                        <Badge variant="outline" className="ml-2 bg-orange-500 dark:bg-orange-500">
+                        <Badge
+                          variant="outline"
+                          className="ml-2 bg-orange-500 dark:bg-orange-500"
+                        >
                           Low Stock
                         </Badge>
                       )}
@@ -117,7 +162,12 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
                     <Input
                       type="number"
                       value={item.restockQuantity}
-                      onChange={(e) => handleUpdateItem(item._id, 'restockQuantity', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleUpdateItem(
+                          item._id,
+                          "restockQuantity",
+                          parseInt(e.target.value),
+                        )}
                       className="w-20 bg-transparent border-none"
                     />
                   </TableCell>
@@ -125,36 +175,43 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
                     <Input
                       type="text"
                       value={item.countType}
-                      onChange={(e) => handleUpdateItem(item._id, 'countType', e.target.value)}
+                      onChange={(e) =>
+                        handleUpdateItem(item._id, "countType", e.target.value)}
                       className="w-24 bg-transparent border-none"
                     />
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Select 
-                      value={item.countFrequency} 
-                      onValueChange={(value: CountFrequency) => handleUpdateItem(item._id, 'countFrequency', value)}
+                    <Select
+                      value={item.countFrequency}
+                      onValueChange={(value: CountFrequency) =>
+                        handleUpdateItem(item._id, "countFrequency", value)}
                     >
                       <SelectTrigger className="bg-transparent border-none">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="dark:bg-gray-800">
-                        {Object.values(CountFrequency).map(option => (
-                          <SelectItem key={option} value={option}>{option}</SelectItem>
+                        {Object.values(CountFrequency).map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Select 
-                      value={item.category} 
-                      onValueChange={(value: InventoryCategory) => handleUpdateItem(item._id, 'category', value)}
+                    <Select
+                      value={item.category}
+                      onValueChange={(value: InventoryCategory) =>
+                        handleUpdateItem(item._id, "category", value)}
                     >
                       <SelectTrigger className="bg-transparent border-none">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="dark:bg-gray-800">
-                        {Object.values(InventoryCategory).map(option => (
-                          <SelectItem key={option} value={option}>{option}</SelectItem>
+                        {Object.values(InventoryCategory).map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -189,7 +246,7 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
                     </AdminActionHandler>
                   </TableCell>
                 </TableRow>
-              )
+              );
             })}
           </TableBody>
         </Table>
@@ -197,7 +254,7 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
       <AdminActionHandler
         user={user}
         callback={() => {
-          console.log('callback')
+          console.log("callback");
           if (itemToEdit) {
             updateItem(itemToEdit.id, itemToEdit.field, itemToEdit.value);
           }
@@ -213,5 +270,5 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
         {({ onClick, disabled }) => null}
       </AdminActionHandler>
     </Card>
-  )
+  );
 }

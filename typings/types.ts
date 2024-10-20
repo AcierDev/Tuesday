@@ -67,7 +67,7 @@ export enum EmployeeNames {
   Akiva = "Akiva Weil",
   Paris = "Paris Carver",
   Dylan = "Dylan Carver",
-  Tyler = "Tyler Blancett"
+  Tyler = "Tyler Blancett",
 }
 
 export enum ItemStatus {
@@ -179,58 +179,62 @@ type PartialRecord<K extends keyof any, T> = {
 };
 
 export type AutomatronRule = {
-  id: string
-  field: string
-  value: string
-  newStatus: string
-}
+  id: string;
+  field: string;
+  value: string;
+  newStatus: string;
+};
 
 export type ColumnVisibility = {
   [key: string]: {
-    [key: string]: boolean
-  }
-}
+    [key: string]: boolean;
+  };
+};
 
 export type StatusColors = {
-  [key: string]: string
-}
+  [key: string]: string;
+};
 
 export type OrderSettings = {
-  automatronRules: AutomatronRule[]
-  isAutomatronActive: boolean
-  columnVisibility: ColumnVisibility
-  dueBadgeDays: number
-  statusColors: StatusColors
-  groupingField: string
-  showCompletedOrders: boolean
-  showSortingIcons: boolean
-  recentEditHours?: number
-}
+  automatronRules: AutomatronRule[];
+  isAutomatronActive: boolean;
+  columnVisibility: ColumnVisibility;
+  dueBadgeDays: number;
+  statusColors: StatusColors;
+  groupingField: string;
+  showCompletedOrders: boolean;
+  showSortingIcons: boolean;
+  recentEditHours?: number;
+};
 
-export type ShippingStatus = 'unshipped' | 'pre_transit' | 'in_transit' | 'delivered'
+export type ShippingStatus =
+  | "unshipped"
+  | "pre_transit"
+  | "in_transit"
+  | "delivered";
 
 export type BackboardRequirement = Record<ItemSizes, number>;
 
 export type InventoryItem = {
-  _id: number
-  name: string
-  quantity: number
-  restockQuantity: number
-  countType: string
-  countFrequency: CountFrequency
-  category: InventoryCategory
-  countHistory: InventoryCount[]
-}
+  _id: number;
+  name: string;
+  quantity: number;
+  restockQuantity: number;
+  countType: string;
+  countFrequency: CountFrequency;
+  category: InventoryCategory;
+  countHistory: InventoryCount[];
+};
 
 export type InventoryCount = {
-  quantity: number
-  timestamp: Date
-}
+  quantity: number;
+  timestamp: Date;
+};
 
 export enum CountFrequency {
   Daily = "Daily",
   Weekly = "Weekly",
-  Monthly = "Monthly"
+  Monthly = "Monthly",
 }
 
 export enum InventoryCategory {
@@ -238,9 +242,9 @@ export enum InventoryCategory {
   Woodworking = "Woodworking",
   Assembly = "Assembly",
   Packaging = "Packaging",
-  Misc = "Miscellaneous"
+  Misc = "Miscellaneous",
 }
 
 export enum LockedInventory {
-  Boards = "Uncut Boards"
+  Boards = "Uncut Boards",
 }

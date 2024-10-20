@@ -18,26 +18,26 @@ interface Address {
 
 interface Weight {
   value: number;
-  units: 'ounces' | 'pounds' | 'grams' | 'kilograms';
+  units: "ounces" | "pounds" | "grams" | "kilograms";
 }
 
 interface Dimensions {
   length: number;
   width: number;
   height: number;
-  units: 'inches' | 'centimeters';
+  units: "inches" | "centimeters";
 }
 
 interface InsuranceOptions {
-  provider: 'shipsurance' | 'carrier' | 'provider';
+  provider: "shipsurance" | "carrier" | "provider";
   insureShipment: boolean;
   insuredValue: number;
 }
 
 interface InternationalOptions {
-  contents: 'merchandise' | 'documents' | 'gift' | 'returned_goods' | 'sample';
+  contents: "merchandise" | "documents" | "gift" | "returned_goods" | "sample";
   customsItems: CustomsItem[];
-  nonDelivery: 'return_to_sender' | 'treat_as_abandoned';
+  nonDelivery: "return_to_sender" | "treat_as_abandoned";
 }
 
 interface CustomsItem {
@@ -62,7 +62,7 @@ interface AdvancedOptions {
   mergedOrSplit: boolean;
   mergedIds: number[];
   parentId: number;
-  billToParty: 'my_account' | 'recipient' | 'third_party';
+  billToParty: "my_account" | "recipient" | "third_party";
   billToAccount: string;
   billToPostalCode: string;
   billToCountryCode: string;
@@ -118,7 +118,12 @@ interface ShipStationOrder {
   carrierCode: string;
   serviceCode: string;
   packageCode: string;
-  confirmation: 'none' | 'delivery' | 'signature' | 'adult_signature' | 'direct_signature';
+  confirmation:
+    | "none"
+    | "delivery"
+    | "signature"
+    | "adult_signature"
+    | "direct_signature";
   shipDate: ISO8601Date;
   holdUntilDate: ISO8601Date;
   weight: Weight;

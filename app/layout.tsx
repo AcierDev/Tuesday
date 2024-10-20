@@ -1,47 +1,47 @@
-'use client'
+"use client";
 
-import type { Metadata } from "next"
-import localFont from "next/font/local"
-import { useState } from "react"
+import type { Metadata } from "next";
+import localFont from "next/font/local";
+import { useState } from "react";
 
-import "./globals.css"
-import { Navbar } from "@/components/ui/Navbar"
-import { OrderSettingsProvider } from "@/contexts/OrderSettingsContext"
-import { RealmAppProvider } from "@/hooks/useRealmApp"
-import { ThemeProvider } from "../components/providers/ThemeProvider"
-import { SettingsPanel } from "@/components/setttings/SettingsPanel"
-import { UserProvider } from "@/contexts/UserContext"
-import { InventoryProvider } from "@/contexts/InventoryContext"
+import "./globals.css";
+import { Navbar } from "@/components/ui/Navbar";
+import { OrderSettingsProvider } from "@/contexts/OrderSettingsContext";
+import { RealmAppProvider } from "@/hooks/useRealmApp";
+import { ThemeProvider } from "../components/providers/ThemeProvider";
+import { SettingsPanel } from "@/components/setttings/SettingsPanel";
+import { UserProvider } from "@/contexts/UserContext";
+import { InventoryProvider } from "@/contexts/InventoryContext";
 
 // Load custom fonts
 const geistSans = localFont({
   src: "../fonts/GeistVF.woff",
   variable: "--font-geist-sans",
   weight: "100 900",
-})
+});
 
 const geistMono = localFont({
   src: "../fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
-})
+});
 
 const metadata: Metadata = {
   title: "Tuesday",
   description: "Replacing Monday",
-}
+};
 
 // Root layout component
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Handlers for opening/closing settings panel
-  const handleOpenSettings = () => setIsSettingsOpen(true)
-  const handleCloseSettings = () => setIsSettingsOpen(false)
+  const handleOpenSettings = () => setIsSettingsOpen(true);
+  const handleCloseSettings = () => setIsSettingsOpen(false);
 
   return (
     <html className={`${geistSans.variable} ${geistMono.variable}`} lang="en">
@@ -69,5 +69,5 @@ export default function RootLayout({
         </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }

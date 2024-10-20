@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction, createContext } from "react";
+import { createContext, Dispatch, SetStateAction } from "react";
 import { Group } from "../typings/types";
 
 export const GroupContext = createContext<{

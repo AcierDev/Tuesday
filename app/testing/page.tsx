@@ -1,34 +1,41 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { getOrder } from "@/lib/shipstation-api"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { getOrder } from "@/lib/shipstation-api";
 
 export default function Component() {
-  const [orderId, setOrderId] = useState("")
-  const [order, setOrder] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [orderId, setOrderId] = useState("");
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    setOrder(null)
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setOrder(null);
 
     try {
-      const result = await getOrder(orderId)
-      console.log(result)
-      setOrder(result)
+      const result = await getOrder(orderId);
+      console.log(result);
+      setOrder(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Card className="w-[350px]">
@@ -56,5 +63,5 @@ export default function Component() {
         {error && <p className="text-destructive">{error}</p>}
       </CardFooter>
     </Card>
-  )
+  );
 }

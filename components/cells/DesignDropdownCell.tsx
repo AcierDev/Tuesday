@@ -1,26 +1,30 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import Image from 'next/image';
-import { Button } from '@/components/ui/button';
-import { XCircleIcon } from 'lucide-react';
-import { boardConfig } from '../../config/boardconfig';
-import { DesignBlends, ItemDesignImages } from '@/utils/constants';
-import { toast } from 'sonner';
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { XCircleIcon } from "lucide-react";
+import { boardConfig } from "../../config/boardconfig";
+import { DesignBlends, ItemDesignImages } from "@/utils/constants";
+import { toast } from "sonner";
 
 const createBackground = (option: string) => {
   const colors = DesignBlends[option as keyof typeof DesignBlends];
   if (colors && colors.length > 0) {
-    return `linear-gradient(to right, ${colors.join(', ')})`;
+    return `linear-gradient(to right, ${colors.join(", ")})`;
   }
   // Fallback to a solid color if no gradient is found
-  return '#000000';
+  return "#000000";
 };
 
 export const DesignDropdownCell = ({ item, columnValue, onUpdate, board }) => {
@@ -60,7 +64,7 @@ export const DesignDropdownCell = ({ item, columnValue, onUpdate, board }) => {
           value.columnName === columnValue.columnName
             ? { ...value, text: newValue, lastModifiedTimestamp: Date.now() }
             : value
-        )
+        ),
       };
       await onUpdate(updatedItem, columnValue.columnName);
       toast.success("Design updated successfully");
@@ -84,12 +88,12 @@ export const DesignDropdownCell = ({ item, columnValue, onUpdate, board }) => {
           className="inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-full hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 transition-colors"
           style={{ background: backgroundStyle }}
         >
-          {columnValue.text || 'Select Design'}
+          {columnValue.text || "Select Design"}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent 
+      <DropdownMenuContent
         className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 overflow-y-auto custom-scrollbar"
-        style={{ maxHeight: '60vh' }}
+        style={{ maxHeight: "60vh" }}
       >
         {boardConfig.columns[columnValue.columnName].options?.map((option) => (
           <Popover
@@ -109,7 +113,11 @@ export const DesignDropdownCell = ({ item, columnValue, onUpdate, board }) => {
               </DropdownMenuItem>
             </PopoverTrigger>
             {showPopover && hoveredDesign === option && (
-              <PopoverContent side="right" sideOffset={5} className="bg-white dark:bg-gray-800">
+              <PopoverContent
+                side="right"
+                sideOffset={5}
+                className="bg-white dark:bg-gray-800"
+              >
                 <Image
                   src={ItemDesignImages[option]}
                   alt={`${option} design`}
@@ -123,7 +131,7 @@ export const DesignDropdownCell = ({ item, columnValue, onUpdate, board }) => {
         ))}
         <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-600 my-2" />
         <DropdownMenuItem
-          onSelect={() => handleUpdate('')}
+          onSelect={() => handleUpdate("")}
           className="hover:bg-gray-100 dark:hover:bg-gray-700 py-3 my-1 rounded-md"
         >
           <XCircleIcon className="mr-2 h-4 w-4" />

@@ -1,49 +1,64 @@
 // components/settings/AutomatronSettings.tsx
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Plus, Trash2 } from 'lucide-react'
-import { AutomatronRule, ColumnTitles, ItemStatus } from '@/typings/types'
-import { getInputTypeForField } from '@/utils/functions'
-import { boardConfig } from "@/config/boardconfig"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Plus, Trash2 } from "lucide-react";
+import { AutomatronRule, ColumnTitles, ItemStatus } from "@/typings/types";
+import { getInputTypeForField } from "@/utils/functions";
+import { boardConfig } from "@/config/boardconfig";
 
 interface AutomatronSettingsProps {
-  automatronRules: AutomatronRule[]
-  isAutomatronActive: boolean
-  updateSettings: (updates: Partial<any>) => void
+  automatronRules: AutomatronRule[];
+  isAutomatronActive: boolean;
+  updateSettings: (updates: Partial<any>) => void;
 }
 
 export const AutomatronSettings = ({
   automatronRules,
   isAutomatronActive,
-  updateSettings
+  updateSettings,
 }: AutomatronSettingsProps) => {
-
   const addRule = () => {
     const newRule: AutomatronRule = {
       id: Date.now().toString(),
-      field: '',
-      value: '',
-      newStatus: ''
-    }
-    updateSettings({ automatronRules: [...automatronRules, newRule] })
-  }
+      field: "",
+      value: "",
+      newStatus: "",
+    };
+    updateSettings({ automatronRules: [...automatronRules, newRule] });
+  };
 
-  const updateRule = (id: string, field: keyof AutomatronRule, value: string) => {
-    const updatedRules = automatronRules.map(rule => 
+  const updateRule = (
+    id: string,
+    field: keyof AutomatronRule,
+    value: string,
+  ) => {
+    const updatedRules = automatronRules.map((rule) =>
       rule.id === id ? { ...rule, [field]: value } : rule
-    )
-    updateSettings({ automatronRules: updatedRules })
-  }
+    );
+    updateSettings({ automatronRules: updatedRules });
+  };
 
   const deleteRule = (id: string) => {
-    const updatedRules = automatronRules.filter(rule => rule.id !== id)
-    updateSettings({ automatronRules: updatedRules })
-  }
+    const updatedRules = automatronRules.filter((rule) => rule.id !== id);
+    updateSettings({ automatronRules: updatedRules });
+  };
 
   return (
     <div className="space-y-6">
@@ -57,7 +72,8 @@ export const AutomatronSettings = ({
         <Switch
           checked={isAutomatronActive}
           id="automatron-active"
-          onCheckedChange={(checked) => updateSettings({ isAutomatronActive: checked })}
+          onCheckedChange={(checked) =>
+            updateSettings({ isAutomatronActive: checked })}
         />
       </div>
       <div className="space-y-4">
@@ -69,13 +85,19 @@ export const AutomatronSettings = ({
                   <Label htmlFor={`field-${rule.id}`}>When this field</Label>
                   <Select
                     value={rule.field}
-                    onValueChange={(value) => updateRule(rule.id, 'field', value)}
+                    onValueChange={(value) =>
+                      updateRule(rule.id, "field", value)}
                   >
-                    <SelectTrigger id={`field-${rule.id}`} className="dark:bg-gray-800">
+                    <SelectTrigger
+                      id={`field-${rule.id}`}
+                      className="dark:bg-gray-800"
+                    >
                       <SelectValue placeholder="Select field" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.values(ColumnTitles).filter(title => getInputTypeForField(title) === 'select').map((field) => (
+                      {Object.values(ColumnTitles).filter((title) =>
+                        getInputTypeForField(title) === "select"
+                      ).map((field) => (
                         <SelectItem key={field} value={field}>
                           {field}
                         </SelectItem>
@@ -85,40 +107,52 @@ export const AutomatronSettings = ({
                 </div>
                 <div>
                   <Label htmlFor={`value-${rule.id}`}>Is set to</Label>
-                  {getInputTypeForField(rule.field) === 'select' ? (
-                    <Select
-                      value={rule.value}
-                      onValueChange={(value) => updateRule(rule.id, 'value', value)}
-                    >
-                      <SelectTrigger id={`value-${rule.id}`} className="dark:bg-gray-800">
-                        <SelectValue placeholder="Select value" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(boardConfig.columns[rule.field as ColumnTitles].options || []).map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      id={`value-${rule.id}`}
-                      placeholder="Enter value"
-                      type={getInputTypeForField(rule.field)}
-                      value={rule.value}
-                      onChange={(e) => updateRule(rule.id, 'value', e.target.value)}
-                       className="dark:bg-gray-800"
-                    />
-                  )}
+                  {getInputTypeForField(rule.field) === "select"
+                    ? (
+                      <Select
+                        value={rule.value}
+                        onValueChange={(value) =>
+                          updateRule(rule.id, "value", value)}
+                      >
+                        <SelectTrigger
+                          id={`value-${rule.id}`}
+                          className="dark:bg-gray-800"
+                        >
+                          <SelectValue placeholder="Select value" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(boardConfig.columns[rule.field as ColumnTitles]
+                            .options || []).map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    )
+                    : (
+                      <Input
+                        id={`value-${rule.id}`}
+                        placeholder="Enter value"
+                        type={getInputTypeForField(rule.field)}
+                        value={rule.value}
+                        onChange={(e) =>
+                          updateRule(rule.id, "value", e.target.value)}
+                        className="dark:bg-gray-800"
+                      />
+                    )}
                 </div>
                 <div>
                   <Label htmlFor={`status-${rule.id}`}>Change status to</Label>
                   <Select
                     value={rule.newStatus}
-                    onValueChange={(value) => updateRule(rule.id, 'newStatus', value)}
+                    onValueChange={(value) =>
+                      updateRule(rule.id, "newStatus", value)}
                   >
-                    <SelectTrigger id={`status-${rule.id}`} className="dark:bg-gray-800">
+                    <SelectTrigger
+                      id={`status-${rule.id}`}
+                      className="dark:bg-gray-800"
+                    >
                       <SelectValue placeholder="Select new status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -134,7 +168,8 @@ export const AutomatronSettings = ({
                   <Button
                     size="icon"
                     variant="destructive"
-                    onClick={() => deleteRule(rule.id)}
+                    onClick={() =>
+                      deleteRule(rule.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                     <span className="sr-only">Delete rule</span>
@@ -144,10 +179,14 @@ export const AutomatronSettings = ({
             </CardContent>
           </Card>
         ))}
-        <Button className="w-full dark:bg-gray-900" variant="outline" onClick={addRule}>
+        <Button
+          className="w-full dark:bg-gray-900"
+          variant="outline"
+          onClick={addRule}
+        >
           <Plus className="mr-2 h-4 w-4" /> Add Rule
         </Button>
       </div>
     </div>
-  )
-}
+  );
+};

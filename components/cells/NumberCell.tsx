@@ -1,11 +1,15 @@
 // NumberCell.jsx
 
-import { useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { StarIcon } from 'lucide-react';
-import { Slider } from '@/components/ui/slider';
-import { toast } from 'sonner';
+import { useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { StarIcon } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { toast } from "sonner";
 
 export const NumberCell = ({ item, columnValue, onUpdate }) => {
   const [ratingValue, setRatingValue] = useState(Number(columnValue.text) || 0);
@@ -18,12 +22,12 @@ export const NumberCell = ({ item, columnValue, onUpdate }) => {
         values: item.values.map((value) =>
           value.columnName === columnValue.columnName
             ? {
-                ...value,
-                text: newRating.toString(),
-                lastModifiedTimestamp: Date.now()
-              }
+              ...value,
+              text: newRating.toString(),
+              lastModifiedTimestamp: Date.now(),
+            }
             : value
-        )
+        ),
       };
       await onUpdate(updatedItem, columnValue.columnName);
       toast.success("Rating updated successfully");
@@ -36,9 +40,12 @@ export const NumberCell = ({ item, columnValue, onUpdate }) => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button className="w-full h-full justify-center p-2 text-gray-900 dark:text-gray-100" variant="ghost">
+        <Button
+          className="w-full h-full justify-center p-2 text-gray-900 dark:text-gray-100"
+          variant="ghost"
+        >
           <StarIcon className="mr-2 h-4 w-4" />
-          {ratingValue || 'Rate'}
+          {ratingValue || "Rate"}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">

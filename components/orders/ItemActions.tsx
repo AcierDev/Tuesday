@@ -1,8 +1,16 @@
-import { CheckCircle, Edit, MoreHorizontal, Ship, Trash2, Truck, Clipboard } from 'lucide-react'
-import React from 'react'
-import { useRouter } from 'next/navigation'
+import {
+  CheckCircle,
+  Clipboard,
+  Edit,
+  MoreHorizontal,
+  Ship,
+  Trash2,
+  Truck,
+} from "lucide-react";
+import React from "react";
+import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,50 +18,65 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
-import { type Item, ItemDesigns, ItemSizes, ColumnTitles, ColumnTypes } from '../../typings/types'
+import {
+  ColumnTitles,
+  ColumnTypes,
+  type Item,
+  ItemDesigns,
+  ItemSizes,
+} from "../../typings/types";
 
 interface ItemActionsProps {
-  item: Item
-  onEdit: (item: Item) => void
-  onDelete: (item: Item) => void
-  onShip: (itemId: string) => void
-  onMarkCompleted: (itemId: string) => void
-  onGetLabel: (item: Item) => void
-  showTrigger?: boolean
+  item: Item;
+  onEdit: (item: Item) => void;
+  onDelete: (item: Item) => void;
+  onShip: (itemId: string) => void;
+  onMarkCompleted: (itemId: string) => void;
+  onGetLabel: (item: Item) => void;
+  showTrigger?: boolean;
 }
 
-export const ItemActions = ({ 
-  item, 
-  onEdit, 
-  onDelete, 
-  onShip, 
-  onMarkCompleted, 
+export const ItemActions = ({
+  item,
+  onEdit,
+  onDelete,
+  onShip,
+  onMarkCompleted,
   onGetLabel,
-  showTrigger = true 
+  showTrigger = true,
 }: ItemActionsProps) => {
-  const router = useRouter()
+  const router = useRouter();
 
-  const getItemValue = (columnName: ColumnTitles, type: ColumnTypes): string | undefined => {
-    const value = item.values.find(value => value.columnName === columnName && value.type === type)
-    return value?.text
-  }
+  const getItemValue = (
+    columnName: ColumnTitles,
+    type: ColumnTypes,
+  ): string | undefined => {
+    const value = item.values.find((value) =>
+      value.columnName === columnName && value.type === type
+    );
+    return value?.text;
+  };
 
   const handleSetupUtility = () => {
-  const design = getItemValue(ColumnTitles.Design, ColumnTypes.Dropdown) as ItemDesigns | undefined
-  const size = getItemValue(ColumnTitles.Size, ColumnTypes.Dropdown) as ItemSizes | undefined
+    const design = getItemValue(ColumnTitles.Design, ColumnTypes.Dropdown) as
+      | ItemDesigns
+      | undefined;
+    const size = getItemValue(ColumnTitles.Size, ColumnTypes.Dropdown) as
+      | ItemSizes
+      | undefined;
 
-  if (design && size) {
-    const queryParams = new URLSearchParams({
-      design,
-      size,
-    }).toString()
-    router.push(`/utilities?${queryParams}`)
-  } else {
-    console.error('Design or Size not found for this item')
-  }
-}
+    if (design && size) {
+      const queryParams = new URLSearchParams({
+        design,
+        size,
+      }).toString();
+      router.push(`/utilities?${queryParams}`);
+    } else {
+      console.error("Design or Size not found for this item");
+    }
+  };
 
   const menuContent = (
     <DropdownMenuContent align="end">
@@ -85,10 +108,10 @@ export const ItemActions = ({
         Setup Utility
       </DropdownMenuItem>
     </DropdownMenuContent>
-  )
+  );
 
   if (!showTrigger) {
-    return menuContent
+    return menuContent;
   }
 
   return (
@@ -101,5 +124,5 @@ export const ItemActions = ({
       </DropdownMenuTrigger>
       {menuContent}
     </DropdownMenu>
-  )
-}
+  );
+};
