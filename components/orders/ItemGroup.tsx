@@ -20,6 +20,7 @@ import { EditItemDialog } from "./EditItemDialog"
 import { ItemActions } from "./ItemActions"
 import { BorderedTable } from "./BoarderedTable"
 import { STATUS_COLORS } from "@/utils/constants"
+import { boardConfig } from "@/config/boardconfig"
 
 interface ItemGroupProps {
   group: Group
@@ -246,7 +247,7 @@ export function ItemGroupSection({
                         {visibleColumns.map((columnName, cellIndex) => {
                           const columnValue = item.values.find(value => value.columnName === columnName) || {
                             columnName,
-                            type: ColumnTypes.Text,
+                            type: boardConfig.columns[columnName].type,
                             text: "\u00A0" // Unicode non-breaking space
                           };
                           return (

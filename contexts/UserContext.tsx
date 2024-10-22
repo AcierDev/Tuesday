@@ -42,10 +42,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check for existing user session on component mount
     const checkUserSession = async () => {
-      const response = await fetch('/api/user')
+      const response = await fetch('/api/user');
       if (response.ok) {
         const data = await response.json()
+        console.log('Fetched data from user api path', data)
         setUser(data.user)
+      } else {
+        const manualCookie = document.cookie;
+        const splits = manualCookie.split('=');
+        console.log("splits", splits)
+        if (splits && splits.length > 1) {
+          const user = splits[1];
+          console.log('user', user);
+          setUser(user as EmployeeNames);
+        }
       }
     }
     checkUserSession()

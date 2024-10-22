@@ -138,6 +138,8 @@ export function UserIdentificationMenu() {
       const result = await authenticate(formData)
       console.log(result)
       if (result.success) {
+        document.cookie = `username=${EMPLOYEE_MAP[credit]}; expires=Thu, 18 Dec 2030 12:00:00 UTC; path=/`
+        console.log("Just set cookie to: ", document.cookie)
         login(formData)
         handleClose()
       } else {
@@ -155,6 +157,8 @@ export function UserIdentificationMenu() {
       const result = await authenticate(formData)
 
       if (result.success) {
+        document.cookie = `username=${EMPLOYEE_MAP[selectedUser]}; expires=Thu, 18 Dec 2030 12:00:00 UTC; path=/`
+        console.log("Just set cookie to: ", document.cookie)
         login(formData)
         handleClose()
       } else {
