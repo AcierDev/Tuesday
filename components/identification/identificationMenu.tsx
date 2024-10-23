@@ -14,6 +14,7 @@ import { EmployeeNames } from '@/typings/types'
 import { authenticate, isUserPasswordProtected, getPasswordProtectedUsers, getUserPermissions } from '@/app/actions/auth'
 import { EmployeeAvatar } from './EmployeeAvatar'
 import { useUser } from '@/contexts/UserContext'
+import { useOrderSettings } from '@/contexts/OrderSettingsContext'
 
 export function UserIdentificationMenu() {
   const { user: currentUser, isAdmin, login, logout } = useUser()
@@ -28,6 +29,7 @@ export function UserIdentificationMenu() {
   const containerRef = useRef<HTMLDivElement>(null)
   const passwordInputRef = useRef<HTMLInputElement>(null)
   const [passwordProtectedUsers, setPasswordProtectedUsers] = useState<EmployeeNames[]>([])
+  const { settings } = useOrderSettings();
 
 
   const handleIdle = () => {
@@ -35,18 +37,18 @@ export function UserIdentificationMenu() {
   }
 
   const { reset, pause, resume } = useIdleTimer({
-    timeout: 30000,
+    timeout: settings.idleTimeout,
     onIdle: handleIdle,
     debounce: 500
   })
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin && !settings.showIdentificationMenuForAdmins) {
       pause()
     } else {
       resume()
     }
-  }, [isAdmin, pause, resume])
+  }, [isAdmin, settings.showIdentificationMenuForAdmins, pause, resume])
 
   useEffect(() => {
     const fetchPasswordProtectedUsers = async () => {

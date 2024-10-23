@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react'
 import { ColumnTitles, ColumnVisibility, ItemStatus, OrderSettings } from '@/typings/types'
@@ -32,6 +32,9 @@ const defaultSettings: OrderSettings = {
   showCompletedOrders: true,
   showSortingIcons: false,
   recentEditHours: undefined,
+  idleTimeout: 30,
+  isIdleTimeoutEnabled: true,
+  showIdentificationMenuForAdmins: false,
 }
 
 function orderSettingsReducer(state: OrderSettings, action: OrderSettingsAction): OrderSettings {
@@ -78,7 +81,7 @@ export function OrderSettingsProvider({ children }: { children: React.ReactNode 
           try {
             const parsedSettings = JSON.parse(savedSettings);
             // Merge saved settings with default settings to ensure all properties exist
-            const mergedSettings = { ...defaultSettings, ...parsedSettings,  };
+            const mergedSettings = { ...defaultSettings, ...parsedSettings };
             dispatch({ type: 'SET_SETTINGS', payload: mergedSettings });
           } catch (error) {
             dispatch({ type: 'SET_SETTINGS', payload: defaultSettings });

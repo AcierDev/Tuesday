@@ -205,6 +205,9 @@ export type OrderSettings = {
   showCompletedOrders: boolean
   showSortingIcons: boolean
   recentEditHours?: number
+  idleTimeout: number
+  isIdleTimeoutEnabled: boolean
+  showIdentificationMenuForAdmins: boolean
 }
 
 export type ShippingStatus = 'unshipped' | 'pre_transit' | 'in_transit' | 'delivered'
