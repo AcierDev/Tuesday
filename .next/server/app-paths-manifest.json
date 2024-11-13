@@ -1,0 +1,7 @@
+{
+  "/outlets/page": "app/outlets/page.js",
+  "/orders/page": "app/orders/page.js",
+  "/calculator/page": "app/calculator/page.js",
+  "/setup-utility/page": "app/setup-utility/page.js",
+  "/router/page": "app/router/page.js"
+}
