@@ -1,5 +1,6 @@
-import { EjectionSettings, ValidationErrors } from "@/typings/types";
-import { useState, useEffect, useCallback } from "react";
+import { RouterSettings, ValidationErrors } from "@/typings/types";
+import { DEFAULT_ROUTER_SETTINGS } from "@/utils/constants";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export const VALIDATION_RULES = {
   ejectionDuration: {
@@ -22,19 +23,42 @@ export const VALIDATION_RULES = {
 };
 
 export const useEjectionConfig = (
-  currentSettings: EjectionSettings,
-  onUpdateSettings: (settings: EjectionSettings) => void
+  onUpdateSettings: (settings: RouterSettings) => void
 ) => {
-  const [config, setConfig] = useState<EjectionSettings>(currentSettings);
+  // Use useRef to track initialization
+  const isInitialized = useRef(false);
+
+  const [config, setConfig] = useState<RouterSettings>(() => {
+    // Only use DEFAULT_ROUTER_SETTINGS as initial state
+    return DEFAULT_ROUTER_SETTINGS;
+  });
+
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
     {}
   );
   const [hasChanges, setHasChanges] = useState(false);
 
-  useEffect(() => {
-    setConfig(currentSettings);
-    setHasChanges(false);
-  }, [currentSettings]);
+  // Remove the useEffect that was setting config to DEFAULT_ROUTER_SETTINGS
+  // This was causing the config to reset when DEFAULT_ROUTER_SETTINGS changed
+
+  const updateConfigFromServer = useCallback((newConfig: RouterSettings) => {
+    // Only update if the new config is different from current
+    setConfig((prevConfig) => {
+      const configChanged =
+        JSON.stringify(prevConfig) !== JSON.stringify(newConfig);
+      if (configChanged) {
+        // If this is the first initialization, don't mark as having changes
+        if (!isInitialized.current) {
+          isInitialized.current = true;
+          setHasChanges(false);
+        }
+        return newConfig;
+      }
+      return prevConfig;
+    });
+
+    setValidationErrors({});
+  }, []);
 
   const validateConfig = useCallback((): boolean => {
     const errors: ValidationErrors = {};
@@ -73,7 +97,7 @@ export const useEjectionConfig = (
   }, [config]);
 
   const updateConfig = useCallback((path: string, value: any) => {
-    console.log("updateConfig");
+    console.log("updateConfig called with:", path, value);
     setConfig((prevConfig) => {
       const newConfig = { ...prevConfig };
       const keys = path.split(".");
@@ -88,9 +112,10 @@ export const useEjectionConfig = (
         }
       });
 
-      setHasChanges(true);
       return newConfig;
     });
+
+    setHasChanges(true);
   }, []);
 
   const handleSave = useCallback(() => {
@@ -103,15 +128,17 @@ export const useEjectionConfig = (
   }, [config, validateConfig, onUpdateSettings]);
 
   const handleReset = useCallback(() => {
-    setConfig(currentSettings);
+    // Reset to the most recent server config instead of DEFAULT_ROUTER_SETTINGS
+    setConfig(DEFAULT_ROUTER_SETTINGS);
     setHasChanges(false);
     setValidationErrors({});
-  }, [currentSettings]);
+  }, []);
 
   return {
     config,
     hasChanges,
     validationErrors,
+    updateConfigFromServer,
     updateConfig,
     handleSave,
     handleReset,

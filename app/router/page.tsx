@@ -24,24 +24,13 @@ import { StatusCard } from "@/components/router/StatusCard";
 import { LogEntry } from "@/components/router/LogEntry";
 import { useWebSocketManager } from "@/hooks/useWebsocket";
 import ImageAnalysisCard from "@/components/router/ImageAnalysisCard";
-import ImprovedEjectionControlGUI from "@/components/router/ejection/EjectionControls";
+import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionControls";
+import { EmptyLogs } from "@/utils/functions";
 
 const MAX_RECONNECT_ATTEMPTS = 5;
 
-const EmptyLogs = () => (
-  <div className="flex flex-col items-center justify-center h-[200px] text-center">
-    <Terminal className="w-12 h-12 mb-4 opacity-50 text-gray-400 dark:text-gray-500" />
-    <p className="text-sm font-medium text-gray-400 dark:text-gray-500">
-      No System Logs
-    </p>
-    <p className="text-xs text-gray-400 dark:text-gray-500">
-      System logs will appear here when available
-    </p>
-  </div>
-);
-
 export default function MonitoringDashboard() {
-  const { status, logs, connectionStatus, connectionError, reconnectAttempts } =
+  const { state, logs, connectionStatus, connectionError, reconnectAttempts } =
     useWebSocketManager();
 
   const renderConnectionAlert = () => {
@@ -78,7 +67,7 @@ export default function MonitoringDashboard() {
             System Monitor
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Last updated: {status.lastUpdate.toLocaleTimeString()}
+            Last updated: {state.lastUpdate.toLocaleTimeString()}
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -92,9 +81,10 @@ export default function MonitoringDashboard() {
 
       {renderConnectionAlert()}
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+      {/* Main Content - Restructured Layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Status Cards Grid */}
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-gray-50">
               System Status
@@ -103,71 +93,76 @@ export default function MonitoringDashboard() {
               Real-time sensor and device status
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <StatusCard
-                title="Sensor 1"
-                status={status.sensor1}
+                title="Block Sensor"
+                status={state.sensor1.active}
                 icon={Circle}
-                description={status.sensor1 ? "Active" : "Inactive"}
+                description={state.sensor1 ? "Active" : "Inactive"}
               />
               <StatusCard
-                title="Sensor 2"
-                status={status.sensor2}
-                icon={Circle}
-                description={status.sensor2 ? "Active" : "Inactive"}
-              />
-              <StatusCard
-                title="Solenoid"
-                status={status.solenoid}
+                title="Piston"
+                status={state.piston.active}
                 icon={Power}
-                description={status.solenoid ? "Engaged" : "Disengaged"}
+                description={state.piston ? "Engaged" : "Disengaged"}
               />
               <StatusCard
-                title="Ejection"
-                status={status.ejection}
+                title="Riser"
+                status={state.riser.active}
                 icon={Power}
-                description={status.solenoid ? "Engaged" : "Disengaged"}
+                description={state.riser ? "Engaged" : "Disengaged"}
+              />
+              <StatusCard
+                title="Ejector"
+                status={state.ejector.active}
+                icon={Power}
+                description={state.ejector ? "Engaged" : "Disengaged"}
               />
               <StatusCard
                 title="Camera"
-                status={status.deviceConnected}
+                status={state.deviceConnected}
                 icon={Camera}
                 description={
-                  status.deviceConnected ? "Connected" : "Disconnected"
+                  state.deviceConnected ? "Connected" : "Disconnected"
                 }
               />
-            </div>
-
-            {/* System Logs Section */}
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-50">
-                System Logs
-              </h3>
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800">
-                <ScrollArea
-                  className="h-[250px]"
-                  viewportClassName="dark:bg-gray-800"
-                >
-                  <div className="space-y-2 p-4">
-                    {logs.length > 0 ? (
-                      logs.map((log) => <LogEntry key={log.id} log={log} />)
-                    ) : (
-                      <EmptyLogs />
-                    )}
-                  </div>
-                </ScrollArea>
-              </div>
             </div>
           </CardContent>
         </Card>
 
-        <ImageAnalysisCard
-          imageUrl={status.currentImageUrl}
-          imageMetadata={status.currentImageMetadata}
-          analysis={status.currentAnalysis}
-          isCapturing={status.isCapturingImage}
-        />
+        {/* Enlarged Image Analysis Card */}
+        <div className="xl:row-span-2">
+          <ImageAnalysisCard
+            imageUrl={state.currentImageUrl}
+            imageMetadata={state.currentImageMetadata}
+            analysis={state.currentAnalysis}
+            isCapturing={state.isCapturingImage}
+          />
+        </div>
+
+        {/* System Logs Card */}
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-gray-900 dark:text-gray-50">
+              System Logs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea
+              className="h-[300px]"
+              viewportClassName="dark:bg-gray-800"
+            >
+              <div className="space-y-2">
+                {logs.length > 0 ? (
+                  logs.map((log) => <LogEntry key={log.id} log={log} />)
+                ) : (
+                  <EmptyLogs />
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Ejection Controls Card */}

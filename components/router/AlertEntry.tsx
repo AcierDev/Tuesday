@@ -1,3 +1,5 @@
+"use client";
+
 // components/alert-entry.tsx
 import React from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";

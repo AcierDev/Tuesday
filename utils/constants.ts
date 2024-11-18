@@ -3,6 +3,7 @@ import {
   ItemDesigns,
   ItemSizes,
   ItemStatus,
+  RouterSettings,
 } from "@/typings/types";
 
 export const DAYS_OF_WEEK = [
@@ -531,4 +532,37 @@ export const STATUS_COLORS: Record<ItemStatus, string> = {
   [ItemStatus.Packaging]: "lime-300",
   [ItemStatus.At_The_Door]: "yellow-900",
   [ItemStatus.Done]: "orange-600",
+};
+
+export const DEFAULT_ROUTER_SETTINGS: RouterSettings = {
+  globalSettings: {
+    ejectionDuration: 1000,
+    requireMultipleDefects: false,
+    minTotalArea: 100,
+    maxDefectsBeforeEject: 5,
+    riserDuration: 3000,
+    pistonDuration: 5000,
+  },
+  perClassSettings: {
+    corner: { enabled: true, minConfidence: 0.5, minArea: 100, maxCount: 3 },
+    crack: { enabled: true, minConfidence: 0.5, minArea: 100, maxCount: 3 },
+    damage: { enabled: true, minConfidence: 0.5, minArea: 100, maxCount: 3 },
+    edge: { enabled: true, minConfidence: 0.5, minArea: 100, maxCount: 3 },
+    knot: { enabled: true, minConfidence: 0.5, minArea: 100, maxCount: 3 },
+    router: { enabled: true, minConfidence: 0.5, minArea: 100, maxCount: 3 },
+    side: { enabled: true, minConfidence: 0.5, minArea: 100, maxCount: 3 },
+    tearout: { enabled: true, minConfidence: 0.5, minArea: 100, maxCount: 3 },
+  },
+  advancedSettings: {
+    considerOverlap: false,
+    regionOfInterest: {
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      type: "roi",
+      id: "roi",
+    },
+    exclusionZones: [],
+  },
 };

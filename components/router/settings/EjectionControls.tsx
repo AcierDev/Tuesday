@@ -1,4 +1,6 @@
-import { useState } from "react";
+"use client";
+
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +30,7 @@ import { useWebSocketManager } from "@/hooks/useWebsocket";
 import { useEjectionConfig } from "@/hooks/useEjectionConfig";
 
 export default function ImprovedEjectionControlGUI() {
-  const { status, updateEjectionSettings } = useWebSocketManager();
+  const { updateEjectionSettings, state } = useWebSocketManager();
   const {
     config,
     hasChanges,
@@ -36,7 +38,8 @@ export default function ImprovedEjectionControlGUI() {
     updateConfig,
     handleReset,
     handleSave,
-  } = useEjectionConfig(status.ejectionSettings, updateEjectionSettings);
+    updateConfigFromServer,
+  } = useEjectionConfig(updateEjectionSettings);
 
   const [activeTab, setActiveTab] = useState("global");
   const [showUnsavedChanges, setShowUnsavedChanges] = useState(false);
@@ -55,6 +58,12 @@ export default function ImprovedEjectionControlGUI() {
       setContentHeight(`${height}px`);
     }
   };
+
+  useEffect(() => {
+    if (state.settings) {
+      updateConfigFromServer(state.settings);
+    }
+  }, [state.settings, updateConfigFromServer]);
 
   return (
     <div className="container mx-auto bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-4">
@@ -213,6 +222,7 @@ export default function ImprovedEjectionControlGUI() {
                     <AdvancedSettings
                       config={config}
                       updateConfig={updateConfig}
+                      imageSrc="./images/pfp/akiva.png"
                     />
                   )}
                   {activeTab === "presets" && (

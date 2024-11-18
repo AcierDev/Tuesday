@@ -7,7 +7,6 @@ export type Board = {
   id: string;
   name: string;
   items_page: ItemsResponse;
-  settings: Settings;
   weeklySchedules: WeeklySchedules;
 };
 
@@ -166,10 +165,6 @@ export type ItemSortFuncs = Record<
   (items: Item[], ascending: boolean) => Item[]
 >;
 
-export type Settings = {
-  automatronSettings: AutomatronSettings;
-};
-
 export type AutomatronSettings = PartialRecord<
   ColumnTitles,
   PartialRecord<ProgressStatus | ItemDesigns | ItemSizes, ItemStatus>
@@ -253,22 +248,27 @@ export enum LockedInventory {
   Boards = "Uncut Boards",
 }
 
-export type State = {
-  sensor1: boolean;
-  sensor2: boolean;
-  solenoid: boolean;
-  ejection: boolean;
+export interface SystemState {
+  sensor1: IODevice;
+  piston: IODevice;
+  ejector: IODevice;
+  riser: IODevice;
+  lastUpdate: Date;
+  isProcessing: boolean;
   lastPhotoPath: string | null;
   deviceConnected: boolean;
-  lastUpdate: Date;
   isCapturingImage: boolean;
   lastEjectionResult?: {
     didEject: boolean;
     reason: string;
     details: any;
   };
-  ejectionSettings: EjectionSettings;
-};
+}
+
+export interface IODevice {
+  active: boolean;
+  pin: number;
+}
 
 export type Alert = {
   id: string;
@@ -331,18 +331,11 @@ export type ClassName =
   | "side"
   | "tearout";
 
-export interface RegionOfInterest {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 export interface ValidationErrors {
   [key: string]: string;
 }
 
-export interface EjectionSettings {
+export interface RouterSettings {
   globalSettings: GlobalSettings;
   perClassSettings: PerClassSettings;
   advancedSettings: AdvancedSettings;
@@ -353,6 +346,8 @@ export interface GlobalSettings {
   requireMultipleDefects: boolean;
   minTotalArea: number;
   maxDefectsBeforeEject: number;
+  pistonDuration: number;
+  riserDuration: number;
 }
 
 export type PerClassSettings = {
@@ -366,7 +361,32 @@ export type PerClassSettings = {
 
 export type AdvancedSettings = {
   considerOverlap: boolean;
-  regionOfInterest: RegionOfInterest;
+  regionOfInterest: Region;
+  exclusionZones: Region[];
 };
 
 export type PresetSettings = "High" | "Medium" | "Low";
+
+export type MachineState = "IDLE" | "MOVING" | "HOMING" | "ERROR";
+
+export interface Position {
+  x: number;
+  y: number;
+}
+
+export interface MachineStatus {
+  state: MachineState;
+  position: Position;
+  speed: number;
+  accel: number;
+  error?: string;
+}
+
+export interface Region {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  type: "roi" | "exclusion";
+  id: string;
+}

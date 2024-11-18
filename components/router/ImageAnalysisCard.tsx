@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Camera, ZoomIn, Download, Share, CircleEllipsis } from "lucide-react";
 import {

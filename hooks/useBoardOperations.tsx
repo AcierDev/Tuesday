@@ -1,24 +1,66 @@
-import { useCallback, useEffect, useState } from "react";
+// hooks/useBoardOperations.ts
+import { useCallback, useState, useEffect } from "react";
 import { toast } from "sonner";
-
 import {
-  type Board,
-  type Item,
+  Board,
+  Item,
   ItemStatus,
-  Settings,
+  RouterSettings,
   ColumnTitles,
+  OrderSettings,
 } from "@/typings/types";
+import { useBoardWatch } from "./useBoardWatch";
 
 export function useBoardOperations(
   initialBoard: Board | null,
-  collection: any,
-  settings: Settings
+  settings: OrderSettings
 ) {
   const [board, setBoard] = useState<Board | null>(initialBoard);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useBoardWatch(board?.id, (updatedBoard) => {
+    setBoard(updatedBoard);
+  });
+
+  const loadBoard = useCallback(async () => {
+    try {
+      const response = await fetch("/api/board");
+      if (!response.ok) throw new Error("Failed to load board");
+      const loadedBoard = await response.json();
+      setBoard(loadedBoard);
+      console.log("Board loaded:", loadedBoard);
+    } catch (err) {
+      console.error("Failed to load board", err);
+      toast.error("Failed to load board. Please refresh the page.", {
+        style: { background: "#EF4444", color: "white" },
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    setBoard(initialBoard);
-  }, [initialBoard]);
+    loadBoard();
+  }, [loadBoard]);
+
+  const updateBoardInDb = async (boardId: string, updateData: any) => {
+    const response = await fetch("/api/board", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        boardId,
+        updateData,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update board");
+    }
+
+    return response.json();
+  };
 
   const applyAutomatronRules = useCallback(
     (item: Item, changedField: ColumnTitles) => {
@@ -27,7 +69,6 @@ export function useBoardOperations(
       const updatedItem = { ...item };
       let statusChanged = false;
 
-      // Filter rules that apply to the changed field
       const relevantRules = settings.automatronRules.filter(
         (rule) => rule.field === changedField
       );
@@ -66,7 +107,6 @@ export function useBoardOperations(
 
       const currentTimestamp = Date.now();
 
-      // Update the lastModifiedTimestamp for the changed column
       const updatedValues = updatedItem.values.map((value) =>
         value.columnName === changedField
           ? { ...value, lastModifiedTimestamp: currentTimestamp }
@@ -79,15 +119,12 @@ export function useBoardOperations(
       };
 
       try {
-        await collection.updateOne(
-          { id: board.id, "items_page.items.id": itemWithUpdatedTimestamp.id },
-          {
-            $set: {
-              "items_page.items.$": itemWithUpdatedTimestamp,
-            },
-          }
-        );
-        console.log("Database update successful");
+        await updateBoardInDb(board.id, {
+          $set: {
+            [`items_page.items.$[elem]`]: itemWithUpdatedTimestamp,
+          },
+          arrayFilters: [{ "elem.id": itemWithUpdatedTimestamp.id }],
+        });
 
         const updatedItems = board.items_page.items.map((item) =>
           item.id === itemWithUpdatedTimestamp.id
@@ -99,7 +136,6 @@ export function useBoardOperations(
           ...board,
           items_page: { ...board.items_page, items: updatedItems },
         });
-        console.log("Board state updated");
 
         const itemWithRulesApplied = applyAutomatronRules(
           itemWithUpdatedTimestamp,
@@ -116,7 +152,7 @@ export function useBoardOperations(
         throw err;
       }
     },
-    [board, collection, applyAutomatronRules]
+    [board, applyAutomatronRules]
   );
 
   const addNewItem = useCallback(
@@ -134,13 +170,11 @@ export function useBoardOperations(
         isScheduled: false,
       };
 
-      console.log("Adding new item:", fullNewItem);
-
       try {
-        await collection.updateOne(
-          { id: board.id },
-          { $push: { "items_page.items": fullNewItem } }
-        );
+        await updateBoardInDb(board.id, {
+          $push: { "items_page.items": fullNewItem },
+        });
+
         setBoard({
           ...board,
           items_page: {
@@ -148,7 +182,7 @@ export function useBoardOperations(
             items: [...board.items_page.items, fullNewItem],
           },
         });
-        console.log("New item added successfully");
+
         toast.success("New item added successfully", {
           style: { background: "#10B981", color: "white" },
         });
@@ -159,23 +193,21 @@ export function useBoardOperations(
         });
       }
     },
-    [board, collection]
+    [board]
   );
 
   const deleteItem = useCallback(
     async (itemId: string) => {
       if (!board) return;
 
-      console.log(`Marking item as deleted: ${itemId}`);
-
       try {
-        // Update the item in the database
-        await collection.updateOne(
-          { id: board.id, "items_page.items.id": itemId },
-          { $set: { "items_page.items.$.deleted": true } }
-        );
+        await updateBoardInDb(board.id, {
+          $set: {
+            "items_page.items.$[elem].deleted": true,
+          },
+          arrayFilters: [{ "elem.id": itemId }],
+        });
 
-        // Update the local state
         setBoard({
           ...board,
           items_page: {
@@ -186,7 +218,6 @@ export function useBoardOperations(
           },
         });
 
-        console.log("Item marked as deleted successfully");
         toast.success("Item marked as deleted successfully", {
           style: { background: "#10B981", color: "white" },
         });
@@ -197,15 +228,17 @@ export function useBoardOperations(
         });
       }
     },
-    [board, collection, setBoard]
+    [board]
   );
 
   return {
     board,
     setBoard,
+    isLoading,
     applyAutomatronRules,
     updateItem,
     addNewItem,
     deleteItem,
+    refreshBoard: loadBoard,
   };
 }

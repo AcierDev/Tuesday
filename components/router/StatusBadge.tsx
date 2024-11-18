@@ -1,3 +1,5 @@
+"use client";
+
 // components/status-badge.tsx
 import { ConnectionStatus } from "@/typings/types";
 import React from "react";

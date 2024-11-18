@@ -1,3 +1,5 @@
+"use client";
+
 // components/log-entry.tsx
 import React from "react";
 import { Info, AlertTriangle } from "lucide-react";
