@@ -11,7 +11,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { DEFAULT_ROUTER_SETTINGS } from "@/utils/constants";
 
-const WEBSOCKET_URL = "wss://192.168.1.215:3000/ws";
+const WEBSOCKET_URL = "ws://192.168.1.215:3000/ws";
 const RECONNECT_DELAY = 2000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const PING_INTERVAL = 30000;

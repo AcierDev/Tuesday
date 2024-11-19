@@ -7,6 +7,7 @@ export type Board = {
   id: string;
   name: string;
   items_page: ItemsResponse;
+  settings: Settings;
   weeklySchedules: WeeklySchedules;
 };
 
@@ -164,6 +165,10 @@ export type ItemSortFuncs = Record<
   ColumnTitles,
   (items: Item[], ascending: boolean) => Item[]
 >;
+
+export type Settings = {
+  automatronSettings: AutomatronSettings;
+};
 
 export type AutomatronSettings = PartialRecord<
   ColumnTitles,

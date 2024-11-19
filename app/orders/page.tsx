@@ -18,14 +18,23 @@ import { SettingsPanel } from "@/components/setttings/SettingsPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
-import { Item, ItemStatus, ItemSizes, ItemDesigns } from "@/typings/types";
-import { useBoardOperations } from "@/hooks/useBoardOperations";
+import { useRealmApp } from "@/hooks/useRealmApp";
+import {
+  Group,
+  Item,
+  ItemStatus,
+  ItemSizes,
+  ItemDesigns,
+  ColumnTitles,
+  ColumnValue,
+} from "@/typings/types";
+import { useBoardOperations } from "@/components/orders/OrderHooks";
 import { ShippingDashboard } from "@/components/shipping/ShippingDashboard";
-import { useDatabaseContext } from "@/contexts/DatabaseContext";
 
 export default function OrderManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentMode, setCurrentMode] = useState("all");
+  const { boardCollection: collection, user, isLoading } = useRealmApp();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false);
   const [isShippingDashboardOpen, setIsShippingDashboardOpen] = useState(false);
@@ -33,14 +42,12 @@ export default function OrderManagementPage() {
   const [isWeeklyPlannerOpen, setIsWeeklyPlannerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  const { isLoading } = useDatabaseContext();
-
   const orderSettingsContext = useOrderSettings();
   const settings = orderSettingsContext.settings || {};
   const updateSettings = orderSettingsContext.updateSettings || (() => {});
 
   const { board, setBoard, updateItem, addNewItem, deleteItem } =
-    useBoardOperations(null, settings);
+    useBoardOperations(null, collection, settings);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -48,6 +55,27 @@ export default function OrderManagementPage() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  const loadBoard = useCallback(async () => {
+    if (!collection) return;
+
+    try {
+      const loadedBoard = await collection.findOne({});
+      setBoard(loadedBoard);
+      console.log("Board loaded:", loadedBoard);
+    } catch (err) {
+      console.error("Failed to load board", err);
+      toast.error("Failed to load board. Please refresh the page.", {
+        style: { background: "#EF4444", color: "white" },
+      });
+    }
+  }, [collection, setBoard]);
+
+  useEffect(() => {
+    if (!isLoading && collection) {
+      loadBoard();
+    }
+  }, [isLoading, collection, loadBoard]);
 
   const isItemDue = useCallback(
     (item: Item) => {
@@ -65,6 +93,209 @@ export default function OrderManagementPage() {
       return daysDifference <= settings.dueBadgeDays;
     },
     [settings.dueBadgeDays]
+  );
+
+  const dueCounts = useMemo(() => {
+    if (!board) return {};
+
+    const counts: Record<string, number> = {
+      all: 0,
+      geometric: 0,
+      striped: 0,
+      tiled: 0,
+      mini: 0,
+      custom: 0,
+    };
+
+    board.items_page.items.forEach((item) => {
+      if (isItemDue(item)) {
+        counts.all++;
+
+        const design =
+          item.values.find((v) => v.columnName === "Design")?.text || "";
+        const size =
+          item.values.find((v) => v.columnName === "Size")?.text || "";
+
+        const isMini = size === ItemSizes.Fourteen_By_Seven;
+
+        if (design.startsWith("Striped") && !isMini) counts.striped++;
+        else if (design.startsWith("Tiled") && !isMini) counts.tiled++;
+        else if (
+          !design.startsWith("Striped") &&
+          !isMini &&
+          !design.startsWith("Tiled")
+        )
+          counts.geometric++;
+
+        if (isMini) counts.mini++;
+        if (!Object.values(ItemDesigns).includes(design as ItemDesigns))
+          counts.custom++;
+      }
+    });
+
+    return counts;
+  }, [board, isItemDue]);
+
+  useEffect(() => {
+    if (!collection) return;
+
+    let isActive = true;
+
+    const watchForChanges = async () => {
+      while (isActive) {
+        try {
+          console.log("Starting board watch");
+          for await (const change of collection.watch()) {
+            if (!isActive) break;
+            switch (change.operationType) {
+              case "update": {
+                const { fullDocument } = change;
+                if (fullDocument && fullDocument.id === board?.id) {
+                  console.log("Board updated:", fullDocument);
+                  setBoard(fullDocument);
+                  toast.success("Board updated", {
+                    style: { background: "#10B981", color: "white" },
+                  });
+                }
+                break;
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Watch stream error:", error);
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+        }
+      }
+    };
+
+    watchForChanges();
+
+    return () => {
+      isActive = false;
+    };
+  }, [collection, board?.id, setBoard]);
+
+  const shipItem = useCallback(async (itemId: string) => {
+    console.log(`Shipping item: ${itemId}`);
+    toast.success("Item marked as shipped", {
+      style: { background: "#10B981", color: "white" },
+    });
+  }, []);
+
+  const markItemCompleted = useCallback(async (itemId: string) => {
+    console.log(`Marking item as completed: ${itemId}`);
+    toast.success("Item marked as completed", {
+      style: { background: "#10B981", color: "white" },
+    });
+  }, []);
+
+  const onGetLabel = useCallback((item: Item) => {
+    console.log(`Getting label for item: ${item.id}`);
+    setSelectedItem(item);
+    setIsShippingDashboardOpen(true);
+  }, []);
+
+  const onDragEnd = useCallback(
+    async (result: DropResult, provided: ResponderProvided) => {
+      const { source, destination, draggableId } = result;
+
+      if (!destination) return;
+
+      if (
+        source.droppableId === destination.droppableId &&
+        source.index === destination.index
+      ) {
+        return;
+      }
+
+      if (!board) return;
+
+      const movedItemIndex = board.items_page.items.findIndex(
+        (item) => item.id === draggableId
+      );
+      if (movedItemIndex === -1) return;
+
+      const movedItem = { ...board.items_page.items[movedItemIndex] };
+
+      const newStatus = Object.values(ItemStatus).find(
+        (status) => status === destination.droppableId
+      );
+
+      if (!newStatus) {
+        console.warn(
+          "Invalid destination droppableId:",
+          destination.droppableId
+        );
+        return;
+      }
+
+      const updatedItems = [...board.items_page.items];
+      updatedItems.splice(movedItemIndex, 1);
+
+      const statusChanged = movedItem.status !== newStatus;
+      if (statusChanged) {
+        movedItem.status = newStatus;
+        // Set completedAt when the item is moved to Done status
+        if (newStatus === ItemStatus.Done) {
+          movedItem.completedAt = Date.now();
+        } else {
+          // If the item is moved out of Done status, remove the completedAt field
+          delete movedItem.completedAt;
+        }
+      }
+
+      let insertionIndex = 0;
+      for (const group of sortedGroups) {
+        if (group.id === newStatus) break;
+        insertionIndex += group.items.length;
+      }
+
+      insertionIndex += destination.index;
+      updatedItems.splice(insertionIndex, 0, movedItem);
+
+      try {
+        await collection!.updateOne(
+          { id: board.id },
+          { $set: { "items_page.items": updatedItems } }
+        );
+
+        setBoard((prevBoard) => ({
+          ...prevBoard!,
+          items_page: {
+            ...prevBoard!.items_page,
+            items: updatedItems,
+          },
+        }));
+
+        console.log(`Item moved to ${newStatus} and reordered successfully`);
+        toast.success(`Item moved to ${newStatus} and reordered successfully`, {
+          style: { background: "#10B981", color: "white" },
+        });
+
+        // Add a specific message when an item is completed
+        if (newStatus === ItemStatus.Done) {
+          toast.success("Item marked as completed!", {
+            style: { background: "#10B981", color: "white" },
+          });
+        }
+      } catch (error) {
+        console.error("Failed to update item status and order:", error);
+        toast.error(
+          "Failed to update item status and order. Please try again.",
+          {
+            style: { background: "#EF4444", color: "white" },
+          }
+        );
+      }
+    },
+    [
+      board,
+      collection,
+      setBoard,
+      settings.groupingField,
+      settings.showCompletedOrders,
+      searchTerm,
+    ]
   );
 
   const getUniqueGroupValues = useCallback((items: Item[], field: string) => {
@@ -184,166 +415,16 @@ export default function OrderManagementPage() {
     });
   }, [filteredGroups, settings.groupingField]);
 
-  const dueCounts = useMemo(() => {
-    if (!board) return {};
-
-    const counts = {
-      all: 0,
-      geometric: 0,
-      striped: 0,
-      tiled: 0,
-      mini: 0,
-      custom: 0,
-    };
-
-    board.items_page.items.forEach((item) => {
-      if (isItemDue(item)) {
-        counts.all++;
-
-        const design =
-          item.values.find((v) => v.columnName === "Design")?.text || "";
-        const size =
-          item.values.find((v) => v.columnName === "Size")?.text || "";
-
-        const isMini = size === ItemSizes.Fourteen_By_Seven;
-
-        if (design.startsWith("Striped") && !isMini) counts.striped++;
-        else if (design.startsWith("Tiled") && !isMini) counts.tiled++;
-        else if (
-          !design.startsWith("Striped") &&
-          !isMini &&
-          !design.startsWith("Tiled")
-        )
-          counts.geometric++;
-
-        if (isMini) counts.mini++;
-        if (!Object.values(ItemDesigns).includes(design as ItemDesigns))
-          counts.custom++;
-      }
-    });
-
-    return counts;
-  }, [board, isItemDue]);
-
-  const shipItem = useCallback(async (itemId: string) => {
-    console.log(`Shipping item: ${itemId}`);
-    toast.success("Item marked as shipped", {
-      style: { background: "#10B981", color: "white" },
-    });
-  }, []);
-
-  const markItemCompleted = useCallback(async (itemId: string) => {
-    console.log(`Marking item as completed: ${itemId}`);
-    toast.success("Item marked as completed", {
-      style: { background: "#10B981", color: "white" },
-    });
-  }, []);
-
-  const onGetLabel = useCallback((item: Item) => {
-    console.log(`Getting label for item: ${item.id}`);
-    setSelectedItem(item);
-    setIsShippingDashboardOpen(true);
-  }, []);
-
-  const onDragEnd = useCallback(
-    async (result: DropResult, provided: ResponderProvided) => {
-      const { source, destination, draggableId } = result;
-
-      if (!destination) return;
-
-      if (
-        source.droppableId === destination.droppableId &&
-        source.index === destination.index
-      ) {
-        return;
-      }
-
-      if (!board) return;
-
-      const movedItemIndex = board.items_page.items.findIndex(
-        (item) => item.id === draggableId
-      );
-      if (movedItemIndex === -1) return;
-
-      const movedItem = { ...board.items_page.items[movedItemIndex] };
-      const newStatus = Object.values(ItemStatus).find(
-        (status) => status === destination.droppableId
-      );
-
-      if (!newStatus) {
-        console.warn(
-          "Invalid destination droppableId:",
-          destination.droppableId
-        );
-        return;
-      }
-
-      const updatedItems = [...board.items_page.items];
-      updatedItems.splice(movedItemIndex, 1);
-
-      const statusChanged = movedItem.status !== newStatus;
-      if (statusChanged) {
-        movedItem.status = newStatus;
-        if (newStatus === ItemStatus.Done) {
-          movedItem.completedAt = Date.now();
-        } else {
-          delete movedItem.completedAt;
-        }
-      }
-
-      let insertionIndex = 0;
-      for (const group of sortedGroups) {
-        if (group.id === newStatus) break;
-        insertionIndex += group.items.length;
-      }
-
-      insertionIndex += destination.index;
-      updatedItems.splice(insertionIndex, 0, movedItem);
-
-      try {
-        await fetch("/api/board", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            boardId: board.id,
-            updateData: {
-              $set: { "items_page.items": updatedItems },
-            },
-          }),
-        });
-
-        setBoard((prevBoard) => ({
-          ...prevBoard!,
-          items_page: {
-            ...prevBoard!.items_page,
-            items: updatedItems,
-          },
-        }));
-
-        toast.success(`Item moved to ${newStatus} and reordered successfully`, {
-          style: { background: "#10B981", color: "white" },
-        });
-
-        if (newStatus === ItemStatus.Done) {
-          toast.success("Item marked as completed!", {
-            style: { background: "#10B981", color: "white" },
-          });
-        }
-      } catch (error) {
-        console.error("Failed to update item status and order:", error);
-        toast.error(
-          "Failed to update item status and order. Please try again.",
-          {
-            style: { background: "#EF4444", color: "white" },
-          }
-        );
-      }
-    },
-    [board, sortedGroups]
-  );
-
   if (isLoading) {
     return <div>Loading...</div>;
+  }
+
+  if (!collection || !user) {
+    return (
+      <div>
+        Error: Unable to connect to the database. Please try again later.
+      </div>
+    );
   }
 
   if (!orderSettingsContext) {
@@ -421,6 +502,7 @@ export default function OrderManagementPage() {
         />
       )}
       <NewItemModal
+        board={board}
         isOpen={isNewItemModalOpen}
         onClose={() => setIsNewItemModalOpen(false)}
         onSubmit={addNewItem}
