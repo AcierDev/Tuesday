@@ -1,13 +1,13 @@
-import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 export async function GET() {
-  console.log('all cookies', cookies().getAll())
+  console.log("all cookies", (await cookies()).getAll());
 
-  const userCookie = cookies().get('user')
+  const userCookie = (await cookies()).get("user");
   if (userCookie) {
-    return NextResponse.json({ user: userCookie.value })
+    return NextResponse.json({ user: userCookie.value });
   } else {
-    return NextResponse.json({ user: null })
+    return NextResponse.json({ user: null });
   }
 }
