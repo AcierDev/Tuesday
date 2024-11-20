@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { format, addDays } from "date-fns";
-import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
-import { useRealmApp } from "@/hooks/useRealmApp";
 import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
 import { useIsMobile } from "@/components/shared/UseIsMobile";
 import { SchedulePageLayout } from "@/components/shared/SchedulePageLayout";
@@ -14,24 +13,15 @@ import { DetailsTab } from "@/components/backboards/DetailsTab";
 import { useBoardOperations } from "@/hooks/useBoardOperations";
 import { BackboardCalculations } from "@/components/backboards/BackboardCalculations";
 import { backboardData } from "@/utils/constants";
-import {
-  BackboardRequirement,
-  Board,
-  Group,
-  Item,
-  ItemSizes,
-} from "@/typings/types";
-import { useDatabaseContext } from "@/contexts/DatabaseContext";
+import { BackboardRequirement, Group, ItemSizes } from "@/typings/types";
 
 export default function BackboardSchedulePage() {
-  const { boards, isLoading } = useDatabaseContext();
-  const [items, setItems] = useState<Item[]>([]);
-  const [board, setBoard] = useState<Board | null>(null);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [filterSize, setFilterSize] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("overview");
   const isMobile = useIsMobile();
+
   const {
     weeklySchedules,
     currentWeekStart,
@@ -41,40 +31,8 @@ export default function BackboardSchedulePage() {
     resetToCurrentWeek,
     isCurrentWeek,
   } = useWeeklySchedule({ weekStartsOn: 0 });
-  const [updateItem, setUpdateItem] =
-    useState<(updatedItem: Item) => Promise<void>>();
 
-  const boardOperations = useBoardOperations(board, collection, {});
-
-  useEffect(() => {
-    if (board && collection) {
-      setUpdateItem(() => boardOperations.updateItem);
-    } else {
-      setUpdateItem(undefined);
-    }
-  }, [board, collection, boardOperations]);
-
-  const loadItems = useCallback(async () => {
-    if (!collection) return;
-
-    try {
-      const loadedBoard = await collection.findOne({});
-      setBoard(loadedBoard);
-      setItems(loadedBoard?.items_page.items || []);
-      console.log("Board loaded:", loadedBoard);
-    } catch (err) {
-      console.error("Failed to load board", err);
-      toast.error("Failed to load board. Please refresh the page.", {
-        style: { background: "#EF4444", color: "white" },
-      });
-    }
-  }, [collection, setBoard, setItems]);
-
-  useEffect(() => {
-    if (!isLoading && collection) {
-      loadItems();
-    }
-  }, [isLoading, collection, loadItems]);
+  const { board, isLoading, isError } = useBoardOperations(null);
 
   const toggleDateSelection = (date: Date) => {
     setSelectedDates((prev) => {
@@ -87,6 +45,8 @@ export default function BackboardSchedulePage() {
   };
 
   const itemsNeedingBackboards = useMemo(() => {
+    if (!board) return [];
+
     const selectedDateStrings = selectedDates.map((date) =>
       format(date, "yyyy-MM-dd")
     );
@@ -114,10 +74,12 @@ export default function BackboardSchedulePage() {
       }
     });
 
-    return items.filter((item) => scheduledItems.has(item.id));
-  }, [items, selectedDates, weeklySchedules, currentWeekStart]);
+    return board.items_page.items.filter((item) => scheduledItems.has(item.id));
+  }, [board, selectedDates, weeklySchedules, currentWeekStart]);
 
   const filteredItemsNeedingBackboards = useMemo(() => {
+    if (!itemsNeedingBackboards) return [];
+
     return itemsNeedingBackboards.filter((item) => {
       const sizeValue =
         item.values.find((value) => value.columnName === "Size")?.text || "";
@@ -135,19 +97,22 @@ export default function BackboardSchedulePage() {
     () => ({
       id: "backboard-group",
       title: "Paint",
-      items: filteredItemsNeedingBackboards,
+      items: filteredItemsNeedingBackboards || [],
     }),
     [filteredItemsNeedingBackboards]
   );
 
   const backboardRequirements: BackboardRequirement = useMemo(
     () =>
-      BackboardCalculations({
-        schedule: weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {},
-        items,
-        selectedDates,
-      }),
-    [weeklySchedules, currentWeekStart, items, selectedDates]
+      board
+        ? BackboardCalculations({
+            schedule:
+              weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {},
+            items: board.items_page.items,
+            selectedDates,
+          })
+        : {},
+    [weeklySchedules, currentWeekStart, board, selectedDates]
   );
 
   const filteredRequirements = Object.entries(backboardRequirements).filter(
@@ -162,9 +127,42 @@ export default function BackboardSchedulePage() {
 
   const totalPanels = useMemo(() => {
     return filteredRequirements.reduce((total, [size, count]) => {
-      return total + backboardData[size as ItemSizes].panels * count;
+      return total + (backboardData[size as ItemSizes]?.panels || 0) * count;
     }, 0);
   }, [filteredRequirements]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+        <span className="ml-2 text-gray-500">Loading board data...</span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center text-red-500">
+          <h2 className="text-xl font-semibold mb-2">Failed to load board</h2>
+          <p>Please try refreshing the page</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!board) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center text-gray-500">
+          <h2 className="text-xl font-semibold mb-2">
+            No board data available
+          </h2>
+          <p>Please check your connection and try again</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -216,8 +214,7 @@ export default function BackboardSchedulePage() {
         weekStartsOn={0}
         isCurrentWeek={isCurrentWeek()}
         group={filteredBackboardGroup}
-        board={board!}
-        updateItem={updateItem!}
+        board={board}
         selectedDates={selectedDates}
         schedule={weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {}}
         toggleDateSelection={toggleDateSelection}

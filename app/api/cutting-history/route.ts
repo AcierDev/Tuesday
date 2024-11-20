@@ -1,4 +1,3 @@
-// app/api/cutting-history/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 
@@ -29,8 +28,15 @@ export async function POST(request: NextRequest) {
       "cuttingHistory-" + process.env.NEXT_PUBLIC_MODE
     );
 
-    const data = await request.json();
-    const result = await collection.insertOne(data);
+    const { date, count } = await request.json();
+
+    // Use updateOne with upsert instead of insertOne to match the previous behavior
+    const result = await collection.updateOne(
+      { date },
+      { $set: { count } },
+      { upsert: true }
+    );
+
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     console.error(error);

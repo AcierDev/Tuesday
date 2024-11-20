@@ -38,11 +38,11 @@ import { ItemActions } from "./ItemActions";
 import { BorderedTable } from "./BoarderedTable";
 import { STATUS_COLORS } from "@/utils/constants";
 import { boardConfig } from "@/config/boardconfig";
+import { useBoardOperations } from "@/hooks/useBoardOperations";
 
 interface ItemGroupProps {
   group: Group;
   board: Board;
-  onUpdate: (item: Item) => Promise<void>;
   onDelete: (itemId: string) => Promise<void>;
   onShip: (itemId: string) => Promise<void>;
   onMarkCompleted: (itemId: string) => Promise<void>;
@@ -54,7 +54,6 @@ interface ItemGroupProps {
 export function ItemGroupSection({
   group,
   board,
-  onUpdate,
   onDelete,
   onShip,
   onMarkCompleted,
@@ -67,13 +66,13 @@ export function ItemGroupSection({
   const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(
     null
   );
-  const [isDragging, setIsDragging] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
     item: Item;
   } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const { updateItem } = useBoardOperations();
 
   const handleEdit = useCallback((item: Item) => {
     console.log("Editing item:", item);
@@ -86,7 +85,7 @@ export function ItemGroupSection({
       if (updatedItem) {
         console.log("Saving edited item:", updatedItem);
         try {
-          await onUpdate(updatedItem);
+          await updateItem(updatedItem, null);
           setEditingItem(null);
           console.log("Item updated successfully");
           toast.success("Item updated successfully", {
@@ -100,7 +99,7 @@ export function ItemGroupSection({
         }
       }
     },
-    [onUpdate]
+    [updateItem]
   );
 
   const handleDelete = useCallback((item: Item) => {
@@ -216,9 +215,8 @@ export function ItemGroupSection({
                     >
                       <Button
                         className="h-8 flex items-center justify-between w-full text-gray-900 dark:text-gray-100"
-                        disabled={isDragging}
                         variant="ghost"
-                        onClick={() => !isDragging && handleSort(columnName)}
+                        onClick={() => handleSort(columnName)}
                       >
                         {columnName}
                         {settings.showSortingIcons ? (
@@ -290,7 +288,6 @@ export function ItemGroupSection({
                                 columnValue={columnValue}
                                 isNameColumn={cellIndex === 0}
                                 item={item}
-                                onUpdate={onUpdate}
                               />
                             </TableCell>
                           );

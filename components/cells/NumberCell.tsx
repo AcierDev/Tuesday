@@ -1,14 +1,28 @@
 // NumberCell.jsx
 
-import { useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { StarIcon } from 'lucide-react';
-import { Slider } from '@/components/ui/slider';
-import { toast } from 'sonner';
+import { useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { StarIcon } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { toast } from "sonner";
+import { useBoardOperations } from "@/hooks/useBoardOperations";
+import { ColumnValue, Item } from "@/typings/types";
 
-export const NumberCell = ({ item, columnValue, onUpdate }) => {
+export const NumberCell = ({
+  item,
+  columnValue,
+}: {
+  item: Item;
+  columnValue: ColumnValue;
+}) => {
   const [ratingValue, setRatingValue] = useState(Number(columnValue.text) || 0);
+
+  const { updateItem } = useBoardOperations();
 
   const handleUpdate = async (newRating) => {
     setRatingValue(newRating);
@@ -20,12 +34,12 @@ export const NumberCell = ({ item, columnValue, onUpdate }) => {
             ? {
                 ...value,
                 text: newRating.toString(),
-                lastModifiedTimestamp: Date.now()
+                lastModifiedTimestamp: Date.now(),
               }
             : value
-        )
+        ),
       };
-      await onUpdate(updatedItem, columnValue.columnName);
+      await updateItem(updatedItem, columnValue.columnName);
       toast.success("Rating updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
@@ -36,9 +50,12 @@ export const NumberCell = ({ item, columnValue, onUpdate }) => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button className="w-full h-full justify-center p-2 text-gray-900 dark:text-gray-100" variant="ghost">
+        <Button
+          className="w-full h-full justify-center p-2 text-gray-900 dark:text-gray-100"
+          variant="ghost"
+        >
           <StarIcon className="mr-2 h-4 w-4" />
-          {ratingValue || 'Rate'}
+          {ratingValue || "Rate"}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">

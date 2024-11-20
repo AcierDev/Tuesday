@@ -1,30 +1,42 @@
-// hooks/useBoardOperations.ts
 import { useCallback, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { UpdateFilter } from "mongodb";
-import {
-  Board,
-  Item,
-  ItemStatus,
-  RouterSettings,
-  ColumnTitles,
-  OrderSettings,
-} from "@/typings/types";
+import { Board, Item, ItemStatus, ColumnTitles } from "@/typings/types";
 import { useBoardWatch } from "./useBoardWatch";
+import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 
 type BoardUpdateData = UpdateFilter<Board> & {
   arrayFilters?: Array<Record<string, any>>;
 };
 
+type UseBoardOperationsReturn = {
+  board: Board | null;
+  setBoard: (board: Board | null) => void;
+  isLoading: boolean;
+  isError: boolean;
+  connectionStatus: "connected" | "disconnected" | "reconnecting";
+  applyAutomatronRules: (item: Item, changedField: ColumnTitles) => Item;
+  updateItem: (updatedItem: Item, changedField: ColumnTitles) => Promise<void>;
+  addNewItem: (newItem: Partial<Item>) => Promise<void>;
+  deleteItem: (itemId: string) => Promise<void>;
+  refreshBoard: () => Promise<void>;
+  updateBoardInDb: (
+    boardId: string,
+    updateData: BoardUpdateData
+  ) => Promise<any>;
+};
+
 export function useBoardOperations(
-  initialBoard: Board | null,
-  settings: OrderSettings
-) {
-  const [board, setBoard] = useState<Board | null>(initialBoard);
+  initialBoard?: Board | null
+): UseBoardOperationsReturn {
+  const [board, setBoard] = useState<Board | null>(initialBoard ?? null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<
     "connected" | "disconnected" | "reconnecting"
   >("disconnected");
+
+  const { settings } = useOrderSettings();
 
   useBoardWatch(board?.id, {
     onBoardUpdate: setBoard,
@@ -35,6 +47,9 @@ export function useBoardOperations(
   });
 
   const loadBoard = useCallback(async () => {
+    setIsLoading(true);
+    setIsError(false);
+
     try {
       const response = await fetch("/api/board");
       if (!response.ok) throw new Error("Failed to load board");
@@ -43,6 +58,7 @@ export function useBoardOperations(
       console.log("Board loaded:", data);
     } catch (err) {
       console.error("Failed to load board", err);
+      setIsError(true);
       toast.error("Failed to load board. Please refresh the page.", {
         style: { background: "#EF4444", color: "white" },
       });
@@ -115,7 +131,11 @@ export function useBoardOperations(
 
   const updateItem = useCallback(
     async (updatedItem: Item, changedField: ColumnTitles) => {
-      if (!board) return;
+      if (!board) {
+        console.warn("Attempted to update item while board is null");
+        return;
+      }
+
       console.log(
         `Updating item: ${updatedItem.id}, Changed field: ${changedField}`
       );
@@ -156,6 +176,7 @@ export function useBoardOperations(
           itemWithUpdatedTimestamp,
           changedField
         );
+
         if (itemWithRulesApplied.status !== itemWithUpdatedTimestamp.status) {
           await updateItem(itemWithRulesApplied, changedField);
         }
@@ -172,7 +193,10 @@ export function useBoardOperations(
 
   const addNewItem = useCallback(
     async (newItem: Partial<Item>) => {
-      if (!board) return;
+      if (!board) {
+        console.warn("Attempted to add new item while board is null");
+        return;
+      }
 
       const fullNewItem: Item = {
         id: Date.now().toString(),
@@ -213,7 +237,10 @@ export function useBoardOperations(
 
   const deleteItem = useCallback(
     async (itemId: string) => {
-      if (!board) return;
+      if (!board) {
+        console.warn("Attempted to delete item while board is null");
+        return;
+      }
 
       try {
         await updateBoardInDb(board.id, {
@@ -250,11 +277,13 @@ export function useBoardOperations(
     board,
     setBoard,
     isLoading,
+    isError,
     connectionStatus,
     applyAutomatronRules,
     updateItem,
     addNewItem,
     deleteItem,
     refreshBoard: loadBoard,
+    updateBoardInDb,
   };
 }

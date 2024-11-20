@@ -9,16 +9,13 @@ import {
   endOfWeek,
   isSameWeek,
 } from "date-fns";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/utils/functions";
 import { CuttingData } from "@/typings/interfaces";
-import { useRealmApp } from "@/hooks/useRealmApp";
 import { useInventoryContext } from "@/contexts/InventoryContext";
 import {
-  TrendingUp,
   AlertTriangle,
   ArrowUpCircle,
-  Boxes,
   Repeat,
   Package2,
   History,
@@ -34,7 +31,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CuttingProvider } from "@/contexts/CuttingContext";
 
 export default function Dashboard() {
-  const { cuttingHistoryCollection } = useRealmApp();
   const [data, setData] = useState<CuttingData[]>([]);
   const [date, setDate] = useState<Date>(startOfDay(new Date()));
   const [timeRange, setTimeRange] = useState<
@@ -45,18 +41,21 @@ export default function Dashboard() {
   const { getItemByName } = useInventoryContext();
   const boardsInventory = getItemByName(LockedInventory.Boards);
 
+  // Fetch cutting history data from the API
   useEffect(() => {
     const fetchData = async () => {
       try {
-        if (cuttingHistoryCollection) {
-          const result = await cuttingHistoryCollection.find();
-          setData(
-            result.map((item) => ({
-              date: startOfDay(new Date(item.date)),
-              count: item.count,
-            }))
-          );
+        const response = await fetch("/api/cutting-history");
+        if (!response.ok) {
+          throw new Error("Failed to fetch cutting history");
         }
+        const result = await response.json();
+        setData(
+          result.map((item: any) => ({
+            date: startOfDay(new Date(item.date)),
+            count: item.count,
+          }))
+        );
       } catch (error) {
         console.error("Error fetching cutting data:", error);
       } finally {
@@ -64,7 +63,7 @@ export default function Dashboard() {
       }
     };
     fetchData();
-  }, [cuttingHistoryCollection]);
+  }, []);
 
   const chartData = useMemo(() => {
     let filteredData = data;
@@ -127,6 +126,36 @@ export default function Dashboard() {
 
   const lowInventoryThreshold = (boardsInventory?.restockQuantity || 0) * 1.2;
 
+  // Add a function to handle saving new cutting data
+  const saveCuttingData = async (date: Date, count: number) => {
+    try {
+      const response = await fetch("/api/cutting-history", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ date: date.toISOString(), count }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save cutting data");
+      }
+
+      // Refresh the data after saving
+      const updatedResponse = await fetch("/api/cutting-history");
+      const result = await updatedResponse.json();
+      setData(
+        result.map((item: any) => ({
+          date: startOfDay(new Date(item.date)),
+          count: item.count,
+        }))
+      );
+    } catch (error) {
+      console.error("Error saving cutting data:", error);
+      throw error;
+    }
+  };
+
   return (
     <CuttingProvider>
       <div className="container mx-auto p-4 space-y-8 animate-in fade-in-50 duration-500">
@@ -186,7 +215,11 @@ export default function Dashboard() {
 
           {/* Main cutting dashboard */}
           <Card className="md:col-span-3 dark:bg-gray-800/50 dark:border-gray-700 dark:shadow-lg transition-all hover:dark:bg-gray-800/80">
-            <CuttingInput date={date} setDate={setDate} />
+            <CuttingInput
+              date={date}
+              setDate={setDate}
+              onSave={saveCuttingData}
+            />
           </Card>
 
           {/* Right column stats */}
@@ -234,10 +267,14 @@ export default function Dashboard() {
         {/* Charts section */}
         <div className="grid gap-4 md:grid-cols-2">
           <Card className="dark:bg-gray-800/50 dark:border-gray-700 dark:shadow-lg transition-all hover:dark:bg-gray-800/80">
-            <CuttingTrend timeRange={timeRange} setTimeRange={setTimeRange} />
+            <CuttingTrend
+              timeRange={timeRange}
+              setTimeRange={setTimeRange}
+              data={chartData}
+            />
           </Card>
           <Card className="dark:bg-gray-800/50 dark:border-gray-700 dark:shadow-lg transition-all hover:dark:bg-gray-800/80">
-            <RecentEntries />
+            <RecentEntries data={data} />
           </Card>
         </div>
       </div>

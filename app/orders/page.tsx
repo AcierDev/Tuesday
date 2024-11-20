@@ -3,12 +3,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { Toaster, toast } from "sonner";
 import { DropResult, ResponderProvided } from "@hello-pangea/dnd";
-import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 
 import { Header } from "@/components/orders/Header";
 import { ItemList } from "@/components/orders/ItemList";
@@ -37,10 +32,9 @@ export default function OrderManagementPage() {
 
   const orderSettingsContext = useOrderSettings();
   const settings = orderSettingsContext.settings || {};
-  const updateSettings = orderSettingsContext.updateSettings || (() => {});
 
   const { board, setBoard, updateItem, addNewItem, deleteItem } =
-    useBoardOperations(null, settings);
+    useBoardOperations(null);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -343,7 +337,12 @@ export default function OrderManagementPage() {
   );
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+        <span className="ml-2 text-gray-500">Loading board data...</span>
+      </div>
+    );
   }
 
   if (!orderSettingsContext) {
@@ -409,16 +408,11 @@ export default function OrderManagementPage() {
             onGetLabel={onGetLabel}
             onMarkCompleted={markItemCompleted}
             onShip={shipItem}
-            onUpdate={updateItem}
           />
         </div>
       </div>
       {isSettingsOpen && (
-        <SettingsPanel
-          settings={settings}
-          updateSettings={updateSettings}
-          onClose={() => setIsSettingsOpen(false)}
-        />
+        <SettingsPanel onClose={() => setIsSettingsOpen(false)} />
       )}
       <NewItemModal
         isOpen={isNewItemModalOpen}

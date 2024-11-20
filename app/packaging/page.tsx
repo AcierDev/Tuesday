@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { format, addDays } from "date-fns";
-import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
-import { useRealmApp } from "@/hooks/useRealmApp";
 import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
 import { useIsMobile } from "@/components/shared/UseIsMobile";
 import { SchedulePageLayout } from "@/components/shared/SchedulePageLayout";
@@ -13,21 +12,16 @@ import { OverviewTab } from "@/components/packaging/OverviewTab";
 import { DetailsTab } from "@/components/packaging/DetailsTab";
 import { useBoardOperations } from "@/hooks/useBoardOperations";
 import { calculateBoxRequirements } from "@/components/packaging/BoxCalculations";
-import { Board, Group, Item, ItemStatus } from "@/typings/types";
+import { Group, ItemStatus } from "@/typings/types";
 import { BoxRequirement } from "@/typings/interfaces";
 
 export default function BoxSchedulePage() {
-  const { boardCollection: collection, isLoading } = useRealmApp();
-  const [items, setItems] = useState<Item[]>([]);
-  const [board, setBoard] = useState<Board | null>(null);
-  const [boxRequirements, setBoxRequirements] = useState<
-    Record<string, BoxRequirement>
-  >({});
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [filterSize, setFilterSize] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("overview");
   const isMobile = useIsMobile();
+
   const {
     weeklySchedules,
     currentWeekStart,
@@ -37,40 +31,8 @@ export default function BoxSchedulePage() {
     resetToCurrentWeek,
     isCurrentWeek,
   } = useWeeklySchedule({ weekStartsOn: 0 });
-  const [updateItem, setUpdateItem] =
-    useState<(updatedItem: Item) => Promise<void>>();
 
-  const loadItems = useCallback(async () => {
-    if (!collection) return;
-
-    try {
-      const loadedBoard = await collection.findOne({});
-      setBoard(loadedBoard);
-      setItems(loadedBoard?.items_page.items || []);
-      console.log("Board loaded:", loadedBoard);
-    } catch (err) {
-      console.error("Failed to load board", err);
-      toast.error("Failed to load board. Please refresh the page.", {
-        style: { background: "#EF4444", color: "white" },
-      });
-    }
-  }, [collection, setBoard, setItems]);
-
-  useEffect(() => {
-    if (!isLoading && collection) {
-      loadItems();
-    }
-  }, [isLoading, collection, loadItems]);
-
-  const boardOperations = useBoardOperations(board, collection, {});
-
-  useEffect(() => {
-    if (board && collection) {
-      setUpdateItem(() => boardOperations.updateItem);
-    } else {
-      setUpdateItem(undefined);
-    }
-  }, [board, collection, boardOperations]);
+  const { board, isLoading, isError, updateItem } = useBoardOperations(null);
 
   const toggleDateSelection = (date: Date) => {
     setSelectedDates((prev) => {
@@ -83,6 +45,8 @@ export default function BoxSchedulePage() {
   };
 
   const itemsNeedingBoxes = useMemo(() => {
+    if (!board) return [];
+
     const selectedDateStrings = selectedDates.map((date) =>
       format(date, "yyyy-MM-dd")
     );
@@ -110,10 +74,12 @@ export default function BoxSchedulePage() {
       }
     });
 
-    return items.filter((item) => scheduledItems.has(item.id));
-  }, [items, selectedDates, weeklySchedules, currentWeekStart]);
+    return board.items_page.items.filter((item) => scheduledItems.has(item.id));
+  }, [board, selectedDates, weeklySchedules, currentWeekStart]);
 
   const filteredItemsNeedingBoxes = useMemo(() => {
+    if (!itemsNeedingBoxes) return [];
+
     return itemsNeedingBoxes.filter((item) => {
       const sizeValue =
         item.values.find((value) => value.columnName === "Size")?.text || "";
@@ -131,23 +97,64 @@ export default function BoxSchedulePage() {
     () => ({
       id: "box-group",
       title: ItemStatus.Packaging,
-      items: filteredItemsNeedingBoxes,
+      items: filteredItemsNeedingBoxes || [],
     }),
     [filteredItemsNeedingBoxes]
   );
 
-  useEffect(() => {
-    const requirements = calculateBoxRequirements(filteredBoxGroup);
-    setBoxRequirements(requirements);
+  const boxRequirements = useMemo(() => {
+    if (!filteredBoxGroup.items.length) return {};
+    return calculateBoxRequirements(filteredBoxGroup);
   }, [filteredBoxGroup]);
 
-  const filteredRequirements = Object.entries(boxRequirements);
+  const filteredRequirements = Object.entries(boxRequirements).filter(
+    ([size, requirement]) => {
+      const matchesSize = filterSize === "all" || size === filterSize;
+      const matchesSearch = size
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      return matchesSize && matchesSearch && requirement.count! > 0;
+    }
+  ) as [string, BoxRequirement][];
 
   const totalBoxes = useMemo(() => {
     return filteredRequirements.reduce((total, [_, requirement]) => {
-      return total + requirement.count!;
+      return total + (requirement.count || 0);
     }, 0);
   }, [filteredRequirements]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+        <span className="ml-2 text-gray-500">Loading board data...</span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center text-red-500">
+          <h2 className="text-xl font-semibold mb-2">Failed to load board</h2>
+          <p>Please try refreshing the page</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!board) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center text-gray-500">
+          <h2 className="text-xl font-semibold mb-2">
+            No board data available
+          </h2>
+          <p>Please check your connection and try again</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -198,8 +205,8 @@ export default function BoxSchedulePage() {
         weekStartsOn={0}
         isCurrentWeek={isCurrentWeek()}
         group={filteredBoxGroup}
-        board={board!}
-        updateItem={updateItem!}
+        board={board}
+        updateItem={updateItem}
         selectedDates={selectedDates}
         schedule={weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {}}
         toggleDateSelection={toggleDateSelection}

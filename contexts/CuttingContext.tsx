@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { CuttingData } from "@/typings/interfaces";
-import { useRealmApp } from "@/hooks/useRealmApp";
 import { startOfDay } from "date-fns";
 
 interface CuttingContextType {
@@ -15,19 +14,21 @@ const CuttingContext = createContext<CuttingContextType | undefined>(undefined);
 export function CuttingProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<CuttingData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { cuttingHistoryCollection } = useRealmApp();
 
   const fetchData = async () => {
     try {
-      if (cuttingHistoryCollection) {
-        const result = await cuttingHistoryCollection.find();
-        setData(
-          result.map((item) => ({
-            date: startOfDay(new Date(item.date)),
-            count: item.count,
-          }))
-        );
+      const response = await fetch("/api/cutting-history");
+      if (!response.ok) {
+        throw new Error("Failed to fetch cutting history");
       }
+      const result = await response.json();
+
+      setData(
+        result.map((item: any) => ({
+          date: startOfDay(new Date(item.date)),
+          count: item.count,
+        }))
+      );
     } catch (error) {
       console.error("Error fetching cutting data:", error);
     } finally {
@@ -37,17 +38,24 @@ export function CuttingProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchData();
-  }, [cuttingHistoryCollection]);
+  }, []);
 
   const updateCuttingData = async (date: Date, count: number) => {
-    if (!cuttingHistoryCollection) return;
-
     try {
-      await cuttingHistoryCollection.updateOne(
-        { date: startOfDay(date).toISOString() },
-        { $set: { count } },
-        { upsert: true }
-      );
+      const response = await fetch("/api/cutting-history", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          date: startOfDay(date).toISOString(),
+          count,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update cutting data");
+      }
 
       // Optimistically update the local state
       setData((prevData) => {

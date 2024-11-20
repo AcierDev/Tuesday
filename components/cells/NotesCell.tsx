@@ -1,20 +1,34 @@
 // NotesCell.jsx
 
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
-  TooltipTrigger
-} from '@/components/ui/tooltip';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { StickyNoteIcon } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { StickyNoteIcon } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { ColumnValue, Item } from "@/typings/types";
+import { useBoardOperations } from "@/hooks/useBoardOperations";
 
-export const NotesCell = ({ item, columnValue, onUpdate }) => {
-  const [notesValue, setNotesValue] = useState(columnValue.text || '');
+export const NotesCell = ({
+  item,
+  columnValue,
+}: {
+  item: Item;
+  columnValue: ColumnValue;
+}) => {
+  const [notesValue, setNotesValue] = useState(columnValue.text || "");
+
+  const { updateItem } = useBoardOperations();
 
   const handleUpdate = async () => {
     try {
@@ -24,9 +38,9 @@ export const NotesCell = ({ item, columnValue, onUpdate }) => {
           value.columnName === columnValue.columnName
             ? { ...value, text: notesValue, lastModifiedTimestamp: Date.now() }
             : value
-        )
+        ),
       };
-      await onUpdate(updatedItem, columnValue.columnName);
+      await updateItem(updatedItem, columnValue.columnName);
       toast.success("Notes updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
@@ -40,10 +54,15 @@ export const NotesCell = ({ item, columnValue, onUpdate }) => {
         <TooltipTrigger asChild>
           <Popover>
             <PopoverTrigger asChild>
-              <Button className="w-8 h-8 p-0 text-gray-900 dark:text-gray-100" variant="ghost">
+              <Button
+                className="w-8 h-8 p-0 text-gray-900 dark:text-gray-100"
+                variant="ghost"
+              >
                 <StickyNoteIcon
                   className={`h-4 w-4 ${
-                    notesValue ? 'text-yellow-500' : 'text-gray-500 dark:text-gray-400'
+                    notesValue
+                      ? "text-yellow-500"
+                      : "text-gray-500 dark:text-gray-400"
                   }`}
                 />
               </Button>
@@ -68,8 +87,9 @@ export const NotesCell = ({ item, columnValue, onUpdate }) => {
         <TooltipContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
           <p>
             {notesValue
-              ? notesValue.substring(0, 50) + (notesValue.length > 50 ? '...' : '')
-              : 'No notes'}
+              ? notesValue.substring(0, 50) +
+                (notesValue.length > 50 ? "..." : "")
+              : "No notes"}
           </p>
         </TooltipContent>
       </Tooltip>
