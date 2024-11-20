@@ -1,6 +1,7 @@
 // hooks/useBoardOperations.ts
 import { useCallback, useState, useEffect } from "react";
 import { toast } from "sonner";
+import { UpdateFilter } from "mongodb";
 import {
   Board,
   Item,
@@ -11,24 +12,35 @@ import {
 } from "@/typings/types";
 import { useBoardWatch } from "./useBoardWatch";
 
+type BoardUpdateData = UpdateFilter<Board> & {
+  arrayFilters?: Array<Record<string, any>>;
+};
+
 export function useBoardOperations(
   initialBoard: Board | null,
   settings: OrderSettings
 ) {
   const [board, setBoard] = useState<Board | null>(initialBoard);
   const [isLoading, setIsLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connected" | "disconnected" | "reconnecting"
+  >("disconnected");
 
-  useBoardWatch(board?.id, (updatedBoard) => {
-    setBoard(updatedBoard);
+  useBoardWatch(board?.id, {
+    onBoardUpdate: setBoard,
+    onConnectionChange: setConnectionStatus,
+    maxReconnectAttempts: 5,
+    baseDelay: 1000,
+    maxDelay: 30000,
   });
 
   const loadBoard = useCallback(async () => {
     try {
       const response = await fetch("/api/board");
       if (!response.ok) throw new Error("Failed to load board");
-      const loadedBoard = await response.json();
-      setBoard(loadedBoard);
-      console.log("Board loaded:", loadedBoard);
+      const { data } = await response.json();
+      setBoard(data);
+      console.log("Board loaded:", data);
     } catch (err) {
       console.error("Failed to load board", err);
       toast.error("Failed to load board. Please refresh the page.", {
@@ -43,7 +55,10 @@ export function useBoardOperations(
     loadBoard();
   }, [loadBoard]);
 
-  const updateBoardInDb = async (boardId: string, updateData: any) => {
+  const updateBoardInDb = async (
+    boardId: string,
+    updateData: BoardUpdateData
+  ) => {
     const response = await fetch("/api/board", {
       method: "PATCH",
       headers: {
@@ -235,6 +250,7 @@ export function useBoardOperations(
     board,
     setBoard,
     isLoading,
+    connectionStatus,
     applyAutomatronRules,
     updateItem,
     addNewItem,

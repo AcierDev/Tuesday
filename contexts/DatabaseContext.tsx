@@ -40,7 +40,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch("/api/board");
       if (!response.ok) throw new Error("Failed to fetch boards");
-      const data = await response.json();
+      const { data } = await response.json();
       setBoards(data);
     } catch (error) {
       console.error("Error fetching boards:", error);
