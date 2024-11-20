@@ -327,7 +327,7 @@ export function ViewLabel({ orderId }: { orderId: string }) {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(url, "_blank")}
+                            onClick={() => globalThis.open(url, "_blank")}
                           >
                             <Download className="mr-2 h-4 w-4" /> Download
                           </Button>

@@ -122,8 +122,8 @@ const ImageOverlay: React.FC<{
 
   useEffect(() => {
     const handleResize = () => requestAnimationFrame(updateCanvas);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    globalThis.addEventListener("resize", handleResize);
+    return () => globalThis.removeEventListener("resize", handleResize);
   }, [updateCanvas]);
 
   useEffect(() => {
@@ -194,13 +194,13 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = ({
     try {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const url = globalThis.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `analysis-${new Date().toISOString()}.jpg`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
+      globalThis.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
       console.error("Failed to download image:", error);

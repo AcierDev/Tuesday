@@ -79,7 +79,7 @@ export default function CuttingTrend({
   const dateRange = useMemo(() => {
     const now = new Date();
     let start: Date;
-    let end = now;
+    const end = now;
 
     switch (timeRange) {
       case "past3":

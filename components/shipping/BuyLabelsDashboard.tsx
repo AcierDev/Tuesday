@@ -118,7 +118,7 @@ const handleBuyLabel = async (rate: ShippingRate) => {
       },
     });
     console.log('response', labelResponse)
-    window.open(labelResponse.labelDownload, '_blank');
+    globalThis.open(labelResponse.labelDownload, '_blank');
   } catch (err) {
     setError('Failed to create shipping label. Please try again.');
     console.error(err);

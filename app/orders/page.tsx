@@ -37,10 +37,10 @@ export default function OrderManagementPage() {
     useBoardOperations(null);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    const checkMobile = () => setIsMobile(globalThis.innerWidth < 768);
     checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    globalThis.addEventListener("resize", checkMobile);
+    return () => globalThis.removeEventListener("resize", checkMobile);
   }, []);
 
   const isItemDue = useCallback(

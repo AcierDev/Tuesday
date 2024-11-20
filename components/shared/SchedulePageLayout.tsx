@@ -79,10 +79,10 @@ export function SchedulePageLayout({
     };
 
     adjustTabsCardHeight();
-    window.addEventListener("resize", adjustTabsCardHeight);
+    globalThis.addEventListener("resize", adjustTabsCardHeight);
 
     return () => {
-      window.removeEventListener("resize", adjustTabsCardHeight);
+      globalThis.removeEventListener("resize", adjustTabsCardHeight);
     };
   }, [viewMode]);
 

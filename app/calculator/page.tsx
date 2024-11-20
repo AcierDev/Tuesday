@@ -141,7 +141,7 @@ export default function CustomArtRequest() {
 
       const cardWidth = cardRef.current.offsetWidth
       const maxWidth = cardWidth - DIAGRAM_PADDING
-      const maxHeight = window.innerHeight * 0.6
+      const maxHeight = globalThis.innerHeight * 0.6
       const widthInInches = parseFloat(formData.width) * (formData.unit === "feet" ? 12 : 1)
       const heightInInches = parseFloat(formData.height) * (formData.unit === "feet" ? 12 : 1)
       const aspectRatio = widthInInches / heightInInches
@@ -161,8 +161,8 @@ export default function CustomArtRequest() {
     }
 
     handleResize()
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
+    globalThis.addEventListener("resize", handleResize)
+    return () => globalThis.removeEventListener("resize", handleResize)
   }, [formData.width, formData.height, formData.unit])
 
   const calculateCost = (h: number, w: number, expedited: boolean): CostBreakdown => {

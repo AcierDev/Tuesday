@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { UpdateFilter } from "mongodb";
 import { Board, Item, ItemStatus, ColumnTitles } from "@/typings/types";
@@ -26,9 +26,7 @@ type UseBoardOperationsReturn = {
   ) => Promise<any>;
 };
 
-export function useBoardOperations(
-  initialBoard?: Board | null
-): UseBoardOperationsReturn {
+export function useBoardOperations(initialBoard?: Board | null) {
   const [board, setBoard] = useState<Board | null>(initialBoard ?? null);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -36,40 +34,68 @@ export function useBoardOperations(
     "connected" | "disconnected" | "reconnecting"
   >("disconnected");
 
+  const isInitialMount = useRef(true);
+  const loadingRef = useRef(false);
   const { settings } = useOrderSettings();
 
+  // Handle board updates from boardWatch without triggering a re-render cycle
+  const handleBoardUpdate = useCallback((newBoard: Board) => {
+    setBoard((prev) => {
+      if (!prev || JSON.stringify(prev) !== JSON.stringify(newBoard)) {
+        return newBoard;
+      }
+      return prev;
+    });
+  }, []);
+
+  // Handle connection status changes without triggering unnecessary re-renders
+  const handleConnectionChange = useCallback(
+    (newStatus: "connected" | "disconnected" | "reconnecting") => {
+      setConnectionStatus((prev) => {
+        if (prev !== newStatus) {
+          return newStatus;
+        }
+        return prev;
+      });
+    },
+    []
+  );
+
+  // Initialize board watch only after initial load
   useBoardWatch(board?.id, {
-    onBoardUpdate: setBoard,
-    onConnectionChange: setConnectionStatus,
+    onBoardUpdate: handleBoardUpdate,
+    onConnectionChange: handleConnectionChange,
     maxReconnectAttempts: 5,
     baseDelay: 1000,
     maxDelay: 30000,
   });
 
   const loadBoard = useCallback(async () => {
-    setIsLoading(true);
-    setIsError(false);
+    if (loadingRef.current) return;
+    loadingRef.current = true;
 
     try {
       const response = await fetch("/api/board");
       if (!response.ok) throw new Error("Failed to load board");
       const { data } = await response.json();
-      setBoard(data);
-      console.log("Board loaded:", data);
+      handleBoardUpdate(data);
     } catch (err) {
       console.error("Failed to load board", err);
       setIsError(true);
-      toast.error("Failed to load board. Please refresh the page.", {
-        style: { background: "#EF4444", color: "white" },
-      });
+      toast.error("Failed to load board. Please refresh the page.");
     } finally {
       setIsLoading(false);
+      loadingRef.current = false;
     }
-  }, []);
+  }, [handleBoardUpdate]);
 
+  // Only load board on initial mount if no initialBoard provided
   useEffect(() => {
-    loadBoard();
-  }, [loadBoard]);
+    if (isInitialMount.current && !initialBoard) {
+      isInitialMount.current = false;
+      loadBoard();
+    }
+  }, [initialBoard, loadBoard]);
 
   const updateBoardInDb = async (
     boardId: string,

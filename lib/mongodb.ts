@@ -1,5 +1,6 @@
 // lib/mongodb.ts
 import { MongoClient, Db } from "mongodb";
+import process from "node:process";
 
 if (!process.env.MONGODB_URI) {
   throw new Error("Please add your Mongodb URI to .env.local");

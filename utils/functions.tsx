@@ -249,7 +249,7 @@ export const EmptyLogs = React.memo(() => (
 
 function generateFallbackUUID(): string {
   const timestamp = new Date().getTime();
-  let uuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+  const uuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (timestamp + Math.random() * 16) % 16 | 0;
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
   });

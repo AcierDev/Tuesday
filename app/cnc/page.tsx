@@ -270,7 +270,7 @@ export default function Component() {
                         </div>
                         <Button
                           variant="outline"
-                          onClick={() => window.location.reload()}
+                          onClick={() => globalThis.location.reload()}
                           className="flex items-center space-x-2"
                         >
                           <RotateCcw className="w-4 h-4" />

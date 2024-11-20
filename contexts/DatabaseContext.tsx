@@ -38,6 +38,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const refreshBoards = async () => {
     try {
+      console.log("DEBUG - refreshBoard() called");
       const response = await fetch("/api/board");
       if (!response.ok) throw new Error("Failed to fetch boards");
       const { data } = await response.json();

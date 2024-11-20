@@ -20,7 +20,6 @@ interface ItemListProps {
   onGetLabel: (item: Item) => void;
   onMarkCompleted: (itemId: string) => void;
   onShip: (itemId: string) => void;
-  onUpdate: (updatedItem: Item) => void;
 }
 
 export const ItemList: React.FC<ItemListProps> = ({

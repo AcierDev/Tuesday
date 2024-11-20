@@ -81,14 +81,14 @@ export default function ShippingLabelUpload() {
       const response = await fetch(`http://144.172.71.72:3003/pdf/${filename}`)
       if (response.ok) {
         const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
+        const url = globalThis.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.style.display = 'none'
         a.href = url
         a.download = filename
         document.body.appendChild(a)
         a.click()
-        window.URL.revokeObjectURL(url)
+        globalThis.URL.revokeObjectURL(url)
       } else {
         throw new Error('Download failed')
       }

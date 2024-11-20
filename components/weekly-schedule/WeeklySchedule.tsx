@@ -42,24 +42,49 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
       if (!response.ok) throw new Error("Failed to load weekly schedules");
       const schedules = await response.json();
 
-      if (schedules.weeklySchedules) {
-        setWeeklySchedules(schedules.weeklySchedules);
+      setWeeklySchedules((prev) => {
         const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
-        if (!schedules.weeklySchedules[currentWeekKey]) {
-          createNewWeek(currentWeekStart);
+        if (schedules.weeklySchedules) {
+          // Only create new week if it doesn't exist in the fetched data
+          if (!schedules.weeklySchedules[currentWeekKey]) {
+            return {
+              ...schedules.weeklySchedules,
+              [currentWeekKey]: {
+                Sunday: [],
+                Monday: [],
+                Tuesday: [],
+                Wednesday: [],
+                Thursday: [],
+                Friday: [],
+                Saturday: [],
+              },
+            };
+          }
+          return schedules.weeklySchedules;
         }
-      } else {
-        createNewWeek(currentWeekStart);
-      }
+
+        // If no schedules exist, create new week
+        return {
+          [currentWeekKey]: {
+            Sunday: [],
+            Monday: [],
+            Tuesday: [],
+            Wednesday: [],
+            Thursday: [],
+            Friday: [],
+            Saturday: [],
+          },
+        };
+      });
     } catch (err) {
       console.error("Failed to load weekly schedules", err);
       toast.error("Failed to load weekly schedules. Please refresh the page.");
     }
-  }, [boardId, currentWeekStart]);
+  }, [boardId]); // Remove currentWeekStart from dependencies
 
   useEffect(() => {
     loadSchedules();
-  }, [loadSchedules]);
+  }, [loadSchedules, currentWeekStart]); // Add currentWeekStart here instead
 
   const createNewWeek = useCallback((weekStart: Date) => {
     const adjustedWeekStart = startOfWeek(weekStart, { weekStartsOn: 0 });

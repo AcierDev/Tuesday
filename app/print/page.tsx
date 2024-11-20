@@ -109,7 +109,7 @@ export default function LabelPrinter() {
       const content = printRef.current;
       if (!content) return;
 
-      const printWindow = window.open("", "_blank");
+      const printWindow = globalThis.open("", "_blank");
       if (!printWindow) {
         alert("Please allow popups for this website");
         return;

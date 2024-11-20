@@ -1,6 +1,7 @@
 // app/api/inventory/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import process from "node:process";
 
 export async function GET() {
   try {
