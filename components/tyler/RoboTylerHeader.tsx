@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, Wifi, WifiOff, Zap } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SystemStatus } from "@/app/tyler/page";
+import ComputerSelector from "./ComputerSelector";
 
 interface RoboTylerHeaderProps {
   status: SystemStatus;
@@ -12,6 +13,7 @@ interface RoboTylerHeaderProps {
   MAX_RECONNECT_ATTEMPTS: number;
   handleReconnect: () => void;
   hasExceededReconnectAttempts: boolean;
+  onSelectComputer: (ip: string) => void;
 }
 
 const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
@@ -22,6 +24,7 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
   MAX_RECONNECT_ATTEMPTS,
   handleReconnect,
   hasExceededReconnectAttempts,
+  onSelectComputer,
 }) => {
   const getStatusColor = (): string => {
     switch (status.state) {
@@ -47,27 +50,69 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 mb-6">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          {/* Left side - Title only */}
-          <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+    <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 mb-4 lg:mb-6 lg:z-50">
+      <div className="container mx-auto px-4 py-3 lg:py-4 mt-14 lg:mt-0">
+        <div className="w-full flex flex-wrap items-start lg:items-center justify-between gap-2 lg:gap-4">
+          {/* Title and controls */}
+          <div className="flex flex-col">
+            <h1 className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Paint System Control
             </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="hidden lg:block text-xs lg:text-sm text-gray-600 dark:text-gray-400 mt-1">
               Monitor and control your automated painting system
             </p>
           </div>
+          <div className="flex items-center gap-2 lg:hidden">
+            <div
+              className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor()}`}
+            >
+              {status.state.replace(/_/g, " ")}
+            </div>
+            <div
+              className={`flex items-center gap-1 px-2 py-1 rounded-full shadow-sm ${
+                wsConnected
+                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                  : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+              }`}
+            >
+              {wsConnected ? <Wifi size={14} /> : <WifiOff size={14} />}
+            </div>
+            <div
+              className={`flex items-center px-2 py-1 rounded-full ${
+                status.pressurePotActive
+                  ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                  : "bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400"
+              }`}
+            >
+              <Zap size={14} />
+            </div>
+            <Button
+              size="sm"
+              className="bg-red-500 hover:bg-red-600 text-white font-bold px-2 py-1 h-7 text-xs"
+              onClick={handleEmergencyStop}
+              disabled={!wsConnected}
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span className="sr-only">Emergency Stop</span>
+            </Button>
+          </div>
 
-          {/* Right side - Status, Connection Status and Emergency Stop */}
-          <div className="flex items-center space-x-4">
+          {/* Larger screen controls */}
+          <div className="hidden lg:flex flex-wrap items-center gap-4">
+            <ComputerSelector
+              onSelect={onSelectComputer}
+              computers={[
+                { name: "RoboTyler Raspi", ip: "192.168.1.197:8080" },
+                { name: "Dev Testing Raspi", ip: "192.168.1.216:8080" },
+                { name: "Bentzi's Laptop", ip: "192.168.1.222:8080" },
+                { name: "localhost", ip: "localhost:8080" },
+              ]}
+            />
             <div
               className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor()}`}
             >
               {status.state.replace(/_/g, " ")}
             </div>
-
             <div
               className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-sm ${
                 wsConnected
@@ -87,7 +132,6 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
                 </>
               )}
             </div>
-
             <div
               className={`flex items-center px-4 py-2 rounded-full ${
                 status.pressurePotActive
@@ -100,14 +144,13 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
                 {status.pressurePotActive ? "Pressurized" : "Depressurized"}
               </span>
             </div>
-
             <Button
               size="lg"
-              className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 h-12"
+              className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 h-12 text-sm"
               onClick={handleEmergencyStop}
               disabled={!wsConnected}
             >
-              <AlertTriangle className="mr-2" size={20} />
+              <AlertTriangle className="mr-2 w-5 h-5" />
               Emergency Stop
             </Button>
           </div>
@@ -115,9 +158,9 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
 
         {/* Connection Alert */}
         {!wsConnected && (
-          <Alert className="mt-4 border-2 border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/20">
+          <Alert className="mt-3 lg:mt-4 border-2 border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/20">
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
-            <AlertDescription className="flex items-center justify-between">
+            <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs lg:text-sm">
               <span>
                 {hasExceededReconnectAttempts
                   ? "Connection failed after multiple attempts."
@@ -130,7 +173,7 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={handleReconnect}
-                  className="ml-4 border-yellow-500 text-yellow-500 hover:bg-yellow-50"
+                  className="mt-2 sm:mt-0 border-yellow-500 text-yellow-500 hover:bg-yellow-50 text-xs lg:text-sm px-2 py-1 h-7 lg:h-8"
                 >
                   Try Again
                 </Button>

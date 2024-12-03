@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Progress } from "@/components/ui/progress";
-import { motion } from "framer-motion";
+import { motion, useAnimation } from "framer-motion";
 import {
   SprayCan,
   ArrowUp,
@@ -22,16 +22,21 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
   onSideClick,
 }) => {
   // Constants for visualization
-  const ROWS = status.patternProgress.total_rows;
-  const COLS = ROWS == 9 ? 6 : 9;
+  const ROWS = 8;
+  const COLS = 6;
   const BLOCK_SIZE = 32;
   const TRAY_PADDING = 16;
   const TRAY_WIDTH = COLS * BLOCK_SIZE + 2 * TRAY_PADDING;
   const TRAY_HEIGHT = ROWS * BLOCK_SIZE + 2 * TRAY_PADDING;
-  const MOVEMENT_DURATION = 0.5;
+  const MIN_DURATION = 0.2; // Minimum duration in seconds
+
+  const sprayHeadControls = useAnimation();
+  const lastPositionRef = useRef({ row: 0, col: 0 });
+  const [passedBlocks, setPassedBlocks] = useState(new Map<number, number>());
+  const prevCommandRef = useRef(status.patternProgress.command);
+  const [orientation, setOrientation] = useState<string>();
 
   // Get the current orientation based on status
-  const orientation = status.patternProgress.pattern || "FRONT";
   const isPainting =
     status.state === "EXECUTING_PATTERN" || status.state === "PAINTING_SIDE";
   const isPaused = status.state === "PAUSED";
@@ -41,6 +46,113 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
           status.patternProgress.total_commands) *
         100
       : 0;
+
+  // Reset painted blocks when switching sides
+  useEffect(() => {
+    const newPattern = status.patternProgress.pattern || "FRONT";
+    if (newPattern !== orientation) {
+      // Reset blocks and update orientation atomically
+      setPassedBlocks(new Map());
+      setOrientation(newPattern);
+
+      // Reset refs to ensure clean state
+      prevCommandRef.current = -1;
+      lastPositionRef.current = { row: 0, col: 0 };
+    }
+  }, [status.patternProgress.pattern]);
+
+  // Reset painted blocks when homing
+  useEffect(() => {
+    if (status.state === "HOMING_X") {
+      setPassedBlocks(new Map());
+    }
+  }, [status.state]);
+
+  // Calculate current position based on command
+  const getCurrentPosition = () => {
+    const commandsPerRow = 4; // MOVE_X, SPRAY_ON, MOVE_X, SPRAY_OFF
+    const currentRow = Math.floor(
+      status.patternProgress.command / commandsPerRow
+    );
+    const currentCol = currentRow % 2 === 0 ? 0 : COLS - 1; // Alternate start position
+    return { row: currentRow, col: currentCol };
+  };
+
+  // Extract duration from lastSerialMessage
+  const getCommandDuration = () => {
+    const durationMatch = status.lastSerialMessage.match(
+      /duration_ms=(\d+(\.\d+)?)/
+    );
+    return durationMatch ? parseFloat(durationMatch[1]!) / 1000 : MIN_DURATION;
+  };
+
+  // Update painted blocks and animate spray head based on current progress
+  useEffect(() => {
+    if (
+      isPainting &&
+      !isPaused &&
+      status.patternProgress.command !== prevCommandRef.current &&
+      status.patternProgress.pattern === orientation
+    ) {
+      const newPassedBlocks = new Map<number, number>(passedBlocks);
+      const { row, col } = getCurrentPosition();
+      const duration = getCommandDuration();
+
+      // Determine if it's a Y-axis movement
+      const isYMovement = status.lastSerialMessage.includes("movement_axis=Y");
+
+      // Determine painting direction
+      const isLeftToRight = row % 2 === 0;
+      const startCol = isLeftToRight ? 0 : COLS - 1;
+      const endCol = isLeftToRight ? COLS - 1 : 0;
+
+      // Update passed blocks
+      const currentTime = Date.now();
+      if (isLeftToRight) {
+        for (let c = startCol; c <= endCol; c++) {
+          const blockIndex = row * COLS + c;
+          const delay = (c - startCol) * (duration / COLS);
+          newPassedBlocks.set(blockIndex, currentTime + delay * 1000);
+        }
+      } else {
+        for (let c = startCol; c >= endCol; c--) {
+          const blockIndex = row * COLS + c;
+          const delay = (startCol - c) * (duration / COLS);
+          newPassedBlocks.set(blockIndex, currentTime + delay * 1000);
+        }
+      }
+
+      setPassedBlocks(newPassedBlocks);
+
+      // Animate spray head
+      const x = TRAY_PADDING + col * BLOCK_SIZE * 1.12;
+      const y = TRAY_PADDING + row * BLOCK_SIZE * 1.15;
+
+      if (isYMovement) {
+        // Animate Y movement
+        sprayHeadControls.start({
+          y,
+          transition: { duration, ease: "linear" },
+        });
+      } else {
+        // Animate X movement
+        sprayHeadControls.start({
+          x,
+          transition: { duration, ease: "linear" },
+        });
+      }
+
+      lastPositionRef.current = { row, col };
+      prevCommandRef.current = status.patternProgress.command;
+    }
+  }, [
+    status.patternProgress.command,
+    isPainting,
+    isPaused,
+    status.lastSerialMessage,
+    status.patternProgress.pattern,
+    orientation,
+  ]);
 
   const getRotation = () => {
     switch (orientation) {
@@ -78,19 +190,14 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
   const renderPaintHead = () => {
     if (!isPainting) return null;
 
-    const x = TRAY_PADDING;
-    const y = TRAY_PADDING + status.patternProgress.row * BLOCK_SIZE;
-
     return (
-      <motion.div
-        className="absolute"
-        animate={{ x, y }}
-        transition={{ duration: MOVEMENT_DURATION, ease: "linear" }}
-      >
+      <motion.div className="absolute" animate={sprayHeadControls}>
         <SprayCan
-          className={`w-6 h-6 ${isPaused ? "text-gray-400" : "text-blue-500"} ${
-            isPainting ? "animate-pulse" : ""
-          }`}
+          className={`w-6 h-6 ${
+            isPaused
+              ? "text-gray-400 dark:text-gray-600"
+              : "text-blue-500 dark:text-blue-400"
+          } ${isPainting && !isPaused ? "animate-pulse" : ""}`}
         />
       </motion.div>
     );
@@ -101,9 +208,10 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
     if (status.state === "PAUSED") return "System Paused";
     if (!isPainting) return status.state.replace(/_/g, " ");
 
-    return `Painting ${orientation} Side - Row ${
-      status.patternProgress.row + 1
-    }/${ROWS} (${Math.round(currentProgress)}% Complete)`;
+    const { row, col } = getCurrentPosition();
+    return `Painting ${orientation} Side - Row ${row + 1}, Column ${
+      col + 1
+    } (${Math.round(currentProgress)}% Complete)`;
   };
 
   const getDirectionIcon = () => {
@@ -119,19 +227,6 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
       default:
         return null;
     }
-  };
-
-  // Helper function to get block styling
-  const getBlockStyle = (row: number) => {
-    const isCompleted = status.patternProgress.completed_rows.includes(row);
-    const isCurrentRow = row === status.patternProgress.row;
-
-    if (isCompleted) {
-      return "bg-blue-100 dark:bg-blue-900 opacity-100";
-    } else if (isCurrentRow && isPainting && !isPaused) {
-      return "bg-blue-50 dark:bg-blue-800/50 animate-pulse";
-    }
-    return "bg-white dark:bg-gray-800 opacity-60";
   };
 
   const renderSideIndicator = (side: string, className: string) => {
@@ -164,7 +259,7 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-white dark:bg-gray-800 rounded-full">
       <div className="mb-4 flex justify-between items-center">
         <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-2">
           Pattern Progress & Visualization
@@ -197,7 +292,6 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
               height: TRAY_HEIGHT + TRAY_PADDING * 2 + 8,
             }}
           >
-            {/* Side Indicators with dynamic spacing */}
             {renderSideIndicator("FRONT", "bottom-0 left-1/2 -translate-x-1/2")}
             {renderSideIndicator("BACK", "top-0 left-1/2 -translate-x-1/2")}
             {renderSideIndicator("LEFT", "top-1/2 left-0 -translate-y-1/2")}
@@ -212,16 +306,34 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
                 top: TRAY_PADDING + "px",
               }}
             >
-              {Array.from({ length: ROWS }).map((_, row) =>
-                Array.from({ length: COLS }).map((_, col) => (
+              {Array.from({ length: ROWS * COLS }).map((_, i) => {
+                const passedTime = passedBlocks.get(i);
+                const isPassed =
+                  passedTime !== undefined && passedTime <= Date.now();
+                return (
                   <motion.div
-                    key={`${row}-${col}`}
-                    className={`border border-gray-200 dark:border-gray-600 rounded transition-colors duration-300 ${getBlockStyle(
-                      row
-                    )}`}
+                    key={i}
+                    className={`border border-gray-200 dark:border-gray-600 rounded transition-all duration-300`}
+                    initial={{ opacity: 0.6 }}
+                    animate={{
+                      opacity: isPassed ? 1 : 0.6,
+                      backgroundColor: isPassed
+                        ? "rgb(219 234 254 / 0.8)" // bg-blue-100 with opacity
+                        : isPassed
+                        ? "rgb(147 197 253 / 0.4)" // bg-blue-300 with lower opacity
+                        : "rgb(255 255 255 / 0.1)", // Very light background
+                      scale: isPassed ? [1, 1.05, 1] : 1,
+                    }}
+                    transition={{
+                      duration: 0.3,
+                      scale: {
+                        repeat: Infinity,
+                        duration: 1,
+                      },
+                    }}
                   />
-                ))
-              )}
+                );
+              })}
             </div>
             {renderPaintHead()}
           </div>
@@ -242,7 +354,7 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
 
         <div className="grid grid-cols-2 gap-4 text-sm text-gray-500 dark:text-gray-400">
           <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
-            <p>Current Row: {status.patternProgress.row + 1}</p>
+            <p>Current Row: {getCurrentPosition().row + 1}</p>
             <p>
               Completed Rows: {status.patternProgress.completed_rows.length}
             </p>

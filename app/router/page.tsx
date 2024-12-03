@@ -22,7 +22,7 @@ import {
 import { StatusBadge } from "@/components/router/StatusBadge";
 import { StatusCard } from "@/components/router/StatusCard";
 import { LogEntry } from "@/components/router/LogEntry";
-import { useWebSocketManager } from "@/hooks/useWebsocket";
+import { useWebSocketManager } from "@/hooks/useRouterWebsocket";
 import ImageAnalysisCard from "@/components/router/ImageAnalysisCard";
 import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionControls";
 import { EmptyLogs } from "@/utils/functions";
@@ -97,35 +97,39 @@ export default function MonitoringDashboard() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <StatusCard
                 title="Block Sensor"
-                status={state.sensor1.active}
+                status={state.sensor1 === "ON"}
                 icon={Circle}
-                description={state.sensor1 ? "Active" : "Inactive"}
+                description={state.sensor1 === "ON" ? "Active" : "Inactive"}
               />
               <StatusCard
-                title="Piston"
-                status={state.piston.active}
+                title="Push Cylinder"
+                status={state.push_cylinder === "ON"}
                 icon={Power}
-                description={state.piston ? "Engaged" : "Disengaged"}
-              />
-              <StatusCard
-                title="Riser"
-                status={state.riser.active}
-                icon={Power}
-                description={state.riser ? "Engaged" : "Disengaged"}
-              />
-              <StatusCard
-                title="Ejector"
-                status={state.ejector.active}
-                icon={Power}
-                description={state.ejector ? "Engaged" : "Disengaged"}
-              />
-              <StatusCard
-                title="Camera"
-                status={state.deviceConnected}
-                icon={Camera}
                 description={
-                  state.deviceConnected ? "Connected" : "Disconnected"
+                  state.push_cylinder === "ON" ? "Engaged" : "Disengaged"
                 }
+              />
+              <StatusCard
+                title="Riser Cylinder"
+                status={state.riser_cylinder === "ON"}
+                icon={Power}
+                description={
+                  state.riser_cylinder === "ON" ? "Engaged" : "Disengaged"
+                }
+              />
+              <StatusCard
+                title="Ejection Cylinder"
+                status={state.ejection_cylinder === "ON"}
+                icon={Power}
+                description={
+                  state.ejection_cylinder === "ON" ? "Engaged" : "Disengaged"
+                }
+              />
+              <StatusCard
+                title="Router Status"
+                status={state.status === "connected"}
+                icon={Activity}
+                description={state.router_state}
               />
             </div>
           </CardContent>

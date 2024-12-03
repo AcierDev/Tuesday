@@ -11,7 +11,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { DEFAULT_ROUTER_SETTINGS } from "@/utils/constants";
 
-const WEBSOCKET_URL = "ws://192.168.1.215:3000/ws";
+const WEBSOCKET_URL = "ws://localhost:8080/ws";
 const RECONNECT_DELAY = 2000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const PING_INTERVAL = 30000;
@@ -25,25 +25,39 @@ interface ImageMetadata {
   size: number;
 }
 
-interface ExtendedState extends SystemState {
+// First, define the SlaveState interface
+interface SlaveState {
+  status: string;
+  router_state: string;
+  push_cylinder: "ON" | "OFF";
+  riser_cylinder: "ON" | "OFF";
+  ejection_cylinder: "ON" | "OFF";
+  sensor1: "ON" | "OFF";
+}
+
+// Update ExtendedState to extend SlaveState
+interface ExtendedState extends SlaveState {
+  lastUpdate: Date;
   currentImageUrl: string | null;
   currentImageMetadata: ImageMetadata | null;
   currentAnalysis: AnalysisResults | null;
+  isCapturingImage: boolean;
+  isProcessing: boolean;
   settings: RouterSettings;
 }
 
 const INITIAL_STATE: ExtendedState = {
-  sensor1: { pin: 0, active: false },
-  piston: { pin: 0, active: false },
-  ejector: { pin: 0, active: false },
-  riser: { pin: 0, active: false },
-  lastPhotoPath: null,
-  deviceConnected: false,
+  status: "disconnected",
+  router_state: "idle",
+  push_cylinder: "OFF",
+  riser_cylinder: "OFF",
+  ejection_cylinder: "OFF",
+  sensor1: "OFF",
   lastUpdate: new Date(),
   currentImageUrl: null,
   currentImageMetadata: null,
-  isCapturingImage: false,
   currentAnalysis: null,
+  isCapturingImage: false,
   isProcessing: false,
   settings: DEFAULT_ROUTER_SETTINGS,
 };
@@ -160,10 +174,11 @@ export const useWebSocketManager = () => {
             const eventData = JSON.parse(event.data);
             console.log("raw data", eventData);
 
-            if (!eventData.type && typeof eventData === "object") {
+            // Handle state updates from the slave
+            if (eventData.type === "state") {
               setState((prev) => ({
                 ...prev,
-                ...eventData,
+                ...eventData.data,
                 lastUpdate: new Date(),
               }));
               return;
@@ -171,7 +186,6 @@ export const useWebSocketManager = () => {
 
             switch (eventData.type) {
               case "initialData": {
-                // Handle the combined initial state and config
                 setState((prev) => ({
                   ...prev,
                   ...eventData.data.state,
@@ -343,6 +357,17 @@ export const useWebSocketManager = () => {
     };
   }, [connect]);
 
+  const updateWebSocketUrl = (newUrl: string) => {
+    // Close existing connection if any
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+    // Reset connection attempts
+    setReconnectAttempts(0);
+    // Update the URL and attempt to connect
+    setState((prev) => ({ ...prev, wsUrl: newUrl }));
+  };
+
   return {
     state,
     logs,
@@ -351,5 +376,6 @@ export const useWebSocketManager = () => {
     connectionError,
     reconnectAttempts,
     updateEjectionSettings,
+    updateWebSocketUrl,
   };
 };

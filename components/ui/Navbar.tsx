@@ -19,6 +19,7 @@ import {
   Menu,
   ClipboardList,
   Router,
+  SprayCan,
 } from "lucide-react";
 import { GiCircularSaw } from "react-icons/gi";
 import { useTheme } from "next-themes";
@@ -36,6 +37,8 @@ const mainNavItems = [
   { href: "/packaging", icon: PackageOpen, label: "Packaging", hotkey: "4" },
   { href: "/backboards", icon: Layers3, label: "Backboards", hotkey: "5" },
   { href: "/cutting", icon: GiCircularSaw, label: "Cutting" },
+  { type: "divider" },
+  { href: "/tyler", icon: SprayCan, label: "RoboTyler" },
   { href: "/router", icon: Router, label: "Router" },
   { type: "divider" },
   { href: "/inventory", icon: ClipboardList, label: "Inventory" },
@@ -137,7 +140,7 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
       <aside
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } transition-all duration-300 ease-in-out overflow-y-auto border-r bg-background dark:bg-gray-800 hidden lg:flex lg:flex-col`}
+        } transition-all duration-300 ease-in-out border-r bg-background dark:bg-gray-800 hidden lg:flex lg:flex-col`}
       >
         <div className="flex items-center justify-between px-4 py-4">
           {sidebarOpen && <span className="text-lg font-bold">Tuesday</span>}
@@ -203,9 +206,8 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
       </aside>
 
       {/* Mobile Navbar */}
-      <nav className="lg:hidden fixed top-0 left-0 right-0 z-40 border-b bg-background dark:bg-gray-800 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <nav className="lg:hidden fixed top-0 left-0 right-0 z-50 border-b bg-background dark:bg-gray-800 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="w-full flex h-14 items-center px-4">
-          <span className="text-xl font-bold mr-4">Tuesday</span>
           <Sheet>
             <SheetTrigger asChild>
               <Button size="icon" variant="ghost">
@@ -213,7 +215,9 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
+            <span className="text-xl font-bold mr-4">Tuesday</span>
+
+            <SheetContent side="left" className="w-64 p-0 dark:bg-gray-800">
               <div className="flex flex-col h-full">
                 <div className="flex-1 flex flex-col space-y-1 py-2">
                   {mainNavItems.map((item, index) =>

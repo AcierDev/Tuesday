@@ -25,6 +25,7 @@ import { v4 as uuidv4 } from "uuid";
 import CombinedControls from "@/components/tyler/SpeedAndMovement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import RoboTylerHeader from "@/components/tyler/RoboTylerHeader";
+import LiveCameraFeed from "@/components/tyler/LiveWebcamFeed";
 
 export interface PatternStatus {
   command: number;
@@ -108,6 +109,7 @@ export const INITIAL_STATUS: SystemStatus = {
 };
 
 export default function Dashboard() {
+  const [selectedIp, setSelectedIp] = useState("192.168.1.222");
   const [status, setStatus] = useState<SystemStatus>(INITIAL_STATUS);
   const [wsConnected, setWsConnected] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -116,10 +118,6 @@ export default function Dashboard() {
   const [pendingSpeedChanges, setPendingSpeedChanges] = useState<
     Partial<typeof status.speeds>
   >({});
-  const [pendingHomeSpeed, setPendingHomeSpeed] = useState<number | null>(null);
-  const [pendingAcceleration, setPendingAcceleration] = useState<number | null>(
-    null
-  );
   const ws = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<NodeJS.Timeout>();
   const reconnectAttempts = useRef(0);
@@ -127,16 +125,6 @@ export default function Dashboard() {
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY = 3000;
   const HEARTBEAT_INTERVAL = 30000;
-
-  const handleHomeSpeedChange = (value: number[]) => {
-    setPendingHomeSpeed(value[0]!);
-    setHasUnsavedChanges(true);
-  };
-
-  const handleAccelerationChange = (value: number[]) => {
-    setPendingAcceleration(value[0]!);
-    setHasUnsavedChanges(true);
-  };
 
   const handleEmergencyStop = () => {
     sendCommand({ type: "EMERGENCY_STOP" });
@@ -170,7 +158,7 @@ export default function Dashboard() {
     try {
       cleanupWebSocket();
 
-      const socket = new WebSocket("ws://192.168.1.222:8080");
+      const socket = new WebSocket(`ws://${selectedIp}`);
       ws.current = socket;
 
       socket.onopen = () => {
@@ -207,11 +195,11 @@ export default function Dashboard() {
       socket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log("[WebSocket] Received message type:", message.type);
+          // console.log("[WebSocket] Received message type:", message.type);
 
           switch (message.type) {
             case "STATUS_UPDATE":
-              console.log(message.payload.patternProgress);
+              // console.log(message.payload.patternProgress);
               setStatus((prevStatus) => ({
                 ...message.payload,
                 rawSerial:
@@ -254,17 +242,18 @@ export default function Dashboard() {
       console.error("Error initializing WebSocket:", error);
       cleanupWebSocket();
     }
-  }, [cleanupWebSocket]);
+  }, [cleanupWebSocket, selectedIp]);
 
   // Add the dismiss handler
   const handleDismissWarning = (id: string) => {
     setActiveWarnings((prev) => prev.filter((warning) => warning.id !== id));
   };
 
+  // Update useEffect to depend on selectedIp
   useEffect(() => {
     initializeWebSocket();
     return () => cleanupWebSocket();
-  }, [initializeWebSocket, cleanupWebSocket]);
+  }, [initializeWebSocket, cleanupWebSocket, selectedIp]);
 
   const sendCommand = useCallback(
     (command: { type: string; payload?: any }) => {
@@ -359,6 +348,7 @@ export default function Dashboard() {
         hasExceededReconnectAttempts={
           reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS
         }
+        onSelectComputer={setSelectedIp}
       />
 
       <main className="container mx-auto px-4 py-6">
@@ -463,12 +453,15 @@ export default function Dashboard() {
           </div>
 
           {/* Tray Visualization - Full Width */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-            <TrayVisualization
-              status={status}
-              className="w-full"
-              onSideClick={(side) => sendCommand({ type: `PAINT_${side}` })}
-            />
+          <div className="grid lg:grid-cols-2 gap-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+              <TrayVisualization
+                status={status}
+                className="w-full"
+                onSideClick={(side) => sendCommand({ type: `PAINT_${side}` })}
+              />
+            </div>
+            <LiveCameraFeed wsIp={selectedIp} />
           </div>
 
           {/* Combined Speed & Movement Controls */}

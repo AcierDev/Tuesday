@@ -26,7 +26,7 @@ import GlobalSettings from "./GlobalSettings";
 import PerClassSettings from "./PerClassSettings";
 import { AdvancedSettings } from "./AdvancedSettings";
 import PresetSettings from "./PresetSettings";
-import { useWebSocketManager } from "@/hooks/useWebsocket";
+import { useWebSocketManager } from "@/hooks/useRouterWebsocket";
 import { useEjectionConfig } from "@/hooks/useEjectionConfig";
 
 export default function ImprovedEjectionControlGUI() {
