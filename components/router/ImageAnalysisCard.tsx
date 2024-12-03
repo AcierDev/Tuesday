@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { Camera, ZoomIn, Download, Share, CircleEllipsis } from "lucide-react";
 import {
   Card,
@@ -8,14 +8,12 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,158 +30,17 @@ interface ImageAnalysisCardProps {
   imageMetadata: ImageMetadata | null;
   analysis?: AnalysisResults;
   isCapturing?: boolean;
+  isAnalyzing?: boolean;
   onRetry?: () => void;
   onShare?: () => void;
 }
-
-const ImageOverlay: React.FC<{
-  imageUrl: string;
-  predictions: Prediction[];
-  onClick?: () => void;
-  isDialog?: boolean;
-}> = ({ imageUrl, predictions, onClick, isDialog = false }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const [isHovering, setIsHovering] = useState<string | null>(null);
-
-  const updateCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    const image = imageRef.current;
-
-    if (!canvas || !container || !image) return;
-
-    // For 1:1 aspect ratio, we can use the container's width
-    const size = container.clientWidth;
-    canvas.width = size;
-    canvas.height = size;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, size, size);
-
-    predictions.forEach((prediction) => {
-      const { bbox, confidence, class_name, detection_id } = prediction;
-      const isHighlighted = isHovering === detection_id;
-
-      // For 1:1 images, we can directly map the bbox coordinates to canvas size
-      const x = bbox.x1 * size;
-      const y = bbox.y1 * size;
-      const width = (bbox.x2 - bbox.x1) * size;
-      const height = (bbox.y2 - bbox.y1) * size;
-
-      // Draw box
-      ctx.beginPath();
-      ctx.strokeStyle = "rgba(34, 197, 94, 0.8)";
-      ctx.lineWidth = isDialog
-        ? isHighlighted
-          ? 3
-          : 2
-        : isHighlighted
-        ? 2
-        : 1;
-      ctx.strokeRect(x, y, width, height);
-
-      // Label
-      const label = `${class_name} ${(confidence * 100).toFixed(1)}%`;
-      const fontSize = isDialog ? 16 : 14;
-      ctx.font = `${fontSize}px system-ui`;
-      const labelMetrics = ctx.measureText(label);
-      const labelHeight = fontSize + 8;
-
-      // Ensure label stays within canvas bounds
-      let labelX = x;
-      let labelY = y - 5;
-      if (y - labelHeight < 0) {
-        labelY = y + height + labelHeight - 5;
-      }
-      if (x + labelMetrics.width + 10 > size) {
-        labelX = size - labelMetrics.width - 10;
-      }
-
-      // Semi-transparent background for label
-      ctx.fillStyle = isHighlighted
-        ? "rgba(0, 0, 0, 0.85)"
-        : "rgba(0, 0, 0, 0.7)";
-      ctx.fillRect(
-        labelX,
-        labelY - labelHeight + 5,
-        labelMetrics.width + 10,
-        labelHeight
-      );
-
-      // Label text
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(label, labelX + 5, labelY);
-    });
-  }, [predictions, isHovering, isDialog]);
-
-  useEffect(() => {
-    const handleResize = () => requestAnimationFrame(updateCanvas);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [updateCanvas]);
-
-  useEffect(() => {
-    const image = imageRef.current;
-    if (image) {
-      if (image.complete) {
-        updateCanvas();
-      } else {
-        image.onload = updateCanvas;
-      }
-    }
-  }, [imageUrl, updateCanvas]);
-
-  return (
-    <div
-      ref={containerRef}
-      className={`relative w-full aspect-square ${
-        onClick ? "cursor-zoom-in" : ""
-      }`}
-      onClick={onClick}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-    >
-      <img
-        ref={imageRef}
-        src={imageUrl}
-        alt="Analysis capture with detected objects"
-        className="w-full h-full object-cover rounded-lg"
-      />
-      <canvas
-        ref={canvasRef}
-        className="absolute top-0 left-0 w-full h-full pointer-events-none"
-      />
-      {isDialog && predictions.length > 0 && (
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/50 to-transparent">
-          <div className="flex flex-wrap gap-2">
-            {predictions.map((pred) => (
-              <Button
-                key={pred.detection_id}
-                variant="outline"
-                size="sm"
-                className="bg-white/10 hover:bg-white/20 transition-colors"
-                onMouseEnter={() => setIsHovering(pred.detection_id)}
-                onMouseLeave={() => setIsHovering(null)}
-              >
-                {pred.class_name} ({(pred.confidence * 100).toFixed(1)}%)
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = ({
   imageUrl,
   imageMetadata,
   analysis,
   isCapturing = false,
+  isAnalyzing = false,
   onRetry,
   onShare,
 }) => {
@@ -221,16 +78,28 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = ({
     </div>
   );
 
+  const getImageSrc = useCallback((url: string | null) => {
+    if (!url) return null;
+    if (url.startsWith("data:image/")) {
+      return url;
+    }
+    if (url.startsWith("/9j/") || url.startsWith("iVBOR")) {
+      return `data:image/jpeg;base64,${url}`;
+    }
+    return url;
+  }, []);
+
   return (
     <TooltipProvider>
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-gray-900 dark:text-gray-50">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Camera className="h-5 w-5 text-blue-500" />
                 Latest Capture
               </CardTitle>
-              <CardDescription className="text-gray-500 dark:text-gray-400">
+              <CardDescription>
                 {imageMetadata && (
                   <>
                     <div>
@@ -251,111 +120,143 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = ({
                 )}
               </CardDescription>
             </div>
-            {onRetry && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onRetry}
-                disabled={isCapturing}
-              >
-                Retry
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {imageUrl && (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setDialogOpen(true)}
+                        className="dark:bg-gray-700 dark:hover:bg-gray-600"
+                      >
+                        <ZoomIn className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>View full size</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleDownload}
+                        className="dark:bg-gray-700 dark:hover:bg-gray-600"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Download image</TooltipContent>
+                  </Tooltip>
+
+                  {onShare && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={onShare}
+                          className="dark:bg-gray-700 dark:hover:bg-gray-600"
+                        >
+                          <Share className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Share analysis</TooltipContent>
+                    </Tooltip>
+                  )}
+                </>
+              )}
+              {onRetry && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onRetry}
+                  disabled={isCapturing}
+                  className="dark:bg-gray-700 dark:hover:bg-gray-600"
+                >
+                  Retry
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
 
         <CardContent>
           <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg border dark:border-gray-700">
             {imageUrl ? (
-              <ImageOverlay
-                imageUrl={imageUrl}
-                predictions={analysis?.predictions || []}
+              <div
+                className="relative aspect-square cursor-zoom-in"
                 onClick={() => setDialogOpen(true)}
-              />
+              >
+                <img
+                  src={getImageSrc(imageUrl) || ""}
+                  alt="Analysis capture"
+                  className="w-full h-full object-cover rounded-lg"
+                  onError={(e) => {
+                    console.error("Failed to load image:", e);
+                  }}
+                />
+                {analysis?.predictions && analysis.predictions.length > 0 && (
+                  <div className="absolute inset-0 pointer-events-none">
+                    {analysis.predictions.map((pred: Prediction, index) => (
+                      <div
+                        key={index}
+                        className="absolute border-2 border-red-500 bg-red-500/10"
+                        style={{
+                          left: `${pred.bbox.x1 * 100}%`,
+                          top: `${pred.bbox.y1 * 100}%`,
+                          width: `${(pred.bbox.x2 - pred.bbox.x1) * 100}%`,
+                          height: `${(pred.bbox.y2 - pred.bbox.y1) * 100}%`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="aspect-square flex items-center justify-center text-gray-400 dark:text-gray-500">
                 No image captured
               </div>
             )}
             {isCapturing && renderLoadingOverlay("capturing")}
-            {imageUrl &&
-              !analysis &&
-              !isCapturing &&
-              renderLoadingOverlay("analyzing")}
+            {imageUrl && isAnalyzing && renderLoadingOverlay("analyzing")}
           </div>
         </CardContent>
-
-        {imageUrl && (
-          <CardFooter className="flex justify-end gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setDialogOpen(true)}
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>View full size</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={handleDownload}>
-                  <Download className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Download image</TooltipContent>
-            </Tooltip>
-
-            {onShare && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={onShare}>
-                    <Share className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Share analysis</TooltipContent>
-              </Tooltip>
-            )}
-          </CardFooter>
-        )}
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden dark:bg-gray-800">
+        <DialogContent className="max-w-3xl max-h-[90vh] p-0">
           <DialogHeader className="p-6 pb-3">
             <DialogTitle>Detailed Analysis</DialogTitle>
           </DialogHeader>
 
-          <div className="relative flex-shrink-0">
-            <div className="w-full aspect-square">
-              {imageUrl && (
-                <ImageOverlay
-                  imageUrl={imageUrl}
-                  predictions={analysis?.predictions || []}
-                  isDialog={true}
-                />
+          {imageUrl && (
+            <div className="relative">
+              <img
+                src={imageUrl}
+                alt="Full size analysis"
+                className="w-full h-auto"
+              />
+              {analysis?.predictions && analysis.predictions.length > 0 && (
+                <div className="absolute inset-0 pointer-events-none">
+                  {analysis.predictions.map((pred: Prediction, index) => (
+                    <div
+                      key={index}
+                      className="absolute border-2 border-red-500 bg-red-500/10"
+                      style={{
+                        left: `${pred.bbox.x1 * 100}%`,
+                        top: `${pred.bbox.y1 * 100}%`,
+                        width: `${(pred.bbox.x2 - pred.bbox.x1) * 100}%`,
+                        height: `${(pred.bbox.y2 - pred.bbox.y1) * 100}%`,
+                      }}
+                    />
+                  ))}
+                </div>
               )}
             </div>
-          </div>
-
-          <DialogFooter className="flex-shrink-0 p-6 pt-3 border-t">
-            {analysis && (
-              <>
-                <div className="text-sm text-gray-500 mb-4">
-                  {`Analyzed at ${new Date(
-                    analysis.timestamp
-                  ).toLocaleString()}`}
-                  {analysis.processingTime &&
-                    ` • Processing time: ${analysis.processingTime.toFixed(
-                      2
-                    )}ms`}
-                </div>
-              </>
-            )}
-          </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </TooltipProvider>

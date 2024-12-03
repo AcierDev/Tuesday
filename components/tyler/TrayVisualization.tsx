@@ -176,12 +176,12 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
         return isHorizontal ? "-mb-16" : "-mb-12";
       case "BACK":
         return isHorizontal ? "-mt-16" : "-mt-12";
-      case "LEFT":
-        return isHorizontal ? "-ml-16" : "-ml-16";
       case "RIGHT":
+        return isHorizontal ? "-ml-16" : "-ml-20";
+      case "LEFT":
         return isHorizontal
           ? "right-0 translate-x-[70px]"
-          : "right-0 translate-x-[76px]";
+          : "right-0 translate-x-[70px]";
       default:
         return "";
     }
@@ -294,8 +294,8 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
           >
             {renderSideIndicator("FRONT", "bottom-0 left-1/2 -translate-x-1/2")}
             {renderSideIndicator("BACK", "top-0 left-1/2 -translate-x-1/2")}
-            {renderSideIndicator("LEFT", "top-1/2 left-0 -translate-y-1/2")}
-            {renderSideIndicator("RIGHT", "top-1/2 right-0 -translate-y-1/2")}
+            {renderSideIndicator("LEFT", "top-1/2 right-0 -translate-y-1/2")}
+            {renderSideIndicator("RIGHT", "top-1/2 left-0 -translate-y-1/2")}
 
             <div
               className="absolute grid gap-1"

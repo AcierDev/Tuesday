@@ -2,49 +2,21 @@ import {
   Alert,
   AnalysisResults,
   ConnectionStatus,
-  RouterSettings,
   LogEntry,
-  SystemState,
+  ImageMetadata,
+  SlaveState,
+  ExtendedState,
+  RouterSettings,
+  AnalysisImage,
 } from "@/typings/types";
+import { DEFAULT_ROUTER_SETTINGS } from "@/typings/constants";
 import { generateUUID } from "@/utils/functions";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
-import { DEFAULT_ROUTER_SETTINGS } from "@/utils/constants";
 
 const WEBSOCKET_URL = "ws://localhost:8080/ws";
 const RECONNECT_DELAY = 2000;
 const MAX_RECONNECT_ATTEMPTS = 5;
-const PING_INTERVAL = 30000;
-
-// Add new types for image handling
-interface ImageMetadata {
-  type: "image";
-  filename: string;
-  mimeType: string;
-  timestamp: string;
-  size: number;
-}
-
-// First, define the SlaveState interface
-interface SlaveState {
-  status: string;
-  router_state: string;
-  push_cylinder: "ON" | "OFF";
-  riser_cylinder: "ON" | "OFF";
-  ejection_cylinder: "ON" | "OFF";
-  sensor1: "ON" | "OFF";
-}
-
-// Update ExtendedState to extend SlaveState
-interface ExtendedState extends SlaveState {
-  lastUpdate: Date;
-  currentImageUrl: string | null;
-  currentImageMetadata: ImageMetadata | null;
-  currentAnalysis: AnalysisResults | null;
-  isCapturingImage: boolean;
-  isProcessing: boolean;
-  settings: RouterSettings;
-}
 
 const INITIAL_STATE: ExtendedState = {
   status: "disconnected",
@@ -57,9 +29,14 @@ const INITIAL_STATE: ExtendedState = {
   currentImageUrl: null,
   currentImageMetadata: null,
   currentAnalysis: null,
-  isCapturingImage: false,
+  isCapturing: false,
   isProcessing: false,
+  isAnalyzing: false,
   settings: DEFAULT_ROUTER_SETTINGS,
+  uptime: "00:00:00",
+  cpuUsage: 0,
+  memoryUsage: 0,
+  temperature: 0,
 };
 
 export const useWebSocketManager = () => {
@@ -84,16 +61,19 @@ export const useWebSocketManager = () => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({
-          type: "updateEjectionSettings",
-          data: newSettings,
+          type: "updateSettings",
+          data: {
+            slave: newSettings.slave,
+            ejection: newSettings.ejection,
+          },
         })
       );
       setState((prev) => ({
         ...prev,
-        ejectionSettings: newSettings,
+        settings: newSettings,
         lastUpdate: new Date(),
       }));
-      toast.success("Ejection settings updated");
+      toast.success("Router settings updated");
     } else {
       toast.error("Cannot update settings: WebSocket not connected");
     }
@@ -172,49 +152,18 @@ export const useWebSocketManager = () => {
             }
 
             const eventData = JSON.parse(event.data);
-            console.log("raw data", eventData);
-
-            // Handle state updates from the slave
-            if (eventData.type === "state") {
-              setState((prev) => ({
-                ...prev,
-                ...eventData.data,
-                lastUpdate: new Date(),
-              }));
-              return;
-            }
+            // console.log("raw data", eventData);
 
             switch (eventData.type) {
-              case "initialData": {
-                setState((prev) => ({
-                  ...prev,
-                  ...eventData.data.state,
-                  settings: eventData.data.config,
-                  isConfigLoaded: true,
-                  lastUpdate: new Date(),
-                }));
-                console.log("Received initial data:", eventData.data);
-                break;
-              }
-              case "imageMetadata": {
-                setState((prev) => ({
-                  ...prev,
-                  currentImageMetadata: eventData.data,
-                  lastUpdate: new Date(),
-                  currentAnalysis: null,
-                }));
-                break;
-              }
-              case "stateUpdate": {
+              case "state":
                 setState((prev) => ({
                   ...prev,
                   ...eventData.data,
                   lastUpdate: new Date(),
                 }));
-                break;
-              }
-              case "configUpdate": {
-                console.log("Received config update:", eventData.data);
+                return;
+              case "settingsUpdate": {
+                console.log("Received settings update:", eventData.data);
                 setState((prev) => ({
                   ...prev,
                   settings: eventData.data,
@@ -252,26 +201,61 @@ export const useWebSocketManager = () => {
                 }
                 break;
               }
-              case "analysisResults": {
+              case "analysis_image": {
+                const analysisImage = eventData.data as AnalysisImage;
                 setState((prev) => ({
                   ...prev,
-                  currentAnalysis: eventData.data as AnalysisResults,
+                  currentImageUrl: analysisImage.imageData,
+                  currentImageMetadata: {
+                    type: "image",
+                    url: analysisImage.imageData,
+                    filename: analysisImage.path.split("/").pop() || "",
+                    timestamp: analysisImage.timestamp,
+                    captureSuccess: true,
+                  },
+                  isCapturing: false,
                   lastUpdate: new Date(),
                 }));
                 break;
               }
-              case "ejectionSettingsError": {
-                toast.error(
-                  `Failed to update ejection settings: ${eventData.message}`
-                );
-                // Rollback to last known good state from server
-                if (eventData.currentSettings) {
-                  setState((prev) => ({
-                    ...prev,
-                    ejectionSettings: eventData.currentSettings,
-                    lastUpdate: new Date(),
-                  }));
-                }
+              case "systemStats": {
+                // Handle system stats updates
+                setState((prev) => ({
+                  ...prev,
+                  uptime: eventData.data.uptime,
+                  cpuUsage: eventData.data.cpuUsage,
+                  memoryUsage: eventData.data.memoryUsage,
+                  temperature: eventData.data.temperature,
+                  lastUpdate: new Date(),
+                }));
+                break;
+              }
+              case "warning": {
+                toast.warning(eventData.data.message);
+                setLogs((prev) => [
+                  {
+                    id: generateUUID(),
+                    timestamp: new Date(),
+                    level: "warning",
+                    message: eventData.data.message,
+                    source: "system",
+                  },
+                  ...prev,
+                ]);
+                break;
+              }
+              case "error": {
+                toast.error(eventData.data.message);
+                setLogs((prev) => [
+                  {
+                    id: generateUUID(),
+                    timestamp: new Date(),
+                    level: "error",
+                    message: eventData.data.message,
+                    source: "system",
+                  },
+                  ...prev,
+                ]);
                 break;
               }
             }
@@ -367,6 +351,27 @@ export const useWebSocketManager = () => {
     // Update the URL and attempt to connect
     setState((prev) => ({ ...prev, wsUrl: newUrl }));
   };
+
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:8080");
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+
+        switch (
+          message.type
+
+          // ... handle other message types ...
+        ) {
+        }
+      } catch (error) {
+        console.error("Error processing WebSocket message:", error);
+      }
+    };
+
+    // ... rest of the WebSocket setup ...
+  }, []);
 
   return {
     state,

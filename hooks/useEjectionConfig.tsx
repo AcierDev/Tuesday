@@ -1,24 +1,36 @@
 import { RouterSettings, ValidationErrors } from "@/typings/types";
-import { DEFAULT_ROUTER_SETTINGS } from "@/utils/constants";
+import { DEFAULT_ROUTER_SETTINGS } from "@/typings/constants";
 import { useState, useEffect, useCallback, useRef } from "react";
 
 export const VALIDATION_RULES = {
-  ejectionDuration: {
-    min: 100,
-    message: "Ejection duration must be at least 100ms",
+  slave: {
+    pushDuration: {
+      min: 100,
+      message: "Push duration must be at least 100ms",
+    },
+    riserDuration: {
+      min: 100,
+      message: "Riser duration must be at least 100ms",
+    },
+    ejectionDuration: {
+      min: 100,
+      message: "Ejection duration must be at least 100ms",
+    },
   },
-  minArea: {
-    min: 0,
-    message: "Minimum area cannot be negative",
-  },
-  confidence: {
-    min: 0,
-    max: 1,
-    message: "Confidence must be between 0 and 1",
-  },
-  maxCount: {
-    min: 1,
-    message: "Maximum count must be at least 1",
+  ejection: {
+    minArea: {
+      min: 0,
+      message: "Minimum area cannot be negative",
+    },
+    confidence: {
+      min: 0,
+      max: 1,
+      message: "Confidence must be between 0 and 1",
+    },
+    maxCount: {
+      min: 1,
+      message: "Maximum count must be at least 1",
+    },
   },
 };
 
@@ -63,34 +75,38 @@ export const useEjectionConfig = (
   const validateConfig = useCallback((): boolean => {
     const errors: ValidationErrors = {};
 
-    // Global settings validation
-    if (
-      config.globalSettings?.ejectionDuration <
-      VALIDATION_RULES.ejectionDuration.min
-    ) {
-      errors.ejectionDuration = VALIDATION_RULES.ejectionDuration.message;
-    }
+    // Validate slave settings
+    Object.entries(VALIDATION_RULES.slave).forEach(([key, rule]) => {
+      if (config.slave[key] < rule.min) {
+        errors[key] = rule.message;
+      }
+    });
 
-    if (config.globalSettings?.minTotalArea < 0) {
+    // Validate ejection settings
+    if (config.ejection.globalSettings?.minTotalArea < 0) {
       errors.minTotalArea = "Minimum total area cannot be negative";
     }
 
     // Per-class settings validation
-    Object.entries(config.perClassSettings).forEach(([className, settings]) => {
-      if (
-        settings.minConfidence < VALIDATION_RULES.confidence.min ||
-        settings.minConfidence > VALIDATION_RULES.confidence.max
-      ) {
-        errors[`${className}.minConfidence`] =
-          VALIDATION_RULES.confidence.message;
+    Object.entries(config.ejection.perClassSettings).forEach(
+      ([className, settings]) => {
+        if (
+          settings.minConfidence < VALIDATION_RULES.ejection.confidence.min ||
+          settings.minConfidence > VALIDATION_RULES.ejection.confidence.max
+        ) {
+          errors[`${className}.minConfidence`] =
+            VALIDATION_RULES.ejection.confidence.message;
+        }
+        if (settings.minArea < VALIDATION_RULES.ejection.minArea.min) {
+          errors[`${className}.minArea`] =
+            VALIDATION_RULES.ejection.minArea.message;
+        }
+        if (settings.maxCount < VALIDATION_RULES.ejection.maxCount.min) {
+          errors[`${className}.maxCount`] =
+            VALIDATION_RULES.ejection.maxCount.message;
+        }
       }
-      if (settings.minArea < VALIDATION_RULES.minArea.min) {
-        errors[`${className}.minArea`] = VALIDATION_RULES.minArea.message;
-      }
-      if (settings.maxCount < VALIDATION_RULES.maxCount.min) {
-        errors[`${className}.maxCount`] = VALIDATION_RULES.maxCount.message;
-      }
-    });
+    );
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;

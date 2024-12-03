@@ -29,7 +29,7 @@ import {
   EMPLOYEE_MAP,
   INITIALS_MAP,
   OPTION_IMAGES,
-} from "./constants";
+} from "../typings/constants";
 import {
   AlertCircle,
   CheckCircle2,

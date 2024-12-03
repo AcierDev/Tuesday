@@ -36,7 +36,7 @@ import { DeleteConfirmationDialog } from "../ui/DeleteConfirmationDialog";
 import { EditItemDialog } from "./EditItemDialog";
 import { ItemActions } from "./ItemActions";
 import { BorderedTable } from "./BoarderedTable";
-import { STATUS_COLORS } from "@/utils/constants";
+import { STATUS_COLORS } from "@/typings/constants";
 import { boardConfig } from "@/config/boardconfig";
 
 interface ItemGroupProps {

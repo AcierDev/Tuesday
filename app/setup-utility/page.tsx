@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { DESIGN_COLORS, ItemDesignImages } from "@/utils/constants";
+import { DESIGN_COLORS, ItemDesignImages } from "@/typings/constants";
 import { ItemDesigns, ItemSizes } from "@/typings/types";
 import Image from "next/image";
 

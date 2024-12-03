@@ -286,11 +286,13 @@ export type Alert = {
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
 export interface ImageMetadata {
-  url: string;
-  captureSuccess: boolean;
+  type: "image";
+  url?: string;
   filename?: string;
   mimeType?: string;
   timestamp: string;
+  size?: number;
+  captureSuccess: boolean;
 }
 
 export interface LogEntry {
@@ -340,19 +342,16 @@ export interface ValidationErrors {
   [key: string]: string;
 }
 
-export interface RouterSettings {
-  globalSettings: GlobalSettings;
-  perClassSettings: PerClassSettings;
-  advancedSettings: AdvancedSettings;
+export interface SlaveSettings {
+  pushTime: number;
+  riserTime: number;
+  ejectionTime: number;
 }
 
 export interface GlobalSettings {
-  ejectionDuration: number;
   requireMultipleDefects: boolean;
   minTotalArea: number;
   maxDefectsBeforeEject: number;
-  pistonDuration: number;
-  riserDuration: number;
 }
 
 export type PerClassSettings = {
@@ -369,6 +368,17 @@ export type AdvancedSettings = {
   regionOfInterest: Region;
   exclusionZones: Region[];
 };
+
+export interface EjectionSettings {
+  globalSettings: GlobalSettings;
+  perClassSettings: PerClassSettings;
+  advancedSettings: AdvancedSettings;
+}
+
+export interface RouterSettings {
+  slave: SlaveSettings;
+  ejection: EjectionSettings;
+}
 
 export type PresetSettings = "High" | "Medium" | "Low";
 
@@ -394,4 +404,34 @@ export interface Region {
   height: number;
   type: "roi" | "exclusion";
   id: string;
+}
+
+export interface AnalysisImage {
+  timestamp: string;
+  imageData: string; // Base64 encoded image
+  path: string;
+}
+
+export interface SlaveState {
+  status: string;
+  router_state: string;
+  push_cylinder: "ON" | "OFF";
+  riser_cylinder: "ON" | "OFF";
+  ejection_cylinder: "ON" | "OFF";
+  sensor1: "ON" | "OFF";
+}
+
+export interface ExtendedState extends SlaveState {
+  lastUpdate: Date;
+  currentImageUrl: string | null;
+  currentImageMetadata: ImageMetadata | null;
+  currentAnalysis: AnalysisResults | null;
+  isCapturing: boolean;
+  isProcessing: boolean;
+  isAnalyzing: boolean;
+  settings: RouterSettings;
+  uptime: string;
+  cpuUsage: number;
+  memoryUsage: number;
+  temperature: number;
 }

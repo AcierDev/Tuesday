@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { TabsContent } from "@/components/ui/tabs";
+import { RouterSettings, ClassName } from "@/typings/types";
 
 const SIZE_OPTIONS = {
   small: { label: "Small", value: 0.0001 },
@@ -29,11 +30,21 @@ const SIZE_OPTIONS = {
   large: { label: "Large", value: 0.001 },
 };
 
+interface PerClassSettingsProps {
+  config: RouterSettings;
+  updateConfig: (path: string, value: any) => void;
+  validationErrors: {
+    [key: string]: string;
+  };
+}
+
 export default function PerClassSettings({
   config,
   updateConfig,
   validationErrors,
-}) {
+}: PerClassSettingsProps) {
+  const classSettings = config.ejection.perClassSettings;
+
   const renderTooltip = (content) => (
     <TooltipProvider>
       <Tooltip>
@@ -93,15 +104,9 @@ export default function PerClassSettings({
         transition={{ duration: 0.3 }}
       >
         <AnimatePresence mode="wait">
-          {Object.entries(config.perClassSettings).map(
+          {Object.entries(classSettings).map(
             ([className, classConfig], index) => (
-              <motion.div
-                key={className}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: index * 0.1 }}
-              >
+              <motion.div key={className as ClassName}>
                 <Card
                   className={`transition-all duration-300 ${
                     classConfig.enabled ? "opacity-100" : "opacity-50"
@@ -123,7 +128,7 @@ export default function PerClassSettings({
                             checked={classConfig.enabled}
                             onCheckedChange={(checked) =>
                               updateConfig(
-                                `perClassSettings.${className}.enabled`,
+                                `ejection.perClassSettings.${className}.enabled`,
                                 checked
                               )
                             }
@@ -185,7 +190,7 @@ export default function PerClassSettings({
                                 value={[classConfig.minConfidence]}
                                 onValueChange={(value) =>
                                   updateConfig(
-                                    `perClassSettings.${className}.minConfidence`,
+                                    `ejection.perClassSettings.${className}.minConfidence`,
                                     value[0]
                                   )
                                 }
@@ -221,7 +226,7 @@ export default function PerClassSettings({
                               value={getSelectedSize(classConfig.minArea)}
                               onValueChange={(value) =>
                                 updateConfig(
-                                  `perClassSettings.${className}.minArea`,
+                                  `ejection.perClassSettings.${className}.minArea`,
                                   SIZE_OPTIONS[value].value
                                 )
                               }
@@ -275,7 +280,7 @@ export default function PerClassSettings({
                               value={classConfig.maxCount}
                               onChange={(e) =>
                                 updateConfig(
-                                  `perClassSettings.${className}.maxCount`,
+                                  `ejection.perClassSettings.${className}.maxCount`,
                                   parseInt(e.target.value) || 0
                                 )
                               }

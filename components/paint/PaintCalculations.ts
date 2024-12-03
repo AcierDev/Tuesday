@@ -5,7 +5,7 @@ import {
   ItemSizes,
   Group,
 } from "@/typings/types";
-import { DESIGN_COLOR_NAMES, SIZE_MULTIPLIERS } from "@/utils/constants";
+import { DESIGN_COLOR_NAMES, SIZE_MULTIPLIERS } from "@/typings/constants";
 
 export type PaintRequirement = Record<string | number, number>;
 

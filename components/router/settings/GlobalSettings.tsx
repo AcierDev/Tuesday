@@ -28,23 +28,11 @@ export type UpdateConfigFunction = (
   value: number | boolean | object
 ) => void;
 
-export interface EjectionControlProps {
-  config: {
-    globalSettings: {
-      ejectionDuration: number;
-      pistonDuration: number;
-      riserDuration: number;
-      requireMultipleDefects: boolean;
-      minTotalArea: number;
-      maxDefectsBeforeEject: number;
-    };
-  };
-  updateConfig: UpdateConfigFunction;
+export interface GlobalSettingsProps {
+  config: RouterSettings;
+  updateConfig: (path: string, value: any) => void;
   validationErrors: {
-    ejectionDuration?: string;
-    pistonDuration?: string;
-    riserDuration?: string;
-    minTotalArea?: string;
+    [key: string]: string;
   };
 }
 
@@ -52,7 +40,7 @@ const GlobalSettings = ({
   config,
   updateConfig,
   validationErrors,
-}: EjectionControlProps) => {
+}: GlobalSettingsProps) => {
   const renderTooltip = (content: string) => (
     <TooltipProvider>
       <Tooltip>
@@ -100,7 +88,7 @@ const GlobalSettings = ({
             step={0.1}
             value={[value / 1000]}
             onValueChange={(value) => onChange(value[0] * 1000)}
-            className="flex-1"
+            className="flex-1 [&>.relative>div:last-child]:dark:bg-gray-700"
           />
         </div>
         <motion.div
@@ -227,34 +215,33 @@ const GlobalSettings = ({
             </motion.h3>
             <div className="space-y-6 pl-4">
               {renderTimeControl(
-                "ejectionDuration",
-                "Ejection Duration",
-                "Duration of the ejection process",
-                config.globalSettings.ejectionDuration,
-                <Gauge className="h-4 w-4 text-blue-400" />,
-                (value) =>
-                  updateConfig("globalSettings.ejectionDuration", value),
-                validationErrors.ejectionDuration,
+                "pushTime",
+                "Push Duration",
+                "Duration of the push mechanism activation",
+                config.slave.pushTime,
+                <ArrowUpCircle className="h-4 w-4 text-green-400" />,
+                (value) => updateConfig("slave.pushTime", value),
+                validationErrors.pushTime,
                 0
               )}
               {renderTimeControl(
-                "pistonDuration",
-                "Piston Duration",
-                "Duration of the piston activation",
-                config.globalSettings.pistonDuration,
-                <ArrowUpCircle className="h-4 w-4 text-green-400" />,
-                (value) => updateConfig("globalSettings.pistonDuration", value),
-                validationErrors.pistonDuration,
+                "riserTime",
+                "Riser Duration",
+                "Duration of the riser activation",
+                config.slave.riserTime,
+                <ArrowUpCircle className="h-4 w-4 text-purple-400" />,
+                (value) => updateConfig("slave.riserTime", value),
+                validationErrors.riserTime,
                 1
               )}
               {renderTimeControl(
-                "riserDuration",
-                "Riser Duration",
-                "Duration of the riser activation",
-                config.globalSettings.riserDuration,
-                <ArrowUpCircle className="h-4 w-4 text-purple-400" />,
-                (value) => updateConfig("globalSettings.riserDuration", value),
-                validationErrors.riserDuration,
+                "ejectionTime",
+                "Ejection Duration",
+                "Duration of the ejection process",
+                config.slave.ejectionTime,
+                <Gauge className="h-4 w-4 text-blue-400" />,
+                (value) => updateConfig("slave.ejectionTime", value),
+                validationErrors.ejectionTime,
                 2
               )}
             </div>
@@ -298,10 +285,12 @@ const GlobalSettings = ({
                 <Switch
                   className="dark:bg-gray-700"
                   id="requireMultipleDefects"
-                  checked={config.globalSettings.requireMultipleDefects}
+                  checked={
+                    config.ejection.globalSettings.requireMultipleDefects
+                  }
                   onCheckedChange={(checked) =>
                     updateConfig(
-                      "globalSettings.requireMultipleDefects",
+                      "ejection.globalSettings.requireMultipleDefects",
                       checked
                     )
                   }
@@ -314,9 +303,10 @@ const GlobalSettings = ({
                   "minTotalArea",
                   "Minimum Total Area",
                   "Minimum combined area of all defects to trigger ejection",
-                  config.globalSettings.minTotalArea,
+                  config.ejection.globalSettings.minTotalArea,
                   <Target className="h-4 w-4 text-yellow-400" />,
-                  (value) => updateConfig("globalSettings.minTotalArea", value),
+                  (value) =>
+                    updateConfig("ejection.globalSettings.minTotalArea", value),
                   validationErrors.minTotalArea,
                   0
                 )}
@@ -325,11 +315,14 @@ const GlobalSettings = ({
                   "maxDefectsBeforeEject",
                   "Max Defects Before Eject",
                   "Maximum number of defects before forced ejection",
-                  config.globalSettings.maxDefectsBeforeEject,
+                  config.ejection.globalSettings.maxDefectsBeforeEject,
                   <Target className="h-4 w-4 text-red-400" />,
                   (value) =>
-                    updateConfig("globalSettings.maxDefectsBeforeEject", value),
-                  undefined,
+                    updateConfig(
+                      "ejection.globalSettings.maxDefectsBeforeEject",
+                      value
+                    ),
+                  validationErrors.maxDefectsBeforeEject,
                   1
                 )}
               </div>
