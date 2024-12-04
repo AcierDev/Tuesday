@@ -303,11 +303,19 @@ export interface LogEntry {
   source?: string;
 }
 
+export interface FileInfo {
+  original_filename: string;
+  stored_locations: {
+    count_based: string;
+    defect_types: string[];
+  };
+}
+
 export interface BoundingBox {
-  x1: number; // x1
-  y1: number; // y1
-  x2: number; // x2
-  y2: number; // y2
+  0: number; // x1
+  1: number; // y1
+  2: number; // x2
+  3: number; // y2
 }
 
 export interface Prediction {
@@ -318,13 +326,11 @@ export interface Prediction {
 }
 
 export interface AnalysisResults {
-  filename: string;
-  predictions: Prediction[];
-  stored_locations: {
-    count_based: string;
-    defect_types: string[];
+  data: {
+    file_info: FileInfo;
+    predictions: Prediction[];
   };
-  processingTime: number;
+  success: boolean;
   timestamp: string;
 }
 
@@ -419,6 +425,7 @@ export interface SlaveState {
   riser_cylinder: "ON" | "OFF";
   ejection_cylinder: "ON" | "OFF";
   sensor1: "ON" | "OFF";
+  analysisMode: boolean;
 }
 
 export interface ExtendedState extends SlaveState {
@@ -434,4 +441,5 @@ export interface ExtendedState extends SlaveState {
   cpuUsage: number;
   memoryUsage: number;
   temperature: number;
+  ejectionDecision: boolean | null;
 }

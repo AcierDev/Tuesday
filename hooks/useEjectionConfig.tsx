@@ -77,7 +77,9 @@ export const useEjectionConfig = (
 
     // Validate slave settings
     Object.entries(VALIDATION_RULES.slave).forEach(([key, rule]) => {
-      if (config.slave[key] < rule.min) {
+      if (key === "analysisMode") return;
+
+      if (config.slave[key as keyof SlaveSettings] < rule.min) {
         errors[key] = rule.message;
       }
     });

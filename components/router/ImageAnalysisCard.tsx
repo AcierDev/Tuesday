@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { AnalysisResults, ImageMetadata, Prediction } from "@/typings/types";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ImageAnalysisCardProps {
   imageUrl: string | null;
@@ -31,9 +32,162 @@ interface ImageAnalysisCardProps {
   analysis?: AnalysisResults;
   isCapturing?: boolean;
   isAnalyzing?: boolean;
+  ejectionDecision: boolean | null;
   onRetry?: () => void;
   onShare?: () => void;
 }
+
+const PassAnimation = () => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="absolute inset-0 rounded-lg overflow-hidden"
+  >
+    {/* Radial gradient background with pulse */}
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{
+        opacity: [0, 0.5, 0.2],
+        scale: [0.8, 1.2, 1],
+      }}
+      transition={{
+        duration: 1.5,
+        ease: "easeOut",
+        times: [0, 0.5, 1],
+      }}
+      className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20"
+    />
+
+    {/* Checkmark circle */}
+    <motion.div
+      className="absolute inset-0 flex items-center justify-center"
+      initial={{ opacity: 0, scale: 0 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{
+        type: "spring",
+        damping: 15,
+        stiffness: 200,
+        delay: 0.2,
+      }}
+    >
+      <div className="relative w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center border-2 border-green-500">
+        {/* Rotating outer ring */}
+        <motion.div
+          className="absolute inset-0 border-2 border-green-400 rounded-full"
+          initial={{ opacity: 0, rotate: 0 }}
+          animate={{
+            opacity: [0, 1, 0],
+            rotate: 360,
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: 2,
+            ease: "easeInOut",
+            times: [0, 0.5, 1],
+            repeat: Infinity,
+          }}
+        />
+
+        {/* PASS text */}
+        <motion.span
+          className="text-2xl font-bold text-green-500"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.2 }}
+        >
+          PASS
+        </motion.span>
+      </div>
+    </motion.div>
+  </motion.div>
+);
+
+const FailAnimation = () => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="absolute inset-0 rounded-lg overflow-hidden"
+  >
+    {/* Alert background with pulse */}
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{
+        opacity: [0, 0.5, 0.2],
+        scale: [0.8, 1.2, 1],
+      }}
+      transition={{
+        duration: 1.5,
+        ease: "easeOut",
+        times: [0, 0.5, 1],
+      }}
+      className="absolute inset-0 bg-gradient-to-r from-red-500/20 to-rose-500/20"
+    />
+
+    {/* X mark circle */}
+    <motion.div
+      className="absolute inset-0 flex items-center justify-center"
+      initial={{ opacity: 0, scale: 0 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{
+        type: "spring",
+        damping: 15,
+        stiffness: 200,
+        delay: 0.2,
+      }}
+    >
+      <div className="relative w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center border-2 border-red-500">
+        {/* Pulsing outer ring */}
+        <motion.div
+          className="absolute inset-0 border-2 border-red-400 rounded-full"
+          initial={{ opacity: 0, scale: 1 }}
+          animate={{
+            opacity: [0, 1, 0],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: 1.5,
+            ease: "easeInOut",
+            times: [0, 0.5, 1],
+            repeat: Infinity,
+          }}
+        />
+
+        {/* FAIL text */}
+        <motion.span
+          className="text-2xl font-bold text-red-500"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.2 }}
+        >
+          FAIL
+        </motion.span>
+      </div>
+    </motion.div>
+
+    {/* Warning stripes */}
+    <div className="absolute inset-0 overflow-hidden">
+      {[...Array(6)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-[200%] h-4 bg-red-500/10 -rotate-45"
+          initial={{ x: "-100%" }}
+          animate={{ x: "100%" }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "linear",
+            delay: i * 0.2,
+          }}
+          style={{
+            top: `${i * 20}%`,
+          }}
+        />
+      ))}
+    </div>
+  </motion.div>
+);
 
 const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = ({
   imageUrl,
@@ -41,10 +195,13 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = ({
   analysis,
   isCapturing = false,
   isAnalyzing = false,
+  ejectionDecision = null,
   onRetry,
   onShare,
 }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // console.log("Analysis:", analysis);
 
   const handleDownload = useCallback(async () => {
     if (!imageUrl) return;
@@ -89,6 +246,13 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = ({
     return url;
   }, []);
 
+  // Only show predictions if we're not capturing/analyzing and have valid analysis results
+  const shouldShowPredictions =
+    !isCapturing &&
+    !isAnalyzing &&
+    analysis?.data?.predictions &&
+    analysis.data.predictions.length > 0;
+
   return (
     <TooltipProvider>
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -108,9 +272,11 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = ({
                     </div>
                   </>
                 )}
-                {analysis?.predictions && (
+                {analysis?.data.predictions && (
                   <div className="mt-1 flex items-center gap-2">
-                    <span>Defects found: {analysis.predictions.length}</span>
+                    <span>
+                      Defects found: {analysis.data.predictions.length}
+                    </span>
                     {analysis.processingTime && (
                       <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full">
                         {analysis.processingTime.toFixed(2)}ms
@@ -198,20 +364,56 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = ({
                     console.error("Failed to load image:", e);
                   }}
                 />
-                {analysis?.predictions && analysis.predictions.length > 0 && (
+                <AnimatePresence>
+                  {!isAnalyzing &&
+                    !isCapturing &&
+                    imageUrl &&
+                    analysis &&
+                    ejectionDecision !== null &&
+                    (!ejectionDecision ? <PassAnimation /> : <FailAnimation />)}
+                </AnimatePresence>
+                {shouldShowPredictions && (
                   <div className="absolute inset-0 pointer-events-none">
-                    {analysis.predictions.map((pred: Prediction, index) => (
-                      <div
-                        key={index}
-                        className="absolute border-2 border-red-500 bg-red-500/10"
-                        style={{
-                          left: `${pred.bbox.x1 * 100}%`,
-                          top: `${pred.bbox.y1 * 100}%`,
-                          width: `${(pred.bbox.x2 - pred.bbox.x1) * 100}%`,
-                          height: `${(pred.bbox.y2 - pred.bbox.y1) * 100}%`,
-                        }}
-                      />
-                    ))}
+                    {analysis.data.predictions.map(
+                      (pred: Prediction, index) => (
+                        <div
+                          key={pred.detection_id}
+                          className="absolute group"
+                          style={{
+                            left: `${pred.bbox[0] * 100}%`,
+                            top: `${pred.bbox[1] * 100}%`,
+                            width: `${(pred.bbox[2] - pred.bbox[0]) * 100}%`,
+                            height: `${(pred.bbox[3] - pred.bbox[1]) * 100}%`,
+                          }}
+                        >
+                          {/* Bounding box */}
+                          <div className="absolute inset-0 border-2 border-red-500 bg-red-500/10" />
+
+                          {/* Label */}
+                          <div className="absolute -top-6 left-0 bg-red-500 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap">
+                            {pred.class_name} (
+                            {(pred.confidence * 100).toFixed(1)}%)
+                          </div>
+
+                          {/* Show full details on hover */}
+                          <div className="absolute left-0 top-full mt-1 hidden group-hover:block bg-gray-900/90 text-white text-xs p-2 rounded shadow-lg whitespace-nowrap z-10">
+                            <div>Class: {pred.class_name}</div>
+                            <div>
+                              Confidence: {(pred.confidence * 100).toFixed(1)}%
+                            </div>
+                            <div>
+                              Area:{" "}
+                              {(
+                                (pred.bbox[2] - pred.bbox[0]) *
+                                (pred.bbox[3] - pred.bbox[1]) *
+                                100
+                              ).toFixed(2)}
+                              %
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    )}
                   </div>
                 )}
               </div>
@@ -235,23 +437,49 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = ({
           {imageUrl && (
             <div className="relative">
               <img
-                src={imageUrl}
+                src={getImageSrc(imageUrl) || ""}
                 alt="Full size analysis"
                 className="w-full h-auto"
               />
-              {analysis?.predictions && analysis.predictions.length > 0 && (
+              {shouldShowPredictions && (
                 <div className="absolute inset-0 pointer-events-none">
-                  {analysis.predictions.map((pred: Prediction, index) => (
+                  {analysis.data.predictions.map((pred: Prediction, index) => (
                     <div
-                      key={index}
-                      className="absolute border-2 border-red-500 bg-red-500/10"
+                      key={pred.detection_id}
+                      className="absolute group"
                       style={{
-                        left: `${pred.bbox.x1 * 100}%`,
-                        top: `${pred.bbox.y1 * 100}%`,
-                        width: `${(pred.bbox.x2 - pred.bbox.x1) * 100}%`,
-                        height: `${(pred.bbox.y2 - pred.bbox.y1) * 100}%`,
+                        left: `${pred.bbox[0] * 100}%`,
+                        top: `${pred.bbox[1] * 100}%`,
+                        width: `${(pred.bbox[2] - pred.bbox[0]) * 100}%`,
+                        height: `${(pred.bbox[3] - pred.bbox[1]) * 100}%`,
                       }}
-                    />
+                    >
+                      {/* Bounding box */}
+                      <div className="absolute inset-0 border-2 border-red-500 bg-red-500/10" />
+
+                      {/* Label */}
+                      <div className="absolute -top-6 left-0 bg-red-500 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap">
+                        {pred.class_name} ({(pred.confidence * 100).toFixed(1)}
+                        %)
+                      </div>
+
+                      {/* Show full details on hover */}
+                      <div className="absolute left-0 top-full mt-1 hidden group-hover:block bg-gray-900/90 text-white text-xs p-2 rounded shadow-lg whitespace-nowrap z-10">
+                        <div>Class: {pred.class_name}</div>
+                        <div>
+                          Confidence: {(pred.confidence * 100).toFixed(1)}%
+                        </div>
+                        <div>
+                          Area:{" "}
+                          {(
+                            (pred.bbox[2] - pred.bbox[0]) *
+                            (pred.bbox[3] - pred.bbox[1]) *
+                            100
+                          ).toFixed(2)}
+                          %
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}

@@ -1,10 +1,7 @@
 import {
   Alert,
-  AnalysisResults,
   ConnectionStatus,
   LogEntry,
-  ImageMetadata,
-  SlaveState,
   ExtendedState,
   RouterSettings,
   AnalysisImage,
@@ -25,6 +22,7 @@ const INITIAL_STATE: ExtendedState = {
   riser_cylinder: "OFF",
   ejection_cylinder: "OFF",
   sensor1: "OFF",
+  analysisMode: false,
   lastUpdate: new Date(),
   currentImageUrl: null,
   currentImageMetadata: null,
@@ -37,6 +35,7 @@ const INITIAL_STATE: ExtendedState = {
   cpuUsage: 0,
   memoryUsage: 0,
   temperature: 0,
+  ejectionDecision: null,
 };
 
 export const useWebSocketManager = () => {
@@ -156,11 +155,34 @@ export const useWebSocketManager = () => {
 
             switch (eventData.type) {
               case "state":
-                setState((prev) => ({
-                  ...prev,
-                  ...eventData.data,
-                  lastUpdate: new Date(),
-                }));
+                setState((prev) => {
+                  // If capturing is starting, reset all analysis-related state
+                  if (eventData.data.isCapturing && !prev.isCapturing) {
+                    return {
+                      ...prev,
+                      ...eventData.data,
+                      ejectionDecision: null,
+                      currentAnalysis: null,
+                      currentImageMetadata: null,
+                      isAnalyzing: false,
+                      lastUpdate: new Date(),
+                    };
+                  }
+
+                  return {
+                    ...prev,
+                    ...eventData.data,
+                    ejectionDecision:
+                      eventData.data.isCapturing || eventData.data.isAnalyzing
+                        ? null
+                        : prev.ejectionDecision,
+                    // Clear analysis when capturing starts
+                    currentAnalysis: eventData.data.isCapturing
+                      ? null
+                      : prev.currentAnalysis,
+                    lastUpdate: new Date(),
+                  };
+                });
                 return;
               case "settingsUpdate": {
                 console.log("Received settings update:", eventData.data);
@@ -171,7 +193,7 @@ export const useWebSocketManager = () => {
                 }));
                 break;
               }
-              case "systemLog": {
+              case "log": {
                 setLogs((prev) => [
                   {
                     id: generateUUID(), // Using the new UUID generator
@@ -182,6 +204,34 @@ export const useWebSocketManager = () => {
                   },
                   ...prev,
                 ]);
+                break;
+              }
+              case "analysis_results": {
+                // console.log("Raw analysis results:", eventData.data);
+                // console.log("Predictions:", eventData.data.data.predictions);
+                setState((prev) => ({
+                  ...prev,
+                  currentAnalysis: {
+                    data: {
+                      file_info: eventData.data.data.file_info,
+                      predictions: eventData.data.data.predictions,
+                    },
+                    success: eventData.data.success,
+                    timestamp: eventData.data.timestamp,
+                  },
+                  isAnalyzing: false,
+                  lastUpdate: new Date(),
+                }));
+                break;
+              }
+              case "ejection_decision": {
+                // Make sure we're getting a boolean value
+                const shouldEject = Boolean(eventData.data.decision);
+                setState((prev) => ({
+                  ...prev,
+                  ejectionDecision: shouldEject,
+                  lastUpdate: new Date(),
+                }));
                 break;
               }
               case "alert": {
@@ -214,6 +264,7 @@ export const useWebSocketManager = () => {
                     captureSuccess: true,
                   },
                   isCapturing: false,
+                  ejectionDecision: null,
                   lastUpdate: new Date(),
                 }));
                 break;
@@ -353,7 +404,7 @@ export const useWebSocketManager = () => {
   };
 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8080");
+    const ws = new WebSocket("ws://192.168.1.222:8080");
 
     ws.onmessage = (event) => {
       try {

@@ -172,17 +172,22 @@ export default function MonitoringDashboard() {
 
         <div className="grid gap-6">
           <div className="grid lg:grid-cols-2 gap-6">
-            {/* Image Analysis Card */}
-            <ImageAnalysisCard
-              imageUrl={currentImage.url}
-              imageMetadata={currentImage.metadata}
-              analysis={state.currentAnalysis}
-              isCapturing={state.isCapturing}
-            />
+            {/* Left column - Image Analysis */}
+            <div className="h-full">
+              <ImageAnalysisCard
+                imageUrl={currentImage.url}
+                imageMetadata={currentImage.metadata}
+                analysis={state.currentAnalysis}
+                isCapturing={state.isCapturing}
+                isAnalyzing={state.isAnalyzing}
+                ejectionDecision={state.ejectionDecision}
+              />
+            </div>
 
-            {/* Status Cards */}
-            <div className="space-y-6">
-              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+            {/* Right column - Status Cards */}
+            <div className="h-full flex flex-col gap-6">
+              {/* System Status Card */}
+              <Card className="flex-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold">
                     System Status
@@ -231,8 +236,8 @@ export default function MonitoringDashboard() {
                 </CardContent>
               </Card>
 
-              {/* System Logs Card */}
-              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 pt-4">
+              {/* System Monitor Card */}
+              <Card className="flex-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardHeader className="pb-0">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg font-semibold">
