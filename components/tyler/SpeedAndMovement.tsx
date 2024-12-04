@@ -2,18 +2,46 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Zap, Settings, RotateCw, RotateCcwIcon, Save } from "lucide-react";
+import {
+  Zap,
+  Settings,
+  RotateCw,
+  RotateCcwIcon,
+  Save,
+  Clock,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface CombinedControlsProps {
   status: {
     speeds: Record<string, number>;
+    maintenanceSettings?: {
+      primeTime: number;
+      cleanTime: number;
+    };
   };
   pendingSpeedChanges: Record<string, number>;
-  handleSpeedChange: (side: string, value: number[]) => void;
+  handleSpeedChange: (
+    side: "left" | "right" | "front" | "back",
+    value: number[]
+  ) => void;
   handleRotate: (direction: "left" | "right") => void;
   handleSaveChanges: () => void;
   wsConnected: boolean;
+  onMaintenanceSettingChange?: (
+    setting: "primeTime" | "cleanTime",
+    value: number
+  ) => void;
+  pendingMaintenanceSettings?: {
+    primeTime?: number;
+    cleanTime?: number;
+  };
+  onPendingMaintenanceChange?: (
+    setting: "primeTime" | "cleanTime",
+    value: number
+  ) => void;
+  onSaveMaintenanceChanges: () => void;
+  hasUnsavedMaintenanceChanges: boolean;
 }
 
 const CombinedControls: React.FC<CombinedControlsProps> = ({
@@ -23,6 +51,11 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
   handleRotate,
   handleSaveChanges,
   wsConnected,
+  onMaintenanceSettingChange,
+  pendingMaintenanceSettings = {},
+  onPendingMaintenanceChange,
+  onSaveMaintenanceChanges,
+  hasUnsavedMaintenanceChanges,
 }) => {
   const [activeTab, setActiveTab] = React.useState("speed");
   const [contentHeight, setContentHeight] = React.useState("auto");
@@ -41,21 +74,34 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
           <CardTitle className="text-lg font-semibold">
             System Controls
           </CardTitle>
-          {Object.keys(pendingSpeedChanges).length > 0 && (
-            <Button
-              size="sm"
-              onClick={handleSaveChanges}
-              className="bg-cyan-500 hover:bg-cyan-600 text-white"
-            >
-              <Save className="h-4 w-4 mr-1" />
-              Save Changes
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {Object.keys(pendingSpeedChanges).length > 0 && (
+              <Button
+                size="sm"
+                onClick={handleSaveChanges}
+                className="bg-cyan-500 hover:bg-cyan-600 text-white"
+              >
+                <Save className="h-4 w-4 mr-1" />
+                Save Speed Changes
+              </Button>
+            )}
+            {hasUnsavedMaintenanceChanges && (
+              <Button
+                size="sm"
+                onClick={onSaveMaintenanceChanges}
+                className="bg-purple-500 hover:bg-purple-600 text-white"
+              >
+                <Save className="h-4 w-4 mr-1" />
+                Save Maintenance Changes
+              </Button>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-1 mt-4 border-b border-gray-200 dark:border-gray-700">
           {[
             { id: "speed", label: "Speed Control", icon: Zap },
             { id: "movement", label: "Movement", icon: Settings },
+            { id: "maintenance", label: "Maintenance", icon: Clock },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -114,7 +160,10 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                         <Slider
                           value={[pendingSpeedChanges[side] ?? speed]}
                           onValueChange={(value) =>
-                            handleSpeedChange(side, value)
+                            handleSpeedChange(
+                              side as keyof typeof status.speeds,
+                              value
+                            )
                           }
                           max={100}
                           step={1}
@@ -128,7 +177,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                     </div>
                   ))}
                 </div>
-              ) : (
+              ) : activeTab === "movement" ? (
                 <div className="grid grid-cols-2 gap-4">
                   <Button
                     className="w-full h-16 text-lg bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-md"
@@ -146,6 +195,70 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                     <RotateCw className="mr-2" size={20} />
                     Turn Right 90°
                   </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <span className="w-24 font-medium text-gray-700 dark:text-gray-300">
+                        Prime Time:
+                      </span>
+                      <Slider
+                        value={[
+                          pendingMaintenanceSettings.primeTime !== undefined
+                            ? pendingMaintenanceSettings.primeTime
+                            : status.maintenanceSettings?.primeTime ?? 5,
+                        ]}
+                        onValueChange={(value) => {
+                          const newValue = value[0] || 5;
+                          onPendingMaintenanceChange?.("primeTime", newValue);
+                          onMaintenanceSettingChange?.("primeTime", newValue);
+                        }}
+                        max={30}
+                        min={1}
+                        step={1}
+                        className="flex-1"
+                        disabled={!wsConnected}
+                      />
+                      <span className="w-20 text-right font-semibold bg-white dark:bg-gray-800 px-3 py-1 rounded-md">
+                        {pendingMaintenanceSettings.primeTime !== undefined
+                          ? pendingMaintenanceSettings.primeTime
+                          : status.maintenanceSettings?.primeTime ?? 5}
+                        s
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <span className="w-24 font-medium text-gray-700 dark:text-gray-300">
+                        Clean Time:
+                      </span>
+                      <Slider
+                        value={[
+                          pendingMaintenanceSettings.cleanTime !== undefined
+                            ? pendingMaintenanceSettings.cleanTime
+                            : status.maintenanceSettings?.cleanTime ?? 10,
+                        ]}
+                        onValueChange={(value) => {
+                          const newValue = value[0] || 10;
+                          onPendingMaintenanceChange?.("cleanTime", newValue);
+                          onMaintenanceSettingChange?.("cleanTime", newValue);
+                        }}
+                        max={60}
+                        min={1}
+                        step={1}
+                        className="flex-1"
+                        disabled={!wsConnected}
+                      />
+                      <span className="w-20 text-right font-semibold bg-white dark:bg-gray-800 px-3 py-1 rounded-md">
+                        {pendingMaintenanceSettings.cleanTime !== undefined
+                          ? pendingMaintenanceSettings.cleanTime
+                          : status.maintenanceSettings?.cleanTime ?? 10}
+                        s
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
             </motion.div>

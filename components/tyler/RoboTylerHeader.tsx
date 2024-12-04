@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Wifi, WifiOff, Zap } from "lucide-react";
+import { AlertTriangle, Wifi, WifiOff, Zap, Video } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SystemStatus } from "@/app/tyler/page";
 import ComputerSelector from "./ComputerSelector";
@@ -14,6 +14,8 @@ interface RoboTylerHeaderProps {
   handleReconnect: () => void;
   hasExceededReconnectAttempts: boolean;
   onSelectComputer: (ip: string) => void;
+  showCameraFeed: boolean;
+  onToggleCameraFeed: () => void;
 }
 
 const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
@@ -25,6 +27,8 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
   handleReconnect,
   hasExceededReconnectAttempts,
   onSelectComputer,
+  showCameraFeed,
+  onToggleCameraFeed,
 }) => {
   const getStatusColor = (): string => {
     switch (status.state) {
@@ -58,9 +62,24 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
             <h1 className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Paint System Control
             </h1>
-            <p className="hidden lg:block text-xs lg:text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Monitor and control your automated painting system
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="hidden lg:block text-xs lg:text-sm text-gray-600 dark:text-gray-400">
+                Monitor and control your automated painting system
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleCameraFeed}
+                className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors duration-200 ${
+                  showCameraFeed
+                    ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                    : "text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                }`}
+              >
+                <Video size={14} />
+                {showCameraFeed ? "Hide Camera" : "Show Camera"}
+              </Button>
+            </div>
           </div>
           <div className="flex items-center gap-2 lg:hidden">
             <div

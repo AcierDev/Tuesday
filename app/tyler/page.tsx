@@ -10,6 +10,7 @@ import {
   Play,
   Pause,
   Square,
+  Save,
 } from "lucide-react";
 import {
   Dialog,
@@ -26,6 +27,7 @@ import CombinedControls from "@/components/tyler/SpeedAndMovement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import RoboTylerHeader from "@/components/tyler/RoboTylerHeader";
 import LiveCameraFeed from "@/components/tyler/LiveWebcamFeed";
+import { motion, AnimatePresence } from "framer-motion";
 
 export interface PatternStatus {
   command: number;
@@ -77,6 +79,10 @@ export interface SystemStatus {
   warnings: Warning[];
   lastSerialMessage: string;
   pressurePotActive: boolean;
+  maintenanceSettings: {
+    primeTime: number;
+    cleanTime: number;
+  };
 }
 
 export const INITIAL_STATUS: SystemStatus = {
@@ -106,6 +112,10 @@ export const INITIAL_STATUS: SystemStatus = {
   warnings: [],
   lastSerialMessage: "",
   pressurePotActive: false,
+  maintenanceSettings: {
+    primeTime: 5,
+    cleanTime: 10,
+  },
 };
 
 export default function Dashboard() {
@@ -125,6 +135,13 @@ export default function Dashboard() {
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY = 3000;
   const HEARTBEAT_INTERVAL = 30000;
+  const [showCameraFeed, setShowCameraFeed] = useState(false);
+  const [pendingMaintenanceSettings, setPendingMaintenanceSettings] = useState<{
+    primeTime?: number;
+    cleanTime?: number;
+  }>({});
+  const [hasUnsavedMaintenanceChanges, setHasUnsavedMaintenanceChanges] =
+    useState(false);
 
   const handleEmergencyStop = () => {
     sendCommand({ type: "EMERGENCY_STOP" });
@@ -199,13 +216,38 @@ export default function Dashboard() {
 
           switch (message.type) {
             case "STATUS_UPDATE":
-              // console.log(message.payload.patternProgress);
               setStatus((prevStatus) => ({
                 ...message.payload,
+                maintenanceSettings: {
+                  ...prevStatus.maintenanceSettings,
+                  ...(message.payload.maintenanceSettings || {}),
+                },
                 rawSerial:
                   message.payload.rawSerial || prevStatus.lastSerialMessage,
               }));
-              // console.log(message.payload);
+              break;
+
+            case "MAINTENANCE_SETTINGS_UPDATE":
+              setStatus((prevStatus) => ({
+                ...prevStatus,
+                maintenanceSettings: {
+                  ...prevStatus.maintenanceSettings,
+                  ...message.payload,
+                },
+              }));
+              setPendingMaintenanceSettings((prev) => {
+                const newPending = { ...prev };
+                if (message.payload.primeTime === prev.primeTime) {
+                  delete newPending.primeTime;
+                }
+                if (message.payload.cleanTime === prev.cleanTime) {
+                  delete newPending.cleanTime;
+                }
+                setHasUnsavedMaintenanceChanges(
+                  Object.keys(newPending).length > 0
+                );
+                return newPending;
+              });
               break;
 
             case "SERIAL_DATA":
@@ -336,6 +378,41 @@ export default function Dashboard() {
   const showCleanButton = status.state == "STOPPED" || status.state == "HOMED";
   const showHomeButton = status.state !== "HOMED";
 
+  const handleMaintenanceSettingChange = (
+    setting: "primeTime" | "cleanTime",
+    value: number
+  ) => {
+    handlePendingMaintenanceChange(setting, value);
+  };
+
+  const handlePendingMaintenanceChange = (
+    setting: "primeTime" | "cleanTime",
+    value: number
+  ) => {
+    setPendingMaintenanceSettings((prev) => ({
+      ...prev,
+      [setting]: value,
+    }));
+    setHasUnsavedMaintenanceChanges(true);
+  };
+
+  const handleSaveMaintenanceChanges = () => {
+    Object.entries(pendingMaintenanceSettings).forEach(([setting, value]) => {
+      if (setting === "primeTime") {
+        sendCommand({
+          type: "SET_PRIME_TIME",
+          payload: { seconds: value },
+        });
+      } else if (setting === "cleanTime") {
+        sendCommand({
+          type: "SET_CLEAN_TIME",
+          payload: { seconds: value },
+        });
+      }
+    });
+    // Don't clear pending changes here - wait for server confirmation
+  };
+
   return (
     <div className="min-h-screen">
       <RoboTylerHeader
@@ -349,6 +426,8 @@ export default function Dashboard() {
           reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS
         }
         onSelectComputer={setSelectedIp}
+        showCameraFeed={showCameraFeed}
+        onToggleCameraFeed={() => setShowCameraFeed(!showCameraFeed)}
       />
 
       <main className="container mx-auto px-4 py-6">
@@ -452,16 +531,38 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Tray Visualization - Full Width */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-              <TrayVisualization
-                status={status}
-                className="w-full"
-                onSideClick={(side) => sendCommand({ type: `PAINT_${side}` })}
-              />
-            </div>
-            <LiveCameraFeed wsIp={selectedIp} />
+          {/* Tray Visualization and Camera Feed */}
+          <div className="grid gap-6">
+            <motion.div
+              layout
+              className={`grid ${showCameraFeed ? "lg:grid-cols-2" : ""} gap-6`}
+            >
+              <motion.div
+                layout
+                className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 ${
+                  showCameraFeed ? "" : "col-span-full"
+                }`}
+              >
+                <TrayVisualization
+                  status={status}
+                  className="w-full"
+                  onSideClick={(side) => sendCommand({ type: `PAINT_${side}` })}
+                />
+              </motion.div>
+
+              <AnimatePresence mode="popLayout">
+                {showCameraFeed && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <LiveCameraFeed initialWsIp={selectedIp} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           </div>
 
           {/* Combined Speed & Movement Controls */}
@@ -472,6 +573,11 @@ export default function Dashboard() {
             handleRotate={handleRotate}
             handleSaveChanges={handleSaveChanges}
             wsConnected={wsConnected}
+            onMaintenanceSettingChange={handleMaintenanceSettingChange}
+            pendingMaintenanceSettings={pendingMaintenanceSettings}
+            onPendingMaintenanceChange={handlePendingMaintenanceChange}
+            onSaveMaintenanceChanges={handleSaveMaintenanceChanges}
+            hasUnsavedMaintenanceChanges={hasUnsavedMaintenanceChanges}
           />
         </div>
       </main>
