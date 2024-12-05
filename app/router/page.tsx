@@ -10,6 +10,8 @@ import {
   BarChart2,
   Wifi,
   WifiOff,
+  Circle,
+  Power,
 } from "lucide-react";
 import { useWebSocketManager } from "@/hooks/useRouterWebsocket";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,6 +20,7 @@ import StatsOverview from "@/components/router/stats/StatsOverview";
 import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionControls";
 import LiveView from "@/components/router/LiveView";
 import { Button } from "@/components/ui/button";
+import { StatusCard } from "@/components/router/StatusCard";
 
 const MAX_RECONNECT_ATTEMPTS = 5;
 
@@ -72,6 +75,45 @@ export default function MonitoringDashboard() {
     }
     return null;
   };
+
+  const renderStatusCards = () => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <StatusCard
+        title="Block Sensor"
+        status={state.sensor1 === "ON"}
+        icon={Circle}
+        description={state.sensor1 === "ON" ? "Active" : "Inactive"}
+        isActive={state.sensor1 === "ON"}
+        activeColor="green"
+      />
+      <StatusCard
+        title="Push Cylinder"
+        status={state.push_cylinder === "ON"}
+        icon={Power}
+        description={state.push_cylinder === "ON" ? "Engaged" : "Disengaged"}
+        duration={state.settings?.slave.pushTime}
+        isActive={state.push_cylinder === "ON"}
+      />
+      <StatusCard
+        title="Riser Cylinder"
+        status={state.riser_cylinder === "ON"}
+        icon={Power}
+        description={state.riser_cylinder === "ON" ? "Engaged" : "Disengaged"}
+        duration={state.settings?.slave.riserTime}
+        isActive={state.riser_cylinder === "ON"}
+      />
+      <StatusCard
+        title="Ejection Cylinder"
+        status={state.ejection_cylinder === "ON"}
+        icon={Power}
+        description={
+          state.ejection_cylinder === "ON" ? "Engaged" : "Disengaged"
+        }
+        duration={state.settings?.slave.ejectionTime}
+        isActive={state.ejection_cylinder === "ON"}
+      />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -162,6 +204,8 @@ export default function MonitoringDashboard() {
       <main className="container mx-auto px-4 py-6">
         {renderConnectionAlert()}
 
+        {renderStatusCards()}
+
         <AnimatedTabs
           tabs={[
             {
@@ -186,7 +230,10 @@ export default function MonitoringDashboard() {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           variant="card"
-          className="bg-white dark:bg-gray-800 shadow-sm"
+          className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border dark:border-gray-700"
+          tabClassName="px-6 py-4 text-base font-semibold hover:bg-gray-100 dark:hover:bg-gray-700/50 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 rounded-t-lg transition-all duration-200"
+          contentClassName="p-6 bg-white dark:bg-gray-800 rounded-b-lg"
+          tabListClassName="bg-gray-50 dark:bg-gray-800/50 p-2 rounded-t-lg gap-2"
         >
           <div key="live">
             <LiveView currentImage={currentImage} state={state} logs={logs} />

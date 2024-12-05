@@ -11,6 +11,7 @@ interface StatusCardProps {
   description: string;
   duration?: number;
   isActive?: boolean;
+  activeColor?: string;
 }
 
 export const StatusCard = ({
@@ -20,6 +21,7 @@ export const StatusCard = ({
   description,
   duration,
   isActive = false,
+  activeColor = "blue",
 }: StatusCardProps) => {
   const controls = useAnimation();
 
@@ -51,7 +53,7 @@ export const StatusCard = ({
       animate={{ opacity: 1, y: 0 }}
       className={`relative p-4 rounded-lg border transition-colors overflow-hidden ${
         isActive
-          ? "bg-blue-500/10 dark:bg-blue-900/20 border-blue-500/50 dark:border-blue-400/30"
+          ? `bg-${activeColor}-500/10 dark:bg-${activeColor}-900/20 border-${activeColor}-500/50 dark:border-${activeColor}-400/30`
           : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
       }`}
     >
@@ -81,7 +83,7 @@ export const StatusCard = ({
             className={`${
               status
                 ? isActive
-                  ? "text-blue-500 dark:text-blue-400 drop-shadow-glow"
+                  ? `text-${activeColor}-500 dark:text-${activeColor}-400 drop-shadow-glow`
                   : "text-green-500 dark:text-green-400"
                 : "text-gray-400 dark:text-gray-500"
             }`}
@@ -100,7 +102,7 @@ export const StatusCard = ({
               variant={status ? "default" : "secondary"}
               className={
                 isActive
-                  ? "bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+                  ? `bg-${activeColor}-500 hover:bg-${activeColor}-600 dark:bg-${activeColor}-600 dark:hover:bg-${activeColor}-700`
                   : ""
               }
             >

@@ -15,11 +15,14 @@ import {
   CheckCircle2,
   XCircle,
   Zap,
+  AlertCircle,
 } from "lucide-react";
 import { DailyStats, CycleStats } from "@/typings/types";
 import { Progress } from "@/components/ui/progress";
 import { CycleStatsCard } from "./CycleStatsCard";
 import { ActivityChart } from "./ActivityChart";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface StatsOverviewProps {
   dailyStats?: DailyStats;
@@ -126,11 +129,115 @@ const StatCard: React.FC<StatCardProps> = ({
   </motion.div>
 );
 
+const StatsOverviewSkeleton: React.FC = () => {
+  return (
+    <div className="space-y-6">
+      {/* No Stats Alert */}
+      <Alert className="bg-white dark:bg-gray-800 border-blue-500/50">
+        <AlertCircle className="h-4 w-4 text-blue-500" />
+        <AlertTitle>No Statistics Available</AlertTitle>
+        <AlertDescription>
+          Statistics will appear here once processing data becomes available.
+          This usually happens after the first processing cycle completes.
+        </AlertDescription>
+      </Alert>
+
+      {/* Existing skeleton content */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Left Column */}
+        <div className="xl:col-span-2 space-y-6 flex flex-col">
+          {/* Quick Stats Grid Skeleton */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white dark:bg-gray-800 rounded-lg p-6">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-6 w-16" />
+                  </div>
+                </div>
+                <Skeleton className="h-4 w-32 mt-2" />
+              </div>
+            ))}
+          </div>
+
+          {/* Activity Chart Skeleton */}
+          <div className="flex-1">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+              <Skeleton className="h-[400px] w-full mt-8" />
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-6">
+          {/* Current Cycle Stats Skeleton */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Processing Times Skeleton */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                  <Skeleton className="h-2 w-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Performance Metrics Skeleton */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
+            <div className="space-y-4">
+              <Skeleton className="h-6 w-40" />
+              <div className="grid grid-cols-2 gap-4">
+                {[...Array(2)].map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-6 w-16" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const StatsOverview: React.FC<StatsOverviewProps> = ({
   dailyStats,
   currentCycleStats,
 }) => {
-  if (!dailyStats) return null;
+  if (!dailyStats) return <StatsOverviewSkeleton />;
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -180,7 +287,7 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
         {currentCycleStats && <CycleStatsCard stats={currentCycleStats} />}
 
         {/* Processing Times */}
-        <Card className="bg-white dark:bg-gray-800 backdrop-blur-sm">
+        <Card className="bg-white dark:bg-gray-800 backdrop-blur-sm dark:border-gray-700/50">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Clock className="h-5 w-5 text-blue-500" />

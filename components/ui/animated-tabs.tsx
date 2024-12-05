@@ -36,6 +36,9 @@ interface AnimatedTabsProps {
   children: React.ReactNode;
   variant?: "default" | "card";
   className?: string;
+  tabClassName?: string;
+  contentClassName?: string;
+  tabListClassName?: string;
   hasChanges?: boolean;
   onReset?: () => void;
   onSave?: () => void;
@@ -49,6 +52,9 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
   children,
   variant = "default",
   className,
+  tabClassName,
+  contentClassName,
+  tabListClassName,
   hasChanges,
   onReset,
   onSave,
@@ -159,7 +165,8 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
     <div
       className={cn(
         "flex items-center gap-1 border-b border-gray-200 dark:border-gray-700",
-        variant === "card" && "px-4"
+        variant === "card" && "px-4",
+        tabListClassName
       )}
     >
       {tabs.map((tab) => {
@@ -172,7 +179,8 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
               "relative flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all",
               activeTab === tab.id
                 ? "text-blue-600 dark:text-blue-400"
-                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200",
+              tabClassName
             )}
           >
             {Icon && <Icon className="h-4 w-4" />}
@@ -215,7 +223,7 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
           {renderAlerts()}
           {renderTabBar()}
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className={cn("pt-4", contentClassName)}>
           <div className="relative">
             <AnimatePresence mode="wait">
               <motion.div
@@ -241,7 +249,7 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
   return (
     <div className={className}>
       {renderTabBar()}
-      <div className="relative mt-4">
+      <div className={cn("relative mt-4", contentClassName)}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
