@@ -81,13 +81,13 @@
 
 .past-due-row::before,
 .past-due-row::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   right: 0;
   height: 2px;
   @apply bg-red-500 dark:bg-red-600;
-  box-shadow: 0 0 8px theme('colors.red.500 / 50%');
+  box-shadow: 0 0 8px theme("colors.red.500 / 50%");
   pointer-events: none;
 }
 
@@ -108,8 +108,7 @@
   z-index: 1000 !important;
 }
 
-Customize the scrollbar for Webkit browsers
-::-webkit-scrollbar {
+Customize the scrollbar for Webkit browsers ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
@@ -190,7 +189,8 @@ Customize the scrollbar for Webkit browsers
 }
 
 /* In your globals.css or equivalent */
-html, body {
+html,
+body {
   height: 100%;
   overflow-x: hidden;
 }
@@ -199,4 +199,8 @@ html, body {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+}
+
+.drop-shadow-glow {
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.5));
 }

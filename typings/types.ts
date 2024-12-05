@@ -442,4 +442,78 @@ export interface ExtendedState extends SlaveState {
   memoryUsage: number;
   temperature: number;
   ejectionDecision: boolean | null;
+  currentCycleStats?: CycleStats;
+  dailyStats?: DailyStats;
+}
+
+export interface CycleStats {
+  cycleId: string;
+  timestamp: string;
+  duration: number;
+  analysisTime?: number;
+  captureTime?: number;
+  ejectionDecision?: boolean;
+  ejectionReasons?: string[];
+  predictions?: PredictionStats[];
+  defectsFound?: number;
+  totalDefectArea?: number;
+  defectStats?: DefectTypeStats;
+  error?: string;
+}
+
+export interface TimeStats {
+  min: number;
+  max: number;
+  avg: number;
+  total: number;
+}
+
+export interface DailyStats {
+  date: string;
+  totalCycles: number;
+  successfulCycles: number;
+  failedCycles: number;
+  analysisTime: TimeStats;
+  captureTime: TimeStats;
+  cycleTime: TimeStats;
+  totalEjections: number;
+  totalDefectsFound: number;
+  defectsByType: DefectTypeStats;
+  errors: Array<{
+    timestamp: string;
+    message: string;
+  }>;
+  ejectionRate: number;
+  successRate: number;
+  peakActivityHour: number;
+  cyclesByHour: number[];
+}
+
+export interface DefectStats {
+  count: number;
+  totalArea: number;
+  minArea: number;
+  maxArea: number;
+  avgArea: number;
+  minConfidence: number;
+  maxConfidence: number;
+  avgConfidence: number;
+}
+
+export interface DefectTypeStats {
+  corner?: DefectStats;
+  crack?: DefectStats;
+  damage?: DefectStats;
+  edge?: DefectStats;
+  knot?: DefectStats;
+  router?: DefectStats;
+  side?: DefectStats;
+  tearout?: DefectStats;
+}
+
+export interface PredictionStats {
+  class_name: ClassName;
+  confidence: number;
+  bbox: BoundingBox;
+  area: number;
 }

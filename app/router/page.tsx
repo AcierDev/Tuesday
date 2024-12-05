@@ -2,42 +2,34 @@
 
 import React, { useState, useEffect } from "react";
 import { Toaster } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Circle,
-  Camera,
-  Power,
   AlertTriangle,
   Activity,
-  Terminal,
+  Settings2,
+  BarChart2,
   Wifi,
   WifiOff,
-  BarChart3,
 } from "lucide-react";
-import { StatusBadge } from "@/components/router/StatusBadge";
-import { StatusCard } from "@/components/router/StatusCard";
-import { LogEntry } from "@/components/router/LogEntry";
 import { useWebSocketManager } from "@/hooks/useRouterWebsocket";
-import ImageAnalysisCard from "@/components/router/ImageAnalysisCard";
-import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionControls";
-import { EmptyLogs } from "@/utils/functions";
-import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
+import StatsOverview from "@/components/router/stats/StatsOverview";
+import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionControls";
+import LiveView from "@/components/router/LiveView";
+import { Button } from "@/components/ui/button";
 
 const MAX_RECONNECT_ATTEMPTS = 5;
+
+interface ImageMetadata {
+  timestamp: string;
+  // Add other metadata properties as needed
+}
 
 export default function MonitoringDashboard() {
   const { state, logs, connectionStatus, connectionError, reconnectAttempts } =
     useWebSocketManager();
-  const [activeTab, setActiveTab] = useState("logs");
+  const [activeTab, setActiveTab] = useState("live");
 
   // Add state for image processing
   const [currentImage, setCurrentImage] = useState<{
@@ -170,179 +162,47 @@ export default function MonitoringDashboard() {
       <main className="container mx-auto px-4 py-6">
         {renderConnectionAlert()}
 
-        <div className="grid gap-6">
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Left column - Image Analysis */}
-            <div className="h-full">
-              <ImageAnalysisCard
-                imageUrl={currentImage.url}
-                imageMetadata={currentImage.metadata}
-                analysis={state.currentAnalysis}
-                isCapturing={state.isCapturing}
-                isAnalyzing={state.isAnalyzing}
-                ejectionDecision={state.ejectionDecision}
-              />
-            </div>
-
-            {/* Right column - Status Cards */}
-            <div className="h-full flex flex-col gap-6">
-              {/* System Status Card */}
-              <Card className="flex-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold">
-                    System Status
-                  </CardTitle>
-                  <CardDescription>
-                    Real-time sensor and device status
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    <StatusCard
-                      title="Block Sensor"
-                      status={state.sensor1 === "ON"}
-                      icon={Circle}
-                      description={
-                        state.sensor1 === "ON" ? "Active" : "Inactive"
-                      }
-                    />
-                    <StatusCard
-                      title="Push Cylinder"
-                      status={state.push_cylinder === "ON"}
-                      icon={Power}
-                      description={
-                        state.push_cylinder === "ON" ? "Engaged" : "Disengaged"
-                      }
-                    />
-                    <StatusCard
-                      title="Riser Cylinder"
-                      status={state.riser_cylinder === "ON"}
-                      icon={Power}
-                      description={
-                        state.riser_cylinder === "ON" ? "Engaged" : "Disengaged"
-                      }
-                    />
-                    <StatusCard
-                      title="Ejection Cylinder"
-                      status={state.ejection_cylinder === "ON"}
-                      icon={Power}
-                      description={
-                        state.ejection_cylinder === "ON"
-                          ? "Engaged"
-                          : "Disengaged"
-                      }
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* System Monitor Card */}
-              <Card className="flex-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <CardHeader className="pb-0">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold">
-                      System Monitor
-                    </CardTitle>
-                  </div>
-                  <div className="flex items-center gap-1 mt-4 border-b border-gray-200 dark:border-gray-700">
-                    {[
-                      { id: "logs", label: "System Logs", icon: Terminal },
-                      { id: "stats", label: "System Stats", icon: BarChart3 },
-                    ].map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`relative flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
-                          activeTab === tab.id
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                        }`}
-                      >
-                        <tab.icon className="h-4 w-4" />
-                        {tab.label}
-                        {activeTab === tab.id && (
-                          <motion.div
-                            layoutId="activeTab"
-                            className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400"
-                            initial={false}
-                          />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  <div className="h-[250px] relative">
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={activeTab}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.2 }}
-                        className="absolute inset-0"
-                      >
-                        {activeTab === "logs" ? (
-                          <ScrollArea className="h-full">
-                            <div className="space-y-2">
-                              {logs.length > 0 ? (
-                                logs.map((log) => (
-                                  <LogEntry key={log.id} log={log} />
-                                ))
-                              ) : (
-                                <EmptyLogs />
-                              )}
-                            </div>
-                          </ScrollArea>
-                        ) : (
-                          <div className="h-full flex items-center">
-                            <div className="grid grid-cols-2 gap-3 w-full">
-                              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-                                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                  Uptime
-                                </div>
-                                <div className="text-xl font-semibold">
-                                  {state.uptime || "00:00:00"}
-                                </div>
-                              </div>
-                              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-                                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                  CPU Usage
-                                </div>
-                                <div className="text-xl font-semibold">
-                                  {state.cpuUsage || "0"}%
-                                </div>
-                              </div>
-                              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-                                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                  Memory Usage
-                                </div>
-                                <div className="text-xl font-semibold">
-                                  {state.memoryUsage || "0"}%
-                                </div>
-                              </div>
-                              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-                                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                  Temperature
-                                </div>
-                                <div className="text-xl font-semibold">
-                                  {state.temperature || "0"}°C
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+        <AnimatedTabs
+          tabs={[
+            {
+              id: "live",
+              label: "Live View",
+              icon: Activity,
+              description: "Monitor real-time system status and operations",
+            },
+            {
+              id: "settings",
+              label: "Settings",
+              icon: Settings2,
+              description: "Configure system parameters and controls",
+            },
+            {
+              id: "stats",
+              label: "Statistics",
+              icon: BarChart2,
+              description: "View system performance metrics and analytics",
+            },
+          ]}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          variant="card"
+          className="bg-white dark:bg-gray-800 shadow-sm"
+        >
+          <div key="live">
+            <LiveView currentImage={currentImage} state={state} logs={logs} />
           </div>
 
-          {/* Ejection Controls */}
-          <ImprovedEjectionControlGUI />
-        </div>
+          <div key="settings">
+            <ImprovedEjectionControlGUI />
+          </div>
+
+          <div key="stats">
+            <StatsOverview
+              dailyStats={state.dailyStats}
+              currentCycleStats={state.currentCycleStats}
+            />
+          </div>
+        </AnimatedTabs>
       </main>
       <Toaster position="top-center" />
     </div>
