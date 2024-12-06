@@ -86,7 +86,7 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
 
   return (
     <div className="space-y-6">
-      <Card className="bg-gray-900/5 dark:bg-gray-800 backdrop-blur-sm border border-gray-200/20">
+      <Card className="bg-gray-900/5 dark:bg-gray-800 backdrop-blur-sm border border-gray-200/20 shadow-card">
         <CardHeader className="pb-4">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Target className="h-5 w-5 text-blue-500" />

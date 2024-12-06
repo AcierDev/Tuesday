@@ -183,7 +183,7 @@ const GlobalSettings = ({
       transition={{ duration: 0.3 }}
       className="pt-2"
     >
-      <Card className="bg-gray-900 border-gray-800 dark:border-gray-700 dark:bg-gray-800">
+      <Card className="bg-gray-900 border-gray-800 dark:border-gray-700 dark:bg-gray-800 shadow-card">
         <CardHeader className="space-y-1">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -208,7 +208,7 @@ const GlobalSettings = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="flex items-center justify-between bg-gray-800/50 p-4 rounded-lg"
+            className="flex items-center justify-between p-4 rounded-lg"
           >
             <div className="flex items-center gap-3">
               <Target className="h-4 w-4 text-blue-400" />
@@ -294,7 +294,7 @@ const GlobalSettings = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="flex items-center justify-between bg-gray-800/50 p-4 rounded-lg"
+                className="flex items-center justify-between p-4 rounded-lg"
               >
                 <div className="flex items-center gap-3">
                   <Target className="h-4 w-4 text-orange-400" />

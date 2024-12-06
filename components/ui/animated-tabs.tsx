@@ -164,7 +164,7 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
   const renderTabBar = () => (
     <div
       className={cn(
-        "flex items-center gap-1 border-b border-gray-200 dark:border-gray-700",
+        "flex items-center gap-1 border-b dark:border-gray-700",
         variant === "card" && "px-4",
         tabListClassName
       )}

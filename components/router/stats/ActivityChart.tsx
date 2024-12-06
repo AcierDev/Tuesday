@@ -41,7 +41,7 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({ data }) => {
   }));
 
   return (
-    <Card className="bg-white dark:bg-gray-800 backdrop-blur-sm h-full">
+    <Card className="bg-white dark:bg-gray-800 backdrop-blur-sm h-full shadow-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <BarChart2 className="h-5 w-5 text-blue-500" />

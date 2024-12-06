@@ -255,7 +255,7 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = ({
 
   return (
     <TooltipProvider>
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-card">
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>

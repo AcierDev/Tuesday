@@ -108,7 +108,7 @@ export default function PerClassSettings({
               <Card
                 className={`transition-all duration-300 ${
                   classConfig.enabled ? "opacity-100" : "opacity-50"
-                } dark:bg-gray-800 dark:border-gray-600 hover:dark:border-gray-500 overflow-hidden`}
+                } dark:bg-gray-800 dark:border-none hover:dark:border-gray-700 overflow-hidden`}
               >
                 <CardHeader className="py-4">
                   <CardTitle className="text-lg flex items-center justify-between">

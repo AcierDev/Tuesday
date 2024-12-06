@@ -48,6 +48,12 @@ import {
   ItemStatus,
 } from "../../typings/types";
 
+interface NewItemModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (item: any) => Promise<void>;
+}
+
 const SuccessAnimation = () => (
   <motion.div
     className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
@@ -70,7 +76,11 @@ const SuccessAnimation = () => (
   </motion.div>
 );
 
-export const NewItemModal = ({ isOpen, onClose, onSubmit }) => {
+export const NewItemModal: React.FC<NewItemModalProps> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+}) => {
   const [customerName, setCustomerName] = useState("");
   const [size, setSize] = useState("");
   const [design, setDesign] = useState("");
@@ -112,6 +122,28 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }) => {
     }
   };
 
+  const sendNotification = async (
+    customerName: string,
+    size: string,
+    design: string
+  ) => {
+    try {
+      const response = await fetch("/api/notifications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ customerName, size, design }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send notification");
+      }
+    } catch (error) {
+      console.error("Error sending notification:", error);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!customerName || !size || !design) {
       alert("Please fill in all required fields");
@@ -148,13 +180,21 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }) => {
       isScheduled: false,
     };
 
-    await onSubmit(newItem);
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      onClose();
-      resetForm();
-    }, 1000);
+    try {
+      await onSubmit(newItem);
+      await sendNotification(customerName, size, design);
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        onClose();
+        resetForm();
+      }, 1000);
+    } catch (error) {
+      console.error("Error submitting item:", error);
+      alert("Failed to submit item");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetForm = () => {

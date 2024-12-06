@@ -64,7 +64,7 @@ export default function ImprovedEjectionControlGUI() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         variant="card"
-        className="min-h-[600px]"
+        className="min-h-[600px] shadow-card"
         hasChanges={hasChanges}
         onReset={handleReset}
         onSave={handleSave}

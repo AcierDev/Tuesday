@@ -287,7 +287,7 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
         {currentCycleStats && <CycleStatsCard stats={currentCycleStats} />}
 
         {/* Processing Times */}
-        <Card className="bg-white dark:bg-gray-800 backdrop-blur-sm dark:border-gray-700/50">
+        <Card className="bg-white dark:bg-gray-800 backdrop-blur-sm shadow-card">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Clock className="h-5 w-5 text-blue-500" />
@@ -359,7 +359,7 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
         </Card>
 
         {/* Additional Stats Card */}
-        <Card className="bg-white dark:bg-gray-800 backdrop-blur-sm">
+        <Card className="bg-white dark:bg-gray-800 backdrop-blur-sm shadow-card">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <BarChart2 className="h-5 w-5 text-blue-500" />

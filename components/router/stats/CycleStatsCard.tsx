@@ -19,7 +19,7 @@ export const CycleStatsCard: React.FC<CycleStatsCardProps> = ({ stats }) => {
   if (!stats) return null;
 
   return (
-    <Card className="bg-white dark:bg-gray-800">
+    <Card className="bg-white dark:bg-gray-800 shadow-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Timer className="h-5 w-5 text-blue-500" />

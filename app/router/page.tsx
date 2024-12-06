@@ -233,7 +233,7 @@ export default function MonitoringDashboard() {
           className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border dark:border-gray-700"
           tabClassName="px-6 py-4 text-base font-semibold hover:bg-gray-100 dark:hover:bg-gray-700/50 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 rounded-t-lg transition-all duration-200"
           contentClassName="p-6 bg-white dark:bg-gray-800 rounded-b-lg"
-          tabListClassName="bg-gray-50 dark:bg-gray-800/50 p-2 rounded-t-lg gap-2"
+          tabListClassName="bg-gray-50 dark:bg-gray-800 p-2 rounded-t-lg gap-2"
         >
           <div key="live">
             <LiveView currentImage={currentImage} state={state} logs={logs} />
