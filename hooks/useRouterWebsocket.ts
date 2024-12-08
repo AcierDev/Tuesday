@@ -11,7 +11,7 @@ import { generateUUID } from "@/utils/functions";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 
-const WEBSOCKET_URL = "ws://192.168.1.215:8080/ws";
+const WEBSOCKET_URL = "ws://192.168.1.222:8080/ws";
 const RECONNECT_DELAY = 2000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 

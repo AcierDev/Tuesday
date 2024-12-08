@@ -6,6 +6,8 @@ import ImageAnalysisCard from "@/components/router/ImageAnalysisCard";
 import { EmptyLogs } from "@/utils/functions";
 import { MessageSquare } from "lucide-react";
 import { ImageMetadata } from "@/typings/types";
+import { StatusCard } from "@/components/router/StatusCard";
+import { Circle, Power } from "lucide-react";
 
 interface RouterState {
   currentImageUrl: string | null;
@@ -14,6 +16,17 @@ interface RouterState {
   isCapturing: boolean;
   isAnalyzing: boolean;
   ejectionDecision: boolean | null;
+  sensor1: string;
+  push_cylinder: string;
+  riser_cylinder: string;
+  ejection_cylinder: string;
+  settings?: {
+    slave: {
+      pushTime: number;
+      riserTime: number;
+      ejectionTime: number;
+    };
+  };
 }
 
 interface Log {
@@ -34,9 +47,9 @@ interface LiveViewProps {
 
 const LiveView: React.FC<LiveViewProps> = ({ currentImage, state, logs }) => {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      {/* Left Column - Image Analysis (2/5 width) */}
-      <div className="lg:col-span-2">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Left Column - Image Analysis */}
+      <div>
         <ImageAnalysisCard
           imageUrl={currentImage.url}
           imageMetadata={currentImage.metadata}
@@ -47,17 +60,70 @@ const LiveView: React.FC<LiveViewProps> = ({ currentImage, state, logs }) => {
         />
       </div>
 
-      {/* Right Column - System Monitor (3/5 width) */}
-      <div className="lg:col-span-3">
+      {/* Right Column - System Status & Monitor */}
+      <div className="space-y-6">
+        {/* System Status */}
+        <Card className="bg-white dark:bg-gray-800 dark:border-gray-700 shadow-card">
+          <CardHeader>
+            <CardTitle>System Status</CardTitle>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Real-time sensor and device status
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <StatusCard
+                title="Block Sensor"
+                status={state.sensor1 === "ON"}
+                icon={Circle}
+                description={state.sensor1 === "ON" ? "Active" : "Inactive"}
+                isActive={state.sensor1 === "ON"}
+                activeColor="green"
+              />
+              <StatusCard
+                title="Push Cylinder"
+                status={state.push_cylinder === "ON"}
+                icon={Power}
+                description={
+                  state.push_cylinder === "ON" ? "Engaged" : "Disengaged"
+                }
+                duration={state.settings?.slave.pushTime}
+                isActive={state.push_cylinder === "ON"}
+              />
+              <StatusCard
+                title="Riser Cylinder"
+                status={state.riser_cylinder === "ON"}
+                icon={Power}
+                description={
+                  state.riser_cylinder === "ON" ? "Engaged" : "Disengaged"
+                }
+                duration={state.settings?.slave.riserTime}
+                isActive={state.riser_cylinder === "ON"}
+              />
+              <StatusCard
+                title="Ejection Cylinder"
+                status={state.ejection_cylinder === "ON"}
+                icon={Power}
+                description={
+                  state.ejection_cylinder === "ON" ? "Engaged" : "Disengaged"
+                }
+                duration={state.settings?.slave.ejectionTime}
+                isActive={state.ejection_cylinder === "ON"}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* System Monitor */}
         <Card className="bg-white dark:bg-gray-800 dark:border-gray-700 shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-blue-500" />
-              System Logs
+              System Monitor
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-[600px] px-4">
+            <ScrollArea className="h-[300px] px-4">
               <div className="space-y-2 py-4">
                 {logs.length > 0 ? (
                   logs.map((log) => <LogEntry key={log.id} log={log} />)

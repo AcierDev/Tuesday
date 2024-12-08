@@ -191,7 +191,7 @@ const GlobalSettings = ({
             className="flex items-center gap-2"
           >
             <Settings2 className="h-5 w-5" />
-            <CardTitle>Global Settings</CardTitle>
+            <CardTitle>General Settings</CardTitle>
           </motion.div>
           <motion.p
             initial={{ opacity: 0 }}

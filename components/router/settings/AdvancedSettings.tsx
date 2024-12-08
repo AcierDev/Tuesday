@@ -95,7 +95,7 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Overlap Setting */}
-          <div className="flex items-center justify-between p-4 bg-gray-100/50 dark:bg-gray-800/50 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-gray-100/50 dark:bg-transparent rounded-lg">
             <div className="flex items-center space-x-2">
               <Label
                 htmlFor="considerOverlap"

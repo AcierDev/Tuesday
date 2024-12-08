@@ -43,6 +43,7 @@ interface AnimatedTabsProps {
   onReset?: () => void;
   onSave?: () => void;
   validationErrors?: { [key: string]: string };
+  id?: string;
 }
 
 export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
@@ -59,6 +60,7 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
   onReset,
   onSave,
   validationErrors = {},
+  id = "default",
 }) => {
   const [showUnsavedChanges, setShowUnsavedChanges] = React.useState(false);
   const tabContent = React.Children.toArray(children);
@@ -187,7 +189,7 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
             <span>{tab.label}</span>
             {activeTab === tab.id && (
               <motion.div
-                layoutId="activeTab"
+                layoutId={`activeTab-${id}`}
                 className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400"
                 initial={false}
                 transition={{

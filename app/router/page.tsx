@@ -77,42 +77,55 @@ export default function MonitoringDashboard() {
   };
 
   const renderStatusCards = () => (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <StatusCard
-        title="Block Sensor"
-        status={state.sensor1 === "ON"}
-        icon={Circle}
-        description={state.sensor1 === "ON" ? "Active" : "Inactive"}
-        isActive={state.sensor1 === "ON"}
-        activeColor="green"
-      />
-      <StatusCard
-        title="Push Cylinder"
-        status={state.push_cylinder === "ON"}
-        icon={Power}
-        description={state.push_cylinder === "ON" ? "Engaged" : "Disengaged"}
-        duration={state.settings?.slave.pushTime}
-        isActive={state.push_cylinder === "ON"}
-      />
-      <StatusCard
-        title="Riser Cylinder"
-        status={state.riser_cylinder === "ON"}
-        icon={Power}
-        description={state.riser_cylinder === "ON" ? "Engaged" : "Disengaged"}
-        duration={state.settings?.slave.riserTime}
-        isActive={state.riser_cylinder === "ON"}
-      />
-      <StatusCard
-        title="Ejection Cylinder"
-        status={state.ejection_cylinder === "ON"}
-        icon={Power}
-        description={
-          state.ejection_cylinder === "ON" ? "Engaged" : "Disengaged"
-        }
-        duration={state.settings?.slave.ejectionTime}
-        isActive={state.ejection_cylinder === "ON"}
-      />
-    </div>
+    <AnimatePresence>
+      {activeTab !== "live" && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"
+        >
+          <StatusCard
+            title="Block Sensor"
+            status={state.sensor1 === "ON"}
+            icon={Circle}
+            description={state.sensor1 === "ON" ? "Active" : "Inactive"}
+            isActive={state.sensor1 === "ON"}
+            activeColor="green"
+          />
+          <StatusCard
+            title="Push Cylinder"
+            status={state.push_cylinder === "ON"}
+            icon={Power}
+            description={
+              state.push_cylinder === "ON" ? "Engaged" : "Disengaged"
+            }
+            duration={state.settings?.slave.pushTime}
+            isActive={state.push_cylinder === "ON"}
+          />
+          <StatusCard
+            title="Riser Cylinder"
+            status={state.riser_cylinder === "ON"}
+            icon={Power}
+            description={
+              state.riser_cylinder === "ON" ? "Engaged" : "Disengaged"
+            }
+            duration={state.settings?.slave.riserTime}
+            isActive={state.riser_cylinder === "ON"}
+          />
+          <StatusCard
+            title="Ejection Cylinder"
+            status={state.ejection_cylinder === "ON"}
+            icon={Power}
+            description={
+              state.ejection_cylinder === "ON" ? "Engaged" : "Disengaged"
+            }
+            duration={state.settings?.slave.ejectionTime}
+            isActive={state.ejection_cylinder === "ON"}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 
   return (
@@ -207,6 +220,7 @@ export default function MonitoringDashboard() {
         {renderStatusCards()}
 
         <AnimatedTabs
+          id="router-tabs"
           tabs={[
             {
               id: "live",

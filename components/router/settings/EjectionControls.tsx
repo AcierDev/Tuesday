@@ -22,7 +22,7 @@ export default function ImprovedEjectionControlGUI() {
     updateConfigFromServer,
   } = useEjectionConfig(updateEjectionSettings);
 
-  const [activeTab, setActiveTab] = useState("global");
+  const [activeTab, setActiveTab] = useState("general");
 
   useEffect(() => {
     if (state.settings) {
@@ -32,8 +32,8 @@ export default function ImprovedEjectionControlGUI() {
 
   const tabs = [
     {
-      id: "global",
-      label: "Global Settings",
+      id: "general",
+      label: "General Settings",
       icon: Settings2,
       description: "Configure system-wide ejection parameters",
     },
@@ -60,6 +60,7 @@ export default function ImprovedEjectionControlGUI() {
   return (
     <div className="container mx-auto p-4">
       <AnimatedTabs
+        id="ejection-controls"
         tabs={tabs}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
