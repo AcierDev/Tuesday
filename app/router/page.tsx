@@ -21,6 +21,7 @@ import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionCon
 import LiveView from "@/components/router/LiveView";
 import { Button } from "@/components/ui/button";
 import { StatusCard } from "@/components/router/StatusCard";
+import ComputerSelector from "@/components/tyler/ComputerSelector";
 
 const MAX_RECONNECT_ATTEMPTS = 5;
 
@@ -30,8 +31,14 @@ interface ImageMetadata {
 }
 
 export default function MonitoringDashboard() {
-  const { state, logs, connectionStatus, connectionError, reconnectAttempts } =
-    useWebSocketManager();
+  const {
+    state,
+    logs,
+    connectionStatus,
+    connectionError,
+    reconnectAttempts,
+    updateWebSocketUrl,
+  } = useWebSocketManager();
   const [activeTab, setActiveTab] = useState("live");
 
   // Add state for image processing
@@ -52,6 +59,14 @@ export default function MonitoringDashboard() {
       });
     }
   }, [state.currentImageUrl, state.currentImageMetadata]);
+
+  const handleComputerSelect = (ip: string) => {
+    updateWebSocketUrl(ip);
+  };
+
+  const handleReconnect = () => {
+    updateWebSocketUrl(wsUrl); // This will trigger a reconnection
+  };
 
   const renderConnectionAlert = () => {
     if (connectionError) {
@@ -143,6 +158,18 @@ export default function MonitoringDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
+              <ComputerSelector
+                onSelect={handleComputerSelect}
+                onReconnect={handleReconnect}
+                isConnecting={connectionStatus === "connecting"}
+                computers={[
+                  { name: "Router Raspi", ip: "192.168.1.215:8080/ws" },
+                  { name: "Dev Testing Raspi", ip: "192.168.1.216:8080/ws" },
+                  { name: "Bentzi's Laptop", ip: "192.168.1.222:8080/ws" },
+                  { name: "localhost", ip: "localhost:8080/ws" },
+                ]}
+              />
+
               <div
                 className={`flex items-center gap-2 px-4 py-2 rounded-full dark:bg-blue-900/30`}
               >

@@ -11,7 +11,7 @@ import { generateUUID } from "@/utils/functions";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 
-const WEBSOCKET_URL = "ws://192.168.1.222:8080/ws";
+const DEFAULT_WEBSOCKET_URL = "ws://192.168.1.222:8080/ws";
 const RECONNECT_DELAY = 2000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 
@@ -49,6 +49,7 @@ export const useWebSocketManager = () => {
     useState<ConnectionStatus>("disconnected");
   const [reconnectAttempts, setReconnectAttempts] = useState<number>(0);
   const [connectionError, setConnectionError] = useState<string>("");
+  const [wsUrl, setWsUrl] = useState<string>(DEFAULT_WEBSOCKET_URL);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -101,7 +102,6 @@ export const useWebSocketManager = () => {
   }, []);
 
   const connect = useCallback(() => {
-    // If already connected or connecting, don't try to connect again
     if (
       wsRef.current?.readyState === WebSocket.CONNECTING ||
       wsRef.current?.readyState === WebSocket.OPEN ||
@@ -126,12 +126,14 @@ export const useWebSocketManager = () => {
       isConnectingRef.current = true;
       setConnectionStatus("connecting");
 
-      const ws = new WebSocket(WEBSOCKET_URL);
+      console.log(`Attempting to connect to: ${wsUrl}`);
+      const ws = new WebSocket(wsUrl);
       ws.binaryType = "blob";
       wsRef.current = ws;
 
       const connectionTimeout = setTimeout(() => {
         if (ws.readyState !== WebSocket.OPEN) {
+          console.log("Connection timeout, closing socket");
           ws.close();
         }
       }, 5000);
@@ -369,13 +371,15 @@ export const useWebSocketManager = () => {
         isConnectingRef.current = false;
       };
     } catch (error) {
+      console.error("WebSocket connection error:", error);
       if (!mountedRef.current) return;
+      setConnectionStatus("disconnected");
       setConnectionError(
         "Failed to establish WebSocket connection. Please check your network connection."
       );
       isConnectingRef.current = false;
     }
-  }, [reconnectAttempts, handleBinaryMessage]);
+  }, [reconnectAttempts, handleBinaryMessage, wsUrl]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -409,16 +413,27 @@ export const useWebSocketManager = () => {
     };
   }, [connect]);
 
-  const updateWebSocketUrl = (newUrl: string) => {
-    // Close existing connection if any
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
-    // Reset connection attempts
-    setReconnectAttempts(0);
-    // Update the URL and attempt to connect
-    setState((prev) => ({ ...prev, wsUrl: newUrl }));
-  };
+  const updateWebSocketUrl = useCallback(
+    (newUrl: string) => {
+      // Don't modify the URL if it's already a complete WebSocket URL
+      const formattedUrl =
+        newUrl.startsWith("ws://") || newUrl.startsWith("wss://")
+          ? newUrl
+          : `ws://${newUrl}${newUrl.includes("/ws") ? "" : "/ws"}`;
+
+      // Only update if the URL has actually changed
+      if (formattedUrl !== wsUrl) {
+        setWsUrl(formattedUrl);
+
+        if (wsRef.current) {
+          wsRef.current.close(1000, "Switching endpoint");
+        }
+        setReconnectAttempts(0);
+        setConnectionError("");
+      }
+    },
+    [wsUrl]
+  );
 
   return {
     state,
@@ -429,5 +444,6 @@ export const useWebSocketManager = () => {
     reconnectAttempts,
     updateEjectionSettings,
     updateWebSocketUrl,
+    wsUrl,
   };
 };
