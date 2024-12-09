@@ -1,36 +1,42 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Toaster } from "sonner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  AlertTriangle,
-  Activity,
-  Settings2,
-  BarChart2,
-  Wifi,
-  WifiOff,
-  Circle,
-  Power,
-} from "lucide-react";
-import { useWebSocketManager } from "@/hooks/useRouterWebsocket";
-import { motion, AnimatePresence } from "framer-motion";
-import { AnimatedTabs } from "@/components/ui/animated-tabs";
-import StatsOverview from "@/components/router/stats/StatsOverview";
-import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionControls";
 import LiveView from "@/components/router/LiveView";
-import { Button } from "@/components/ui/button";
+import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionControls";
+import StatsOverview from "@/components/router/stats/StatsOverview";
 import { StatusCard } from "@/components/router/StatusCard";
 import ComputerSelector from "@/components/tyler/ComputerSelector";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
+import { RouterProvider, useRouter } from "@/contexts/RouterContext";
+import { ImageMetadata } from "@/typings/types";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  AlertTriangle,
+  Circle,
+  Power,
+  Activity,
+  Wifi,
+  WifiOff,
+  Settings2,
+  BarChart2,
+  Target,
+  ToggleRight,
+} from "lucide-react";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Toaster } from "sonner";
 
-const MAX_RECONNECT_ATTEMPTS = 5;
-
-interface ImageMetadata {
-  timestamp: string;
-  // Add other metadata properties as needed
+export default function RouterPage() {
+  return (
+    <RouterProvider>
+      <MonitoringDashboard />
+    </RouterProvider>
+  );
 }
 
-export default function MonitoringDashboard() {
+const MAX_RECONNECT_ATTEMPTS = 3;
+
+function MonitoringDashboard() {
   const {
     state,
     logs,
@@ -38,7 +44,9 @@ export default function MonitoringDashboard() {
     connectionError,
     reconnectAttempts,
     updateWebSocketUrl,
-  } = useWebSocketManager();
+    wsUrl,
+    updateEjectionSettings,
+  } = useRouter();
   const [activeTab, setActiveTab] = useState("live");
 
   // Add state for image processing
@@ -65,7 +73,20 @@ export default function MonitoringDashboard() {
   };
 
   const handleReconnect = () => {
-    updateWebSocketUrl(wsUrl); // This will trigger a reconnection
+    updateWebSocketUrl(wsUrl);
+  };
+
+  const handleAnalysisModeToggle = (enabled: boolean) => {
+    if (state.settings) {
+      const newSettings = {
+        ...state.settings,
+        slave: {
+          ...state.settings.slave,
+          analysisMode: enabled,
+        },
+      };
+      updateEjectionSettings(newSettings);
+    }
   };
 
   const renderConnectionAlert = () => {
@@ -200,6 +221,16 @@ export default function MonitoringDashboard() {
                 </div>
               </div>
 
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 dark:border-gray-700">
+                <Target className="h-4 w-4 text-blue-500" />
+                <span className="text-sm font-medium">Analysis Mode</span>
+                <ToggleRight
+                  checked={state.settings?.slave.analysisMode}
+                  onCheckedChange={handleAnalysisModeToggle}
+                  className="data-[state=checked]:bg-blue-600"
+                />
+              </div>
+
               <Button
                 variant="destructive"
                 className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 h-12 text-sm"
@@ -292,6 +323,36 @@ export default function MonitoringDashboard() {
           </div>
         </AnimatedTabs>
       </main>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="fixed bottom-6 left-6 z-50"
+      >
+        <div className="bg-white dark:bg-gray-800 rounded-full shadow-lg p-4 flex items-center gap-3 border border-gray-200 dark:border-gray-700">
+          <div className="flex flex-col items-end">
+            <span className="text-sm font-medium">Analysis Mode</span>
+            <span className="text-xs text-gray-500">
+              {state.settings?.slave.analysisMode ? "Enabled" : "Disabled"}
+            </span>
+          </div>
+          <ToggleRight
+            checked={state.settings?.slave.analysisMode}
+            onCheckedChange={handleAnalysisModeToggle}
+            className="data-[state=checked]:bg-blue-600"
+          />
+          <motion.div
+            animate={{
+              scale: state.settings?.slave.analysisMode ? [1, 1.2, 1] : 1,
+            }}
+            transition={{ duration: 0.5, repeat: Infinity }}
+            className={`absolute inset-0 rounded-full ${
+              state.settings?.slave.analysisMode
+                ? "border-2 border-blue-500/50"
+                : ""
+            }`}
+          />
+        </div>
+      </motion.div>
       <Toaster position="top-center" />
     </div>
   );

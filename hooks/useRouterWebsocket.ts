@@ -57,6 +57,8 @@ export const useWebSocketManager = () => {
   const mountedRef = useRef<boolean>(true);
   const disconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [isReconnecting, setIsReconnecting] = useState(false);
+
   const updateEjectionSettings = useCallback((newSettings: RouterSettings) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(
@@ -106,8 +108,12 @@ export const useWebSocketManager = () => {
       wsRef.current?.readyState === WebSocket.CONNECTING ||
       wsRef.current?.readyState === WebSocket.OPEN ||
       isConnectingRef.current ||
-      !mountedRef.current
+      !mountedRef.current ||
+      isReconnecting
     ) {
+      console.log(
+        "Connection attempt blocked - already connecting or connected"
+      );
       return;
     }
 
@@ -123,6 +129,7 @@ export const useWebSocketManager = () => {
     }
 
     try {
+      setIsReconnecting(true);
       isConnectingRef.current = true;
       setConnectionStatus("connecting");
 
@@ -148,6 +155,7 @@ export const useWebSocketManager = () => {
         setReconnectAttempts(0);
         setConnectionError("");
         isConnectingRef.current = false;
+        setIsReconnecting(false);
         toast.success("Connected to system");
       };
 
@@ -347,7 +355,11 @@ export const useWebSocketManager = () => {
 
         setConnectionStatus("disconnected");
         isConnectingRef.current = false;
-        toast.error("Disconnected from system");
+        setIsReconnecting(false);
+
+        if (event.code !== 1000 && event.code !== 1005) {
+          toast.error("Disconnected from system");
+        }
 
         if (event.code !== 1000 && event.code !== 1005) {
           if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
@@ -365,10 +377,12 @@ export const useWebSocketManager = () => {
         }
       };
 
-      ws.onerror = () => {
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
         if (!mountedRef.current) return;
         setConnectionStatus("disconnected");
         isConnectingRef.current = false;
+        setIsReconnecting(false);
       };
     } catch (error) {
       console.error("WebSocket connection error:", error);
@@ -378,6 +392,7 @@ export const useWebSocketManager = () => {
         "Failed to establish WebSocket connection. Please check your network connection."
       );
       isConnectingRef.current = false;
+      setIsReconnecting(false);
     }
   }, [reconnectAttempts, handleBinaryMessage, wsUrl]);
 
@@ -402,6 +417,11 @@ export const useWebSocketManager = () => {
         reconnectTimeoutRef.current = null;
       }
 
+      if (disconnectTimeoutRef.current) {
+        clearTimeout(disconnectTimeoutRef.current);
+        disconnectTimeoutRef.current = null;
+      }
+
       setState((prev) => {
         if (prev.currentImageUrl) {
           URL.revokeObjectURL(prev.currentImageUrl);
@@ -410,6 +430,7 @@ export const useWebSocketManager = () => {
       });
 
       isConnectingRef.current = false;
+      setIsReconnecting(false);
     };
   }, [connect]);
 
