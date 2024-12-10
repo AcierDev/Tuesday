@@ -11,8 +11,11 @@ export type PaintRequirement = Record<string | number, number>;
 
 export function calculatePaintRequirements(
   group: Group
-): Record<string, PaintRequirement> {
-  const requirements: Record<string, PaintRequirement> = {};
+): Record<ItemDesigns, PaintRequirement> {
+  const requirements: Record<ItemDesigns, PaintRequirement> = {} as Record<
+    ItemDesigns,
+    PaintRequirement
+  >;
 
   group.items.forEach((item) => {
     const design = item.values.find((v) => v.columnName === ColumnTitles.Design)
@@ -28,6 +31,26 @@ export function calculatePaintRequirements(
     ) {
       if (!requirements[design]) {
         requirements[design] = {};
+      }
+
+      if (
+        design === ItemDesigns.Coastal ||
+        design === ItemDesigns.Oceanic_Harmony ||
+        design === ItemDesigns.Striped_Coastal ||
+        design === ItemDesigns.Tiled_Coastal
+      ) {
+        if (!requirements[ItemDesigns.Coastal]) {
+          requirements[ItemDesigns.Coastal] = {};
+        }
+      }
+
+      if (design === ItemDesigns.Tidal) {
+        if (!requirements[ItemDesigns.Coastal]) {
+          requirements[ItemDesigns.Coastal] = {};
+        }
+        if (!requirements[ItemDesigns.Tidal]) {
+          requirements[ItemDesigns.Tidal] = {};
+        }
       }
 
       const totalArea = SIZE_MULTIPLIERS[size];
@@ -53,10 +76,10 @@ export function calculatePaintRequirements(
     }
   });
 
-  delete requirements[ItemDesigns.Oceanic_Harmony];
+  requirements[ItemDesigns.Oceanic_Harmony] = {};
 
   if (Object.keys(requirements[ItemDesigns.Tidal] || {}).length === 0) {
-    delete requirements[ItemDesigns.Tidal];
+    requirements[ItemDesigns.Tidal] = {};
   }
 
   return requirements;

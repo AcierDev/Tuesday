@@ -1,4 +1,6 @@
 import {
+  ColumnTitles,
+  ColumnVisibility,
   EmployeeNames,
   ItemDesigns,
   ItemSizes,
@@ -263,9 +265,21 @@ export const DESIGN_COLORS: Record<
 
 export const DESIGN_COLOR_NAMES: Record<ItemDesigns, (number | string)[]> = {
   [ItemDesigns.Coastal]: [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16],
+  [ItemDesigns.Striped_Coastal]: [
+    1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16,
+  ],
+  [ItemDesigns.Tiled_Coastal]: [
+    1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16,
+  ],
   [ItemDesigns.Tidal]: [8, 10, 11, 12, 13, 14, 15, 16, "L1", "L2", "L3"],
   [ItemDesigns.Oceanic_Harmony]: [5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16],
+  [ItemDesigns.Striped_Oceanic_Harmony]: [
+    5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16,
+  ],
+  [ItemDesigns.Tiled_Oceanic_Harmony]: [5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16],
   [ItemDesigns.Timberline]: [1, 2, 3, 4, 5, 6, 7],
+  [ItemDesigns.Striped_Timberline]: [1, 2, 3, 4, 5, 6, 7],
+  [ItemDesigns.Tiled_Timberline]: [1, 2, 3, 4, 5, 6, 7],
   [ItemDesigns.Aloe]: [1, 2, 3, 4, 5, 6, 7],
   [ItemDesigns.Amber]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
   [ItemDesigns.Sapphire]: [1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -275,20 +289,21 @@ export const DESIGN_COLOR_NAMES: Record<ItemDesigns, (number | string)[]> = {
   [ItemDesigns.Winter]: [1, 2, 3, 4, 5],
   [ItemDesigns.Elemental]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   [ItemDesigns.Spectrum]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  [ItemDesigns.Mirage]: [1, 2, 3, 4, 5, 6, 7, 8, 9],
 };
 
 export const SIZE_MULTIPLIERS: Record<ItemSizes, number> = {
   [ItemSizes.Fourteen_By_Seven]: 14 * 7,
   [ItemSizes.Sixteen_By_Six]: 16 * 6,
   [ItemSizes.Sixteen_By_Ten]: 16 * 10,
-  [ItemSizes.Nineteen_By_Ten]: 19 * 10,
-  [ItemSizes.TwentyTwo_By_Ten]: 22 * 10,
-  [ItemSizes.Nineteen_By_Eleven]: 19 * 11,
-  [ItemSizes.TwentyTwo_By_Eleven]: 22 * 11,
-  [ItemSizes.TwentySeven_By_Eleven]: 27 * 11,
-  [ItemSizes.TwentySeven_By_Fifteen]: 27 * 15,
-  [ItemSizes.ThirtyOne_By_Fifteen]: 31 * 15,
-  [ItemSizes.ThirtySix_By_Fifteen]: 36 * 15,
+  [ItemSizes.Twenty_By_Ten]: 20 * 10,
+  [ItemSizes.TwentyFour_By_Ten]: 24 * 10,
+  [ItemSizes.Twenty_By_Twelve]: 20 * 12,
+  [ItemSizes.TwentyFour_By_Twelve]: 24 * 12,
+  [ItemSizes.TwentyEight_By_Twelve]: 28 * 12,
+  [ItemSizes.TwentyEight_By_Sixteen]: 28 * 16,
+  [ItemSizes.ThirtyTwo_By_Sixteen]: 32 * 16,
+  [ItemSizes.ThirtySix_By_Sixteen]: 36 * 16,
 };
 
 export const BOX_COLORS: Record<
@@ -318,43 +333,49 @@ export const BOX_COLORS: Record<
     hardwareBag: "10 black screws, 2 anchors + 2 bolts",
     mountingRail: '48"',
   },
-  [ItemSizes.Nineteen_By_Ten]: {
+  [ItemSizes.Twenty_By_Ten]: {
     color: "Green",
     count: 1,
     hardwareBag: "13 black screws, 3 anchors + 3 bolts",
     mountingRail: '48"',
   },
-  [ItemSizes.Nineteen_By_Eleven]: {
-    color: "Green",
-    count: 1,
-    hardwareBag: "13 black screws, 3 anchors + 3 bolts",
-    mountingRail: '48"',
-  },
-  [ItemSizes.TwentyTwo_By_Ten]: {
+  [ItemSizes.TwentyFour_By_Ten]: {
     color: "Green",
     count: 1,
     hardwareBag: "15 black screws, 3 anchors + 3 bolts",
     mountingRail: '48"',
   },
-  [ItemSizes.TwentyTwo_By_Eleven]: {
+  [ItemSizes.Twenty_By_Twelve]: {
     color: "Green Plus",
     count: 1,
     hardwareBag: "15 black screws, 3 anchors + 3 bolts",
     mountingRail: '48"',
   },
-  [ItemSizes.TwentySeven_By_Eleven]: {
+  [ItemSizes.TwentyFour_By_Twelve]: {
     color: "Blue and Green",
     count: 2,
     hardwareBag: "13 black screws, 5 anchors + 5 bolts",
     mountingRail: '48" + 30"',
   },
-  [ItemSizes.TwentySeven_By_Fifteen]: {
+  [ItemSizes.TwentyEight_By_Twelve]: {
     color: "Purple",
     count: 3,
     hardwareBag: "13 black screws, 5 anchors + 5 bolts",
     mountingRail: '48" + 30"',
   },
-  [ItemSizes.ThirtySix_By_Fifteen]: {
+  [ItemSizes.TwentyEight_By_Sixteen]: {
+    color: "Purple",
+    count: 3,
+    hardwareBag: "13 black screws, 5 anchors + 5 bolts",
+    mountingRail: '48" + 30"',
+  },
+  [ItemSizes.ThirtyTwo_By_Sixteen]: {
+    color: "Purple",
+    count: 4,
+    hardwareBag: "20 black screws, 7 anchors + 7 bolts",
+    mountingRail: '48"',
+  },
+  [ItemSizes.ThirtySix_By_Sixteen]: {
     color: "Purple",
     count: 4,
     hardwareBag: "20 black screws, 7 anchors + 7 bolts",
@@ -387,56 +408,56 @@ export const backboardData = {
     height: 30.75,
     blankSize: 32,
   },
-  [ItemSizes.Nineteen_By_Ten]: {
+  [ItemSizes.Twenty_By_Ten]: {
     panels: 2,
     instructions: 'Panel 1: H: 30 ½" W: 30 ¾"\nPanel 2: H: 30 ½" W: 27 ¾"',
     width: 58.5,
     height: 30.5,
     blankSize: 32,
   },
-  [ItemSizes.TwentyTwo_By_Ten]: {
+  [ItemSizes.TwentyFour_By_Ten]: {
     panels: 2,
     instructions: '2x H: 30 ¾" W: 33 ¾"',
     width: 67.5,
     height: 30.75,
     blankSize: 32,
   },
-  [ItemSizes.Nineteen_By_Eleven]: {
+  [ItemSizes.Twenty_By_Twelve]: {
     panels: 2,
     instructions: "2x H: 33 ¾ W: 33 ¾",
     width: 67.5,
     height: 33.75,
     blankSize: 32,
   },
-  [ItemSizes.TwentyTwo_By_Eleven]: {
+  [ItemSizes.TwentyFour_By_Twelve]: {
     panels: 2,
     instructions: "2x H: 33 ¾ W: 33 ¾",
     width: 67.5,
     height: 33.75,
     blankSize: 36,
   },
-  [ItemSizes.TwentySeven_By_Eleven]: {
+  [ItemSizes.TwentyEight_By_Twelve]: {
     panels: 3,
     instructions: '3x H: 33 ¾ W: 27 ¾"',
     width: 83.25,
     height: 33.75,
     blankSize: 29,
   },
-  [ItemSizes.TwentySeven_By_Fifteen]: {
+  [ItemSizes.TwentyEight_By_Sixteen]: {
     panels: 3,
     instructions: '3x H: 46 5/16" W: 27 ¾"',
     width: 83.25,
     height: 46.3125,
     blankSize: 29,
   },
-  [ItemSizes.ThirtyOne_By_Fifteen]: {
+  [ItemSizes.ThirtyTwo_By_Sixteen]: {
     panels: 4,
     instructions: '4x H: 46 5/16" W: 27 ¾"',
     width: 111,
     height: 46.3125,
     blankSize: 29,
   },
-  [ItemSizes.ThirtySix_By_Fifteen]: {
+  [ItemSizes.ThirtySix_By_Sixteen]: {
     panels: 4,
     instructions: '4x H: 46 5/16" W: 27 ¾"',
     width: 111,
@@ -465,14 +486,64 @@ export const ItemDesignImages: Record<ItemDesigns, string> = {
   [ItemDesigns.Spectrum]: "/images/designs/spectrum.webp?height=300&width=400",
   [ItemDesigns.Aloe]: "/images/designs/aloe.webp?height=300&width=400",
   [ItemDesigns.Mirage]: "/images/designs/mirage.webp?height=300&width=400",
+  [ItemDesigns.Tiled_Coastal]:
+    "/Users/steelebenjamin/Documents/Everwood/Code/shadcn-panel/public/images/designs/tiled-coastal.webp",
+  [ItemDesigns.Striped_Oceanic_Harmony]:
+    "/Users/steelebenjamin/Documents/Everwood/Code/shadcn-panel/public/images/designs/striped-ft5.webp",
+  [ItemDesigns.Tiled_Oceanic_Harmony]:
+    "/Users/steelebenjamin/Documents/Everwood/Code/shadcn-panel/public/images/designs/tiled-ft5.webp",
+  [ItemDesigns.Striped_Timberline]:
+    "/Users/steelebenjamin/Documents/Everwood/Code/shadcn-panel/public/images/designs/striped-timberline.webp",
+  [ItemDesigns.Tiled_Timberline]:
+    "/Users/steelebenjamin/Documents/Everwood/Code/shadcn-panel/public/images/designs/tiled-timberline.webp",
 };
 
-export const DesignBlends: Record<ItemDesigns, string[]> = Object.fromEntries(
-  Object.entries(DESIGN_COLORS).map(([design, colors]) => [
-    design,
-    Object.values(colors).map((color) => color.hex),
-  ])
-);
+export const DesignBlends: Record<ItemDesigns, string[]> = {
+  [ItemDesigns.Coastal]: Object.values(COASTAL_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Striped_Coastal]: Object.values(COASTAL_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Tiled_Coastal]: Object.values(COASTAL_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Tidal]: Object.values(LAWYER_COLORS).map((color) => color.hex),
+  [ItemDesigns.Oceanic_Harmony]: Object.values(FADE_TO_FIVE_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Striped_Oceanic_Harmony]: Object.values(FADE_TO_FIVE_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Tiled_Oceanic_Harmony]: Object.values(FADE_TO_FIVE_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Timberline]: Object.values(TIMBERLINE_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Striped_Timberline]: Object.values(TIMBERLINE_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Tiled_Timberline]: Object.values(TIMBERLINE_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Amber]: Object.values(AMBER_COLORS).map((color) => color.hex),
+  [ItemDesigns.Sapphire]: Object.values(SAPHIRE_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Winter]: Object.values(WINTER_COLORS).map((color) => color.hex),
+  [ItemDesigns.Forest]: Object.values(FOREST_COLORS).map((color) => color.hex),
+  [ItemDesigns.Autumn]: Object.values(AUTUMN_COLORS).map((color) => color.hex),
+  [ItemDesigns.Elemental]: Object.values(ELEMENTAL_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Abyss]: Object.values(ABYSS_COLORS).map((color) => color.hex),
+  [ItemDesigns.Spectrum]: Object.values(SPECTRUM_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Aloe]: Object.values(ALOE_COLORS).map((color) => color.hex),
+  [ItemDesigns.Mirage]: Object.values(MIRAGE_COLORS).map((color) => color.hex),
+};
 
 export const EMPLOYEE_INITIALS = [
   "AM",
@@ -503,6 +574,8 @@ export const EMPLOYEE_MAP: Record<EmployeeOption, EmployeeNames> = {
   AW: EmployeeNames.Akiva,
   BC: EmployeeNames.Ben,
   TB: EmployeeNames.Tyler,
+  PC: EmployeeNames.Paris,
+  DC: EmployeeNames.Dylan,
 };
 
 export const INITIALS_MAP: Record<EmployeeNames, EmployeeOption> = {
@@ -521,8 +594,8 @@ export const CREDIT_COLORS: Record<EmployeeOption, string> = {
   BC: "bg-green-500",
   BS: "bg-red-500",
   TB: "bg-yellow-500",
-  PC: "",
-  DC: "",
+  PC: "bg-purple-500",
+  DC: "bg-pink-500",
 };
 
 export const STATUS_COLORS: Record<ItemStatus, string> = {
@@ -532,6 +605,8 @@ export const STATUS_COLORS: Record<ItemStatus, string> = {
   [ItemStatus.Packaging]: "lime-300",
   [ItemStatus.At_The_Door]: "yellow-900",
   [ItemStatus.Done]: "orange-600",
+  [ItemStatus.Hidden]: "white/10",
+  [ItemStatus.Shipping]: "red-500",
 };
 export const DEFAULT_ROUTER_SETTINGS: RouterSettings = {
   slave: {
@@ -568,4 +643,21 @@ export const DEFAULT_ROUTER_SETTINGS: RouterSettings = {
       exclusionZones: [],
     },
   },
+};
+
+export const EMPTY_WEEK_SCHEDULE = {
+  Sunday: [],
+  Monday: [],
+  Tuesday: [],
+  Wednesday: [],
+  Thursday: [],
+  Friday: [],
+  Saturday: [],
+};
+
+export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
+  [ColumnTitles.Customer_Name]: true,
+  [ColumnTitles.Design]: true,
+  [ColumnTitles.Size]: true,
+  [ColumnTitles.Due]: true,
 };

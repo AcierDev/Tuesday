@@ -186,11 +186,11 @@ export type AutomatronRule = {
   newStatus: string;
 };
 
-export type ColumnVisibility = {
-  [key: string]: {
-    [key: string]: boolean;
-  };
+export type ColumnVisibilitySettings = {
+  [K in ItemStatus]: ColumnVisibility;
 };
+
+export type ColumnVisibility = Partial<Record<ColumnTitles, boolean>>;
 
 export type StatusColors = {
   [key: string]: string;
@@ -199,7 +199,7 @@ export type StatusColors = {
 export type OrderSettings = {
   automatronRules: AutomatronRule[];
   isAutomatronActive: boolean;
-  columnVisibility: ColumnVisibility;
+  columnVisibility: ColumnVisibilitySettings;
   dueBadgeDays: number;
   statusColors: StatusColors;
   groupingField: string;

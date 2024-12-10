@@ -36,7 +36,7 @@ import { DeleteConfirmationDialog } from "../ui/DeleteConfirmationDialog";
 import { EditItemDialog } from "./EditItemDialog";
 import { ItemActions } from "./ItemActions";
 import { BorderedTable } from "./BoarderedTable";
-import { STATUS_COLORS } from "@/typings/constants";
+import { DEFAULT_COLUMN_VISIBILITY, STATUS_COLORS } from "@/typings/constants";
 import { boardConfig } from "@/config/boardconfig";
 
 interface ItemGroupProps {
@@ -49,6 +49,7 @@ interface ItemGroupProps {
   onGetLabel: (item: Item) => void;
   onReorder: (newItems: Item[]) => void;
   onDragToWeeklySchedule: (itemId: string, day: string) => void;
+  isPreview?: boolean;
 }
 
 export function ItemGroupSection({
@@ -59,6 +60,8 @@ export function ItemGroupSection({
   onShip,
   onMarkCompleted,
   onGetLabel,
+  isPreview = false,
+  ...props
 }: ItemGroupProps) {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [deletingItem, setDeletingItem] = useState<Item | null>(null);
@@ -165,7 +168,8 @@ export function ItemGroupSection({
   }, [closeContextMenu]);
 
   const visibleColumns = Object.entries(
-    settings.columnVisibility[group.title] || {}
+    settings.columnVisibility[group.title as ItemStatus] ||
+      DEFAULT_COLUMN_VISIBILITY
   )
     .filter(([_, isVisible]) => isVisible)
     .map(([columnName]) => columnName as ColumnTitles);
@@ -178,10 +182,7 @@ export function ItemGroupSection({
   }, [group.items, sortColumn, sortDirection]);
 
   return (
-    <div
-      className="mb-6 bg-white dark:bg-gray-900 rounded-lg"
-      style={{ contain: "paint" }}
-    >
+    <div className="mb-6 bg-white dark:bg-gray-900 rounded-lg">
       <div
         className={cn(
           `w-full p-4`,
@@ -191,129 +192,220 @@ export function ItemGroupSection({
           "sticky top-[73px] z-30 bg-white dark:bg-gray-900"
         )}
       >
-        <span className="font-semibold text-lg">{group.title}</span>
+        <span className="font-semibold text-lg sticky top-0 z-10">
+          {group.title}
+        </span>
       </div>
       <div className="relative">
-        <Droppable droppableId={group.title}>
-          {(provided, snapshot) => (
-            <BorderedTable
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-              borderColor={`bg-${STATUS_COLORS[group.title]}`}
-            >
-              <TableHeader className="sticky top-[132px] z-20 bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_6px_-1px_rgba(255,255,255,0.1),0_2px_4px_-2px_rgba(255,255,255,0.1)]">
-                <TableRow>
-                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
-                    Order
-                  </TableHead>
-                  {visibleColumns.map((columnName) => (
-                    <TableHead
-                      key={columnName}
-                      className={cn(
-                        "border border-gray-200 dark:border-gray-600 p-2 text-center",
-                        columnName === ColumnTitles.Customer_Name ? "w-1/3" : ""
-                      )}
-                    >
-                      <Button
-                        className="h-8 flex items-center justify-between w-full text-gray-900 dark:text-gray-100"
-                        disabled={isDragging}
-                        variant="ghost"
-                        onClick={() => !isDragging && handleSort(columnName)}
+        {!isPreview ? (
+          <Droppable droppableId={group.title}>
+            {(provided, snapshot) => (
+              <BorderedTable
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                borderColor={`bg-${STATUS_COLORS[group.title]}`}
+              >
+                <TableHeader className="sticky top-[132px] z-20 bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_6px_-1px_rgba(255,255,255,0.1),0_2px_4px_-2px_rgba(255,255,255,0.1)]">
+                  <TableRow>
+                    <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+                      Order
+                    </TableHead>
+                    {visibleColumns.map((columnName) => (
+                      <TableHead
+                        key={columnName}
+                        className={cn(
+                          "border border-gray-200 dark:border-gray-600 p-2 text-center",
+                          columnName === ColumnTitles.Customer_Name
+                            ? "w-1/3"
+                            : ""
+                        )}
                       >
-                        {columnName}
-                        {settings.showSortingIcons ? (
-                          sortColumn === columnName ? (
-                            sortDirection === "asc" ? (
-                              <ArrowUp className="ml-2 h-4 w-4" />
-                            ) : sortDirection === "desc" ? (
-                              <ArrowDown className="ml-2 h-4 w-4" />
+                        <Button
+                          className="h-8 flex items-center justify-between w-full text-gray-900 dark:text-gray-100"
+                          disabled={isDragging}
+                          variant="ghost"
+                          onClick={() => !isDragging && handleSort(columnName)}
+                        >
+                          {columnName}
+                          {settings.showSortingIcons ? (
+                            sortColumn === columnName ? (
+                              sortDirection === "asc" ? (
+                                <ArrowUp className="ml-2 h-4 w-4" />
+                              ) : sortDirection === "desc" ? (
+                                <ArrowDown className="ml-2 h-4 w-4" />
+                              ) : (
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                              )
                             ) : (
                               <ArrowUpDown className="ml-2 h-4 w-4" />
                             )
+                          ) : null}
+                        </Button>
+                      </TableHead>
+                    ))}
+                    <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedItems.map((item, index) => (
+                    <Draggable
+                      key={item.id}
+                      draggableId={item.id}
+                      index={index}
+                    >
+                      {(provided, snapshot) => (
+                        <TableRow
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={cn(
+                            index % 2 === 0
+                              ? "bg-gray-200 dark:bg-gray-800"
+                              : "bg-gray-100 dark:bg-gray-700",
+                            isPastDue(item) &&
+                              item.status !== ItemStatus.Done &&
+                              "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]",
+                            snapshot.isDragging
+                              ? "bg-blue-100 dark:bg-blue-800 shadow-lg"
+                              : ""
+                          )}
+                          onContextMenu={(e) => handleContextMenu(e, item)}
+                        >
+                          <TableCell
+                            className="border border-gray-200 dark:border-gray-600 p-2 text-center"
+                            {...provided.dragHandleProps}
+                          >
+                            <GripVertical className="cursor-grab inline-block" />
+                          </TableCell>
+                          {visibleColumns.map((columnName, cellIndex) => {
+                            const columnValue = item.values.find(
+                              (value) => value.columnName === columnName
+                            ) || {
+                              columnName,
+                              type: boardConfig.columns[columnName].type,
+                              text: "\u00A0", // Unicode non-breaking space
+                            };
+                            return (
+                              <TableCell
+                                key={`${item.id}-${columnName}`}
+                                className={cn(
+                                  "border border-gray-200 dark:border-gray-600 p-2",
+                                  cellIndex === 0 ? "w-1/3" : "",
+                                  getStatusColor(columnValue)
+                                )}
+                              >
+                                <CustomTableCell
+                                  board={board}
+                                  columnValue={columnValue}
+                                  isNameColumn={cellIndex === 0}
+                                  item={item}
+                                  onUpdate={onUpdate}
+                                />
+                              </TableCell>
+                            );
+                          })}
+                          <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+                            <ItemActions
+                              item={item}
+                              onDelete={handleDelete}
+                              onEdit={handleEdit}
+                              onGetLabel={onGetLabel}
+                              onMarkCompleted={onMarkCompleted}
+                              onShip={onShip}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </TableBody>
+              </BorderedTable>
+            )}
+          </Droppable>
+        ) : (
+          <BorderedTable borderColor={`bg-${STATUS_COLORS[group.title]}`}>
+            <TableHeader className="sticky top-[132px] z-20 bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)]">
+              <TableRow>
+                {visibleColumns.map((columnName) => (
+                  <TableHead
+                    key={columnName}
+                    className={cn(
+                      "border border-gray-200 dark:border-gray-600 p-2 text-center",
+                      columnName === ColumnTitles.Customer_Name ? "w-1/3" : ""
+                    )}
+                  >
+                    <Button
+                      className="h-8 flex items-center justify-between w-full"
+                      disabled={isDragging}
+                      variant="ghost"
+                      onClick={() => !isDragging && handleSort(columnName)}
+                    >
+                      {columnName}
+                      {settings.showSortingIcons ? (
+                        sortColumn === columnName ? (
+                          sortDirection === "asc" ? (
+                            <ArrowUp className="ml-2 h-4 w-4" />
+                          ) : sortDirection === "desc" ? (
+                            <ArrowDown className="ml-2 h-4 w-4" />
                           ) : (
                             <ArrowUpDown className="ml-2 h-4 w-4" />
                           )
-                        ) : null}
-                      </Button>
-                    </TableHead>
-                  ))}
-                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
-                    Actions
+                        ) : (
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        )
+                      ) : null}
+                    </Button>
                   </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedItems.map((item, index) => (
-                  <Draggable key={item.id} draggableId={item.id} index={index}>
-                    {(provided, snapshot) => (
-                      <TableRow
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className={cn(
-                          index % 2 === 0
-                            ? "bg-gray-200 dark:bg-gray-800"
-                            : "bg-gray-100 dark:bg-gray-700",
-                          isPastDue(item) &&
-                            item.status !== ItemStatus.Done &&
-                            "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]",
-                          snapshot.isDragging
-                            ? "bg-blue-100 dark:bg-blue-800 shadow-lg"
-                            : ""
-                        )}
-                        onContextMenu={(e) => handleContextMenu(e, item)}
-                      >
-                        <TableCell
-                          className="border border-gray-200 dark:border-gray-600 p-2 text-center"
-                          {...provided.dragHandleProps}
-                        >
-                          <GripVertical className="cursor-grab inline-block" />
-                        </TableCell>
-                        {visibleColumns.map((columnName, cellIndex) => {
-                          const columnValue = item.values.find(
-                            (value) => value.columnName === columnName
-                          ) || {
-                            columnName,
-                            type: boardConfig.columns[columnName].type,
-                            text: "\u00A0", // Unicode non-breaking space
-                          };
-                          return (
-                            <TableCell
-                              key={`${item.id}-${columnName}`}
-                              className={cn(
-                                "border border-gray-200 dark:border-gray-600 p-2",
-                                cellIndex === 0 ? "w-1/3" : "",
-                                getStatusColor(columnValue)
-                              )}
-                            >
-                              <CustomTableCell
-                                board={board}
-                                columnValue={columnValue}
-                                isNameColumn={cellIndex === 0}
-                                item={item}
-                                onUpdate={onUpdate}
-                              />
-                            </TableCell>
-                          );
-                        })}
-                        <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
-                          <ItemActions
-                            item={item}
-                            onDelete={handleDelete}
-                            onEdit={handleEdit}
-                            onGetLabel={onGetLabel}
-                            onMarkCompleted={onMarkCompleted}
-                            onShip={onShip}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </Draggable>
                 ))}
-                {provided.placeholder}
-              </TableBody>
-            </BorderedTable>
-          )}
-        </Droppable>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedItems.map((item, index) => (
+                <TableRow
+                  key={item.id}
+                  className={cn(
+                    index % 2 === 0
+                      ? "bg-gray-200 dark:bg-gray-800"
+                      : "bg-gray-100 dark:bg-gray-700",
+                    isPastDue(item) &&
+                      item.status !== ItemStatus.Done &&
+                      "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]"
+                  )}
+                >
+                  {visibleColumns.map((columnName, cellIndex) => {
+                    const columnValue = item.values.find(
+                      (value) => value.columnName === columnName
+                    ) || {
+                      columnName,
+                      type: boardConfig.columns[columnName].type,
+                      text: "\u00A0", // Unicode non-breaking space
+                    };
+                    return (
+                      <TableCell
+                        key={`${item.id}-${columnName}`}
+                        className={cn(
+                          "border border-gray-200 dark:border-gray-600 p-2",
+                          cellIndex === 0 ? "w-1/3" : "",
+                          getStatusColor(columnValue)
+                        )}
+                      >
+                        <CustomTableCell
+                          board={board}
+                          columnValue={columnValue}
+                          isNameColumn={cellIndex === 0}
+                          item={item}
+                          onUpdate={onUpdate}
+                        />
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </BorderedTable>
+        )}
       </div>
       <EditItemDialog
         editingItem={editingItem}

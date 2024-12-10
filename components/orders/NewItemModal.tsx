@@ -46,12 +46,23 @@ import {
   ItemDesigns,
   ItemSizes,
   ItemStatus,
+  Board,
+  Item,
 } from "../../typings/types";
 
+type OptionalFields = {
+  [K in ColumnTitles]: string;
+};
+
+type CustomInputs = {
+  [K in ColumnTitles]?: boolean;
+};
+
 interface NewItemModalProps {
+  board: Board | null;
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (item: any) => Promise<void>;
+  onSubmit: (newItem: Partial<Item>) => Promise<void>;
 }
 
 const SuccessAnimation = () => (
@@ -77,6 +88,7 @@ const SuccessAnimation = () => (
 );
 
 export const NewItemModal: React.FC<NewItemModalProps> = ({
+  board,
   isOpen,
   onClose,
   onSubmit,
@@ -85,17 +97,17 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
   const [size, setSize] = useState("");
   const [design, setDesign] = useState("");
   const [vertical, setVertical] = useState(false);
-  const [dueDate, setDueDate] = useState(undefined);
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [customInputs, setCustomInputs] = useState({});
+  const [customInputs, setCustomInputs] = useState<CustomInputs>({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customSize, setCustomSize] = useState(false);
   const [customDesign, setCustomDesign] = useState(false);
 
-  const [optionalFields, setOptionalFields] = useState(() => {
-    const fields = {};
+  const [optionalFields, setOptionalFields] = useState<OptionalFields>(() => {
+    const fields = {} as OptionalFields;
     Object.values(ColumnTitles).forEach((title) => {
       fields[title] = "";
     });
@@ -112,13 +124,18 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
     }));
   };
 
-  const toggleCustomInput = (field: "size" | "design") => {
+  const toggleCustomInput = (field: "size" | "design" | ColumnTitles) => {
     if (field === "size") {
       setCustomSize(!customSize);
       if (customSize) setSize("");
     } else if (field === "design") {
       setCustomDesign(!customDesign);
       if (customDesign) setDesign("");
+    } else {
+      setCustomInputs((prev) => ({
+        ...prev,
+        [field]: !prev[field],
+      }));
     }
   };
 
@@ -207,9 +224,9 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
     setShowCalendar(false);
     setCustomInputs({});
     setOptionalFields((prev) => {
-      const reset = { ...prev };
-      Object.keys(reset).forEach((key) => {
-        reset[key] = "";
+      const reset = {} as OptionalFields;
+      Object.values(ColumnTitles).forEach((title) => {
+        reset[title] = "";
       });
       return reset;
     });

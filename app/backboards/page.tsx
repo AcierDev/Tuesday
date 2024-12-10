@@ -133,7 +133,7 @@ export default function BackboardSchedulePage() {
   const filteredBackboardGroup: Group = useMemo(
     () => ({
       id: "backboard-group",
-      title: "Paint",
+      title: "Selected Items",
       items: filteredItemsNeedingBackboards,
     }),
     [filteredItemsNeedingBackboards]

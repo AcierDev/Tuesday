@@ -434,7 +434,7 @@ export default function OrderManagementPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-black dark:text-white">
+    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-white dark:bg-gray-900 text-black dark:text-white">
       <Toaster position="top-center" />
       <Header
         isMobile={isMobile}
@@ -446,54 +446,58 @@ export default function OrderManagementPage() {
         onModeChange={setCurrentMode}
         dueCounts={dueCounts}
       />
-      <div className="relative">
-        <div
-          className={`transition-all duration-300 ease-in-out overflow-hidden ${
-            isWeeklyPlannerOpen ? "h-64" : "h-0"
-          }`}
-        >
-          {board && (
-            <div className="h-full bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
-              <WeeklySchedule
-                boardId={board.id}
-                items={
-                  board.items_page.items.filter(
-                    (item) => !item.deleted && item.visible
-                  ) || []
-                }
+      <div className="flex-grow">
+        <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex h-full">
+            <div
+              className={`flex-grow transition-all duration-300 ease-in-out ${
+                isWeeklyPlannerOpen ? "lg:w-[calc(100%-25rem)]" : "lg:w-full"
+              }`}
+            >
+              <ItemList
+                board={board!}
+                groups={sortedGroups}
+                onDelete={deleteItem}
+                onDragEnd={onDragEnd}
+                onGetLabel={onGetLabel}
+                onMarkCompleted={markItemCompleted}
+                onShip={shipItem}
+                onUpdate={updateItem}
               />
             </div>
-          )}
-        </div>
-        <Button
-          className="absolute left-1/2 transform -translate-x-1/2 -bottom-4 bg-white dark:bg-gray-800 shadow-md rounded-full p-2 z-10"
-          variant="ghost"
-          onClick={() => setIsWeeklyPlannerOpen(!isWeeklyPlannerOpen)}
-          aria-label={
-            isWeeklyPlannerOpen ? "Close weekly planner" : "Open weekly planner"
-          }
-        >
-          {isWeeklyPlannerOpen ? (
-            <ChevronUp className="h-6 w-6" />
-          ) : (
-            <ChevronDown className="h-6 w-6" />
-          )}
-        </Button>
-      </div>
-      <div className="flex-grow">
-        <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-          <ItemList
-            board={board!}
-            groups={sortedGroups}
-            onDelete={deleteItem}
-            onDragEnd={onDragEnd}
-            onGetLabel={onGetLabel}
-            onMarkCompleted={markItemCompleted}
-            onShip={shipItem}
-            onUpdate={updateItem}
-          />
+            {isWeeklyPlannerOpen && (
+              <div className="hidden lg:block w-96 ml-4">
+                <div className="sticky top-[5.5rem] h-[calc(100vh-7rem)] bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
+                  {board && (
+                    <WeeklySchedule
+                      boardId={board.id}
+                      items={
+                        board.items_page.items.filter(
+                          (item) => !item.deleted && item.visible
+                        ) || []
+                      }
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+      <Button
+        className="fixed top-1/2 right-0 transform -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md rounded-l-md p-2 z-10"
+        variant="ghost"
+        onClick={() => setIsWeeklyPlannerOpen(!isWeeklyPlannerOpen)}
+        aria-label={
+          isWeeklyPlannerOpen ? "Close weekly planner" : "Open weekly planner"
+        }
+      >
+        {isWeeklyPlannerOpen ? (
+          <ChevronRight className="h-6 w-6" />
+        ) : (
+          <ChevronLeft className="h-6 w-6" />
+        )}
+      </Button>
       {isSettingsOpen && (
         <SettingsPanel
           settings={settings}
