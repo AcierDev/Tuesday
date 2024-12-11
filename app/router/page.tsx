@@ -184,9 +184,9 @@ function MonitoringDashboard() {
                 onReconnect={handleReconnect}
                 isConnecting={connectionStatus === "connecting"}
                 computers={[
+                  { name: "Bentzi's Laptop", ip: "192.168.1.222:8080/ws" },
                   { name: "Router Raspi", ip: "192.168.1.215:8080/ws" },
                   { name: "Dev Testing Raspi", ip: "192.168.1.216:8080/ws" },
-                  { name: "Bentzi's Laptop", ip: "192.168.1.222:8080/ws" },
                   { name: "localhost", ip: "localhost:8080/ws" },
                 ]}
               />

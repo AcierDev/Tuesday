@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import React from 'react'
+import React from "react";
 
 import {
   AlertDialog,
@@ -11,24 +11,24 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 
 interface DeleteConfirmationDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  onConfirm: () => void
-  itemName: string
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  itemName: string;
 }
 
 export const DeleteConfirmationDialog = ({
   isOpen,
   onClose,
   onConfirm,
-  itemName
+  itemName,
 }: DeleteConfirmationDialogProps) => {
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent>
+      <AlertDialogContent className="dark:bg-gray-800 dark:border-none">
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
@@ -42,5 +42,5 @@ export const DeleteConfirmationDialog = ({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
-}
+  );
+};

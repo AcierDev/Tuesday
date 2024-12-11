@@ -1,8 +1,16 @@
-import { CheckCircle, Edit, MoreHorizontal, Ship, Trash2, Truck, Clipboard } from 'lucide-react'
-import React from 'react'
-import { useRouter } from 'next/navigation'
+import {
+  CheckCircle,
+  Edit,
+  MoreHorizontal,
+  Ship,
+  Trash2,
+  Truck,
+  Clipboard,
+} from "lucide-react";
+import React from "react";
+import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,53 +18,71 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
-import { type Item, ItemDesigns, ItemSizes, ColumnTitles, ColumnTypes } from '../../typings/types'
+import {
+  type Item,
+  ItemDesigns,
+  ItemSizes,
+  ColumnTitles,
+  ColumnTypes,
+} from "../../typings/types";
 
 interface ItemActionsProps {
-  item: Item
-  onEdit: (item: Item) => void
-  onDelete: (item: Item) => void
-  onShip: (itemId: string) => void
-  onMarkCompleted: (itemId: string) => void
-  onGetLabel: (item: Item) => void
-  showTrigger?: boolean
+  item: Item;
+  onEdit: (item: Item) => void;
+  onDelete: (item: Item) => void;
+  onShip: (itemId: string) => void;
+  onMarkCompleted: (itemId: string) => void;
+  onGetLabel: (item: Item) => void;
+  showTrigger?: boolean;
 }
 
-export const ItemActions = ({ 
-  item, 
-  onEdit, 
-  onDelete, 
-  onShip, 
-  onMarkCompleted, 
+export const ItemActions = ({
+  item,
+  onEdit,
+  onDelete,
+  onShip,
+  onMarkCompleted,
   onGetLabel,
-  showTrigger = true 
+  showTrigger = true,
 }: ItemActionsProps) => {
-  const router = useRouter()
+  const router = useRouter();
 
-  const getItemValue = (columnName: ColumnTitles, type: ColumnTypes): string | undefined => {
-    const value = item.values.find(value => value.columnName === columnName && value.type === type)
-    return value?.text
-  }
+  const getItemValue = (
+    columnName: ColumnTitles,
+    type: ColumnTypes
+  ): string | undefined => {
+    const value = item.values.find(
+      (value) => value.columnName === columnName && value.type === type
+    );
+    return value?.text;
+  };
 
   const handleSetupUtility = () => {
-  const design = getItemValue(ColumnTitles.Design, ColumnTypes.Dropdown) as ItemDesigns | undefined
-  const size = getItemValue(ColumnTitles.Size, ColumnTypes.Dropdown) as ItemSizes | undefined
+    const design = getItemValue(ColumnTitles.Design, ColumnTypes.Dropdown) as
+      | ItemDesigns
+      | undefined;
+    const size = getItemValue(ColumnTitles.Size, ColumnTypes.Dropdown) as
+      | ItemSizes
+      | undefined;
 
-  if (design && size) {
-    const queryParams = new URLSearchParams({
-      design,
-      size,
-    }).toString()
-    router.push(`/utilities?${queryParams}`)
-  } else {
-    console.error('Design or Size not found for this item')
-  }
-}
+    if (design && size) {
+      const queryParams = new URLSearchParams({
+        design,
+        size,
+      }).toString();
+      router.push(`/setup-utility?${queryParams}`);
+    } else {
+      console.error("Design or Size not found for this item");
+    }
+  };
 
   const menuContent = (
-    <DropdownMenuContent align="end">
+    <DropdownMenuContent
+      align="end"
+      className="dark:bg-gray-800 dark:border-gray-600"
+    >
       <DropdownMenuLabel>Actions</DropdownMenuLabel>
       <DropdownMenuItem onClick={() => onEdit(item)}>
         <Edit className="mr-2 h-4 w-4" />
@@ -66,7 +92,7 @@ export const ItemActions = ({
         <Trash2 className="mr-2 h-4 w-4" />
         Delete
       </DropdownMenuItem>
-      <DropdownMenuSeparator />
+      <DropdownMenuSeparator className="dark:bg-gray-600" />
       <DropdownMenuItem onClick={() => onGetLabel(item)}>
         <Truck className="mr-2 h-4 w-4" />
         Shipping Dashboard
@@ -79,16 +105,16 @@ export const ItemActions = ({
         <CheckCircle className="mr-2 h-4 w-4" />
         Mark as Completed
       </DropdownMenuItem>
-      <DropdownMenuSeparator />
+      <DropdownMenuSeparator className="dark:bg-gray-600" />
       <DropdownMenuItem onClick={handleSetupUtility}>
         <Clipboard className="mr-2 h-4 w-4" />
         Setup Utility
       </DropdownMenuItem>
     </DropdownMenuContent>
-  )
+  );
 
   if (!showTrigger) {
-    return menuContent
+    return menuContent;
   }
 
   return (
@@ -101,5 +127,5 @@ export const ItemActions = ({
       </DropdownMenuTrigger>
       {menuContent}
     </DropdownMenu>
-  )
-}
+  );
+};
