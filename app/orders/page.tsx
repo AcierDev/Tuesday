@@ -30,6 +30,7 @@ import {
 } from "@/typings/types";
 import { useBoardOperations } from "@/components/orders/OrderHooks";
 import { ShippingDashboard } from "@/components/shipping/ShippingDashboard";
+import { cn } from "@/utils/functions";
 
 export default function OrderManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -440,7 +441,6 @@ export default function OrderManagementPage() {
         isMobile={isMobile}
         searchTerm={searchTerm}
         onNewOrder={() => setIsNewItemModalOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
         onSearchChange={setSearchTerm}
         currentMode={currentMode}
         onModeChange={setCurrentMode}
@@ -448,11 +448,13 @@ export default function OrderManagementPage() {
       />
       <div className="flex-grow">
         <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex h-full">
+          <div className="flex h-full relative">
             <div
-              className={`flex-grow transition-all duration-300 ease-in-out ${
-                isWeeklyPlannerOpen ? "lg:w-[calc(100%-25rem)]" : "lg:w-full"
-              }`}
+              className={cn(
+                "flex-grow transition-all duration-300 ease-in-out min-w-0",
+                isWeeklyPlannerOpen ? "pr-80" : ""
+              )}
+              style={{ contain: "paint" }}
             >
               <ItemList
                 board={board!}
@@ -465,22 +467,25 @@ export default function OrderManagementPage() {
                 onUpdate={updateItem}
               />
             </div>
-            {isWeeklyPlannerOpen && (
-              <div className="hidden lg:block w-96 ml-4">
-                <div className="sticky top-[5.5rem] h-[calc(100vh-7rem)] bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
-                  {board && (
-                    <WeeklySchedule
-                      boardId={board.id}
-                      items={
-                        board.items_page.items.filter(
-                          (item) => !item.deleted && item.visible
-                        ) || []
-                      }
-                    />
-                  )}
+            <div
+              className={cn(
+                "fixed top-[5.5rem] right-0 h-[calc(100vh-5.5rem)] transition-all duration-300 ease-in-out",
+                isWeeklyPlannerOpen
+                  ? "w-96 translate-x-0"
+                  : "w-0 translate-x-full"
+              )}
+            >
+              {board && isWeeklyPlannerOpen && (
+                <div className="h-full bg-white dark:bg-gray-800 shadow-lg rounded-l-lg">
+                  <WeeklySchedule
+                    boardId={board.id}
+                    items={board.items_page.items.filter(
+                      (item) => !item.deleted && item.visible
+                    )}
+                  />
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -515,7 +520,7 @@ export default function OrderManagementPage() {
         open={isShippingDashboardOpen}
         onOpenChange={setIsShippingDashboardOpen}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh]">
           {selectedItem && (
             <ShippingDashboard
               item={selectedItem}

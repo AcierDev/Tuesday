@@ -65,8 +65,6 @@ export enum EmployeeNames {
   Ben = "Ben Clark",
   Bentzi = "Ben Steele",
   Akiva = "Akiva Weil",
-  Paris = "Paris Carver",
-  Dylan = "Dylan Carver",
   Tyler = "Tyler Blancett",
 }
 

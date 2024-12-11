@@ -545,15 +545,7 @@ export const DesignBlends: Record<ItemDesigns, string[]> = {
   [ItemDesigns.Mirage]: Object.values(MIRAGE_COLORS).map((color) => color.hex),
 };
 
-export const EMPLOYEE_INITIALS = [
-  "AM",
-  "BC",
-  "AW",
-  "BS",
-  "TB",
-  "PC",
-  "DC",
-] as const;
+export const EMPLOYEE_INITIALS = ["AM", "BC", "AW", "BS", "TB"] as const;
 export type EmployeeOption = (typeof EMPLOYEE_INITIALS)[number];
 export const CREDIT_OPTIONS = ["AM", "BC", "AW"] as const;
 export type CreditOption = (typeof CREDIT_OPTIONS)[number];
@@ -564,8 +556,6 @@ export const OPTION_IMAGES: Record<EmployeeOption, string> = {
   AW: "/images/pfp/akiva2-3.png",
   BS: "/images/pfp/bentzi.png",
   TB: "/images/pfp/stewie.png",
-  PC: "",
-  DC: "",
 };
 
 export const EMPLOYEE_MAP: Record<EmployeeOption, EmployeeNames> = {
@@ -574,8 +564,6 @@ export const EMPLOYEE_MAP: Record<EmployeeOption, EmployeeNames> = {
   AW: EmployeeNames.Akiva,
   BC: EmployeeNames.Ben,
   TB: EmployeeNames.Tyler,
-  PC: EmployeeNames.Paris,
-  DC: EmployeeNames.Dylan,
 };
 
 export const INITIALS_MAP: Record<EmployeeNames, EmployeeOption> = {
@@ -583,8 +571,6 @@ export const INITIALS_MAP: Record<EmployeeNames, EmployeeOption> = {
   [EmployeeNames.Alex]: "AM",
   [EmployeeNames.Ben]: "BC",
   [EmployeeNames.Bentzi]: "BS",
-  [EmployeeNames.Paris]: "PC",
-  [EmployeeNames.Dylan]: "DC",
   [EmployeeNames.Tyler]: "TB",
 };
 
@@ -594,8 +580,6 @@ export const CREDIT_COLORS: Record<EmployeeOption, string> = {
   BC: "bg-green-500",
   BS: "bg-red-500",
   TB: "bg-yellow-500",
-  PC: "bg-purple-500",
-  DC: "bg-pink-500",
 };
 
 export const STATUS_COLORS: Record<ItemStatus, string> = {

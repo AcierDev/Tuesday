@@ -182,7 +182,10 @@ export function ItemGroupSection({
   }, [group.items, sortColumn, sortDirection]);
 
   return (
-    <div className="mb-6 bg-white dark:bg-gray-900 rounded-lg">
+    <div
+      className="mb-6 bg-white dark:bg-gray-900 rounded-lg"
+      style={{ contain: "paint" }}
+    >
       <div
         className={cn(
           `w-full p-4`,
