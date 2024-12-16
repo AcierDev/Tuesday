@@ -220,7 +220,11 @@ export function PatternSettings({
                 className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg space-y-3"
               >
                 <Label className="capitalize text-base font-medium text-emerald-600 dark:text-emerald-400">
-                  {direction}
+                  {direction === "front"
+                    ? "back"
+                    : direction === "back"
+                    ? "front"
+                    : direction}
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">

@@ -556,8 +556,11 @@ export default function Dashboard() {
               >
                 <TrayVisualization
                   status={state}
+                  settings={settings}
                   className="w-full"
                   onSideClick={(side) => sendCommand({ type: `PAINT_${side}` })}
+                  onUpdateSettings={sendCommand}
+                  wsConnected={wsConnected}
                 />
               </motion.div>
 
