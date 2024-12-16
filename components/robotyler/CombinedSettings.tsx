@@ -9,17 +9,16 @@ import {
   RotateCcwIcon,
   Save,
   Clock,
+  Sliders,
+  Grid,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PatternSettings } from "./PatternSettings";
+import { SystemState, SystemSettings } from "@/app/robotyler/page";
 
 interface CombinedControlsProps {
-  status: {
-    speeds: Record<string, number>;
-    maintenanceSettings?: {
-      primeTime: number;
-      cleanTime: number;
-    };
-  };
+  status: SystemState;
+  settings: SystemSettings;
   pendingSpeedChanges: Record<string, number>;
   handleSpeedChange: (
     side: "left" | "right" | "front" | "back",
@@ -42,10 +41,12 @@ interface CombinedControlsProps {
   ) => void;
   onSaveMaintenanceChanges: () => void;
   hasUnsavedMaintenanceChanges: boolean;
+  sendCommand: (command: { type: string; payload?: any }) => void;
 }
 
 const CombinedControls: React.FC<CombinedControlsProps> = ({
   status,
+  settings,
   pendingSpeedChanges,
   handleSpeedChange,
   handleRotate,
@@ -56,8 +57,9 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
   onPendingMaintenanceChange,
   onSaveMaintenanceChanges,
   hasUnsavedMaintenanceChanges,
+  sendCommand,
 }) => {
-  const [activeTab, setActiveTab] = React.useState("speed");
+  const [activeTab, setActiveTab] = React.useState("speeds");
   const [contentHeight, setContentHeight] = React.useState("auto");
   const contentRef = React.useRef<HTMLDivElement>(null);
 
@@ -66,6 +68,29 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
       setContentHeight(`${contentRef.current.offsetHeight}px`);
     }
   }, [activeTab]);
+
+  const tabs = [
+    {
+      value: "speeds",
+      label: "Speed Controls",
+      icon: Sliders,
+    },
+    {
+      value: "movement",
+      label: "Movement",
+      icon: RotateCw,
+    },
+    {
+      value: "maintenance",
+      label: "Maintenance",
+      icon: Settings,
+    },
+    {
+      value: "pattern",
+      label: "Pattern Settings",
+      icon: Grid,
+    },
+  ];
 
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -98,23 +123,19 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-1 mt-4 border-b border-gray-200 dark:border-gray-700">
-          {[
-            { id: "speed", label: "Speed Control", icon: Zap },
-            { id: "movement", label: "Movement", icon: Settings },
-            { id: "maintenance", label: "Maintenance", icon: Clock },
-          ].map((tab) => (
+          {tabs.map((tab) => (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              key={tab.value}
+              onClick={() => setActiveTab(tab.value)}
               className={`relative flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === tab.id
+                activeTab === tab.value
                   ? "text-blue-600 dark:text-blue-400"
                   : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
               }`}
             >
               <tab.icon className="h-4 w-4" />
               {tab.label}
-              {activeTab === tab.id && (
+              {activeTab === tab.value && (
                 <motion.div
                   layoutId="activeTabControls"
                   className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400"
@@ -146,9 +167,9 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                 }
               }}
             >
-              {activeTab === "speed" ? (
+              {activeTab === "speeds" ? (
                 <div className="space-y-4">
-                  {Object.entries(status.speeds).map(([side, speed]) => (
+                  {Object.entries(settings.speeds).map(([side, speed]) => (
                     <div
                       key={side}
                       className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg"
@@ -161,7 +182,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                           value={[pendingSpeedChanges[side] ?? speed]}
                           onValueChange={(value) =>
                             handleSpeedChange(
-                              side as keyof typeof status.speeds,
+                              side as keyof typeof settings.speeds,
                               value
                             )
                           }
@@ -196,6 +217,12 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                     Turn Right 90°
                   </Button>
                 </div>
+              ) : activeTab === "pattern" ? (
+                <PatternSettings
+                  settings={settings}
+                  onUpdate={sendCommand}
+                  wsConnected={wsConnected}
+                />
               ) : (
                 <div className="space-y-4">
                   <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
@@ -207,7 +234,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                         value={[
                           pendingMaintenanceSettings.primeTime !== undefined
                             ? pendingMaintenanceSettings.primeTime
-                            : status.maintenanceSettings?.primeTime ?? 5,
+                            : settings.maintenance.primeTime ?? 5,
                         ]}
                         onValueChange={(value) => {
                           const newValue = value[0] || 5;
@@ -223,7 +250,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                       <span className="w-20 text-right font-semibold bg-white dark:bg-gray-800 px-3 py-1 rounded-md">
                         {pendingMaintenanceSettings.primeTime !== undefined
                           ? pendingMaintenanceSettings.primeTime
-                          : status.maintenanceSettings?.primeTime ?? 5}
+                          : settings.maintenance.primeTime ?? 5}
                         s
                       </span>
                     </div>
@@ -238,7 +265,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                         value={[
                           pendingMaintenanceSettings.cleanTime !== undefined
                             ? pendingMaintenanceSettings.cleanTime
-                            : status.maintenanceSettings?.cleanTime ?? 10,
+                            : settings.maintenance.cleanTime ?? 10,
                         ]}
                         onValueChange={(value) => {
                           const newValue = value[0] || 10;
@@ -254,7 +281,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                       <span className="w-20 text-right font-semibold bg-white dark:bg-gray-800 px-3 py-1 rounded-md">
                         {pendingMaintenanceSettings.cleanTime !== undefined
                           ? pendingMaintenanceSettings.cleanTime
-                          : status.maintenanceSettings?.cleanTime ?? 10}
+                          : settings.maintenance.cleanTime ?? 10}
                         s
                       </span>
                     </div>

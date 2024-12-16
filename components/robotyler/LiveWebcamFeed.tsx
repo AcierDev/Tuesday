@@ -8,11 +8,13 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 interface LiveCameraFeedProps {
   initialWsIp?: string;
   retryInterval?: number;
+  className?: string;
 }
 
 const LiveCameraFeed: React.FC<LiveCameraFeedProps> = ({
   initialWsIp = "localhost:3090",
   retryInterval = 3000,
+  className = "",
 }) => {
   const [imageData, setImageData] = useState<string | null>(null);
   const [wsIp, setWsIp] = useState(initialWsIp);
@@ -46,14 +48,25 @@ const LiveCameraFeed: React.FC<LiveCameraFeedProps> = ({
       wsRef.current = ws;
 
       ws.onopen = () => {
+        console.log("WebSocket connected to:", wsIp);
         setConnectionStatus("connected");
         setError(null);
         setLastSuccessfulConnection(wsIp);
       };
 
+      const pingInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "ping" }));
+        }
+      }, 30000);
+
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+
+          if (message.type === "pong") {
+            return; // Handle pong response
+          }
 
           if (message.type === "frame" && message.data) {
             const img = new Image();
@@ -67,11 +80,13 @@ const LiveCameraFeed: React.FC<LiveCameraFeedProps> = ({
             img.src = `data:image/jpeg;base64,${message.data}`;
           }
         } catch (err) {
+          console.error("WebSocket message error:", err);
           setError("Failed to process video frame");
         }
       };
 
       ws.onclose = () => {
+        clearInterval(pingInterval);
         setConnectionStatus("disconnected");
 
         if (wsRef.current === ws) {
@@ -83,10 +98,14 @@ const LiveCameraFeed: React.FC<LiveCameraFeedProps> = ({
         }
       };
 
-      ws.onerror = () => {
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
         ws.close();
       };
+
+      return () => clearInterval(pingInterval);
     } catch (err) {
+      console.error("WebSocket connection error:", err);
       setError("Failed to create connection");
       setConnectionStatus("disconnected");
       reconnectTimeoutRef.current = setTimeout(connectWebSocket, retryInterval);

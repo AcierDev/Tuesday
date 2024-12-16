@@ -8,10 +8,10 @@ import {
   ArrowLeft,
   ArrowRight,
 } from "lucide-react";
-import { SystemStatus } from "@/app/tyler/page";
+import { SystemState } from "@/app/robotyler/page";
 
 interface TrayVisualizationProps {
-  status: SystemStatus;
+  status: SystemState;
   className?: string;
   onSideClick?: (side: string) => void;
 }
@@ -38,8 +38,8 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
 
   // Get the current orientation based on status
   const isPainting =
-    status.state === "EXECUTING_PATTERN" || status.state === "PAINTING_SIDE";
-  const isPaused = status.state === "PAUSED";
+    status.status === "EXECUTING_PATTERN" || status.status === "PAINTING_SIDE";
+  const isPaused = status.status === "PAUSED";
   const currentProgress =
     status.patternProgress.total_commands > 0
       ? (status.patternProgress.command /
@@ -63,10 +63,10 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
 
   // Reset painted blocks when homing
   useEffect(() => {
-    if (status.state === "HOMING_X") {
+    if (status.status === "HOMING_X") {
       setPassedBlocks(new Map());
     }
-  }, [status.state]);
+  }, [status.status]);
 
   // Calculate current position based on command
   const getCurrentPosition = () => {
@@ -204,9 +204,9 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
   };
 
   const getStatusText = () => {
-    if (status.state === "IDLE") return "System Idle";
-    if (status.state === "PAUSED") return "System Paused";
-    if (!isPainting) return status.state.replace(/_/g, " ");
+    if (status.status === "IDLE") return "System Idle";
+    if (status.status === "PAUSED") return "System Paused";
+    if (!isPainting) return status.status.replace(/_/g, " ");
 
     const { row, col } = getCurrentPosition();
     return `Painting ${orientation} Side - Row ${row + 1}, Column ${

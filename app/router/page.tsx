@@ -4,7 +4,7 @@ import LiveView from "@/components/router/LiveView";
 import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionControls";
 import StatsOverview from "@/components/router/stats/StatsOverview";
 import { StatusCard } from "@/components/router/StatusCard";
-import ComputerSelector from "@/components/tyler/ComputerSelector";
+import ComputerSelector from "@/components/robotyler/ComputerSelector";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { RouterProvider, useRouter } from "@/contexts/RouterContext";

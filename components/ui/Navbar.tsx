@@ -38,7 +38,7 @@ const mainNavItems = [
   { href: "/backboards", icon: Layers3, label: "Backboards", hotkey: "5" },
   { href: "/cutting", icon: GiCircularSaw, label: "Cutting" },
   { type: "divider" },
-  { href: "/tyler", icon: SprayCan, label: "RoboTyler" },
+  { href: "/robotyler", icon: SprayCan, label: "RoboTyler" },
   { href: "/router", icon: Router, label: "Router" },
   { type: "divider" },
   { href: "/inventory", icon: ClipboardList, label: "Inventory" },

@@ -2,11 +2,11 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Wifi, WifiOff, Zap, Video } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { SystemStatus } from "@/app/tyler/page";
 import ComputerSelector from "./ComputerSelector";
+import { SystemState } from "@/app/robotyler/page";
 
 interface RoboTylerHeaderProps {
-  status: SystemStatus;
+  status: SystemState;
   wsConnected: boolean;
   handleEmergencyStop: () => void;
   reconnectAttempts: number;
@@ -31,6 +31,10 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
   onToggleCameraFeed,
 }) => {
   const getStatusColor = (): string => {
+    if (!status?.state) {
+      return "bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400";
+    }
+
     switch (status.state) {
       case "ERROR":
         return "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400";
@@ -51,6 +55,11 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
       default:
         return "bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400";
     }
+  };
+
+  const formatState = (state: string | undefined): string => {
+    if (!state) return "Unknown";
+    return state.replace(/_/g, " ");
   };
 
   return (
@@ -85,7 +94,7 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
             <div
               className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor()}`}
             >
-              {status.state.replace(/_/g, " ")}
+              {formatState(status?.state)}
             </div>
             <div
               className={`flex items-center gap-1 px-2 py-1 rounded-full shadow-sm ${
@@ -121,8 +130,8 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
             <ComputerSelector
               onSelect={onSelectComputer}
               computers={[
-                { name: "RoboTyler Raspi", ip: "192.168.1.197:8080" },
                 { name: "Bentzi's Laptop", ip: "192.168.1.222:8080" },
+                { name: "RoboTyler Raspi", ip: "192.168.1.197:8080" },
                 { name: "Dev Testing Raspi", ip: "192.168.1.216:8080" },
                 { name: "localhost", ip: "localhost:8080" },
               ]}
@@ -130,7 +139,7 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
             <div
               className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor()}`}
             >
-              {status.state.replace(/_/g, " ")}
+              {formatState(status?.state)}
             </div>
             <div
               className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-sm ${

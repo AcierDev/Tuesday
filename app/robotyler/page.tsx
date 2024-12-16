@@ -20,14 +20,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import WarningSystem, { Warning } from "@/components/tyler/WarningSystem";
-import TrayVisualization from "@/components/tyler/TrayVisualization";
+import WarningSystem, { Warning } from "@/components/robotyler/WarningSystem";
+import TrayVisualization from "@/components/robotyler/TrayVisualization";
 import { v4 as uuidv4 } from "uuid";
-import CombinedControls from "@/components/tyler/SpeedAndMovement";
+import CombinedControls from "@/components/robotyler/CombinedSettings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import RoboTylerHeader from "@/components/tyler/RoboTylerHeader";
-import LiveCameraFeed from "@/components/tyler/LiveWebcamFeed";
+import LiveCameraFeed from "@/components/robotyler/LiveWebcamFeed";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
+import RoboTylerHeader from "@/components/robotyler/RoboTylerHeader";
 
 export interface PatternStatus {
   command: number;
@@ -42,8 +43,8 @@ export interface PatternStatus {
   axis?: "X" | "Y";
 }
 
-export interface SystemStatus {
-  state:
+export interface SystemState {
+  status:
     | "IDLE"
     | "HOMING_X"
     | "HOMING_Y"
@@ -64,40 +65,22 @@ export interface SystemStatus {
     x: number;
     y: number;
   };
-  speeds: {
-    front: number;
-    right: number;
-    back: number;
-    left: number;
-  };
   systemInfo: {
     temperature: number;
     uptime: string;
-    lastMaintenance: string;
   };
   patternProgress: PatternStatus;
   warnings: Warning[];
   lastSerialMessage: string;
   pressurePotActive: boolean;
-  maintenanceSettings: {
-    primeTime: number;
-    cleanTime: number;
-  };
 }
 
-export const INITIAL_STATUS: SystemStatus = {
-  state: "IDLE",
+export const INITIAL_STATUS: SystemState = {
+  status: "IDLE",
   position: { x: 0, y: 0 },
-  speeds: {
-    front: 0,
-    right: 0,
-    back: 0,
-    left: 0,
-  },
   systemInfo: {
     temperature: 24,
     uptime: "0d 0h 0m",
-    lastMaintenance: "2024-03-20",
   },
   patternProgress: {
     command: 0,
@@ -112,21 +95,37 @@ export const INITIAL_STATUS: SystemStatus = {
   warnings: [],
   lastSerialMessage: "",
   pressurePotActive: false,
-  maintenanceSettings: {
-    primeTime: 5,
-    cleanTime: 10,
-  },
 };
+
+export interface SystemSettings {
+  speeds: {
+    front: number;
+    right: number;
+    back: number;
+    left: number;
+  };
+  maintenance: {
+    lastMaintenanceDate: string;
+    maintenanceInterval: number;
+    primeTime: number;
+    cleanTime: number;
+  };
+  pattern: {
+    offsets: { x: number; y: number };
+    travelDistance: { x: number; y: number };
+    rows: { x: number; y: number };
+  };
+}
 
 export default function Dashboard() {
   const [selectedIp, setSelectedIp] = useState("192.168.1.222");
-  const [status, setStatus] = useState<SystemStatus>(INITIAL_STATUS);
+  const [state, setState] = useState<SystemState>(INITIAL_STATUS);
   const [wsConnected, setWsConnected] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [activeWarnings, setActiveWarnings] = useState<Warning[]>([]);
   const [pendingSpeedChanges, setPendingSpeedChanges] = useState<
-    Partial<typeof status.speeds>
+    Partial<SystemSettings["speeds"]>
   >({});
   const ws = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<NodeJS.Timeout>();
@@ -142,6 +141,20 @@ export default function Dashboard() {
   }>({});
   const [hasUnsavedMaintenanceChanges, setHasUnsavedMaintenanceChanges] =
     useState(false);
+  const [settings, setSettings] = useState<SystemSettings>({
+    speeds: { front: 0, right: 0, back: 0, left: 0 },
+    maintenance: {
+      lastMaintenanceDate: new Date().toISOString(),
+      maintenanceInterval: 30,
+      primeTime: 5,
+      cleanTime: 10,
+    },
+    pattern: {
+      offsets: { x: 0, y: 0 },
+      travelDistance: { x: 0, y: 0 },
+      rows: { x: 0, y: 0 },
+    },
+  });
 
   const handleEmergencyStop = () => {
     sendCommand({ type: "EMERGENCY_STOP" });
@@ -212,46 +225,45 @@ export default function Dashboard() {
       socket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          // console.log("[WebSocket] Received message type:", message.type);
 
           switch (message.type) {
-            case "STATUS_UPDATE":
-              setStatus((prevStatus) => ({
+            case "STATE_UPDATE":
+              setState((prevStatus) => ({
                 ...message.payload,
-                maintenanceSettings: {
-                  ...prevStatus.maintenanceSettings,
-                  ...(message.payload.maintenanceSettings || {}),
-                },
                 rawSerial:
                   message.payload.rawSerial || prevStatus.lastSerialMessage,
               }));
               break;
 
-            case "MAINTENANCE_SETTINGS_UPDATE":
-              setStatus((prevStatus) => ({
-                ...prevStatus,
-                maintenanceSettings: {
-                  ...prevStatus.maintenanceSettings,
-                  ...message.payload,
-                },
-              }));
+            case "SETTINGS_UPDATE":
+              console.log("SETTINGS_UPDATE", message.payload);
+              setSettings(message.payload);
+              // Clear any pending changes that match the new settings
+              setPendingSpeedChanges((prev) => {
+                const newPending = { ...prev };
+                Object.entries(message.payload.speeds).forEach(
+                  ([side, value]) => {
+                    if (newPending[side as keyof typeof newPending] === value) {
+                      delete newPending[side as keyof typeof newPending];
+                    }
+                  }
+                );
+                return newPending;
+              });
               setPendingMaintenanceSettings((prev) => {
                 const newPending = { ...prev };
-                if (message.payload.primeTime === prev.primeTime) {
+                if (message.payload.maintenance.primeTime === prev.primeTime) {
                   delete newPending.primeTime;
                 }
-                if (message.payload.cleanTime === prev.cleanTime) {
+                if (message.payload.maintenance.cleanTime === prev.cleanTime) {
                   delete newPending.cleanTime;
                 }
-                setHasUnsavedMaintenanceChanges(
-                  Object.keys(newPending).length > 0
-                );
                 return newPending;
               });
               break;
 
             case "SERIAL_DATA":
-              setStatus((prevStatus) => ({
+              setState((prevStatus) => ({
                 ...prevStatus,
                 rawSerial: message.payload,
               }));
@@ -269,11 +281,21 @@ export default function Dashboard() {
               setActiveWarnings((prev) => [...prev, newWarning]);
               break;
 
+            case "ERROR":
+              toast.error(message.payload.message, {
+                description: message.payload.details,
+                duration: 5000,
+              });
+              break;
+
             default:
               console.log("[WebSocket] Unhandled message type:", message.type);
           }
         } catch (error) {
           console.error("[WebSocket] Error parsing message:", error);
+          toast.error("Failed to process server message", {
+            description: "Please try again or refresh the page",
+          });
         }
       };
 
@@ -326,11 +348,11 @@ export default function Dashboard() {
   }, [initializeWebSocket]);
 
   const handleSpeedChange = (
-    side: keyof typeof status.speeds,
+    side: keyof SystemSettings["speeds"],
     value: number[]
   ) => {
     const newSpeed = value[0];
-    setPendingSpeedChanges((prev) => ({
+    setPendingSpeedChanges((prev: Partial<SystemSettings["speeds"]>) => ({
       ...prev,
       [side]: newSpeed,
     }));
@@ -338,18 +360,14 @@ export default function Dashboard() {
   };
 
   const handleSaveChanges = () => {
-    Object.entries(pendingSpeedChanges).forEach(([side, value]) => {
-      sendCommand({
-        type: "SET_SPEED",
-        payload: {
-          side,
-          value,
-        },
-      });
+    sendCommand({
+      type: "UPDATE_SETTINGS",
+      payload: {
+        speeds: pendingSpeedChanges,
+      },
     });
     setHasUnsavedChanges(false);
     setPendingSpeedChanges({});
-    setShowUnsavedDialog(false);
   };
 
   const handleDiscardChanges = () => {
@@ -358,25 +376,25 @@ export default function Dashboard() {
     setShowUnsavedDialog(false);
   };
 
-  const isPaused = status.state === "PAUSED";
+  const isPaused = state.status === "PAUSED";
 
   // SHOW BUTTONS
-  const showStartButton = status.state == "HOMED";
+  const showStartButton = state.status == "HOMED";
   const showPauseButton =
-    status.state == "EXECUTING_PATTERN" ||
-    status.state == "HOMING_X" ||
-    status.state == "HOMING_Y" ||
-    status.state == "PAINTING_SIDE";
+    state.status == "EXECUTING_PATTERN" ||
+    state.status == "HOMING_X" ||
+    state.status == "HOMING_Y" ||
+    state.status == "PAINTING_SIDE";
   const showStopButton =
-    status.state == "DEPRESSURIZE_POT" ||
-    status.state == "CLEANING" ||
-    status.state == "EXECUTING_PATTERN" ||
-    status.state == "HOMING_X" ||
-    status.state == "HOMING_Y" ||
-    status.state == "PAINTING_SIDE";
-  const showPrimeButton = status.state == "STOPPED" || status.state == "HOMED";
-  const showCleanButton = status.state == "STOPPED" || status.state == "HOMED";
-  const showHomeButton = status.state !== "HOMED";
+    state.status == "DEPRESSURIZE_POT" ||
+    state.status == "CLEANING" ||
+    state.status == "EXECUTING_PATTERN" ||
+    state.status == "HOMING_X" ||
+    state.status == "HOMING_Y" ||
+    state.status == "PAINTING_SIDE";
+  const showPrimeButton = state.status == "STOPPED" || state.status == "HOMED";
+  const showCleanButton = state.status == "STOPPED" || state.status == "HOMED";
+  const showHomeButton = state.status !== "HOMED";
 
   const handleMaintenanceSettingChange = (
     setting: "primeTime" | "cleanTime",
@@ -397,26 +415,19 @@ export default function Dashboard() {
   };
 
   const handleSaveMaintenanceChanges = () => {
-    Object.entries(pendingMaintenanceSettings).forEach(([setting, value]) => {
-      if (setting === "primeTime") {
-        sendCommand({
-          type: "SET_PRIME_TIME",
-          payload: { seconds: value },
-        });
-      } else if (setting === "cleanTime") {
-        sendCommand({
-          type: "SET_CLEAN_TIME",
-          payload: { seconds: value },
-        });
-      }
+    sendCommand({
+      type: "UPDATE_SETTINGS",
+      payload: {
+        maintenance: pendingMaintenanceSettings,
+      },
     });
-    // Don't clear pending changes here - wait for server confirmation
   };
 
   return (
     <div className="min-h-screen">
       <RoboTylerHeader
-        status={status}
+        status={state}
+        settings={settings}
         wsConnected={wsConnected}
         handleEmergencyStop={handleEmergencyStop}
         reconnectAttempts={reconnectAttempts.current}
@@ -468,19 +479,19 @@ export default function Dashboard() {
                   </Button>
                   <Button
                     className={`w-full bg-gradient-to-r ${
-                      status.pressurePotActive
+                      state.pressurePotActive
                         ? "from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
                         : "from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                     } text-white shadow-md transition-all duration-200`}
                     onClick={() => sendCommand({ type: "TOGGLE_PRESSURE_POT" })}
                     disabled={
                       !(
-                        status.state === "STOPPED" || status.state === "HOMED"
+                        state.status === "STOPPED" || state.status === "HOMED"
                       ) || !wsConnected
                     }
                   >
                     <Zap className="mr-2" size={18} />
-                    {status.pressurePotActive
+                    {state.pressurePotActive
                       ? "Depressurize Pot"
                       : "Pressurize Pot"}
                   </Button>
@@ -544,7 +555,7 @@ export default function Dashboard() {
                 }`}
               >
                 <TrayVisualization
-                  status={status}
+                  status={state}
                   className="w-full"
                   onSideClick={(side) => sendCommand({ type: `PAINT_${side}` })}
                 />
@@ -567,7 +578,8 @@ export default function Dashboard() {
 
           {/* Combined Speed & Movement Controls */}
           <CombinedControls
-            status={status}
+            status={state}
+            settings={settings}
             pendingSpeedChanges={pendingSpeedChanges}
             handleSpeedChange={handleSpeedChange}
             handleRotate={handleRotate}
@@ -578,6 +590,7 @@ export default function Dashboard() {
             onPendingMaintenanceChange={handlePendingMaintenanceChange}
             onSaveMaintenanceChanges={handleSaveMaintenanceChanges}
             hasUnsavedMaintenanceChanges={hasUnsavedMaintenanceChanges}
+            sendCommand={sendCommand}
           />
         </div>
       </main>
