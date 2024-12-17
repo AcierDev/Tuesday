@@ -28,15 +28,16 @@ interface CombinedControlsProps {
   handleSaveChanges: () => void;
   wsConnected: boolean;
   onMaintenanceSettingChange?: (
-    setting: "primeTime" | "cleanTime",
+    setting: "primeTime" | "cleanTime" | "backWashTime",
     value: number
   ) => void;
   pendingMaintenanceSettings?: {
     primeTime?: number;
     cleanTime?: number;
+    backWashTime?: number;
   };
   onPendingMaintenanceChange?: (
-    setting: "primeTime" | "cleanTime",
+    setting: "primeTime" | "cleanTime" | "backWashTime",
     value: number
   ) => void;
   onSaveMaintenanceChanges: () => void;
@@ -272,7 +273,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                           onPendingMaintenanceChange?.("cleanTime", newValue);
                           onMaintenanceSettingChange?.("cleanTime", newValue);
                         }}
-                        max={60}
+                        max={30}
                         min={1}
                         step={1}
                         className="flex-1"
@@ -282,6 +283,43 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                         {pendingMaintenanceSettings.cleanTime !== undefined
                           ? pendingMaintenanceSettings.cleanTime
                           : settings.maintenance.cleanTime ?? 10}
+                        s
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <span className="w-24 font-medium text-gray-700 dark:text-gray-300">
+                        Back Wash:
+                      </span>
+                      <Slider
+                        value={[
+                          pendingMaintenanceSettings.backWashTime !== undefined
+                            ? pendingMaintenanceSettings.backWashTime
+                            : settings.maintenance.backWashTime ?? 15,
+                        ]}
+                        onValueChange={(value) => {
+                          const newValue = value[0] || 15;
+                          onPendingMaintenanceChange?.(
+                            "backWashTime",
+                            newValue
+                          );
+                          onMaintenanceSettingChange?.(
+                            "backWashTime",
+                            newValue
+                          );
+                        }}
+                        max={30}
+                        min={1}
+                        step={1}
+                        className="flex-1"
+                        disabled={!wsConnected}
+                      />
+                      <span className="w-20 text-right font-semibold bg-white dark:bg-gray-800 px-3 py-1 rounded-md">
+                        {pendingMaintenanceSettings.backWashTime !== undefined
+                          ? pendingMaintenanceSettings.backWashTime
+                          : settings.maintenance.backWashTime ?? 15}
                         s
                       </span>
                     </div>

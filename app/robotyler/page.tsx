@@ -11,6 +11,7 @@ import {
   Pause,
   Square,
   Save,
+  Recycle,
 } from "lucide-react";
 import {
   Dialog,
@@ -109,6 +110,7 @@ export interface SystemSettings {
     maintenanceInterval: number;
     primeTime: number;
     cleanTime: number;
+    backWashTime: number;
   };
   pattern: {
     offsets: { x: number; y: number };
@@ -138,6 +140,7 @@ export default function Dashboard() {
   const [pendingMaintenanceSettings, setPendingMaintenanceSettings] = useState<{
     primeTime?: number;
     cleanTime?: number;
+    backWashTime?: number;
   }>({});
   const [hasUnsavedMaintenanceChanges, setHasUnsavedMaintenanceChanges] =
     useState(false);
@@ -148,6 +151,7 @@ export default function Dashboard() {
       maintenanceInterval: 30,
       primeTime: 5,
       cleanTime: 10,
+      backWashTime: 15,
     },
     pattern: {
       offsets: { x: 0, y: 0 },
@@ -397,14 +401,14 @@ export default function Dashboard() {
   const showHomeButton = state.status !== "HOMED";
 
   const handleMaintenanceSettingChange = (
-    setting: "primeTime" | "cleanTime",
+    setting: "primeTime" | "cleanTime" | "backWashTime",
     value: number
   ) => {
     handlePendingMaintenanceChange(setting, value);
   };
 
   const handlePendingMaintenanceChange = (
-    setting: "primeTime" | "cleanTime",
+    setting: "primeTime" | "cleanTime" | "backWashTime",
     value: number
   ) => {
     setPendingMaintenanceSettings((prev) => ({
@@ -454,14 +458,6 @@ export default function Dashboard() {
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <Button
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-md transition-all duration-200"
-                    onClick={() => sendCommand({ type: "HOME_SYSTEM" })}
-                    disabled={!showHomeButton || !wsConnected}
-                  >
-                    <Home className="mr-2" size={18} />
-                    Home System
-                  </Button>
-                  <Button
                     className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-md transition-all duration-200"
                     onClick={() => sendCommand({ type: "PRIME_GUN" })}
                     disabled={!showPrimeButton || !wsConnected}
@@ -476,6 +472,14 @@ export default function Dashboard() {
                   >
                     <Droplet className="mr-2" size={18} />
                     Clean Gun
+                  </Button>
+                  <Button
+                    className="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white shadow-md transition-all duration-200"
+                    onClick={() => sendCommand({ type: "BACK_WASH" })}
+                    disabled={!wsConnected}
+                  >
+                    <Recycle className="mr-2" size={18} />
+                    Back Wash
                   </Button>
                   <Button
                     className={`w-full bg-gradient-to-r ${
@@ -508,7 +512,15 @@ export default function Dashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <Button
+                    onClick={() => sendCommand({ type: "HOME_SYSTEM" })}
+                    disabled={!showHomeButton || !wsConnected}
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-md transition-all duration-200"
+                  >
+                    <Home className="mr-2" size={18} />
+                    Home System
+                  </Button>
                   <Button
                     onClick={() => sendCommand({ type: "START_PAINTING" })}
                     disabled={!showStartButton || !wsConnected}
@@ -517,6 +529,8 @@ export default function Dashboard() {
                     <Play className="mr-2" size={18} />
                     Start
                   </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <Button
                     onClick={() => sendCommand({ type: "PAUSE_PAINTING" })}
                     disabled={!showPauseButton || !wsConnected}

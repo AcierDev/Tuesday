@@ -44,7 +44,7 @@ export default function PerClassSettings({
 }: PerClassSettingsProps) {
   const classSettings = config.ejection.perClassSettings;
 
-  const renderTooltip = (content) => (
+  const renderTooltip = (content: string) => (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
@@ -57,13 +57,18 @@ export default function PerClassSettings({
     </TooltipProvider>
   );
 
-  const renderValidationError = (key) => {
+  const renderValidationError = (key: string) => {
     if (validationErrors[key]) {
       return (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -10 }}
+          transition={{
+            type: "spring",
+            stiffness: 500,
+            damping: 30,
+          }}
           className="flex items-center gap-2 mt-1 text-sm text-red-500"
           role="alert"
         >
@@ -75,14 +80,16 @@ export default function PerClassSettings({
     return null;
   };
 
-  const getSelectedSize = (minArea) => {
-    const closest = Object.entries(SIZE_OPTIONS).reduce(
+  const getSelectedSize = (minArea: number) => {
+    type SizeKey = keyof typeof SIZE_OPTIONS;
+
+    const closest = Object.entries(SIZE_OPTIONS).reduce<SizeKey>(
       (prev, [key, option]) => {
         if (
           Math.abs(option.value - minArea) <
           Math.abs(SIZE_OPTIONS[prev].value - minArea)
         ) {
-          return key;
+          return key as SizeKey;
         }
         return prev;
       },
@@ -91,7 +98,7 @@ export default function PerClassSettings({
     return closest;
   };
 
-  const hasErrors = (className) =>
+  const hasErrors = (className: string) =>
     Object.keys(validationErrors).some((key) => key.startsWith(className));
 
   return (
@@ -104,7 +111,16 @@ export default function PerClassSettings({
       <AnimatePresence mode="wait">
         {Object.entries(classSettings).map(
           ([className, classConfig], index) => (
-            <motion.div key={className as ClassName}>
+            <motion.div
+              key={className as ClassName}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{
+                duration: 0.3,
+                delay: index * 0.1, // Stagger the animations
+              }}
+            >
               <Card
                 className={`transition-all duration-300 ${
                   classConfig.enabled ? "opacity-100" : "opacity-50"
@@ -119,6 +135,12 @@ export default function PerClassSettings({
                       <motion.div
                         className="flex items-center gap-2"
                         whileTap={{ scale: 0.95 }}
+                        whileHover={{ scale: 1.05 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 500,
+                          damping: 30,
+                        }}
                       >
                         <Switch
                           id={`${className}-enabled`}
@@ -158,10 +180,12 @@ export default function PerClassSettings({
                   animate={{
                     height: classConfig.enabled ? "auto" : 0,
                     opacity: classConfig.enabled ? 1 : 0,
+                    scale: classConfig.enabled ? 1 : 0.98,
                   }}
                   transition={{
                     height: { duration: 0.3, ease: "easeInOut" },
                     opacity: { duration: 0.2, ease: "easeInOut" },
+                    scale: { duration: 0.2, ease: "easeInOut" },
                   }}
                   className="overflow-hidden"
                 >
@@ -219,7 +243,7 @@ export default function PerClassSettings({
                         <div className="space-y-2">
                           <Select
                             value={getSelectedSize(classConfig.minArea)}
-                            onValueChange={(value) =>
+                            onValueChange={(value: keyof typeof SIZE_OPTIONS) =>
                               updateConfig(
                                 `ejection.perClassSettings.${className}.minArea`,
                                 SIZE_OPTIONS[value].value
