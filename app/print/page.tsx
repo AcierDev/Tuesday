@@ -2,13 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
@@ -29,6 +23,13 @@ const TEMPLATES = [
     id: 2,
     name: "Hanging Examples",
     src: "/images/hanging-examples.png",
+    orientation: "portrait",
+    type: "image",
+  },
+  {
+    id: 9,
+    name: "Fragile Stickers",
+    src: "/images/fragile-stickers.jpg",
     orientation: "portrait",
     type: "image",
   },
@@ -75,17 +76,79 @@ const TEMPLATES = [
     type: "pdf",
   },
   {
-    id: 9,
-    name: "Fragile Stickers",
-    src: "/pdf/fragile-stickers.pdf",
+    id: 10,
+    name: "14x7",
+    src: "/images/box-sizes/14x7.jpg",
     orientation: "portrait",
-    type: "pdf",
+    type: "image",
+  },
+  {
+    id: 11,
+    name: "16x6",
+    src: "/images/box-sizes/16x6.jpg",
+    orientation: "portrait",
+    type: "image",
+  },
+  {
+    id: 12,
+    name: "16x10",
+    src: "/images/box-sizes/16x10.jpg",
+    orientation: "portrait",
+    type: "image",
+  },
+  {
+    id: 13,
+    name: "20x10",
+    src: "/images/box-sizes/20x10.jpg",
+    orientation: "portrait",
+    type: "image",
+  },
+  {
+    id: 14,
+    name: "20x12",
+    src: "/images/box-sizes/20x12.jpg",
+    orientation: "portrait",
+    type: "image",
+  },
+  {
+    id: 15,
+    name: "24x10",
+    src: "/images/box-sizes/24x10.jpg",
+    orientation: "portrait",
+    type: "image",
+  },
+  {
+    id: 16,
+    name: "24x12",
+    src: "/images/box-sizes/24x12.jpg",
+    orientation: "portrait",
+    type: "image",
+  },
+  {
+    id: 17,
+    name: "28x12",
+    src: "/images/box-sizes/28x12.jpg",
+    orientation: "portrait",
+    type: "image",
+  },
+  {
+    id: 18,
+    name: "28x16",
+    src: "/images/box-sizes/28x16.jpg",
+    orientation: "portrait",
+    type: "image",
+  },
+  {
+    id: 19,
+    name: "36x16",
+    src: "/images/box-sizes/36x16.jpg",
+    orientation: "portrait",
+    type: "image",
   },
 ];
 
 export default function LabelPrinter() {
   const [selectedTemplate, setSelectedTemplate] = useState(TEMPLATES[0]!.id);
-  const [recentPrints, setRecentPrints] = useState<number[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [pdfLoaded, setPdfLoaded] = useState(false);
@@ -183,7 +246,12 @@ export default function LabelPrinter() {
   };
 
   const selectedTemplateData = TEMPLATES.find((t) => t.id === selectedTemplate);
-  const imageTemplates = TEMPLATES.filter((t) => t.type === "image");
+  const imageTemplates = TEMPLATES.filter(
+    (t) => t.type === "image" && !/^\d+x\d+$/.test(t.name)
+  );
+  const boxTemplates = TEMPLATES.filter(
+    (t) => t.type === "image" && /^\d+x\d+$/.test(t.name)
+  );
   const pdfTemplates = TEMPLATES.filter((t) => t.type === "pdf");
 
   return (
@@ -204,11 +272,15 @@ export default function LabelPrinter() {
             <CardContent className="p-6">
               <Tabs defaultValue="images" className="space-y-6">
                 <TabsList className="w-full">
-                  <TabsTrigger value="images" className="w-1/2">
+                  <TabsTrigger value="images" className="w-1/3">
                     <ImageIcon className="mr-2 h-4 w-4" />
                     Labels
                   </TabsTrigger>
-                  <TabsTrigger value="pdfs" className="w-1/2">
+                  <TabsTrigger value="boxes" className="w-1/3">
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                    Box Sizes
+                  </TabsTrigger>
+                  <TabsTrigger value="pdfs" className="w-1/3">
                     <FileIcon className="mr-2 h-4 w-4" />
                     PDFs
                   </TabsTrigger>
@@ -217,6 +289,35 @@ export default function LabelPrinter() {
                 <TabsContent value="images" className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     {imageTemplates.map((template) => (
+                      <motion.div
+                        key={template.id}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className={`cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                          selectedTemplate === template.id
+                            ? "border-blue-500 shadow-lg"
+                            : "border-transparent"
+                        }`}
+                        onClick={() => setSelectedTemplate(template.id)}
+                      >
+                        <Image
+                          src={template.src}
+                          alt={template.name}
+                          width={200}
+                          height={150}
+                          className="w-full h-32 object-cover"
+                        />
+                        <div className="p-2 text-center text-sm font-medium">
+                          {template.name}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="boxes" className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    {boxTemplates.map((template) => (
                       <motion.div
                         key={template.id}
                         whileHover={{ scale: 1.05 }}

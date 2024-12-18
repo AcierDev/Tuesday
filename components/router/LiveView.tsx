@@ -6,7 +6,7 @@ import ImageAnalysisCard from "@/components/router/ImageAnalysisCard";
 import { EmptyLogs } from "@/utils/functions";
 import { MessageSquare } from "lucide-react";
 import { ImageMetadata } from "@/typings/types";
-import { StatusCard } from "@/components/router/StatusCard";
+import { StatusCard } from "@/components/shared/StatusCard";
 import { Circle, Power } from "lucide-react";
 
 interface RouterState {

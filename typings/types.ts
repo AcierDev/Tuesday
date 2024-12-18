@@ -1,5 +1,19 @@
-import { WeeklySchedules } from "@/components/weekly-schedule/UseWeeklySchedule";
-import { CuttingData } from "./interfaces";
+export type DayName =
+  | "Sunday"
+  | "Monday"
+  | "Tuesday"
+  | "Wednesday"
+  | "Thursday"
+  | "Friday"
+  | "Saturday";
+
+export type DaySchedule = {
+  [day in DayName]: { id: string; done: boolean }[];
+};
+
+export type WeeklySchedules = {
+  [weekKey: string]: DaySchedule;
+};
 
 export type Maybe<T> = T | null | undefined;
 

@@ -6,14 +6,18 @@ import { toast } from "sonner";
 import { format, startOfWeek, addWeeks, subWeeks } from "date-fns";
 
 import { useRealmApp } from "@/hooks/useRealmApp";
-import { ColumnTitles, type Item, ItemStatus } from "@/typings/types";
+import {
+  ColumnTitles,
+  DayName,
+  type Item,
+  ItemStatus,
+  WeeklySchedules,
+  DaySchedule,
+} from "@/typings/types";
 import { ConfirmCompletionDialog } from "./ConfirmCompletionDialog";
 import { AddItemDialog } from "./AddItemDialog";
 import { DayColumn } from "./DayColumn";
 import { WeekSelector } from "./WeekSelector";
-
-type DaySchedule = Record<string, string[]>;
-type WeeklySchedules = Record<string, DaySchedule>;
 
 interface WeeklyScheduleProps {
   items: Item[];
@@ -101,13 +105,16 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   }, []);
 
   const handleQuickAdd = useCallback(
-    async (day: string, item: Item) => {
+    async (day: DayName, item: Item) => {
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-      const newSchedules = {
+      const newSchedules: WeeklySchedules = {
         ...weeklySchedules,
         [weekKey]: {
           ...weeklySchedules[weekKey],
-          [day]: [...(weeklySchedules[weekKey]?.[day] || []), item.id],
+          [day]: [
+            ...(weeklySchedules[weekKey]?.[day as DayName] || []),
+            { id: item.id, done: false },
+          ],
         },
       };
       setWeeklySchedules(newSchedules);
@@ -125,16 +132,17 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   );
 
   const handleRemoveItem = useCallback(
-    async (day: string, itemId: string) => {
+    async (day: DayName, itemId: string) => {
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-      const currentWeekSchedule = weeklySchedules[weekKey] || {};
+      const currentWeekSchedule =
+        weeklySchedules[weekKey] || ({} as DaySchedule);
       const daySchedule = currentWeekSchedule[day] || [];
 
-      const newSchedules = {
+      const newSchedules: WeeklySchedules = {
         ...weeklySchedules,
         [weekKey]: {
           ...currentWeekSchedule,
-          [day]: daySchedule.filter((id) => id !== itemId),
+          [day]: daySchedule.filter((item) => item.id !== itemId),
         },
       };
       setWeeklySchedules(newSchedules);
@@ -157,18 +165,25 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
 
       const { source, destination } = result;
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-      const currentWeekSchedule = weeklySchedules[weekKey] || {};
-      const sourceSchedule = currentWeekSchedule[source.droppableId] || [];
-      const destSchedule = currentWeekSchedule[destination.droppableId] || [];
+      const currentWeekSchedule =
+        weeklySchedules[weekKey] || ({} as DaySchedule);
+      const sourceSchedule =
+        currentWeekSchedule[source.droppableId as DayName] || [];
+      const destSchedule =
+        currentWeekSchedule[destination.droppableId as DayName] || [];
 
-      const [movedItemId] = sourceSchedule.splice(source.index, 1);
-      if (movedItemId) {
-        destSchedule.splice(destination.index, 0, movedItemId);
+      const [movedItem] = sourceSchedule.splice(source.index, 1);
+      if (movedItem) {
+        destSchedule.splice(destination.index, 0, movedItem);
       }
 
-      const newSchedules = {
+      const newSchedules: WeeklySchedules = {
         ...weeklySchedules,
-        [weekKey]: currentWeekSchedule,
+        [weekKey]: {
+          ...currentWeekSchedule,
+          [source.droppableId]: sourceSchedule,
+          [destination.droppableId]: destSchedule,
+        },
       };
 
       setWeeklySchedules(newSchedules);
@@ -181,27 +196,37 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
     async (item: Item) => {
       if (!collection) return;
 
-      try {
-        await collection.updateOne(
-          { id: boardId },
-          {
-            $set: {
-              "items_page.items.$[elem].status": ItemStatus.Done,
-              "items_page.items.$[elem].completedAt": Date.now(),
-            },
-          },
-          { arrayFilters: [{ "elem.id": item.id }] }
-        );
+      const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+      const currentWeekSchedule = weeklySchedules[weekKey];
 
-        toast.success("Item marked as completed");
-      } catch (err) {
-        console.error("Failed to mark item as completed", err);
-        toast.error("Failed to mark item as completed. Please try again.");
-      } finally {
-        setConfirmCompleteItem(null);
+      // Find the day and item to mark as done
+      for (const [day, items] of Object.entries(currentWeekSchedule)) {
+        const itemIndex = items.findIndex(
+          (scheduleItem) => scheduleItem.id === item.id
+        );
+        if (itemIndex !== -1) {
+          const newSchedules = {
+            ...weeklySchedules,
+            [weekKey]: {
+              ...currentWeekSchedule,
+              [day]: currentWeekSchedule[day].map((scheduleItem, index) =>
+                index === itemIndex
+                  ? { ...scheduleItem, done: true }
+                  : scheduleItem
+              ),
+            },
+          };
+
+          setWeeklySchedules(newSchedules);
+          await saveSchedules(newSchedules);
+          toast.success("Item marked as completed");
+          break;
+        }
       }
+
+      setConfirmCompleteItem(null);
     },
-    [collection, boardId]
+    [collection, weeklySchedules, currentWeekStart, saveSchedules]
   );
 
   const getItemValue = useCallback(
@@ -234,6 +259,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
           item.status !== ItemStatus.Hidden &&
           !Object.values(weeklySchedules[weekKey] || {})
             .flat()
+            .map((item) => item.id)
             .includes(item.id) &&
           getItemValue(item, ColumnTitles.Customer_Name)
             .toLowerCase()
@@ -269,9 +295,9 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   );
 
   const calculateTotalSquares = useCallback(
-    (dayItemIds: string[]) => {
-      return dayItemIds.reduce((total, itemId) => {
-        const item = items.find((i) => i.id === itemId);
+    (dayItems: { id: string; done: boolean }[]) => {
+      return dayItems.reduce((total, scheduleItem) => {
+        const item = items.find((i) => i.id === scheduleItem.id);
         if (item) {
           const size = getItemValue(item, ColumnTitles.Size);
           const [width = 0, height = 0] = size.split("x").map(Number);
@@ -296,11 +322,11 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
         <div className="space-y-4">
           <DragDropContext onDragEnd={handleDragEnd}>
             {Object.entries(weeklySchedules[weekKey] || {}).map(
-              ([day, dayItemIds]) => (
+              ([day, dayItems]) => (
                 <DayColumn
                   key={day}
-                  day={day}
-                  dayItemIds={dayItemIds}
+                  day={day as DayName}
+                  dayItemIds={dayItems}
                   items={items}
                   calculateTotalSquares={calculateTotalSquares}
                   handleAddItem={handleAddItem}

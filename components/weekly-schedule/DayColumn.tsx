@@ -1,18 +1,21 @@
-import { ColumnTitles, Item, ItemStatus } from "@/typings/types";
+import { ColumnTitles, DayName, Item, ItemStatus } from "@/typings/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import { Check, GripVertical, Info, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { PaintRequirementsDialog } from "./PaintRequirementsDialog";
+import { cn } from "@/utils/functions";
 
 type NewType = Item;
 
 interface DayColumnProps {
-  day: string;
-  dayItemIds: string[];
+  day: DayName;
+  dayItemIds: { id: string; done: boolean }[];
   items: Item[];
-  calculateTotalSquares: (dayItemIds: string[]) => number;
+  calculateTotalSquares: (
+    dayItemIds: { id: string; done: boolean }[]
+  ) => number;
   handleAddItem: (day: string) => void;
   handleRemoveItem: (day: string, itemId: string) => void;
   setConfirmCompleteItem: (item: Item | null) => void;
@@ -31,7 +34,9 @@ export function DayColumn({
 }: DayColumnProps) {
   const [showPaintRequirements, setShowPaintRequirements] = useState(false);
 
-  const dayItems = items.filter((item) => dayItemIds.includes(item.id));
+  const dayItems = items.filter((item) =>
+    dayItemIds.some((scheduleItem) => scheduleItem.id === item.id)
+  );
 
   return (
     <>
@@ -63,20 +68,28 @@ export function DayColumn({
                 ref={provided.innerRef}
                 className="space-y-2 min-h-full"
               >
-                {dayItemIds.map((itemId, index) => {
-                  const item = items.find((i) => i.id === itemId);
+                {dayItemIds.map((scheduleItem, index) => {
+                  const item = items.find((i) => i.id === scheduleItem.id);
                   if (!item) return null;
                   return (
                     <Draggable
-                      key={item.id}
-                      draggableId={item.id}
+                      key={scheduleItem.id}
+                      draggableId={scheduleItem.id}
                       index={index}
                     >
                       {(provided) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className="p-2 bg-muted rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 text-xs dark:bg-gray-700"
+                          className={cn(
+                            "p-2 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 text-xs",
+                            scheduleItem.done || item.status === ItemStatus.Done
+                              ? "bg-green-100 dark:bg-green-500/30"
+                              : item.status === ItemStatus.Packaging ||
+                                item.status === ItemStatus.WIP
+                              ? "bg-yellow-100 dark:bg-yellow-500/30"
+                              : "bg-muted dark:bg-gray-700"
+                          )}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2 flex-grow">
@@ -97,20 +110,23 @@ export function DayColumn({
                               </div>
                             </div>
                             <div className="flex space-x-1">
-                              {item.status !== ItemStatus.Done && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    console.log("complete item", item);
-                                    setConfirmCompleteItem(item);
-                                  }}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <Check className="h-3 w-3" />
-                                  <span className="sr-only">Complete item</span>
-                                </Button>
-                              )}
+                              {item.status !== ItemStatus.Done &&
+                                !scheduleItem.done && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      console.log("complete item", item);
+                                      setConfirmCompleteItem(item);
+                                    }}
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <Check className="h-3 w-3" />
+                                    <span className="sr-only">
+                                      Complete item
+                                    </span>
+                                  </Button>
+                                )}
                               <Button
                                 size="sm"
                                 variant="ghost"

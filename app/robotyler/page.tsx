@@ -30,6 +30,7 @@ import LiveCameraFeed from "@/components/robotyler/LiveWebcamFeed";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import RoboTylerHeader from "@/components/robotyler/RoboTylerHeader";
+import { StatusCard } from "@/components/shared/StatusCard";
 
 export interface PatternStatus {
   command: number;
@@ -100,9 +101,9 @@ export const INITIAL_STATUS: SystemState = {
 
 export interface SystemSettings {
   speeds: {
+    back: number;
     front: number;
     right: number;
-    back: number;
     left: number;
   };
   maintenance: {
@@ -145,7 +146,7 @@ export default function Dashboard() {
   const [hasUnsavedMaintenanceChanges, setHasUnsavedMaintenanceChanges] =
     useState(false);
   const [settings, setSettings] = useState<SystemSettings>({
-    speeds: { front: 0, right: 0, back: 0, left: 0 },
+    speeds: { back: 0, front: 0, right: 0, left: 0 },
     maintenance: {
       lastMaintenanceDate: new Date().toISOString(),
       maintenanceInterval: 30,
