@@ -11,7 +11,6 @@ import {
   DropdownMenuContent,
 } from "@/components/ui/dropdown-menu";
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -38,6 +37,7 @@ import { ItemActions } from "./ItemActions";
 import { BorderedTable } from "./BoarderedTable";
 import { DEFAULT_COLUMN_VISIBILITY, STATUS_COLORS } from "@/typings/constants";
 import { boardConfig } from "@/config/boardconfig";
+import { ItemPreviewTooltip } from "./ItemPreviewTooltip";
 
 interface ItemGroupProps {
   group: Group;
@@ -77,6 +77,10 @@ export function ItemGroupSection({
     item: Item;
   } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+  const [isTooltipHovered, setIsTooltipHovered] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout>();
+  const closeTimeoutRef = useRef<NodeJS.Timeout>();
 
   const handleEdit = useCallback((item: Item) => {
     console.log("Editing item:", item);
@@ -166,6 +170,40 @@ export function ItemGroupSection({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [closeContextMenu]);
+
+  const handleMouseEnter = useCallback((itemId: string) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredItemId(itemId);
+    }, 1000);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    closeTimeoutRef.current = setTimeout(() => {
+      if (!isTooltipHovered) {
+        setHoveredItemId(null);
+      }
+    }, 300);
+  }, [isTooltipHovered]);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const visibleColumns = Object.entries(
     settings.columnVisibility[group.title as ItemStatus] ||
@@ -276,10 +314,22 @@ export function ItemGroupSection({
                           onContextMenu={(e) => handleContextMenu(e, item)}
                         >
                           <TableCell
-                            className="border border-gray-200 dark:border-gray-600 p-2 text-center"
+                            className="border border-gray-200 dark:border-gray-600 p-2 text-center relative"
                             {...provided.dragHandleProps}
+                            onMouseEnter={() => handleMouseEnter(item.id)}
+                            onMouseLeave={handleMouseLeave}
                           >
                             <GripVertical className="cursor-grab inline-block" />
+                            {hoveredItemId === item.id && (
+                              <ItemPreviewTooltip
+                                item={item}
+                                onMouseEnter={() => setIsTooltipHovered(true)}
+                                onMouseLeave={() => {
+                                  setIsTooltipHovered(false);
+                                  setHoveredItemId(null);
+                                }}
+                              />
+                            )}
                           </TableCell>
                           {visibleColumns.map((columnName, cellIndex) => {
                             const columnValue = item.values.find(

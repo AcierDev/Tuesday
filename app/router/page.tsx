@@ -3,7 +3,6 @@
 import LiveView from "@/components/router/LiveView";
 import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionControls";
 import StatsOverview from "@/components/router/stats/StatsOverview";
-import { StatusCard } from "@/components/router/StatusCard";
 import ComputerSelector from "@/components/robotyler/ComputerSelector";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
@@ -25,6 +24,7 @@ import {
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "sonner";
+import { StatusCard } from "@/components/shared/StatusCard";
 
 export default function RouterPage() {
   return (
@@ -184,8 +184,8 @@ function MonitoringDashboard() {
                 onReconnect={handleReconnect}
                 isConnecting={connectionStatus === "connecting"}
                 computers={[
+                  { name: "Router Raspi", ip: "192.168.1.243:8080/ws" },
                   { name: "Bentzi's Laptop", ip: "192.168.1.222:8080/ws" },
-                  { name: "Router Raspi", ip: "192.168.1.215:8080/ws" },
                   { name: "Dev Testing Raspi", ip: "192.168.1.216:8080/ws" },
                   { name: "localhost", ip: "localhost:8080/ws" },
                 ]}

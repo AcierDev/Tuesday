@@ -10,7 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AlertCircle, Power, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  Power,
+  RefreshCw,
+  LayoutGrid,
+  List,
+  Info,
+} from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +31,20 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Clock } from "lucide-react";
 
 const API_BASE_URL = "http://everwoodbackend.ddns.net:3004";
 
@@ -38,6 +59,11 @@ interface DeviceStatus {
   status: "on" | "off" | "unknown";
   lastChecked: number;
   autoOffAt?: number;
+}
+
+interface DeviceGroup {
+  name: string;
+  devices: number[];
 }
 
 // Type guard for checking if index exists in devices array
@@ -102,6 +128,28 @@ export default function OutletControl() {
     },
     { name: "Stage 1 Motor", ip: "192.168.1.204", icon: "/icons/stepper.png" },
   ];
+
+  const deviceGroups: DeviceGroup[] = [
+    {
+      name: "Compressors",
+      devices: [0, 1, 5],
+    },
+    {
+      name: "Lighting",
+      devices: [2, 4],
+    },
+    {
+      name: "Climate Control",
+      devices: [3],
+    },
+    {
+      name: "Motors",
+      devices: [6],
+    },
+  ];
+
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [activeGroup, setActiveGroup] = useState<string>("all");
 
   const handleControl = async (
     index: number,
@@ -255,7 +303,41 @@ export default function OutletControl() {
     };
   }, [fetchAllStatuses]);
 
-  // Add the AutoOffSelect component
+  const StatusIndicator = ({
+    status,
+    lastChecked,
+  }: {
+    status: string;
+    lastChecked: number;
+  }) => {
+    const getStatusColor = () => {
+      switch (status) {
+        case "on":
+          return "bg-green-500";
+        case "off":
+          return "bg-red-500";
+        default:
+          return "bg-gray-500";
+      }
+    };
+
+    return (
+      <Tooltip>
+        <TooltipTrigger>
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-3 h-3 rounded-full ${getStatusColor()} animate-pulse`}
+            />
+            <span className="text-sm font-medium capitalize">{status}</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          Last updated: {new Date(lastChecked).toLocaleTimeString()}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
   const AutoOffSelect = ({ index }: { index: number }) => {
     const deviceStatus = deviceStatuses[index];
     const getSelectedValue = () => {
@@ -272,158 +354,215 @@ export default function OutletControl() {
     };
 
     return (
-      <Select
-        value={getSelectedValue()}
-        onValueChange={(value) => {
-          const minutes = parseInt(value);
-          if (minutes > 0) {
-            handleControl(index, "on", minutes);
-          } else {
-            handleControl(index, "on");
-          }
-        }}
-      >
-        <SelectTrigger className="w-[180px] dark:bg-white/20 dark:border-none">
-          <SelectValue placeholder="Auto-off timer">
-            {getSelectedValue() === "0"
-              ? "No auto-off"
-              : `${getSelectedValue()} minutes`}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent className="dark:bg-gray-600 dark:border-none">
-          <SelectItem value="0">No auto-off</SelectItem>
-          <SelectItem value="30">30 minutes</SelectItem>
-          <SelectItem value="60">1 hour</SelectItem>
-          <SelectItem value="120">2 hours</SelectItem>
-          <SelectItem value="240">4 hours</SelectItem>
-          <SelectItem value="480">8 hours</SelectItem>
-        </SelectContent>
-      </Select>
+      <div className="flex flex-col gap-2">
+        <Select
+          value={getSelectedValue()}
+          onValueChange={(value) => {
+            const minutes = parseInt(value);
+            if (minutes > 0) {
+              handleControl(index, "on", minutes);
+            } else {
+              handleControl(index, "on");
+            }
+          }}
+        >
+          <SelectTrigger className="w-[180px] dark:bg-white/20 dark:border-none">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              <SelectValue placeholder="Auto-off timer">
+                {getSelectedValue() === "0"
+                  ? "No auto-off"
+                  : `${getSelectedValue()} minutes`}
+              </SelectValue>
+            </div>
+          </SelectTrigger>
+          <SelectContent className="dark:bg-gray-600 dark:border-none">
+            <SelectItem value="0">No auto-off</SelectItem>
+            <SelectItem value="30">30 minutes</SelectItem>
+            <SelectItem value="60">1 hour</SelectItem>
+            <SelectItem value="120">2 hours</SelectItem>
+            <SelectItem value="240">4 hours</SelectItem>
+            <SelectItem value="480">8 hours</SelectItem>
+          </SelectContent>
+        </Select>
+        {deviceStatus?.autoOffAt && (
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            Turns off at {new Date(deviceStatus.autoOffAt).toLocaleTimeString()}
+          </div>
+        )}
+      </div>
     );
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-6 text-center">
-        Remote Device Control
-      </h1>
+    <TooltipProvider>
+      <div className="container mx-auto p-4 max-w-6xl">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold">Remote Device Control</h1>
+          <div className="flex items-center gap-4">
+            <Tabs
+              value={viewMode}
+              onValueChange={(v) => setViewMode(v as "grid" | "list")}
+            >
+              <TabsList className="dark:bg-gray-800">
+                <TabsTrigger value="grid" className="flex items-center gap-2">
+                  <LayoutGrid className="h-4 w-4" /> Grid
+                </TabsTrigger>
+                <TabsTrigger value="list" className="flex items-center gap-2">
+                  <List className="h-4 w-4" /> List
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="flex justify-between mb-6">
-        <Button
-          variant="outline"
-          className="dark:bg-white dark:text-black dark:hover:bg-white/80 dark:border-none flex items-center gap-2"
-          onClick={() => handleControlAll("on")}
-          disabled={refreshing.length > 0}
-        >
-          <Power className="h-4 w-4" />
-          Turn All On
-        </Button>
-
-        <Button
-          variant="outline"
-          className="dark:bg-black/30 dark:hover:bg-black/40 dark:border-none flex items-center gap-2"
-          onClick={() => handleControlAll("off")}
-          disabled={refreshing.length > 0}
-        >
-          <Power className="h-4 w-4" />
-          Turn All Off
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {devices.map((device, index) => {
-          const deviceStatus = deviceStatuses[index] || {
-            status: "unknown",
-            lastChecked: 0,
-          };
-          const isRefreshing = refreshing.includes(index);
-
-          return (
-            <Card key={index} className="overflow-hidden">
-              <CardHeader className="bg-secondary bg-white dark:bg-gray-800">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <Image
-                      src={device.icon}
-                      alt={device.name}
-                      width={48}
-                      height={48}
-                      className="dark:invert"
-                    />
-                    <div>
-                      <CardTitle>{device.name}</CardTitle>
-                      <CardDescription>IP: {device.ip}</CardDescription>
-                    </div>
-                  </div>
-                  <Badge
-                    variant={
-                      deviceStatus.status === "on" ? "default" : "secondary"
-                    }
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="dark:bg-gray-800">
+                  {activeGroup === "all" ? "All Devices" : activeGroup}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="dark:bg-gray-800">
+                <DropdownMenuItem onClick={() => setActiveGroup("all")}>
+                  All Devices
+                </DropdownMenuItem>
+                {deviceGroups.map((group) => (
+                  <DropdownMenuItem
+                    key={group.name}
+                    onClick={() => setActiveGroup(group.name)}
                   >
-                    {deviceStatus.status === "unknown"
-                      ? "Unknown"
-                      : deviceStatus.status.toUpperCase()}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent
-                className={`pt-6 ${
-                  deviceStatus.status === "on"
-                    ? "bg-green-300 dark:bg-green-700"
-                    : "bg-red-300 dark:bg-red-700"
-                }`}
+                    {group.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Quick Actions Bar */}
+        <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                className="dark:bg-white dark:text-black dark:hover:bg-white/80"
+                onClick={() => handleControlAll("on")}
+                disabled={refreshing.length > 0}
               >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">Power</span>
-                    <Switch
-                      checked={deviceStatus.status === "on"}
-                      onCheckedChange={(checked) =>
-                        handleControl(index, checked ? "on" : "off")
-                      }
-                      disabled={isRefreshing}
-                    />
-                  </div>
+                <Power className="h-4 w-4 mr-2" />
+                Turn All On
+              </Button>
+              <Button
+                variant="outline"
+                className="dark:bg-black/30 dark:hover:bg-black/40"
+                onClick={() => handleControlAll("off")}
+                disabled={refreshing.length > 0}
+              >
+                <Power className="h-4 w-4 mr-2" />
+                Turn All Off
+              </Button>
+            </div>
 
-                  {deviceStatus.status === "on" && (
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">Auto-off Timer</span>
-                      <AutoOffSelect index={index} />
-                    </div>
-                  )}
+            <Button
+              variant="ghost"
+              onClick={fetchAllStatuses}
+              disabled={refreshing.length > 0}
+              className="dark:hover:bg-white/10"
+            >
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+          </div>
+        </div>
 
-                  {deviceStatus.status === "on" && deviceStatus.autoOffAt && (
-                    <div className="text-sm text-gray-600 dark:text-gray-300">
-                      Auto-off at:{" "}
-                      {new Date(deviceStatus.autoOffAt).toLocaleTimeString()}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <div className="flex justify-center mt-6">
-        <Button
-          variant="outline"
-          onClick={fetchAllStatuses}
-          disabled={refreshing.length > 0}
-          className="dark:bg-white/10 dark:hover:bg-white/20 dark:border-none flex items-center gap-2"
+        {/* Device Grid/List */}
+        <div
+          className={
+            viewMode === "grid"
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              : "flex flex-col gap-4"
+          }
         >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-          Refresh All Statuses
-        </Button>
+          {devices
+            .filter(
+              (_, index) =>
+                activeGroup === "all" ||
+                deviceGroups
+                  .find((g) => g.name === activeGroup)
+                  ?.devices.includes(index)
+            )
+            .map((device, index) => {
+              const deviceStatus = deviceStatuses[index] || {
+                status: "unknown",
+                lastChecked: 0,
+              };
+              const isRefreshing = refreshing.includes(index);
+
+              return (
+                <Card key={index} className="overflow-hidden">
+                  <CardHeader className="bg-secondary bg-white dark:bg-gray-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <Image
+                          src={device.icon}
+                          alt={device.name}
+                          width={48}
+                          height={48}
+                          className="dark:invert"
+                        />
+                        <div>
+                          <CardTitle>{device.name}</CardTitle>
+                          <CardDescription>IP: {device.ip}</CardDescription>
+                        </div>
+                      </div>
+                      <StatusIndicator
+                        status={deviceStatus.status}
+                        lastChecked={deviceStatus.lastChecked}
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent
+                    className={`pt-6 ${
+                      deviceStatus.status === "on"
+                        ? "bg-green-300 dark:bg-green-700"
+                        : "bg-red-300 dark:bg-red-700"
+                    }`}
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Power</span>
+                        <Switch
+                          checked={deviceStatus.status === "on"}
+                          onCheckedChange={(checked) =>
+                            handleControl(index, checked ? "on" : "off")
+                          }
+                          disabled={isRefreshing}
+                        />
+                      </div>
+
+                      {deviceStatus.status === "on" && (
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">Auto-off Timer</span>
+                          <AutoOffSelect index={index} />
+                        </div>
+                      )}
+
+                      {deviceStatus.status === "on" &&
+                        deviceStatus.autoOffAt && (
+                          <div className="text-sm text-gray-600 dark:text-gray-300">
+                            Auto-off at:{" "}
+                            {new Date(
+                              deviceStatus.autoOffAt
+                            ).toLocaleTimeString()}
+                          </div>
+                        )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

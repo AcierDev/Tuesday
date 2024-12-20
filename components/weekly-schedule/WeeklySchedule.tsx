@@ -18,6 +18,7 @@ import { ConfirmCompletionDialog } from "./ConfirmCompletionDialog";
 import { AddItemDialog } from "./AddItemDialog";
 import { DayColumn } from "./DayColumn";
 import { WeekSelector } from "./WeekSelector";
+import { calculateTotalSquares } from "@/utils/functions";
 
 interface WeeklyScheduleProps {
   items: Item[];
@@ -107,16 +108,20 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   const handleQuickAdd = useCallback(
     async (day: DayName, item: Item) => {
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+      const currentWeekSchedule =
+        weeklySchedules[weekKey] || ({} as DaySchedule);
+
       const newSchedules: WeeklySchedules = {
         ...weeklySchedules,
         [weekKey]: {
-          ...weeklySchedules[weekKey],
+          ...currentWeekSchedule,
           [day]: [
-            ...(weeklySchedules[weekKey]?.[day as DayName] || []),
+            ...(currentWeekSchedule[day] || []),
             { id: item.id, done: false },
           ],
         },
       };
+
       setWeeklySchedules(newSchedules);
       await saveSchedules(newSchedules);
 
@@ -197,19 +202,23 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
       if (!collection) return;
 
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-      const currentWeekSchedule = weeklySchedules[weekKey];
+      const currentWeekSchedule = weeklySchedules[weekKey] as DaySchedule;
+      if (!currentWeekSchedule) return;
 
       // Find the day and item to mark as done
-      for (const [day, items] of Object.entries(currentWeekSchedule)) {
+      for (const [day, items] of Object.entries(currentWeekSchedule) as [
+        DayName,
+        { id: string; done: boolean }[]
+      ][]) {
         const itemIndex = items.findIndex(
           (scheduleItem) => scheduleItem.id === item.id
         );
         if (itemIndex !== -1) {
-          const newSchedules = {
+          const newSchedules: WeeklySchedules = {
             ...weeklySchedules,
             [weekKey]: {
               ...currentWeekSchedule,
-              [day]: currentWeekSchedule[day].map((scheduleItem, index) =>
+              [day]: items.map((scheduleItem, index) =>
                 index === itemIndex
                   ? { ...scheduleItem, done: true }
                   : scheduleItem
@@ -294,21 +303,6 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
     [currentWeekStart, weeklySchedules, createNewWeek]
   );
 
-  const calculateTotalSquares = useCallback(
-    (dayItems: { id: string; done: boolean }[]) => {
-      return dayItems.reduce((total, scheduleItem) => {
-        const item = items.find((i) => i.id === scheduleItem.id);
-        if (item) {
-          const size = getItemValue(item, ColumnTitles.Size);
-          const [width = 0, height = 0] = size.split("x").map(Number);
-          return total + width * height;
-        }
-        return total;
-      }, 0);
-    },
-    [items, getItemValue]
-  );
-
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <div className="mb-6">
@@ -328,7 +322,9 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
                   day={day as DayName}
                   dayItemIds={dayItems}
                   items={items}
-                  calculateTotalSquares={calculateTotalSquares}
+                  calculateTotalSquares={(dayItems) =>
+                    calculateTotalSquares(dayItems, items, getItemValue)
+                  }
                   handleAddItem={handleAddItem}
                   handleRemoveItem={handleRemoveItem}
                   setConfirmCompleteItem={setConfirmCompleteItem}
