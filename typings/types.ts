@@ -364,6 +364,8 @@ export interface SlaveSettings {
   pushTime: number;
   riserTime: number;
   ejectionTime: number;
+  sensorDelayTime: number;
+  analysisMode: boolean;
 }
 
 export interface GlobalSettings {

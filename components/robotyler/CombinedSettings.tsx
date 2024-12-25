@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatternSettings } from "./PatternSettings";
 import { SystemState, SystemSettings } from "@/app/robotyler/page";
+import { MovementControls } from "./MovementControls";
 
 interface CombinedControlsProps {
   status: SystemState;
@@ -200,24 +201,11 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                   ))}
                 </div>
               ) : activeTab === "movement" ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <Button
-                    className="w-full h-16 text-lg bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-md"
-                    onClick={() => handleRotate("left")}
-                    disabled={!wsConnected}
-                  >
-                    <RotateCcwIcon className="mr-2" size={20} />
-                    Turn Left 90°
-                  </Button>
-                  <Button
-                    className="w-full h-16 text-lg bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-md"
-                    onClick={() => handleRotate("right")}
-                    disabled={!wsConnected}
-                  >
-                    <RotateCw className="mr-2" size={20} />
-                    Turn Right 90°
-                  </Button>
-                </div>
+                <MovementControls
+                  wsConnected={wsConnected}
+                  sendCommand={sendCommand}
+                  handleRotate={handleRotate}
+                />
               ) : activeTab === "pattern" ? (
                 <PatternSettings
                   settings={settings}

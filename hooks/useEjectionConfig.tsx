@@ -1,6 +1,6 @@
 import { RouterSettings, ValidationErrors } from "@/typings/types";
 import { DEFAULT_ROUTER_SETTINGS } from "@/typings/constants";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 
 export const VALIDATION_RULES = {
   slave: {
@@ -115,7 +115,6 @@ export const useEjectionConfig = (
   }, [config]);
 
   const updateConfig = useCallback((path: string, value: any) => {
-    console.log("updateConfig called with:", path, value);
     setConfig((prevConfig) => {
       const newConfig = { ...prevConfig };
       const keys = path.split(".");

@@ -12,6 +12,7 @@ import {
   Settings2,
   Shield,
   Target,
+  PauseCircle,
 } from "lucide-react";
 import {
   Tooltip,
@@ -22,6 +23,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { motion, AnimatePresence } from "framer-motion";
+import { RouterSettings } from "@/typings/types";
 
 export type UpdateConfigFunction = (
   key: string,
@@ -84,10 +86,10 @@ const GlobalSettings = ({
           <Slider
             id={id}
             min={0.1}
-            max={10}
+            max={5}
             step={0.1}
             value={[value / 1000]}
-            onValueChange={(value) => onChange(value[0] * 1000)}
+            onValueChange={(value) => onChange(value[0]! * 1000)}
             className="flex-1 [&>.relative>div:last-child]:dark:bg-gray-700"
           />
         </div>
@@ -98,6 +100,9 @@ const GlobalSettings = ({
         >
           <Input
             type="number"
+            min={0.1}
+            max={5}
+            step={0.1}
             value={(value / 1000).toFixed(1)}
             onChange={(e) => onChange(parseFloat(e.target.value) * 1000)}
             className="w-20 text-right dark:bg-gray-700"
@@ -271,6 +276,16 @@ const GlobalSettings = ({
                 (value) => updateConfig("slave.ejectionTime", value),
                 validationErrors.ejectionTime,
                 2
+              )}
+              {renderTimeControl(
+                "sensorDelay",
+                "Sensor Delay",
+                "Delay of the push mechanism activation",
+                config.slave.sensorDelayTime,
+                <PauseCircle className="h-4 w-4 text-yellow-400" />,
+                (value) => updateConfig("slave.sensorDelayTime", value),
+                validationErrors.sensorDelayTime,
+                0
               )}
             </div>
           </div>

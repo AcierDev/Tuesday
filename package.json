@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p 3000 -H 0.0.0.0",
-    "lint": "next lint --fix",
-    "start:scheduler": "ts-node backend/src/server.ts"
+    "lint": "next lint --fix"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",
@@ -33,6 +32,7 @@
     "@radix-ui/react-toggle": "^1.1.0",
     "@radix-ui/react-toggle-group": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.6",
+    "@tanstack/react-query": "^5.62.3",
     "antd": "^5.22.4",
     "axios": "^1.7.7",
     "class-variance-authority": "^0.7.0",

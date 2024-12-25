@@ -130,9 +130,9 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
             <ComputerSelector
               onSelect={onSelectComputer}
               computers={[
-                { name: "RoboTyler Raspi", ip: "192.168.1.197:8080" },
-                { name: "Pi Zero 2", ip: "192.168.1.239:8080" },
                 { name: "Bentzi's Laptop", ip: "192.168.1.222:8080" },
+                { name: "RoboTyler Raspi", ip: "192.168.1.197:8080" },
+                { name: "Pi Zero 2", ip: "192.168.1.215:8080" },
                 { name: "Dev Testing Raspi", ip: "192.168.1.216:8080" },
                 { name: "localhost", ip: "localhost:8080" },
               ]}
