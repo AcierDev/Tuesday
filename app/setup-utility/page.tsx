@@ -12,25 +12,37 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DESIGN_COLORS, ItemDesignImages } from "@/typings/constants";
 import { ItemDesigns, ItemSizes } from "@/typings/types";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import styles from './styles.module.css';
+
+type DesignCategory = 'geometric' | 'striped' | 'tiled';
 
 interface Design {
   id: string;
   name: string;
   imageUrl: string;
   colors: string[];
+  category: DesignCategory;
 }
 
 const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
+  const category: DesignCategory = design.toLowerCase().includes('stripe') 
+    ? 'striped' 
+    : design.toLowerCase().includes('tile') 
+      ? 'tiled' 
+      : 'geometric';
+
   return {
     id: index.toString(),
     name: design,
     imageUrl: ItemDesignImages[design],
     colors: Object.values(DESIGN_COLORS[design] ?? {})?.map((val) => val.hex),
+    category,
   };
 });
 
@@ -46,6 +58,8 @@ function UtilitiesContent() {
   const [width, setWidth] = useState<string>("14");
   const [height, setHeight] = useState<string>("7");
   const [showBackButton, setShowBackButton] = useState(false);
+  const [isDesignSectionExpanded, setIsDesignSectionExpanded] = useState(true);
+  const [showAdditionalSections, setShowAdditionalSections] = useState(false);
 
   useEffect(() => {
     const designId = searchParams.get("design");
@@ -166,34 +180,198 @@ function UtilitiesContent() {
         <h1 className="text-3xl font-bold">Setup Utility</h1>
 
         <Card className="bg-white dark:bg-gray-800">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-gray-100">
-              Select a Design
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select
-              value={selectedDesign?.id || ""}
-              onValueChange={(value) =>
-                setSelectedDesign(designs.find((d) => d.id === value) || null)
-              }
+          <motion.div>
+            <CardHeader 
+              className="cursor-pointer flex flex-row items-center justify-between"
+              onClick={() => setIsDesignSectionExpanded(!isDesignSectionExpanded)}
             >
-              <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                <SelectValue placeholder="Choose a design" />
-              </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-gray-700">
-                {designs.map((design) => (
-                  <SelectItem
-                    key={design.id}
-                    value={design.id}
-                    className="text-gray-900 dark:text-gray-100"
-                  >
-                    {design.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
+              <CardTitle className="text-gray-900 dark:text-gray-100">
+                Select a Design
+              </CardTitle>
+              <Button variant="ghost" size="sm" className="p-0">
+                <motion.div
+                  animate={{ rotate: isDesignSectionExpanded ? 180 : 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <ChevronDown className="h-5 w-5" />
+                </motion.div>
+              </Button>
+            </CardHeader>
+          </motion.div>
+          <AnimatePresence>
+            {isDesignSectionExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                style={{ overflow: "hidden" }}
+              >
+                <CardContent>
+                  <motion.div className="space-y-4">
+                    {/* Geometric Designs */}
+                    <motion.div className="space-y-3">
+                      <div className={styles.designGrid}>
+                        {designs
+                          .filter(design => design.category === 'geometric')
+                          .map((design) => (
+                            <motion.button
+                              key={design.id}
+                              onClick={() => {
+                                setSelectedDesign(design);
+                                setIsDesignSectionExpanded(false);
+                                setShowAdditionalSections(false);
+                              }}
+                              className={`${styles.designButton} ${
+                                selectedDesign?.id === design.id ? styles.selected : ''
+                              }`}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              layout
+                            >
+                              <div className={styles.imageContainer}>
+                                <Image
+                                  src={design.imageUrl}
+                                  alt={design.name}
+                                  fill
+                                  className={styles.image}
+                                />
+                              </div>
+                              <p className={styles.designName}>
+                                {design.name}
+                              </p>
+                            </motion.button>
+                          ))}
+                      </div>
+                    </motion.div>
+
+                    {/* Show More Button */}
+                    <motion.button
+                      onClick={() => setShowAdditionalSections(!showAdditionalSections)}
+                      className="w-full flex items-center justify-center gap-2 py-3 text-gray-700 dark:text-gray-300 
+                        hover:text-gray-900 dark:hover:text-gray-100 border-2 border-gray-200 dark:border-gray-700 
+                        rounded-lg hover:border-blue-300 dark:hover:border-blue-700 hover:bg-gray-50 
+                        dark:hover:bg-gray-800/50 transition-all"
+                    >
+                      <span className="font-medium">
+                        {showAdditionalSections ? 'Show Less' : 'Show More'}
+                      </span>
+                      <motion.div
+                        animate={{ rotate: showAdditionalSections ? 180 : 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <ChevronDown className="h-5 w-5" />
+                      </motion.div>
+                    </motion.button>
+
+                    {/* Additional Sections */}
+                    <AnimatePresence>
+                      {showAdditionalSections && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="space-y-4"
+                          style={{ overflow: "hidden" }}
+                        >
+                          {/* Striped Designs */}
+                          {designs.some(design => design.category === 'striped') && (
+                            <motion.div className="space-y-3">
+                              <div className={styles.sectionHeader}>
+                                <h3 className={styles.sectionTitle}>
+                                  Striped
+                                </h3>
+                                <div className={styles.divider} />
+                              </div>
+                              <div className={styles.additionalSectionGrid}>
+                                {designs
+                                  .filter(design => design.category === 'striped')
+                                  .map((design) => (
+                                    <motion.button
+                                      key={design.id}
+                                      onClick={() => {
+                                        setSelectedDesign(design);
+                                        setIsDesignSectionExpanded(false);
+                                      }}
+                                      className={`relative p-2 rounded-lg border-2 transition-all ${
+                                        selectedDesign?.id === design.id
+                                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                          : 'border-transparent hover:border-blue-300 dark:hover:border-blue-700'
+                                      }`}
+                                      whileHover={{ scale: 1.02 }}
+                                      whileTap={{ scale: 0.98 }}
+                                      layout
+                                    >
+                                      <div className="aspect-[2/1] relative mb-1">
+                                        <Image
+                                          src={design.imageUrl}
+                                          alt={design.name}
+                                          fill
+                                          className="object-contain"
+                                        />
+                                      </div>
+                                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 text-center">
+                                        {design.name}
+                                      </p>
+                                    </motion.button>
+                                  ))}
+                              </div>
+                            </motion.div>
+                          )}
+
+                          {/* Tiled Designs */}
+                          {designs.some(design => design.category === 'tiled') && (
+                            <motion.div className="space-y-3">
+                              <div className={styles.sectionHeader}>
+                                <h3 className={styles.sectionTitle}>
+                                  Tiled
+                                </h3>
+                                <div className={styles.divider} />
+                              </div>
+                              <div className={styles.additionalSectionGrid}>
+                                {designs
+                                  .filter(design => design.category === 'tiled')
+                                  .map((design) => (
+                                    <motion.button
+                                      key={design.id}
+                                      onClick={() => {
+                                        setSelectedDesign(design);
+                                        setIsDesignSectionExpanded(false);
+                                      }}
+                                      className={`relative p-2 rounded-lg border-2 transition-all ${
+                                        selectedDesign?.id === design.id
+                                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                          : 'border-transparent hover:border-blue-300 dark:hover:border-blue-700'
+                                      }`}
+                                      whileHover={{ scale: 1.02 }}
+                                      whileTap={{ scale: 0.98 }}
+                                      layout
+                                    >
+                                      <div className="aspect-[2/1] relative mb-1">
+                                        <Image
+                                          src={design.imageUrl}
+                                          alt={design.name}
+                                          fill
+                                          className="object-contain"
+                                        />
+                                      </div>
+                                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 text-center">
+                                        {design.name}
+                                      </p>
+                                    </motion.button>
+                                  ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                </CardContent>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Card>
 
         {selectedDesign && (
@@ -214,9 +392,19 @@ function UtilitiesContent() {
                     className="w-full h-auto"
                   />
                 </div>
-                <p className="text-gray-900 dark:text-gray-100">
-                  Number of colors: {selectedDesign.colors.length}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-gray-900 dark:text-gray-100">
+                    Number of colors: {selectedDesign.colors.length}
+                  </p>
+                  {new Set(selectedDesign.colors).size !== selectedDesign.colors.length && (
+                    <>
+                      <div className="h-6 w-px bg-gray-300 dark:bg-gray-400" />
+                      <p className="text-gray-900 dark:text-gray-100">
+                        Number of unique colors: {new Set(selectedDesign.colors).size}
+                      </p>
+                    </>
+                  )}
+                </div>
                 <div className="h-8 w-full flex">
                   {selectedDesign.colors.map((color, index) => (
                     <div

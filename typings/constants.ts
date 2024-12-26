@@ -487,15 +487,15 @@ export const ItemDesignImages: Record<ItemDesigns, string> = {
   [ItemDesigns.Aloe]: "/images/designs/aloe.webp?height=300&width=400",
   [ItemDesigns.Mirage]: "/images/designs/mirage.webp?height=300&width=400",
   [ItemDesigns.Tiled_Coastal]:
-    "/Users/steelebenjamin/Documents/Everwood/Code/shadcn-panel/public/images/designs/tiled-coastal.webp",
+    "/images/designs/tiled-coastal.webp?height=300&width=400",
   [ItemDesigns.Striped_Oceanic_Harmony]:
-    "/Users/steelebenjamin/Documents/Everwood/Code/shadcn-panel/public/images/designs/striped-ft5.webp",
+    "/images/designs/striped-ft5.webp?height=300&width=400",
   [ItemDesigns.Tiled_Oceanic_Harmony]:
-    "/Users/steelebenjamin/Documents/Everwood/Code/shadcn-panel/public/images/designs/tiled-ft5.webp",
+    "/images/designs/tiled-ft5.webp?height=300&width=400",
   [ItemDesigns.Striped_Timberline]:
-    "/Users/steelebenjamin/Documents/Everwood/Code/shadcn-panel/public/images/designs/striped-timberline.webp",
+    "/images/designs/striped-timberline.webp?height=300&width=400",
   [ItemDesigns.Tiled_Timberline]:
-    "/Users/steelebenjamin/Documents/Everwood/Code/shadcn-panel/public/images/designs/tiled-timberline.webp",
+    "/images/designs/tiled-timberline.webp?height=300&width=400",
 };
 
 export const DesignBlends: Record<ItemDesigns, string[]> = {
@@ -597,6 +597,8 @@ export const DEFAULT_ROUTER_SETTINGS: RouterSettings = {
     pushTime: 1000,
     riserTime: 1000,
     ejectionTime: 1000,
+    sensorDelayTime: 1000,
+    analysisMode: false,
   },
   ejection: {
     globalSettings: {
