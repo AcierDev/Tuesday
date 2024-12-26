@@ -58,7 +58,7 @@ function UtilitiesContent() {
   const [width, setWidth] = useState<string>("14");
   const [height, setHeight] = useState<string>("7");
   const [showBackButton, setShowBackButton] = useState(false);
-  const [isDesignSectionExpanded, setIsDesignSectionExpanded] = useState(true);
+  const [isDesignSectionExpanded, setIsDesignSectionExpanded] = useState(false);
   const [showAdditionalSections, setShowAdditionalSections] = useState(false);
 
   useEffect(() => {
