@@ -205,6 +205,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                   wsConnected={wsConnected}
                   sendCommand={sendCommand}
                   handleRotate={handleRotate}
+                  position={status.position}
                 />
               ) : activeTab === "pattern" ? (
                 <PatternSettings
