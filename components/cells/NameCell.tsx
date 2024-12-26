@@ -137,7 +137,7 @@ export const NameCell: React.FC<NameCellProps> = ({
           </form>
         </PopoverContent>
       </Popover>
-      <div className="flex items-center space-x-2 w-full pl-8">
+      <div className="flex items-center space-x-2 w-full pl-2">
         <Input
           className="font-medium border-0 p-2 bg-transparent w-full text-center text-transparent caret-black dark:caret-white"
           value={inputValue}
