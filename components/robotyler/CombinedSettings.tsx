@@ -2,16 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import {
-  Zap,
-  Settings,
-  RotateCw,
-  RotateCcwIcon,
-  Save,
-  Clock,
-  Sliders,
-  Grid,
-} from "lucide-react";
+import { Settings, RotateCw, Save, Sliders, Grid } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatternSettings } from "./PatternSettings";
 import { SystemState, SystemSettings } from "@/app/robotyler/page";
@@ -87,11 +78,6 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
       value: "speeds",
       label: "Speed Controls",
       icon: Sliders,
-    },
-    {
-      value: "movement",
-      label: "Movement",
-      icon: RotateCw,
     },
     {
       value: "maintenance",
@@ -195,7 +181,11 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                           value={[pendingSpeedChanges[side] ?? speed]}
                           onValueChange={(value) =>
                             handleSpeedChange(
-                              side as keyof typeof settings.speeds,
+                              side == "front"
+                                ? "back"
+                                : side == "back"
+                                ? "front"
+                                : (side as keyof typeof settings.speeds),
                               value
                             )
                           }
@@ -211,14 +201,6 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                     </div>
                   ))}
                 </div>
-              ) : activeTab === "movement" ? (
-                <MovementControls
-                  wsConnected={wsConnected}
-                  sendCommand={sendCommand}
-                  handleRotate={handleRotate}
-                  position={status.position}
-                  limitSwitches={status.limitSwitches}
-                />
               ) : activeTab === "pattern" ? (
                 <PatternSettings
                   settings={settings}

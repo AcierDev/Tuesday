@@ -17,6 +17,7 @@ import {
   ArrowDownLeft,
   ArrowDownRight,
   CircleDot,
+  Zap,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -190,7 +191,7 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
     };
 
     return (
-      <motion.button
+      <button
         className={`relative p-5 rounded-lg bg-white dark:bg-gray-800 
           shadow-sm hover:shadow-md transition-all duration-200 
           border border-gray-100 dark:border-transparent
@@ -203,8 +204,6 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
           hover:bg-gray-50 dark:hover:bg-gray-750
           ${isDirectionDisabled() ? "opacity-50 cursor-not-allowed" : ""}
           disabled:opacity-50`}
-        whileHover={{ scale: isDirectionDisabled() ? 1 : 1.02 }}
-        whileTap={{ scale: isDirectionDisabled() ? 1 : 0.98 }}
         onMouseDown={() => !isDirectionDisabled() && startMovement(direction)}
         onMouseUp={stopMovement}
         onMouseLeave={stopMovement}
@@ -213,14 +212,11 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
         disabled={!wsConnected || isDirectionDisabled()}
       >
         <Icon className="w-7 h-7 text-gray-700 dark:text-gray-300" />
-        <motion.div
-          className="absolute inset-0 rounded-lg bg-blue-500/10 dark:bg-blue-400/10"
-          animate={{
-            opacity: activeDirection === direction ? 1 : 0,
-          }}
-          transition={{ duration: 0.2 }}
+        <div
+          className={`absolute inset-0 rounded-lg bg-blue-500/10 dark:bg-blue-400/10 transition-opacity duration-200
+            ${activeDirection === direction ? "opacity-100" : "opacity-0"}`}
         />
-      </motion.button>
+      </button>
     );
   };
 
@@ -328,139 +324,9 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
       </div>
 
       {/* Movement and Servo Controls Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[auto,1fr,300px] gap-8 place-items-start">
-        {/* Left side - Movement Controls */}
-        <div className="space-y-6 w-full">
-          {/* Movement Controls */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-transparent">
-            <div className="space-y-6">
-              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                <ArrowUp className="w-4 h-4" />
-                Movement Controls
-              </h3>
-
-              <div className="relative flex items-center justify-center">
-                <div className="grid grid-cols-3 gap-3">
-                  {/* Top row */}
-                  <div className="col-start-1 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-                    <DirectionButton
-                      direction="forward-left"
-                      icon={ArrowUpLeft}
-                    />
-                  </div>
-                  <div className="col-start-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg    ">
-                    <DirectionButton direction="forward" icon={ArrowUp} />
-                  </div>
-                  <div className="col-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-                    <DirectionButton
-                      direction="forward-right"
-                      icon={ArrowUpRight}
-                    />
-                  </div>
-
-                  {/* Middle row */}
-                  <div className="col-start-1 row-start-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-                    <DirectionButton direction="left" icon={ArrowLeft} />
-                  </div>
-                  <div className="col-start-2 row-start-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="w-full h-full aspect-square bg-white dark:bg-gray-800 
-                        border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750
-                        p-5"
-                      onClick={() => sendCommand({ type: "HOME_SYSTEM" })}
-                      disabled={!wsConnected}
-                    >
-                      <Home className="w-7 h-7 text-gray-600 dark:text-gray-300" />
-                    </Button>
-                  </div>
-                  <div className="col-start-3 row-start-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-                    <DirectionButton direction="right" icon={ArrowRight} />
-                  </div>
-
-                  {/* Bottom row */}
-                  <div className="col-start-1 row-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-                    <DirectionButton
-                      direction="backward-left"
-                      icon={ArrowDownLeft}
-                    />
-                  </div>
-                  <div className="col-start-2 row-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-                    <DirectionButton direction="backward" icon={ArrowDown} />
-                  </div>
-                  <div className="col-start-3 row-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-                    <DirectionButton
-                      direction="backward-right"
-                      icon={ArrowDownRight}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Middle - Control Buttons Stack */}
-        <div className="flex flex-col items-center gap-4 mx-auto w-full max-w-[12rem]">
-          <Button
-            variant="outline"
-            size="lg"
-            className={`w-48 h-12 bg-white dark:bg-gray-800
-              ${
-                isSprayActive
-                  ? "border-cyan-500 text-cyan-600 dark:text-cyan-400 ring-2 ring-cyan-500/20"
-                  : "border-gray-200"
-              }
-              hover:bg-gray-50 dark:hover:bg-gray-750`}
-            onClick={toggleSpray}
-            disabled={!wsConnected}
-          >
-            <SprayCanIcon className="w-5 h-5 mr-2" />
-            <span className="font-medium">
-              {isSprayActive ? "Stop" : "Start"} Spray
-            </span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="lg"
-            className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
-              hover:bg-gray-50 dark:hover:bg-gray-750"
-            onClick={() => sendCommand({ type: "PRESSURIZE" })}
-            disabled={!wsConnected}
-          >
-            <Gauge className="w-5 h-5 mr-2" />
-            <span className="font-medium">Pressurize</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="lg"
-            className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
-              hover:bg-gray-50 dark:hover:bg-gray-750"
-            onClick={() => handleRotate("left")}
-            disabled={!wsConnected}
-          >
-            <RotateCcw className="w-5 h-5 mr-2" />
-            <span className="font-medium">Rotate Left 90°</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="lg"
-            className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
-              hover:bg-gray-50 dark:hover:bg-gray-750"
-            onClick={() => handleRotate("right")}
-            disabled={!wsConnected}
-          >
-            <RotateCw className="w-5 h-5 mr-2" />
-            <span className="font-medium">Rotate Right 90°</span>
-          </Button>
-        </div>
-
-        {/* Right side - Servo Controls */}
-        <div className="space-y-6 w-full">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px,1fr,300px] gap-4 lg:gap-8">
+        {/* Servo Controls - First in desktop */}
+        <div className="w-full order-last lg:order-first">
           {/* Servo Control Panel */}
           <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-transparent">
             <div className="space-y-6">
@@ -473,6 +339,15 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
               <div className="relative h-40 flex items-center justify-center">
                 <div className="w-32 h-32 rounded-full border-2 border-gray-200 dark:border-gray-700 relative">
                   {/* Angle markers */}
+                  <div className="absolute inset-0">
+                    <svg className="w-full h-full" viewBox="0 0 100 100">
+                      <path
+                        d="M50,50 L85,15 A50,50 0 0,0 50,0 L50,50"
+                        fill="rgb(239 68 68 / 0.2)"
+                        transform="rotate(135, 50, 50)"
+                      />
+                    </svg>
+                  </div>
                   <div className="absolute inset-0 flex items-center justify-center">
                     {[0, 45, 90, 135, 180].map((angle) => (
                       <div
@@ -552,6 +427,136 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Movement Controls - Second in desktop */}
+        <div className="w-full order-first lg:order-2 lg:max-w-[400px] lg:justify-self-center">
+          {/* Movement Controls */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-transparent">
+            <div className="space-y-6">
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center justify-center gap-2">
+                <ArrowUp className="w-4 h-4" />
+                Movement Controls
+              </h3>
+
+              <div className="relative flex items-center justify-center">
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Top row */}
+                  <div className="col-start-1 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton
+                      direction="forward-left"
+                      icon={ArrowUpLeft}
+                    />
+                  </div>
+                  <div className="col-start-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg    ">
+                    <DirectionButton direction="forward" icon={ArrowUp} />
+                  </div>
+                  <div className="col-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton
+                      direction="forward-right"
+                      icon={ArrowUpRight}
+                    />
+                  </div>
+
+                  {/* Middle row */}
+                  <div className="col-start-1 row-start-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton direction="left" icon={ArrowLeft} />
+                  </div>
+                  <div className="col-start-2 row-start-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="w-full h-full aspect-square bg-white dark:bg-gray-800 
+                        border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750
+                        p-5"
+                      onClick={() => sendCommand({ type: "HOME_SYSTEM" })}
+                      disabled={!wsConnected}
+                    >
+                      <Home className="w-7 h-7 text-gray-600 dark:text-gray-300" />
+                    </Button>
+                  </div>
+                  <div className="col-start-3 row-start-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton direction="right" icon={ArrowRight} />
+                  </div>
+
+                  {/* Bottom row */}
+                  <div className="col-start-1 row-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton
+                      direction="backward-left"
+                      icon={ArrowDownLeft}
+                    />
+                  </div>
+                  <div className="col-start-2 row-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton direction="backward" icon={ArrowDown} />
+                  </div>
+                  <div className="col-start-3 row-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton
+                      direction="backward-right"
+                      icon={ArrowDownRight}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Button Stack - Last in desktop */}
+        <div className="flex flex-col items-center gap-4 mx-auto w-full max-w-[12rem] lg:justify-center lg:h-full order-2 lg:order-last">
+          <Button
+            variant="outline"
+            size="lg"
+            className={`w-48 h-12 bg-white dark:bg-gray-800
+              ${
+                isSprayActive
+                  ? "border-cyan-500 text-cyan-600 dark:text-cyan-400 ring-2 ring-cyan-500/20"
+                  : "border-gray-200"
+              }
+              hover:bg-gray-50 dark:hover:bg-gray-750`}
+            onClick={toggleSpray}
+            disabled={!wsConnected}
+          >
+            <SprayCanIcon className="w-5 h-5 mr-2" />
+            <span className="font-medium">
+              {isSprayActive ? "Stop" : "Start"} Spray
+            </span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
+              hover:bg-gray-50 dark:hover:bg-gray-750"
+            onClick={() => sendCommand({ type: "PRESSURIZE" })}
+            disabled={!wsConnected}
+          >
+            <Zap className="w-5 h-5 mr-2" />
+            <span className="font-medium">Pressurize</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
+              hover:bg-gray-50 dark:hover:bg-gray-750"
+            onClick={() => handleRotate("left")}
+            disabled={!wsConnected}
+          >
+            <RotateCcw className="w-5 h-5 mr-2" />
+            <span className="font-medium">Rotate Left 90°</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
+              hover:bg-gray-50 dark:hover:bg-gray-750"
+            onClick={() => handleRotate("right")}
+            disabled={!wsConnected}
+          >
+            <RotateCw className="w-5 h-5 mr-2" />
+            <span className="font-medium">Rotate Right 90°</span>
+          </Button>
         </div>
       </div>
 

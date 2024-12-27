@@ -12,6 +12,7 @@ import {
   Square,
   Save,
   Recycle,
+  RotateCw,
 } from "lucide-react";
 import {
   Dialog,
@@ -30,7 +31,7 @@ import LiveCameraFeed from "@/components/robotyler/LiveWebcamFeed";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import RoboTylerHeader from "@/components/robotyler/RoboTylerHeader";
-import { StatusCard } from "@/components/shared/StatusCard";
+import { MovementControls } from "@/components/robotyler/MovementControls";
 
 export interface PatternStatus {
   command: number;
@@ -458,46 +459,79 @@ export default function Dashboard() {
 
       <main className="container mx-auto px-4 py-6 flex-1">
         <div className="grid gap-6">
+          {/* Operation Controls Row */}
           <div className="grid lg:grid-cols-2 gap-6">
+            {/* System Controls Card */}
             <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold flex items-center">
-                  <SprayCanIcon className="mr-2 h-5 w-5 text-blue-500" />
-                  System Controls
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
+              <CardContent className="p-3">
+                <div className="grid grid-cols-4 gap-3 h-[100px]">
                   <Button
-                    className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-md transition-all duration-200"
+                    className="relative p-3 rounded-lg bg-white dark:bg-gray-800 
+                      border border-gray-200 dark:border-transparent
+                      hover:bg-gray-50 dark:hover:bg-gray-750
+                      hover:border-purple-500 dark:hover:border-purple-400
+                      hover:shadow-md hover:scale-[1.02]
+                      transform transition-all duration-200 ease-in-out
+                      disabled:opacity-50 disabled:hover:scale-100 
+                      disabled:hover:shadow-none disabled:hover:border-gray-200
+                      h-full flex flex-col items-center justify-center"
                     onClick={() => sendCommand({ type: "PRIME_GUN" })}
                     disabled={!showPrimeButton || !wsConnected}
                   >
-                    <SprayCanIcon className="mr-2" size={18} />
-                    Prime Gun
+                    <SprayCanIcon className="w-5 h-5 text-purple-500 dark:text-purple-400 mb-2" />
+                    <span className="font-medium text-sm text-gray-700 dark:text-gray-300 text-center">
+                      Prime Gun
+                    </span>
                   </Button>
+
                   <Button
-                    className="w-full bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white shadow-md transition-all duration-200"
+                    className="relative p-3 rounded-lg bg-white dark:bg-gray-800 
+                      border border-gray-200 dark:border-transparent
+                      hover:bg-gray-50 dark:hover:bg-gray-750
+                      hover:border-cyan-500 dark:hover:border-cyan-400
+                      hover:shadow-md hover:scale-[1.02]
+                      transform transition-all duration-200 ease-in-out
+                      disabled:opacity-50 disabled:hover:scale-100 
+                      disabled:hover:shadow-none disabled:hover:border-gray-200
+                      h-full flex flex-col items-center justify-center"
                     onClick={() => sendCommand({ type: "CLEAN_GUN" })}
                     disabled={!showCleanButton || !wsConnected}
                   >
-                    <Droplet className="mr-2" size={18} />
-                    Clean Gun
+                    <Droplet className="w-5 h-5 text-cyan-500 dark:text-cyan-400 mb-2" />
+                    <span className="font-medium text-sm text-gray-700 dark:text-gray-300 text-center">
+                      Clean Gun
+                    </span>
                   </Button>
+
                   <Button
-                    className="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white shadow-md transition-all duration-200"
+                    className="relative p-3 rounded-lg bg-white dark:bg-gray-800 
+                      border border-gray-200 dark:border-transparent
+                      hover:bg-gray-50 dark:hover:bg-gray-750
+                      hover:border-teal-500 dark:hover:border-teal-400
+                      hover:shadow-md hover:scale-[1.02]
+                      transform transition-all duration-200 ease-in-out
+                      disabled:opacity-50 disabled:hover:scale-100 
+                      disabled:hover:shadow-none disabled:hover:border-gray-200
+                      h-full flex flex-col items-center justify-center"
                     onClick={() => sendCommand({ type: "BACK_WASH" })}
                     disabled={!wsConnected}
                   >
-                    <Recycle className="mr-2" size={18} />
-                    Back Wash
+                    <Recycle className="w-5 h-5 text-teal-500 dark:text-teal-400 mb-2" />
+                    <span className="font-medium text-sm text-gray-700 dark:text-gray-300 text-center">
+                      Back Wash
+                    </span>
                   </Button>
+
                   <Button
-                    className={`w-full bg-gradient-to-r ${
-                      state.pressurePotActive
-                        ? "from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
-                        : "from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                    } text-white shadow-md transition-all duration-200`}
+                    className="relative p-3 rounded-lg bg-white dark:bg-gray-800 
+                      border border-gray-200 dark:border-transparent
+                      hover:bg-gray-50 dark:hover:bg-gray-750
+                      hover:border-amber-500 dark:hover:border-amber-400
+                      hover:shadow-md hover:scale-[1.02]
+                      transform transition-all duration-200 ease-in-out
+                      disabled:opacity-50 disabled:hover:scale-100 
+                      disabled:hover:shadow-none disabled:hover:border-gray-200
+                      h-full flex flex-col items-center justify-center"
                     onClick={() => sendCommand({ type: "TOGGLE_PRESSURE_POT" })}
                     disabled={
                       !(
@@ -505,10 +539,18 @@ export default function Dashboard() {
                       ) || !wsConnected
                     }
                   >
-                    <Zap className="mr-2" size={18} />
-                    {state.pressurePotActive
-                      ? "Depressurize Pot"
-                      : "Pressurize Pot"}
+                    <Zap
+                      className={`w-5 h-5 mb-2 ${
+                        state.pressurePotActive
+                          ? "text-amber-500 dark:text-amber-400"
+                          : "text-blue-500 dark:text-blue-400"
+                      }`}
+                    />
+                    <span className="font-medium text-sm text-gray-700 dark:text-gray-300 text-center">
+                      {state.pressurePotActive
+                        ? "Depressurize Pot"
+                        : "Pressurize Pot"}
+                    </span>
                   </Button>
                 </div>
               </CardContent>
@@ -516,51 +558,88 @@ export default function Dashboard() {
 
             {/* Operation Controls Card */}
             <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold flex items-center">
-                  <Play className="mr-2 h-5 w-5 text-green-500" />
-                  Operation Controls
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 mb-4">
+              <CardContent className="p-3">
+                <div className="grid grid-cols-4 gap-3 h-[100px]">
                   <Button
+                    className="relative p-3 rounded-lg bg-white dark:bg-gray-800 
+                      border border-gray-200 dark:border-transparent
+                      hover:bg-gray-50 dark:hover:bg-gray-750
+                      hover:border-blue-500 dark:hover:border-blue-400
+                      hover:shadow-md hover:scale-[1.02]
+                      transform transition-all duration-200 ease-in-out
+                      disabled:opacity-50 disabled:hover:scale-100 
+                      disabled:hover:shadow-none disabled:hover:border-gray-200
+                      h-full flex flex-col items-center justify-center"
                     onClick={() => sendCommand({ type: "HOME_SYSTEM" })}
                     disabled={!showHomeButton || !wsConnected}
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-md transition-all duration-200"
                   >
-                    <Home className="mr-2" size={18} />
-                    Home System
+                    <Home className="w-5 h-5 text-blue-500 dark:text-blue-400 mb-2" />
+                    <span className="font-medium text-sm text-gray-700 dark:text-gray-300 text-center">
+                      Home System
+                    </span>
                   </Button>
+
                   <Button
+                    className="relative p-3 rounded-lg bg-white dark:bg-gray-800 
+                      border border-gray-200 dark:border-transparent
+                      hover:bg-gray-50 dark:hover:bg-gray-750
+                      hover:border-green-500 dark:hover:border-green-400
+                      hover:shadow-md hover:scale-[1.02]
+                      transform transition-all duration-200 ease-in-out
+                      disabled:opacity-50 disabled:hover:scale-100 
+                      disabled:hover:shadow-none disabled:hover:border-gray-200
+                      h-full flex flex-col items-center justify-center"
                     onClick={() => sendCommand({ type: "START_PAINTING" })}
                     disabled={!showStartButton || !wsConnected}
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md transition-all duration-200"
                   >
-                    <Play className="mr-2" size={18} />
-                    Start
+                    <Play className="w-5 h-5 text-green-500 dark:text-green-400 mb-2" />
+                    <span className="font-medium text-sm text-gray-700 dark:text-gray-300 text-center">
+                      Start
+                    </span>
                   </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+
                   <Button
+                    className="relative p-3 rounded-lg bg-white dark:bg-gray-800 
+                      border border-gray-200 dark:border-transparent
+                      hover:bg-gray-50 dark:hover:bg-gray-750
+                      hover:border-yellow-500 dark:hover:border-yellow-400
+                      hover:shadow-md hover:scale-[1.02]
+                      transform transition-all duration-200 ease-in-out
+                      disabled:opacity-50 disabled:hover:scale-100 
+                      disabled:hover:shadow-none disabled:hover:border-gray-200
+                      h-full flex flex-col items-center justify-center"
                     onClick={() => sendCommand({ type: "PAUSE_PAINTING" })}
                     disabled={!showPauseButton || !wsConnected}
-                    className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white shadow-md transition-all duration-200"
                   >
-                    {isPaused ? (
-                      <Play size={18} className="mr-2" />
-                    ) : (
-                      <Pause size={18} className="mr-2" />
-                    )}
-                    {isPaused ? "Resume" : "Pause"}
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      {isPaused ? (
+                        <Play className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mb-2" />
+                      ) : (
+                        <Pause className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mb-2" />
+                      )}
+                      <span className="font-medium text-sm text-gray-700 dark:text-gray-300 text-center">
+                        {isPaused ? "Resume" : "Pause"}
+                      </span>
+                    </div>
                   </Button>
+
                   <Button
+                    className="relative p-3 rounded-lg bg-white dark:bg-gray-800 
+                      border border-gray-200 dark:border-transparent
+                      hover:bg-gray-50 dark:hover:bg-gray-750
+                      hover:border-red-500 dark:hover:border-red-400
+                      hover:shadow-md hover:scale-[1.02]
+                      transform transition-all duration-200 ease-in-out
+                      disabled:opacity-50 disabled:hover:scale-100 
+                      disabled:hover:shadow-none disabled:hover:border-gray-200
+                      h-full flex flex-col items-center justify-center"
                     onClick={() => sendCommand({ type: "STOP_PAINTING" })}
                     disabled={!showStopButton || !wsConnected}
-                    className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-md transition-all duration-200"
                   >
-                    <Square className="mr-2" size={18} />
-                    Stop
+                    <Square className="w-5 h-5 text-red-500 dark:text-red-400 mb-2" />
+                    <span className="font-medium text-sm text-gray-700 dark:text-gray-300 text-center">
+                      Stop
+                    </span>
                   </Button>
                 </div>
               </CardContent>
@@ -604,7 +683,26 @@ export default function Dashboard() {
             </motion.div>
           </div>
 
-          {/* Combined Speed & Movement Controls */}
+          {/* Movement Controls Card - NEW */}
+          <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold flex items-center">
+                <RotateCw className="mr-2 h-5 w-5 text-blue-500" />
+                Movement Controls
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MovementControls
+                wsConnected={wsConnected}
+                sendCommand={sendCommand}
+                handleRotate={handleRotate}
+                position={state.position}
+                limitSwitches={state.limitSwitches}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Combined Settings Card */}
           <CombinedControls
             status={state}
             settings={settings}
