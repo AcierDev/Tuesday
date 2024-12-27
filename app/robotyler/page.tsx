@@ -75,6 +75,16 @@ export interface SystemState {
   warnings: Warning[];
   lastSerialMessage: string;
   pressurePotActive: boolean;
+  limitSwitches?: {
+    x: {
+      min: boolean;
+      max: boolean;
+    };
+    y: {
+      min: boolean;
+      max: boolean;
+    };
+  };
 }
 
 export const INITIAL_STATUS: SystemState = {
@@ -429,7 +439,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="flex flex-col min-h-screen">
       <RoboTylerHeader
         status={state}
         settings={settings}
@@ -446,7 +456,7 @@ export default function Dashboard() {
         onToggleCameraFeed={() => setShowCameraFeed(!showCameraFeed)}
       />
 
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-4 py-6 flex-1">
         <div className="grid gap-6">
           <div className="grid lg:grid-cols-2 gap-6">
             <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
@@ -609,6 +619,7 @@ export default function Dashboard() {
             onSaveMaintenanceChanges={handleSaveMaintenanceChanges}
             hasUnsavedMaintenanceChanges={hasUnsavedMaintenanceChanges}
             sendCommand={sendCommand}
+            limitSwitches={state.limitSwitches}
           />
         </div>
       </main>

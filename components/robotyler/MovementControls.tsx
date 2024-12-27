@@ -16,6 +16,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   ArrowDownRight,
+  CircleDot,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -28,6 +29,17 @@ interface MovementControlsProps {
     y: number;
     timestamp?: number;
   };
+  limitSwitches?: {
+    x: {
+      min: boolean;
+      max: boolean;
+    };
+    y: {
+      min: boolean;
+      max: boolean;
+    };
+  };
+  servoAngle?: number;
 }
 
 // Update DirectionButton props to include diagonal directions
@@ -50,6 +62,8 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
   sendCommand,
   handleRotate,
   position = { x: 0, y: 0 },
+  limitSwitches,
+  servoAngle = 90,
 }) => {
   const [speed, setSpeed] = useState(50);
   const [acceleration, setAcceleration] = useState(50);
@@ -64,6 +78,9 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
     x: position.x.toString(),
     y: position.y.toString(),
   });
+  const [targetServoAngle, setTargetServoAngle] = useState(
+    servoAngle.toString()
+  );
 
   // Update target position when actual position changes
   useEffect(() => {
@@ -145,37 +162,67 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
     direction,
     icon: Icon,
     className = "",
-  }: DirectionButtonProps) => (
-    <motion.button
-      className={`relative p-4 rounded-lg bg-white dark:bg-gray-800 
-        shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 
-        border border-gray-100 dark:border-transparent
-        ${
-          activeDirection === direction
-            ? "ring-2 ring-blue-500 dark:ring-blue-400"
-            : ""
-        }
-        ${className}
-        hover:bg-gray-50 dark:hover:bg-gray-750`}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      onMouseDown={() => startMovement(direction)}
-      onMouseUp={stopMovement}
-      onMouseLeave={stopMovement}
-      onTouchStart={() => startMovement(direction)}
-      onTouchEnd={stopMovement}
-      disabled={!wsConnected}
-    >
-      <Icon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-      <motion.div
-        className="absolute inset-0 rounded-lg bg-blue-500/10 dark:bg-blue-400/10"
-        animate={{
-          opacity: activeDirection === direction ? 1 : 0,
-        }}
-        transition={{ duration: 0.2 }}
-      />
-    </motion.button>
-  );
+  }: DirectionButtonProps) => {
+    // Helper function to check if movement in a direction is disabled
+    const isDirectionDisabled = () => {
+      if (!limitSwitches) return false;
+
+      switch (direction) {
+        case "forward":
+          return limitSwitches.y.max;
+        case "backward":
+          return limitSwitches.y.min;
+        case "left":
+          return limitSwitches.x.min;
+        case "right":
+          return limitSwitches.x.max;
+        case "forward-left":
+          return limitSwitches.y.max && limitSwitches.x.min;
+        case "forward-right":
+          return limitSwitches.y.max && limitSwitches.x.max;
+        case "backward-left":
+          return limitSwitches.y.min && limitSwitches.x.min;
+        case "backward-right":
+          return limitSwitches.y.min && limitSwitches.x.max;
+        default:
+          return false;
+      }
+    };
+
+    return (
+      <motion.button
+        className={`relative p-5 rounded-lg bg-white dark:bg-gray-800 
+          shadow-sm hover:shadow-md transition-all duration-200 
+          border border-gray-100 dark:border-transparent
+          ${
+            activeDirection === direction
+              ? "ring-2 ring-blue-500 dark:ring-blue-400"
+              : ""
+          }
+          ${className}
+          hover:bg-gray-50 dark:hover:bg-gray-750
+          ${isDirectionDisabled() ? "opacity-50 cursor-not-allowed" : ""}
+          disabled:opacity-50`}
+        whileHover={{ scale: isDirectionDisabled() ? 1 : 1.02 }}
+        whileTap={{ scale: isDirectionDisabled() ? 1 : 0.98 }}
+        onMouseDown={() => !isDirectionDisabled() && startMovement(direction)}
+        onMouseUp={stopMovement}
+        onMouseLeave={stopMovement}
+        onTouchStart={() => !isDirectionDisabled() && startMovement(direction)}
+        onTouchEnd={stopMovement}
+        disabled={!wsConnected || isDirectionDisabled()}
+      >
+        <Icon className="w-7 h-7 text-gray-700 dark:text-gray-300" />
+        <motion.div
+          className="absolute inset-0 rounded-lg bg-blue-500/10 dark:bg-blue-400/10"
+          animate={{
+            opacity: activeDirection === direction ? 1 : 0,
+          }}
+          transition={{ duration: 0.2 }}
+        />
+      </motion.button>
+    );
+  };
 
   // Clean up any active movements when component unmounts
   useEffect(() => {
@@ -200,11 +247,38 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
     };
   }, [activeDirection, isSprayActive, sendCommand]);
 
+  // Add handler for servo angle changes
+  const handleServoAngleChange = (value: string) => {
+    setTargetServoAngle(value);
+    const numValue =
+      value === "" ? 90 : Math.min(Math.max(parseFloat(value), 0), 180);
+    if (!isNaN(numValue)) {
+      sendCommand({
+        type: "SET_SERVO_ANGLE",
+        payload: {
+          angle: numValue,
+        },
+      });
+    }
+  };
+
+  const adjustServoAngle = (adjustment: number) => {
+    const currentAngle = parseFloat(targetServoAngle) || 90;
+    const newAngle = Math.min(Math.max(currentAngle + adjustment, 0), 180);
+    setTargetServoAngle(newAngle.toString());
+    sendCommand({
+      type: "SET_SERVO_ANGLE",
+      payload: {
+        angle: newAngle,
+      },
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Position Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-transparent">
-        <div className="grid grid-cols-[1fr,1fr,auto] gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr,1fr,auto] gap-4 items-end">
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-2 text-gray-600 dark:text-gray-300">
               <ArrowRight className="w-4 h-4" />X Position
@@ -253,104 +327,236 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
         </div>
       </div>
 
-      {/* Spray Toggle Button */}
-      <div className="flex justify-end">
-        <Button
-          variant="outline"
-          size="lg"
-          className={`px-4 h-10 bg-white dark:bg-white-200 dark:text-black
-            ${
-              isSprayActive
-                ? "border-cyan-500 text-cyan-600 dark:text-cyan-400"
-                : "border-gray-200"
-            }
-            hover:bg-gray-50 dark:hover:bg-gray-750`}
-          onClick={toggleSpray}
-          disabled={!wsConnected}
-        >
-          <SprayCanIcon className="w-4 h-4 mr-2" />
-          <span className="font-medium">Spray</span>
-        </Button>
-      </div>
+      {/* Movement and Servo Controls Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-[auto,1fr,300px] gap-8 place-items-start">
+        {/* Left side - Movement Controls */}
+        <div className="space-y-6 w-full">
+          {/* Movement Controls */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-transparent">
+            <div className="space-y-6">
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                <ArrowUp className="w-4 h-4" />
+                Movement Controls
+              </h3>
 
-      {/* Movement Controls */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-transparent">
-        <div className="relative flex items-center justify-center">
-          <div className="grid grid-cols-3 gap-3">
-            {/* Top row */}
-            <div className="col-start-1 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-              <DirectionButton direction="forward-left" icon={ArrowUpLeft} />
-            </div>
-            <div className="col-start-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg    ">
-              <DirectionButton direction="forward" icon={ArrowUp} />
-            </div>
-            <div className="col-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-              <DirectionButton direction="forward-right" icon={ArrowUpRight} />
-            </div>
+              <div className="relative flex items-center justify-center">
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Top row */}
+                  <div className="col-start-1 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton
+                      direction="forward-left"
+                      icon={ArrowUpLeft}
+                    />
+                  </div>
+                  <div className="col-start-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg    ">
+                    <DirectionButton direction="forward" icon={ArrowUp} />
+                  </div>
+                  <div className="col-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton
+                      direction="forward-right"
+                      icon={ArrowUpRight}
+                    />
+                  </div>
 
-            {/* Middle row */}
-            <div className="col-start-1 row-start-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-              <DirectionButton direction="left" icon={ArrowLeft} />
-            </div>
-            <div className="col-start-2 row-start-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="w-full h-full aspect-square bg-white dark:bg-gray-800 
-                  border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750"
-                onClick={() => sendCommand({ type: "HOME_SYSTEM" })}
-                disabled={!wsConnected}
-              >
-                <Home className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-              </Button>
-            </div>
-            <div className="col-start-3 row-start-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-              <DirectionButton direction="right" icon={ArrowRight} />
-            </div>
+                  {/* Middle row */}
+                  <div className="col-start-1 row-start-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton direction="left" icon={ArrowLeft} />
+                  </div>
+                  <div className="col-start-2 row-start-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="w-full h-full aspect-square bg-white dark:bg-gray-800 
+                        border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750
+                        p-5"
+                      onClick={() => sendCommand({ type: "HOME_SYSTEM" })}
+                      disabled={!wsConnected}
+                    >
+                      <Home className="w-7 h-7 text-gray-600 dark:text-gray-300" />
+                    </Button>
+                  </div>
+                  <div className="col-start-3 row-start-2 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton direction="right" icon={ArrowRight} />
+                  </div>
 
-            {/* Bottom row */}
-            <div className="col-start-1 row-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-              <DirectionButton direction="backward-left" icon={ArrowDownLeft} />
+                  {/* Bottom row */}
+                  <div className="col-start-1 row-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton
+                      direction="backward-left"
+                      icon={ArrowDownLeft}
+                    />
+                  </div>
+                  <div className="col-start-2 row-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton direction="backward" icon={ArrowDown} />
+                  </div>
+                  <div className="col-start-3 row-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
+                    <DirectionButton
+                      direction="backward-right"
+                      icon={ArrowDownRight}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="col-start-2 row-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-              <DirectionButton direction="backward" icon={ArrowDown} />
-            </div>
-            <div className="col-start-3 row-start-3 border-2 border-gray-100 dark:border-gray-700 rounded-lg">
-              <DirectionButton
-                direction="backward-right"
-                icon={ArrowDownRight}
-              />
+          </div>
+        </div>
+
+        {/* Middle - Control Buttons Stack */}
+        <div className="flex flex-col items-center gap-4 mx-auto w-full max-w-[12rem]">
+          <Button
+            variant="outline"
+            size="lg"
+            className={`w-48 h-12 bg-white dark:bg-gray-800
+              ${
+                isSprayActive
+                  ? "border-cyan-500 text-cyan-600 dark:text-cyan-400 ring-2 ring-cyan-500/20"
+                  : "border-gray-200"
+              }
+              hover:bg-gray-50 dark:hover:bg-gray-750`}
+            onClick={toggleSpray}
+            disabled={!wsConnected}
+          >
+            <SprayCanIcon className="w-5 h-5 mr-2" />
+            <span className="font-medium">
+              {isSprayActive ? "Stop" : "Start"} Spray
+            </span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
+              hover:bg-gray-50 dark:hover:bg-gray-750"
+            onClick={() => sendCommand({ type: "PRESSURIZE" })}
+            disabled={!wsConnected}
+          >
+            <Gauge className="w-5 h-5 mr-2" />
+            <span className="font-medium">Pressurize</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
+              hover:bg-gray-50 dark:hover:bg-gray-750"
+            onClick={() => handleRotate("left")}
+            disabled={!wsConnected}
+          >
+            <RotateCcw className="w-5 h-5 mr-2" />
+            <span className="font-medium">Rotate Left 90°</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
+              hover:bg-gray-50 dark:hover:bg-gray-750"
+            onClick={() => handleRotate("right")}
+            disabled={!wsConnected}
+          >
+            <RotateCw className="w-5 h-5 mr-2" />
+            <span className="font-medium">Rotate Right 90°</span>
+          </Button>
+        </div>
+
+        {/* Right side - Servo Controls */}
+        <div className="space-y-6 w-full">
+          {/* Servo Control Panel */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-transparent">
+            <div className="space-y-6">
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                <CircleDot className="w-4 h-4" />
+                Servo Angle Control
+              </h3>
+
+              {/* Servo angle visualization */}
+              <div className="relative h-40 flex items-center justify-center">
+                <div className="w-32 h-32 rounded-full border-2 border-gray-200 dark:border-gray-700 relative">
+                  {/* Angle markers */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {[0, 45, 90, 135, 180].map((angle) => (
+                      <div
+                        key={angle}
+                        className="absolute w-full h-full"
+                        style={{ transform: `rotate(${180 + angle}deg)` }}
+                      >
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-2 w-0.5 bg-gray-300 dark:bg-gray-600" />
+                        <div
+                          className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 dark:text-gray-400"
+                          style={{ transform: "rotate(180deg)" }}
+                        >
+                          {angle}°
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Center point dot */}
+                  <div className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 -translate-x-1/2 -translate-y-1/2" />
+                  {/* Servo indicator line */}
+                  <div
+                    className="w-1.5 h-16 bg-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 rounded-full"
+                    style={{
+                      transform: `translateX(-50%) rotate(${
+                        180 + parseFloat(targetServoAngle)
+                      }deg)`,
+                      transformOrigin: "top",
+                      boxShadow: "0 0 10px rgba(59, 130, 246, 0.5)",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Angle input controls */}
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => adjustServoAngle(-5)}
+                    disabled={!wsConnected}
+                    className="w-16 bg-white dark:bg-gray-800 border dark:border-gray-700"
+                  >
+                    -5°
+                  </Button>
+                  <div className="relative flex-1">
+                    <Input
+                      type="number"
+                      value={targetServoAngle}
+                      onChange={(e) => handleServoAngleChange(e.target.value)}
+                      className="bg-gray-50 dark:bg-gray-700 pr-8 text-center"
+                      min="0"
+                      max="180"
+                      step="0.1"
+                      disabled={!wsConnected}
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
+                      °
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => adjustServoAngle(5)}
+                    disabled={!wsConnected}
+                    className="w-16 bg-white dark:bg-gray-800 border dark:border-gray-700"
+                  >
+                    +5°
+                  </Button>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full bg-white dark:bg-gray-800 border dark:border-gray-700"
+                  onClick={() => handleServoAngleChange("90")}
+                  disabled={!wsConnected}
+                >
+                  Reset to 90°
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Rotation Controls */}
-      <div className="flex justify-center gap-3">
-        <Button
-          variant="outline"
-          size="icon"
-          className="p-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 
-            hover:bg-gray-50 dark:hover:bg-gray-750"
-          onClick={() => handleRotate("left")}
-          disabled={!wsConnected}
-        >
-          <RotateCcw className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="p-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 
-            hover:bg-gray-50 dark:hover:bg-gray-750"
-          onClick={() => handleRotate("right")}
-          disabled={!wsConnected}
-        >
-          <RotateCw className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-        </Button>
-      </div>
-
       {/* Speed & Acceleration Controls */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border-2 border-gray-100 dark:border-gray-700 space-y-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border-2 border-gray-100 dark:border-gray-700 space-y-4 w-full">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">

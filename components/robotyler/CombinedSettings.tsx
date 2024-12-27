@@ -44,6 +44,16 @@ interface CombinedControlsProps {
   onSaveMaintenanceChanges: () => void;
   hasUnsavedMaintenanceChanges: boolean;
   sendCommand: (command: { type: string; payload?: any }) => void;
+  limitSwitches?: {
+    x: {
+      min: boolean;
+      max: boolean;
+    };
+    y: {
+      min: boolean;
+      max: boolean;
+    };
+  };
 }
 
 const CombinedControls: React.FC<CombinedControlsProps> = ({
@@ -60,6 +70,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
   onSaveMaintenanceChanges,
   hasUnsavedMaintenanceChanges,
   sendCommand,
+  limitSwitches,
 }) => {
   const [activeTab, setActiveTab] = React.useState("speeds");
   const [contentHeight, setContentHeight] = React.useState("auto");
@@ -206,6 +217,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                   sendCommand={sendCommand}
                   handleRotate={handleRotate}
                   position={status.position}
+                  limitSwitches={status.limitSwitches}
                 />
               ) : activeTab === "pattern" ? (
                 <PatternSettings

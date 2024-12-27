@@ -23,10 +23,10 @@ interface SystemSettings {
   };
   pattern: {
     initialOffsets: {
-      front: { x: number; y: number };
-      right: { x: number; y: number };
-      back: { x: number; y: number };
-      left: { x: number; y: number };
+      front: { x: number; y: number; angle: number };
+      right: { x: number; y: number; angle: number };
+      back: { x: number; y: number; angle: number };
+      left: { x: number; y: number; angle: number };
     };
     travelDistance: {
       horizontal: {
@@ -60,10 +60,10 @@ export function PatternSettings({
     SystemSettings["pattern"]
   >({
     initialOffsets: {
-      front: { x: 0, y: 0 },
-      right: { x: 0, y: 0 },
-      back: { x: 0, y: 0 },
-      left: { x: 0, y: 0 },
+      front: { x: 0, y: 0, angle: 0 },
+      right: { x: 0, y: 0, angle: 0 },
+      back: { x: 0, y: 0, angle: 0 },
+      left: { x: 0, y: 0, angle: 0 },
     },
     travelDistance: {
       horizontal: { x: 0, y: 0 },
@@ -80,18 +80,22 @@ export function PatternSettings({
           front: {
             x: settings.pattern.initialOffsets?.front?.x ?? 0,
             y: settings.pattern.initialOffsets?.front?.y ?? 0,
+            angle: settings.pattern.initialOffsets?.front?.angle ?? 0,
           },
           right: {
             x: settings.pattern.initialOffsets?.right?.x ?? 0,
             y: settings.pattern.initialOffsets?.right?.y ?? 0,
+            angle: settings.pattern.initialOffsets?.right?.angle ?? 0,
           },
           back: {
             x: settings.pattern.initialOffsets?.back?.x ?? 0,
             y: settings.pattern.initialOffsets?.back?.y ?? 0,
+            angle: settings.pattern.initialOffsets?.back?.angle ?? 0,
           },
           left: {
             x: settings.pattern.initialOffsets?.left?.x ?? 0,
             y: settings.pattern.initialOffsets?.left?.y ?? 0,
+            angle: settings.pattern.initialOffsets?.left?.angle ?? 0,
           },
         },
         travelDistance: {
@@ -119,8 +123,8 @@ export function PatternSettings({
     field: string,
     value: string
   ) => {
-    const numValue = value === "" ? 0 : parseFloat(value);
-    if (isNaN(numValue)) return;
+    const numValue = value === "" ? "" : parseFloat(value);
+    if (typeof numValue === "number" && isNaN(numValue)) return;
 
     setPatternSettings((prev: SystemSettings["pattern"]) => {
       if (category === "rows") {
@@ -154,8 +158,8 @@ export function PatternSettings({
     axis: "x" | "y",
     value: string
   ) => {
-    const numValue = value === "" ? 0 : parseFloat(value);
-    if (isNaN(numValue)) return;
+    const numValue = value === "" ? "" : parseFloat(value);
+    if (typeof numValue === "number" && isNaN(numValue)) return;
 
     setPatternSettings((prev: SystemSettings["pattern"]) => ({
       ...prev,
@@ -170,18 +174,64 @@ export function PatternSettings({
     setHasChanges(true);
   };
 
+  const handleAngleChange = (
+    direction: keyof SystemSettings["pattern"]["initialOffsets"],
+    value: string
+  ) => {
+    const numValue = value === "" ? "" : parseFloat(value);
+    if (typeof numValue === "number" && isNaN(numValue)) return;
+
+    setPatternSettings((prev) => ({
+      ...prev,
+      initialOffsets: {
+        ...prev.initialOffsets,
+        [direction]: {
+          ...prev.initialOffsets[direction],
+          angle: numValue,
+        },
+      },
+    }));
+    setHasChanges(true);
+  };
+
   const handleSave = async () => {
     try {
+      const settingsToSave = JSON.parse(JSON.stringify(patternSettings));
+
+      Object.keys(settingsToSave.initialOffsets).forEach((direction) => {
+        const offset = settingsToSave.initialOffsets[direction];
+        offset.x = offset.x === "" ? 0 : offset.x;
+        offset.y = offset.y === "" ? 0 : offset.y;
+        offset.angle = offset.angle === "" ? 0 : offset.angle;
+      });
+
+      Object.keys(settingsToSave.travelDistance).forEach((orientation) => {
+        const travel = settingsToSave.travelDistance[orientation];
+        travel.x = travel.x === "" ? 0 : travel.x;
+        travel.y = travel.y === "" ? 0 : travel.y;
+      });
+
+      settingsToSave.rows.x =
+        settingsToSave.rows.x === "" ? 0 : settingsToSave.rows.x;
+      settingsToSave.rows.y =
+        settingsToSave.rows.y === "" ? 0 : settingsToSave.rows.y;
+
       onUpdate({
         type: "UPDATE_SETTINGS",
         payload: {
-          pattern: patternSettings,
+          pattern: settingsToSave,
         },
       });
       setHasChanges(false);
       toast.success("Pattern settings updated successfully");
     } catch (error) {
       toast.error("Failed to update pattern settings");
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && hasChanges && wsConnected) {
+      handleSave();
     }
   };
 
@@ -226,7 +276,7 @@ export function PatternSettings({
                     ? "front"
                     : direction}
                 </Label>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label
                       htmlFor={`offset-${direction}-x`}
@@ -249,6 +299,7 @@ export function PatternSettings({
                           e.target.value
                         )
                       }
+                      onKeyDown={handleKeyDown}
                       className="dark:bg-gray-700"
                     />
                   </div>
@@ -274,6 +325,32 @@ export function PatternSettings({
                           e.target.value
                         )
                       }
+                      onKeyDown={handleKeyDown}
+                      className="dark:bg-gray-700"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor={`offset-${direction}-angle`}
+                      className="text-sm text-purple-600 dark:text-purple-400 flex items-center gap-1"
+                    >
+                      Gun Angle
+                    </Label>
+                    <Input
+                      id={`offset-${direction}-angle`}
+                      type="number"
+                      value={
+                        patternSettings?.initialOffsets?.[
+                          direction as keyof SystemSettings["pattern"]["initialOffsets"]
+                        ].angle ?? 0
+                      }
+                      onChange={(e) =>
+                        handleAngleChange(
+                          direction as keyof SystemSettings["pattern"]["initialOffsets"],
+                          e.target.value
+                        )
+                      }
+                      onKeyDown={handleKeyDown}
                       className="dark:bg-gray-700"
                     />
                   </div>
@@ -320,6 +397,7 @@ export function PatternSettings({
                         e.target.value
                       )
                     }
+                    onKeyDown={handleKeyDown}
                     className="dark:bg-gray-700"
                   />
                 </div>
@@ -342,6 +420,7 @@ export function PatternSettings({
                         e.target.value
                       )
                     }
+                    onKeyDown={handleKeyDown}
                     className="dark:bg-gray-700"
                   />
                 </div>
@@ -373,6 +452,7 @@ export function PatternSettings({
                         e.target.value
                       )
                     }
+                    onKeyDown={handleKeyDown}
                     className="dark:bg-gray-700"
                   />
                 </div>
@@ -395,6 +475,7 @@ export function PatternSettings({
                         e.target.value
                       )
                     }
+                    onKeyDown={handleKeyDown}
                     className="dark:bg-gray-700"
                   />
                 </div>
@@ -429,6 +510,7 @@ export function PatternSettings({
                   onChange={(e) =>
                     handleChange("rows", "rows", "x", e.target.value)
                   }
+                  onKeyDown={handleKeyDown}
                   className="dark:bg-gray-700"
                 />
               </div>
@@ -446,6 +528,7 @@ export function PatternSettings({
                   onChange={(e) =>
                     handleChange("rows", "rows", "y", e.target.value)
                   }
+                  onKeyDown={handleKeyDown}
                   className="dark:bg-gray-700"
                 />
               </div>
