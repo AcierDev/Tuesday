@@ -189,6 +189,15 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                               value
                             )
                           }
+                          onKeyDown={(e) => {
+                            if (
+                              e.key === "Enter" &&
+                              Object.keys(pendingSpeedChanges).length > 0 &&
+                              wsConnected
+                            ) {
+                              handleSaveChanges();
+                            }
+                          }}
                           max={100}
                           step={1}
                           className="flex-1"
@@ -225,6 +234,15 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                           onPendingMaintenanceChange?.("primeTime", newValue);
                           onMaintenanceSettingChange?.("primeTime", newValue);
                         }}
+                        onKeyDown={(e) => {
+                          if (
+                            e.key === "Enter" &&
+                            hasUnsavedMaintenanceChanges &&
+                            wsConnected
+                          ) {
+                            onSaveMaintenanceChanges();
+                          }
+                        }}
                         max={30}
                         min={1}
                         step={1}
@@ -255,6 +273,15 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                           const newValue = value[0] || 10;
                           onPendingMaintenanceChange?.("cleanTime", newValue);
                           onMaintenanceSettingChange?.("cleanTime", newValue);
+                        }}
+                        onKeyDown={(e) => {
+                          if (
+                            e.key === "Enter" &&
+                            hasUnsavedMaintenanceChanges &&
+                            wsConnected
+                          ) {
+                            onSaveMaintenanceChanges();
+                          }
                         }}
                         max={30}
                         min={1}
@@ -292,6 +319,15 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                             "backWashTime",
                             newValue
                           );
+                        }}
+                        onKeyDown={(e) => {
+                          if (
+                            e.key === "Enter" &&
+                            hasUnsavedMaintenanceChanges &&
+                            wsConnected
+                          ) {
+                            onSaveMaintenanceChanges();
+                          }
                         }}
                         max={30}
                         min={1}

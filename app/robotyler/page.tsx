@@ -22,7 +22,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import WarningSystem, { Warning } from "@/components/robotyler/WarningSystem";
 import TrayVisualization from "@/components/robotyler/TrayVisualization";
 import { v4 as uuidv4 } from "uuid";
 import CombinedControls from "@/components/robotyler/CombinedSettings";
@@ -73,7 +72,6 @@ export interface SystemState {
     uptime: string;
   };
   patternProgress: PatternStatus;
-  warnings: Warning[];
   lastSerialMessage: string;
   pressurePotActive: boolean;
   limitSwitches?: {
@@ -105,7 +103,6 @@ export const INITIAL_STATUS: SystemState = {
     completed_rows: [],
     duration: 0,
   },
-  warnings: [],
   lastSerialMessage: "",
   pressurePotActive: false,
 };
@@ -132,12 +129,11 @@ export interface SystemSettings {
 }
 
 export default function Dashboard() {
-  const [selectedIp, setSelectedIp] = useState("192.168.1.222");
+  const [selectedIp, setSelectedIp] = useState("192.168.1.222:8080");
   const [state, setState] = useState<SystemState>(INITIAL_STATUS);
   const [wsConnected, setWsConnected] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
-  const [activeWarnings, setActiveWarnings] = useState<Warning[]>([]);
   const [pendingSpeedChanges, setPendingSpeedChanges] = useState<
     Partial<SystemSettings["speeds"]>
   >({});
@@ -211,6 +207,7 @@ export default function Dashboard() {
         console.log("WebSocket connected");
         setWsConnected(true);
         reconnectAttempts.current = 0;
+        toast.success("Connected to system");
 
         heartbeatInterval.current = setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) {
@@ -223,6 +220,9 @@ export default function Dashboard() {
         console.log("WebSocket disconnected", event.code, event.reason);
         setWsConnected(false);
         cleanupWebSocket();
+        toast.error("Disconnected from system", {
+          description: "Attempting to reconnect...",
+        });
 
         if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
           reconnectAttempts.current += 1;
@@ -235,6 +235,10 @@ export default function Dashboard() {
           }, RECONNECT_DELAY);
         } else {
           console.log("Max reconnection attempts reached");
+          toast.error("Connection failed", {
+            description:
+              "Maximum reconnection attempts reached. Please try again manually.",
+          });
         }
       };
 
@@ -274,7 +278,18 @@ export default function Dashboard() {
                 if (message.payload.maintenance.cleanTime === prev.cleanTime) {
                   delete newPending.cleanTime;
                 }
+                if (
+                  message.payload.maintenance.backWashTime === prev.backWashTime
+                ) {
+                  delete newPending.backWashTime;
+                }
                 return newPending;
+              });
+              // Update hasUnsavedMaintenanceChanges based on whether there are any pending changes
+              setHasUnsavedMaintenanceChanges((prev) => {
+                const hasChanges =
+                  Object.keys(pendingMaintenanceSettings).length > 0;
+                return hasChanges;
               });
               break;
 
@@ -287,14 +302,13 @@ export default function Dashboard() {
 
             case "WARNING":
               console.log(message.payload);
-              const newWarning = {
-                id: uuidv4(),
-                type: message.payload.severity,
-                title: message.payload.title,
-                message: message.payload.message,
-                timestamp: new Date(),
-              };
-              setActiveWarnings((prev) => [...prev, newWarning]);
+              toast[message.payload.severity || "error"](
+                message.payload.title,
+                {
+                  description: message.payload.message,
+                  duration: 5000,
+                }
+              );
               break;
 
             case "ERROR":
@@ -323,11 +337,6 @@ export default function Dashboard() {
       cleanupWebSocket();
     }
   }, [cleanupWebSocket, selectedIp]);
-
-  // Add the dismiss handler
-  const handleDismissWarning = (id: string) => {
-    setActiveWarnings((prev) => prev.filter((warning) => warning.id !== id));
-  };
 
   // Update useEffect to depend on selectedIp
   useEffect(() => {
@@ -437,15 +446,45 @@ export default function Dashboard() {
         maintenance: pendingMaintenanceSettings,
       },
     });
+    // Don't clear the state here - wait for the SETTINGS_UPDATE message
   };
+
+  // Add useEffect for keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if not in an input/textarea
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA"
+      ) {
+        return;
+      }
+
+      if (e.key === "Enter") {
+        if (hasUnsavedMaintenanceChanges && wsConnected) {
+          handleSaveMaintenanceChanges();
+        }
+        if (Object.keys(pendingSpeedChanges).length > 0 && wsConnected) {
+          handleSaveChanges();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    hasUnsavedMaintenanceChanges,
+    pendingSpeedChanges,
+    wsConnected,
+    handleSaveMaintenanceChanges,
+    handleSaveChanges,
+  ]);
 
   return (
     <div className="flex flex-col min-h-screen">
       <RoboTylerHeader
         status={state}
-        settings={settings}
         wsConnected={wsConnected}
-        handleEmergencyStop={handleEmergencyStop}
         reconnectAttempts={reconnectAttempts.current}
         MAX_RECONNECT_ATTEMPTS={MAX_RECONNECT_ATTEMPTS}
         handleReconnect={handleReconnect}
@@ -455,16 +494,23 @@ export default function Dashboard() {
         onSelectComputer={setSelectedIp}
         showCameraFeed={showCameraFeed}
         onToggleCameraFeed={() => setShowCameraFeed(!showCameraFeed)}
+        computers={[
+          { name: "Bentzi's Laptop", ip: "192.168.1.222:8080" },
+          { name: "RoboTyler Raspi", ip: "192.168.1.197:8080" },
+          { name: "Pi Zero 2", ip: "192.168.1.215:8080" },
+          { name: "Dev Testing Raspi", ip: "192.168.1.216:8080" },
+          { name: "localhost", ip: "localhost:8080" },
+        ]}
       />
 
       <main className="container mx-auto px-4 py-6 flex-1">
         <div className="grid gap-6">
           {/* Operation Controls Row */}
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {/* System Controls Card */}
             <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
               <CardContent className="p-3">
-                <div className="grid grid-cols-4 gap-3 h-[100px]">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 h-[200px] lg:h-[100px]">
                   <Button
                     className="relative p-3 rounded-lg bg-white dark:bg-gray-800 
                       border border-gray-200 dark:border-transparent
@@ -514,7 +560,7 @@ export default function Dashboard() {
                       disabled:hover:shadow-none disabled:hover:border-gray-200
                       h-full flex flex-col items-center justify-center"
                     onClick={() => sendCommand({ type: "BACK_WASH" })}
-                    disabled={!wsConnected}
+                    disabled={!showCleanButton || !wsConnected}
                   >
                     <Recycle className="w-5 h-5 text-teal-500 dark:text-teal-400 mb-2" />
                     <span className="font-medium text-sm text-gray-700 dark:text-gray-300 text-center">
@@ -559,7 +605,7 @@ export default function Dashboard() {
             {/* Operation Controls Card */}
             <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
               <CardContent className="p-3">
-                <div className="grid grid-cols-4 gap-3 h-[100px]">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 h-[200px] lg:h-[100px]">
                   <Button
                     className="relative p-3 rounded-lg bg-white dark:bg-gray-800 
                       border border-gray-200 dark:border-transparent
@@ -752,12 +798,6 @@ export default function Dashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Warning System */}
-      <WarningSystem
-        warnings={activeWarnings}
-        onDismiss={handleDismissWarning}
-      />
     </div>
   );
 }

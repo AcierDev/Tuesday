@@ -131,8 +131,8 @@ const LiveCameraFeed: React.FC<LiveCameraFeedProps> = ({
 
   return (
     <>
-      <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
-        <CardHeader className="pb-3">
+      <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 h-full flex flex-col">
+        <CardHeader className="pb-3 flex-none">
           <CardTitle className="text-lg font-semibold flex items-center justify-between">
             <div className="flex items-center">
               <Video className="mr-2 h-5 w-5 text-blue-500" />
@@ -165,16 +165,16 @@ const LiveCameraFeed: React.FC<LiveCameraFeedProps> = ({
             initialIp={lastSuccessfulConnection || initialWsIp}
           />
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 p-0">
           {imageData && connectionStatus === "connected" ? (
             <img
               src={imageData}
               alt="Live Camera Feed"
-              className="w-full h-auto rounded-lg"
+              className="w-full h-full object-cover rounded-lg"
               onError={() => setError("Failed to display image")}
             />
           ) : (
-            <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center">
+            <div className="w-full h-full min-h-[400px] bg-gray-200 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center">
               {connectionStatus === "connecting" ? (
                 <p className="text-yellow-500 dark:text-yellow-400">
                   Connecting to camera feed...

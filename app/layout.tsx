@@ -15,6 +15,7 @@ import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { SettingsPanel } from "@/components/setttings/SettingsPanel";
 import { UserProvider } from "@/contexts/UserContext";
 import { InventoryProvider } from "@/contexts/InventoryContext";
+import { Toaster } from "sonner";
 
 // Load custom fonts
 const geistSans = localFont({
@@ -79,6 +80,7 @@ export default function RootLayout({
             </OrderSettingsProvider>
           </RealmAppProvider>
         </ThemeProvider>
+        <Toaster />
       </body>
     </html>
   );

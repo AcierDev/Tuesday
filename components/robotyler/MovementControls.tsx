@@ -332,7 +332,7 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
             <div className="space-y-6">
               <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
                 <CircleDot className="w-4 h-4" />
-                Servo Angle Control
+                Spray Angle Control
               </h3>
 
               {/* Servo angle visualization */}
@@ -527,7 +527,7 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
             size="lg"
             className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
               hover:bg-gray-50 dark:hover:bg-gray-750"
-            onClick={() => sendCommand({ type: "PRESSURIZE" })}
+            onClick={() => sendCommand({ type: "TOGGLE_PRESSURE_POT" })}
             disabled={!wsConnected}
           >
             <Zap className="w-5 h-5 mr-2" />
