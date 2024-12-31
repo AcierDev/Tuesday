@@ -1,4 +1,4 @@
-import { ColumnTitles, Item } from "@/typings/types";
+import { ColumnTitles, Item, DayName } from "@/typings/types";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import { Search, Plus, X } from "lucide-react";
 interface AddItemDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  currentDay: string;
+  currentDay: DayName;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   filterDesign: string;
@@ -30,7 +30,7 @@ interface AddItemDialogProps {
   designs: string[];
   sizes: string[];
   filteredItems: Item[];
-  handleQuickAdd: (day: string, item: Item) => void;
+  handleQuickAdd: (day: DayName, item: Item) => void;
   getItemValue: (item: Item, columnName: ColumnTitles) => string;
 }
 

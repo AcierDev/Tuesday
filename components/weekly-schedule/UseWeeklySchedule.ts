@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   format,
   startOfWeek,
@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { useRealmApp } from "@/hooks/useRealmApp";
 import { WeeklySchedules } from "@/typings/types";
+import debounce from "lodash/debounce";
 
 export interface UseWeeklyScheduleReturn {
   weeklySchedules: WeeklySchedules;
@@ -28,6 +29,9 @@ export interface UseWeeklyScheduleReturn {
   hasDataInNextWeek: () => boolean;
   resetToCurrentWeek: () => void;
   isCurrentWeek: () => boolean;
+  removeItemsFromSchedule: (
+    itemsToRemove: { day: string; itemId: string }[]
+  ) => Promise<void>;
 }
 
 export const useWeeklySchedule = ({
@@ -40,6 +44,8 @@ export const useWeeklySchedule = ({
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() =>
     startOfWeek(new Date(), { weekStartsOn })
   );
+  const [isUpdating, setIsUpdating] = useState(false);
+  const pendingUpdates = useRef<WeeklySchedules | null>(null);
 
   const loadSchedules = useCallback(async () => {
     if (!collection) return;
@@ -88,22 +94,44 @@ export const useWeeklySchedule = ({
     }));
   };
 
-  const saveSchedules = async (newSchedules: WeeklySchedules) => {
-    if (!collection) return;
+  const debouncedSave = useCallback(
+    debounce(async (newSchedules: WeeklySchedules) => {
+      if (!collection) return;
+      setIsUpdating(true);
 
-    try {
-      await collection.updateOne(
-        {},
-        { $set: { weeklySchedules: newSchedules } },
-        { upsert: true }
-      );
-      console.log("Weekly schedules saved successfully");
-    } catch (err) {
-      console.error("Failed to save weekly schedules", err);
-      toast.error("Failed to save weekly schedules. Please try again.", {
-        style: { background: "#EF4444", color: "white" },
-      });
+      try {
+        await collection.updateOne(
+          {},
+          { $set: { weeklySchedules: newSchedules } },
+          { upsert: true }
+        );
+
+        // After successful save, apply any pending updates
+        if (pendingUpdates.current) {
+          setWeeklySchedules(pendingUpdates.current);
+          pendingUpdates.current = null;
+        }
+      } catch (err) {
+        console.error("Failed to save weekly schedules", err);
+        toast.error("Failed to save weekly schedules. Please try again.", {
+          style: { background: "#EF4444", color: "white" },
+        });
+      } finally {
+        setIsUpdating(false);
+      }
+    }, 1000),
+    [collection]
+  );
+
+  const saveSchedules = async (newSchedules: WeeklySchedules) => {
+    if (isUpdating) {
+      // If there's already an update in progress, store this update for later
+      pendingUpdates.current = newSchedules;
+      return;
     }
+
+    // Trigger the debounced save
+    debouncedSave(newSchedules);
   };
 
   const changeWeek = useCallback(
@@ -127,20 +155,25 @@ export const useWeeklySchedule = ({
   const addItemToDay = useCallback(
     async (day: string, itemId: string) => {
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-      const newSchedules = {
-        ...weeklySchedules,
-        [weekKey]: {
-          ...weeklySchedules[weekKey],
-          [day]: [
-            ...(weeklySchedules[weekKey]?.[day] || []),
-            { id: itemId, done: false },
-          ],
-        },
-      };
-      setWeeklySchedules(newSchedules);
-      await saveSchedules(newSchedules);
+
+      setWeeklySchedules((prev) => {
+        const newSchedules = {
+          ...prev,
+          [weekKey]: {
+            ...(prev[weekKey] || {}),
+            [day]: [
+              ...(prev[weekKey]?.[day] || []),
+              { id: itemId, done: false },
+            ],
+          },
+        };
+
+        // Save in background
+        saveSchedules(newSchedules);
+        return newSchedules;
+      });
     },
-    [weeklySchedules, currentWeekStart, saveSchedules]
+    [currentWeekStart, saveSchedules]
   );
 
   const removeItemFromDay = useCallback(
@@ -239,6 +272,33 @@ export const useWeeklySchedule = ({
     return isSameWeek(currentWeekStart, today, { weekStartsOn });
   }, [currentWeekStart, weekStartsOn]);
 
+  const removeItemsFromSchedule = useCallback(
+    async (itemsToRemove: { day: string; itemId: string }[]) => {
+      const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+      const newSchedules = { ...weeklySchedules };
+
+      // Process all removals in one update
+      itemsToRemove.forEach(({ day, itemId }) => {
+        if (newSchedules[weekKey]?.[day]) {
+          newSchedules[weekKey][day] = newSchedules[weekKey][day].filter(
+            (item) => item.id !== itemId
+          );
+        }
+      });
+
+      // Update state and save to database once
+      setWeeklySchedules(newSchedules);
+      await saveSchedules(newSchedules);
+    },
+    [weeklySchedules, currentWeekStart, saveSchedules]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave]);
+
   return {
     weeklySchedules,
     currentWeekStart,
@@ -250,5 +310,6 @@ export const useWeeklySchedule = ({
     moveItem,
     resetToCurrentWeek,
     isCurrentWeek,
+    removeItemsFromSchedule,
   };
 };
