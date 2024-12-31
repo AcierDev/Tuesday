@@ -4,6 +4,7 @@ import { cn } from "@/utils/functions";
 
 interface BorderedTableProps extends TableProps {
   borderColor?: string;
+  children?: React.ReactNode;
 }
 
 export const BorderedTable = React.forwardRef<

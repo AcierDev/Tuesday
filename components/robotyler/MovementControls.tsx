@@ -41,6 +41,8 @@ interface MovementControlsProps {
     };
   };
   servoAngle?: number;
+  status?: SystemState;
+  isHomed?: boolean;
 }
 
 // Update DirectionButton props to include diagonal directions
@@ -65,6 +67,8 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
   position = { x: 0, y: 0 },
   limitSwitches,
   servoAngle = 90,
+  status,
+  isHomed = false,
 }) => {
   const [speed, setSpeed] = useState(50);
   const [acceleration, setAcceleration] = useState(50);
@@ -168,6 +172,18 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
     const isDirectionDisabled = () => {
       if (!limitSwitches) return false;
 
+      // If system is homed, disable left and bottom movements
+      if (isHomed) {
+        switch (direction) {
+          case "left":
+          case "backward":
+          case "backward-left":
+          case "backward-right":
+          case "forward-left":
+            return true;
+        }
+      }
+
       switch (direction) {
         case "forward":
           return limitSwitches.y.max;
@@ -178,13 +194,13 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
         case "right":
           return limitSwitches.x.max;
         case "forward-left":
-          return limitSwitches.y.max && limitSwitches.x.min;
+          return limitSwitches.y.max || limitSwitches.x.min;
         case "forward-right":
-          return limitSwitches.y.max && limitSwitches.x.max;
+          return limitSwitches.y.max || limitSwitches.x.max;
         case "backward-left":
-          return limitSwitches.y.min && limitSwitches.x.min;
+          return limitSwitches.y.min || limitSwitches.x.min;
         case "backward-right":
-          return limitSwitches.y.min && limitSwitches.x.max;
+          return limitSwitches.y.min || limitSwitches.x.max;
         default:
           return false;
       }
@@ -243,7 +259,12 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
     };
   }, [activeDirection, isSprayActive, sendCommand]);
 
-  // Add handler for servo angle changes
+  // Update targetServoAngle when servoAngle prop changes
+  useEffect(() => {
+    setTargetServoAngle(servoAngle.toString());
+  }, [servoAngle]);
+
+  // Handle servo angle changes
   const handleServoAngleChange = (value: string) => {
     setTargetServoAngle(value);
     const numValue =
@@ -268,6 +289,12 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
         angle: newAngle,
       },
     });
+  };
+
+  // Update the visualization to use servoAngle prop for initial render
+  const getServoRotation = () => {
+    const angle = parseFloat(targetServoAngle) || servoAngle;
+    return 180 + angle;
   };
 
   return (
@@ -371,9 +398,7 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
                   <div
                     className="w-1.5 h-16 bg-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 rounded-full"
                     style={{
-                      transform: `translateX(-50%) rotate(${
-                        180 + parseFloat(targetServoAngle)
-                      }deg)`,
+                      transform: `translateX(-50%) rotate(${getServoRotation()}deg)`,
                       transformOrigin: "top",
                       boxShadow: "0 0 10px rgba(59, 130, 246, 0.5)",
                     }}
@@ -501,61 +526,92 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
           </div>
         </div>
 
-        {/* Button Stack - Last in desktop */}
+        {/* Button Stack */}
         <div className="flex flex-col items-center gap-4 mx-auto w-full max-w-[12rem] lg:justify-center lg:h-full order-2 lg:order-last">
+          {/* Spray Button */}
           <Button
             variant="outline"
             size="lg"
-            className={`w-48 h-12 bg-white dark:bg-gray-800
+            className={`w-48 h-12 bg-white dark:bg-gray-800 
               ${
                 isSprayActive
                   ? "border-cyan-500 text-cyan-600 dark:text-cyan-400 ring-2 ring-cyan-500/20"
-                  : "border-gray-200"
+                  : "border-gray-200 dark:border-gray-700"
               }
               hover:bg-gray-50 dark:hover:bg-gray-750`}
             onClick={toggleSpray}
             disabled={!wsConnected}
           >
-            <SprayCanIcon className="w-5 h-5 mr-2" />
+            <SprayCanIcon
+              className={`w-5 h-5 mr-2 ${
+                isSprayActive
+                  ? "text-cyan-500 dark:text-cyan-400"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
+            />
             <span className="font-medium">
               {isSprayActive ? "Stop" : "Start"} Spray
             </span>
           </Button>
 
+          {/* Pressure Button */}
           <Button
             variant="outline"
             size="lg"
-            className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
-              hover:bg-gray-50 dark:hover:bg-gray-750"
+            className={`w-48 h-12 bg-white dark:bg-gray-800 
+              ${
+                status?.pressurePotActive
+                  ? "border-amber-500 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/20"
+                  : "border-gray-200 dark:border-gray-700"
+              }
+              hover:bg-gray-50 dark:hover:bg-gray-750`}
             onClick={() => sendCommand({ type: "TOGGLE_PRESSURE_POT" })}
             disabled={!wsConnected}
           >
-            <Zap className="w-5 h-5 mr-2" />
-            <span className="font-medium">Pressurize</span>
+            <Zap
+              className={`w-5 h-5 mr-2 ${
+                status?.pressurePotActive
+                  ? "text-amber-500 dark:text-amber-400"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
+            />
+            <span className="font-medium">
+              {status?.pressurePotActive ? "Depressurize" : "Pressurize"}
+            </span>
           </Button>
 
+          {/* Rotate Left Button */}
           <Button
             variant="outline"
             size="lg"
-            className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
-              hover:bg-gray-50 dark:hover:bg-gray-750"
+            className={`w-48 h-12 bg-white dark:bg-gray-800 
+              border-gray-200 dark:border-gray-700
+              hover:bg-gray-50 dark:hover:bg-gray-750`}
             onClick={() => handleRotate("left")}
             disabled={!wsConnected}
           >
-            <RotateCcw className="w-5 h-5 mr-2" />
-            <span className="font-medium">Rotate Left 90°</span>
+            <RotateCcw
+              className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400"
+              strokeWidth={2}
+            />
+            <span className="font-medium text-sm">Rotate Left 90°</span>
           </Button>
 
+          {/* Rotate Right Button */}
           <Button
             variant="outline"
             size="lg"
-            className="w-48 h-12 bg-white dark:bg-gray-800 border-gray-200 
-              hover:bg-gray-50 dark:hover:bg-gray-750"
+            className={`w-48 h-12 bg-white dark:bg-gray-800 
+              border-gray-200 dark:border-gray-700
+              hover:bg-gray-50 dark:hover:bg-gray-750`}
             onClick={() => handleRotate("right")}
             disabled={!wsConnected}
           >
-            <RotateCw className="w-5 h-5 mr-2" />
-            <span className="font-medium">Rotate Right 90°</span>
+            <RotateCw
+              className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400"
+              strokeWidth={2}
+            />
+            <span className="font-medium text-sm">Rotate Right 90°</span>
           </Button>
         </div>
       </div>

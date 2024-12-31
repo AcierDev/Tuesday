@@ -23,6 +23,7 @@ interface RoboTylerHeaderProps {
   showCameraFeed: boolean;
   onToggleCameraFeed: () => void;
   computers?: Computer[];
+  sendCommand: (command: { type: string; payload?: any }) => void;
 }
 
 const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
@@ -42,6 +43,7 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
     { name: "Dev Testing Raspi", ip: "192.168.1.216:8080" },
     { name: "localhost", ip: "localhost:8080" },
   ],
+  sendCommand,
 }) => {
   const getStatusColor = (): string => {
     if (!status?.status) {
@@ -110,7 +112,14 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
               {formatState(status?.status)}
             </div>
 
-            <div
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => sendCommand({ type: "TOGGLE_PRESSURE_POT" })}
+              disabled={
+                !(status.status === "STOPPED" || status.status === "HOMED") ||
+                !wsConnected
+              }
               className={`flex items-center gap-2 px-4 py-2 rounded-full ${
                 status.pressurePotActive
                   ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
@@ -121,7 +130,7 @@ const RoboTylerHeader: React.FC<RoboTylerHeaderProps> = ({
               <span className="hidden lg:inline font-medium">
                 {status.pressurePotActive ? "Pressurized" : "Depressurized"}
               </span>
-            </div>
+            </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

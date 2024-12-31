@@ -2,11 +2,10 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Settings, RotateCw, Save, Sliders, Grid } from "lucide-react";
+import { Settings, Save, Sliders, Grid } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatternSettings } from "./PatternSettings";
-import { SystemState, SystemSettings } from "@/app/robotyler/page";
-import { MovementControls } from "./MovementControls";
+import { SystemState, SystemSettings, SavedConfig } from "@/app/robotyler/page";
 
 interface CombinedControlsProps {
   status: SystemState;
@@ -45,6 +44,7 @@ interface CombinedControlsProps {
       max: boolean;
     };
   };
+  configs?: SavedConfig[];
 }
 
 const CombinedControls: React.FC<CombinedControlsProps> = ({
@@ -62,6 +62,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
   hasUnsavedMaintenanceChanges,
   sendCommand,
   limitSwitches,
+  configs = [],
 }) => {
   const [activeTab, setActiveTab] = React.useState("speeds");
   const [contentHeight, setContentHeight] = React.useState("auto");
@@ -181,11 +182,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                           value={[pendingSpeedChanges[side] ?? speed]}
                           onValueChange={(value) =>
                             handleSpeedChange(
-                              side == "front"
-                                ? "back"
-                                : side == "back"
-                                ? "front"
-                                : (side as keyof typeof settings.speeds),
+                              side as keyof typeof settings.speeds,
                               value
                             )
                           }
@@ -215,6 +212,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                   settings={settings}
                   onUpdate={sendCommand}
                   wsConnected={wsConnected}
+                  configs={configs}
                 />
               ) : (
                 <div className="space-y-4">

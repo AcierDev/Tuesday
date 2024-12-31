@@ -84,6 +84,7 @@ export interface SystemState {
       max: boolean;
     };
   };
+  servoAngle: number;
 }
 
 export const INITIAL_STATUS: SystemState = {
@@ -105,6 +106,7 @@ export const INITIAL_STATUS: SystemState = {
   },
   lastSerialMessage: "",
   pressurePotActive: false,
+  servoAngle: 90,
 };
 
 export interface SystemSettings {
@@ -126,6 +128,12 @@ export interface SystemSettings {
     travelDistance: { x: number; y: number };
     rows: { x: number; y: number };
   };
+}
+
+interface SavedConfig {
+  name: string;
+  description?: string;
+  timestamp: string;
 }
 
 export default function Dashboard() {
@@ -167,6 +175,7 @@ export default function Dashboard() {
       rows: { x: 0, y: 0 },
     },
   });
+  const [configs, setConfigs] = useState<SavedConfig[]>([]);
 
   const handleEmergencyStop = () => {
     sendCommand({ type: "EMERGENCY_STOP" });
@@ -255,6 +264,16 @@ export default function Dashboard() {
               }));
               break;
 
+            case "SERVO_UPDATE":
+              setState((prevStatus) => {
+                const newState = {
+                  ...prevStatus,
+                  servoAngle: message.payload.angle,
+                };
+                return newState;
+              });
+              break;
+
             case "SETTINGS_UPDATE":
               console.log("SETTINGS_UPDATE", message.payload);
               setSettings(message.payload);
@@ -301,21 +320,35 @@ export default function Dashboard() {
               break;
 
             case "WARNING":
-              console.log(message.payload);
-              toast[message.payload.severity || "error"](
-                message.payload.title,
-                {
-                  description: message.payload.message,
-                  duration: 5000,
-                }
-              );
+              const toastType = {
+                high: "error",
+                medium: "warning",
+                low: "info",
+              }[message.payload.severity || "medium"] as
+                | "error"
+                | "warning"
+                | "info";
+
+              toast[toastType](message.payload.title, {
+                description: message.payload.message,
+                duration: 5000,
+                className:
+                  "dark:bg-gray-800 dark:text-gray-100 dark:border dark:border-gray-700",
+              });
               break;
 
             case "ERROR":
               toast.error(message.payload.message, {
                 description: message.payload.details,
                 duration: 5000,
+                className:
+                  "dark:bg-gray-800 dark:text-gray-100 dark:border dark:border-gray-700",
               });
+              break;
+
+            case "CONFIGS_UPDATE":
+              console.log("CONFIGS_UPDATE", message.payload);
+              setConfigs(message.payload);
               break;
 
             default:
@@ -501,6 +534,7 @@ export default function Dashboard() {
           { name: "Dev Testing Raspi", ip: "192.168.1.216:8080" },
           { name: "localhost", ip: "localhost:8080" },
         ]}
+        sendCommand={sendCommand}
       />
 
       <main className="container mx-auto px-4 py-6 flex-1">
@@ -569,15 +603,23 @@ export default function Dashboard() {
                   </Button>
 
                   <Button
-                    className="relative p-3 rounded-lg bg-white dark:bg-gray-800 
-                      border border-gray-200 dark:border-transparent
+                    className={`relative p-3 rounded-lg bg-white dark:bg-gray-800 
+                      border ${
+                        state.pressurePotActive
+                          ? "border-amber-500 dark:border-amber-400"
+                          : "border-gray-200 dark:border-transparent"
+                      }
                       hover:bg-gray-50 dark:hover:bg-gray-750
-                      hover:border-amber-500 dark:hover:border-amber-400
+                      ${
+                        state.pressurePotActive
+                          ? "hover:border-amber-500 dark:hover:border-amber-400"
+                          : "hover:border-gray-500 dark:hover:border-gray-400"
+                      }
                       hover:shadow-md hover:scale-[1.02]
                       transform transition-all duration-200 ease-in-out
                       disabled:opacity-50 disabled:hover:scale-100 
                       disabled:hover:shadow-none disabled:hover:border-gray-200
-                      h-full flex flex-col items-center justify-center"
+                      h-full flex flex-col items-center justify-center`}
                     onClick={() => sendCommand({ type: "TOGGLE_PRESSURE_POT" })}
                     disabled={
                       !(
@@ -589,7 +631,7 @@ export default function Dashboard() {
                       className={`w-5 h-5 mb-2 ${
                         state.pressurePotActive
                           ? "text-amber-500 dark:text-amber-400"
-                          : "text-blue-500 dark:text-blue-400"
+                          : "text-gray-500 dark:text-gray-400"
                       }`}
                     />
                     <span className="font-medium text-sm text-gray-700 dark:text-gray-300 text-center">
@@ -744,6 +786,8 @@ export default function Dashboard() {
                 handleRotate={handleRotate}
                 position={state.position}
                 limitSwitches={state.limitSwitches}
+                servoAngle={state.servoAngle}
+                status={state}
               />
             </CardContent>
           </Card>
@@ -764,6 +808,7 @@ export default function Dashboard() {
             hasUnsavedMaintenanceChanges={hasUnsavedMaintenanceChanges}
             sendCommand={sendCommand}
             limitSwitches={state.limitSwitches}
+            configs={configs}
           />
         </div>
       </main>
