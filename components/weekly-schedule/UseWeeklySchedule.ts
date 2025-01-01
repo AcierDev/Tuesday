@@ -10,14 +10,18 @@ import {
 } from "date-fns";
 import { toast } from "sonner";
 import { useRealmApp } from "@/hooks/useRealmApp";
-import { WeeklySchedules } from "@/typings/types";
+import { WeeklySchedules, DayName } from "@/typings/types";
 import debounce from "lodash/debounce";
 
 export interface UseWeeklyScheduleReturn {
   weeklySchedules: WeeklySchedules;
   currentWeekStart: Date;
   changeWeek: (direction: "prev" | "next") => void;
-  addItemToDay: (day: string, itemId: string) => Promise<void>;
+  addItemToDay: (
+    day: string,
+    itemId: string,
+    weekKey?: string
+  ) => Promise<void>;
   removeItemFromDay: (day: string, itemId: string) => Promise<void>;
   moveItem: (
     sourceDay: string,
@@ -30,7 +34,7 @@ export interface UseWeeklyScheduleReturn {
   resetToCurrentWeek: () => void;
   isCurrentWeek: () => boolean;
   removeItemsFromSchedule: (
-    itemsToRemove: { day: string; itemId: string }[]
+    itemsToRemove: { day: DayName; itemId: string; weekKey?: string }[]
   ) => Promise<void>;
 }
 
@@ -153,18 +157,26 @@ export const useWeeklySchedule = ({
   );
 
   const addItemToDay = useCallback(
-    async (day: string, itemId: string) => {
-      const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+    async (day: string, itemId: string, weekKey?: string) => {
+      const targetWeekKey = weekKey || format(currentWeekStart, "yyyy-MM-dd");
 
       setWeeklySchedules((prev) => {
+        // Ensure the week exists with proper structure
+        const targetWeek = prev[targetWeekKey] || {
+          Sunday: [],
+          Monday: [],
+          Tuesday: [],
+          Wednesday: [],
+          Thursday: [],
+          Friday: [],
+          Saturday: [],
+        };
+
         const newSchedules = {
           ...prev,
-          [weekKey]: {
-            ...(prev[weekKey] || {}),
-            [day]: [
-              ...(prev[weekKey]?.[day] || []),
-              { id: itemId, done: false },
-            ],
+          [targetWeekKey]: {
+            ...targetWeek,
+            [day]: [...(targetWeek[day] || []), { id: itemId, done: false }],
           },
         };
 
@@ -273,20 +285,38 @@ export const useWeeklySchedule = ({
   }, [currentWeekStart, weekStartsOn]);
 
   const removeItemsFromSchedule = useCallback(
-    async (itemsToRemove: { day: string; itemId: string }[]) => {
-      const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+    async (
+      itemsToRemove: Array<{
+        day: DayName;
+        itemId: string;
+        weekKey?: string;
+      }>
+    ) => {
+      const groupedByWeek = itemsToRemove.reduce((acc, item) => {
+        const weekKey = item.weekKey || format(currentWeekStart, "yyyy-MM-dd");
+        if (!acc[weekKey]) {
+          acc[weekKey] = [];
+        }
+        acc[weekKey].push({ day: item.day, itemId: item.itemId });
+        return acc;
+      }, {} as Record<string, { day: DayName; itemId: string }[]>);
+
       const newSchedules = { ...weeklySchedules };
 
-      // Process all removals in one update
-      itemsToRemove.forEach(({ day, itemId }) => {
-        if (newSchedules[weekKey]?.[day]) {
-          newSchedules[weekKey][day] = newSchedules[weekKey][day].filter(
-            (item) => item.id !== itemId
-          );
-        }
+      Object.entries(groupedByWeek).forEach(([weekKey, items]) => {
+        const weekSchedule = newSchedules[weekKey];
+        if (!weekSchedule) return;
+
+        items.forEach(({ day, itemId }) => {
+          const daySchedule = weekSchedule[day as keyof typeof weekSchedule];
+          if (Array.isArray(daySchedule)) {
+            weekSchedule[day] = daySchedule.filter(
+              (item) => item.id !== itemId
+            );
+          }
+        });
       });
 
-      // Update state and save to database once
       setWeeklySchedules(newSchedules);
       await saveSchedules(newSchedules);
     },

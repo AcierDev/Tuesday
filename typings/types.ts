@@ -531,3 +531,10 @@ export interface PredictionStats {
   bbox: BoundingBox;
   area: number;
 }
+
+export interface SortedItems {
+  [key: string]: Array<{
+    day: DayName;
+    item: Item;
+  }>;
+}

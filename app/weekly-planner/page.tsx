@@ -16,6 +16,73 @@ import { AutoScheduleDialog } from "./AutoScheduleDialog";
 import { ConfirmScheduleResetDialog } from "./ConfirmScheduleResetDialog";
 import { useAutoScheduleStore } from "./stores/useAutoScheduleStore";
 import { toast } from "sonner";
+import { WeekSelector } from "@/components/weekly-schedule/WeekSelector";
+
+type BadgeStatus = {
+  text: string;
+  classes: string;
+};
+
+const getDueDateStatus = (dueDate: Date | null): BadgeStatus => {
+  if (!dueDate) {
+    return {
+      text: "No due date",
+      classes: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
+    };
+  }
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const dueDateStart = new Date(dueDate);
+  dueDateStart.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.ceil(
+    (dueDateStart.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (diffDays < 0) {
+    return {
+      text: "Overdue",
+      classes: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    };
+  } else if (diffDays === 0) {
+    return {
+      text: "Today",
+      classes:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    };
+  } else if (diffDays === 1) {
+    return {
+      text: "Tomorrow",
+      classes:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    };
+  } else if (diffDays === 2) {
+    return {
+      text: "2 days",
+      classes:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    };
+  } else if (diffDays < 7) {
+    return {
+      text: "3+ days",
+      classes:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    };
+  } else if (diffDays < 30) {
+    return {
+      text: "Week+",
+      classes:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    };
+  } else {
+    return {
+      text: "Month+",
+      classes:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    };
+  }
+};
 
 const WeeklyPlanner = () => {
   const { boardCollection } = useRealmApp();
@@ -26,6 +93,7 @@ const WeeklyPlanner = () => {
     addItemToDay,
     removeItemFromDay,
     removeItemsFromSchedule,
+    changeWeek,
   } = useWeeklySchedule({
     weekStartsOn: 0,
   });
@@ -50,6 +118,9 @@ const WeeklyPlanner = () => {
   >(new Set());
   const { proposedSchedule, setProposedSchedule, clearProposedSchedule } =
     useAutoScheduleStore();
+  const [autoScheduledWeeks, setAutoScheduledWeeks] = React.useState<
+    Map<string, boolean>
+  >(new Map());
 
   React.useEffect(() => {
     const loadItems = async () => {
@@ -64,21 +135,45 @@ const WeeklyPlanner = () => {
 
   React.useEffect(() => {
     const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+    const storedItems = localStorage.getItem(`autoScheduledItems-${weekKey}`);
     const storedScheduleState = localStorage.getItem(
       `autoScheduled-${weekKey}`
     );
-    const hasAutoScheduledItems = autoScheduledItems.size > 0;
 
-    setAutoScheduled(storedScheduleState === "true" || hasAutoScheduledItems);
-  }, [currentWeekStart, autoScheduledItems]);
+    console.log(`Loading auto-scheduled items for week ${weekKey}:`, {
+      storedItems: storedItems
+        ? JSON.parse(storedItems).map((id: string) => {
+            const item = items.find((i) => i.id === id);
+            return item ? getItemValue(item, ColumnTitles.Customer_Name) : id;
+          })
+        : null,
+      storedScheduleState,
+    });
 
-  React.useEffect(() => {
-    const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-    const storedItems = localStorage.getItem(`autoScheduledItems-${weekKey}`);
     if (storedItems) {
-      setAutoScheduledItems(new Set(JSON.parse(storedItems)));
+      const parsedItems = JSON.parse(storedItems);
+      console.log(
+        "Setting auto-scheduled items:",
+        parsedItems.map((id: string) => {
+          const item = items.find((i) => i.id === id);
+          return item ? getItemValue(item, ColumnTitles.Customer_Name) : id;
+        })
+      );
+      setAutoScheduledItems(new Set(parsedItems));
+    } else {
+      setAutoScheduledItems(new Set());
     }
-  }, [currentWeekStart]);
+
+    setAutoScheduledWeeks((prev) => {
+      const newMap = new Map(prev);
+      if (storedScheduleState === "true" && storedItems) {
+        newMap.set(weekKey, true);
+      } else {
+        newMap.delete(weekKey);
+      }
+      return newMap;
+    });
+  }, [currentWeekStart, items]);
 
   const getItemValue = (item: Item, columnName: ColumnTitles): string => {
     return item.values.find((v) => v.columnName === columnName)?.text || "";
@@ -179,71 +274,144 @@ const WeeklyPlanner = () => {
   );
 
   const handleAutoScheduleClick = () => {
-    const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
     const preview = sortItems({
       items,
       currentSchedule,
       targetWeek: currentWeekStart,
+      weeklySchedules,
     });
 
-    // Store the proposed schedule in the global store
-    setProposedSchedule(currentWeekKey, preview[currentWeekKey] || []);
+    // Store all weeks in the proposed schedule
+    Object.entries(preview).forEach(([weekKey, weekSchedule]) => {
+      setProposedSchedule(weekKey, weekSchedule);
+    });
+
     setShowAutoSchedule(true);
   };
 
   const handleAutoScheduleConfirm = async () => {
-    const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
-    const itemsToSchedule = proposedSchedule[currentWeekKey] || [];
-    const newAutoScheduledItems = new Set<string>();
+    const autoScheduledByWeek = new Map<string, Set<string>>();
 
     try {
-      // Group items by day
-      const itemsByDay = itemsToSchedule.reduce((acc, { day, item }) => {
-        if (!acc[day]) {
-          acc[day] = [];
-        }
-        acc[day].push(item.id);
-        return acc;
-      }, {} as Record<DayName, string[]>);
+      // Define valid days
+      const validDays = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+      ];
 
-      // Process each day's items
-      for (const [day, itemIds] of Object.entries(itemsByDay)) {
-        // Add items in smaller batches
-        const BATCH_SIZE = 3;
-        for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
-          const batch = itemIds.slice(i, i + BATCH_SIZE);
-          await Promise.all(
-            batch.map(async (id) => {
-              try {
-                await addItemToDay(day as DayName, id);
-                newAutoScheduledItems.add(id);
-              } catch (error) {
-                console.warn(`Failed to add item ${id} to ${day}:`, error);
-              }
+      // Process each week in the proposed schedule
+      for (const [weekKey, weekSchedule] of Object.entries(proposedSchedule)) {
+        const weekAutoScheduled = new Set<string>();
+
+        // Get currently scheduled items for this week to avoid duplicates
+        const existingScheduledItems = new Set<string>();
+        const weekExistingSchedule =
+          weekKey === format(currentWeekStart, "yyyy-MM-dd")
+            ? currentSchedule
+            : weeklySchedules[weekKey] || {};
+
+        Object.entries(weekExistingSchedule as DaySchedule).forEach(
+          ([day, scheduleItems]) => {
+            if (validDays.includes(day)) {
+              scheduleItems.forEach((item) => {
+                existingScheduledItems.add(item.id);
+              });
+            }
+          }
+        );
+
+        // Filter out already scheduled items for this week
+        const newItemsToSchedule = weekSchedule.filter(
+          ({ item }) => !existingScheduledItems.has(item.id)
+        );
+
+        // Group items by day (only new items)
+        const itemsByDay = newItemsToSchedule.reduce((acc, { day, item }) => {
+          if (!acc[day]) {
+            acc[day] = [];
+          }
+          acc[day].push(item.id);
+          return acc;
+        }, {} as Record<DayName, string[]>);
+
+        // Process each day's items
+        for (const [day, itemIds] of Object.entries(itemsByDay)) {
+          const BATCH_SIZE = 3;
+          for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
+            const batch = itemIds.slice(i, i + BATCH_SIZE);
+            await Promise.all(
+              batch.map(async (id) => {
+                try {
+                  await addItemToDay(day as DayName, id, weekKey);
+                  weekAutoScheduled.add(id);
+                } catch (error) {
+                  console.warn(
+                    `Failed to add item ${id} to ${day} in week ${weekKey}:`,
+                    error
+                  );
+                }
+              })
+            );
+          }
+        }
+
+        // Store auto-scheduled items for this week immediately after scheduling them
+        if (weekAutoScheduled.size > 0) {
+          console.log(
+            `Storing auto-scheduled items for week ${weekKey}:`,
+            [...weekAutoScheduled].map((id) => {
+              const item = items.find((i) => i.id === id);
+              return item ? getItemValue(item, ColumnTitles.Customer_Name) : id;
             })
+          );
+          autoScheduledByWeek.set(weekKey, weekAutoScheduled);
+
+          // Make sure to store in localStorage for each week
+          localStorage.setItem(`autoScheduled-${weekKey}`, "true");
+          localStorage.setItem(
+            `autoScheduledItems-${weekKey}`,
+            JSON.stringify([...weekAutoScheduled])
           );
         }
       }
 
-      if (newAutoScheduledItems.size > 0) {
-        localStorage.setItem(`autoScheduled-${currentWeekKey}`, "true");
-        localStorage.setItem(
-          `autoScheduledItems-${currentWeekKey}`,
-          JSON.stringify([...newAutoScheduledItems])
+      const totalScheduled = Array.from(autoScheduledByWeek.values()).reduce(
+        (total, set) => total + set.size,
+        0
+      );
+
+      if (totalScheduled > 0) {
+        // Update the auto-scheduled status for all affected weeks
+        setAutoScheduledWeeks((prev) => {
+          const newMap = new Map(prev);
+          for (const weekKey of autoScheduledByWeek.keys()) {
+            newMap.set(weekKey, true);
+          }
+          return newMap;
+        });
+
+        // Set current week's items for the UI
+        const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
+        setAutoScheduledItems(
+          autoScheduledByWeek.get(currentWeekKey) || new Set()
         );
 
-        setAutoScheduledItems(newAutoScheduledItems);
         clearProposedSchedule();
         setShowAutoSchedule(false);
         setAutoScheduled(true);
 
         toast.success(
-          `Successfully scheduled ${newAutoScheduledItems.size} ${
-            newAutoScheduledItems.size === 1 ? "item" : "items"
+          `Successfully scheduled ${totalScheduled} ${
+            totalScheduled === 1 ? "item" : "items"
+          } across ${autoScheduledByWeek.size} ${
+            autoScheduledByWeek.size === 1 ? "week" : "weeks"
           }`
         );
       } else {
-        toast.error("Failed to schedule any items. Please try again.");
+        toast.error("No new items to schedule.");
       }
     } catch (error) {
       console.error("Auto-schedule failed:", error);
@@ -255,173 +423,341 @@ const WeeklyPlanner = () => {
     setShowResetConfirm(true);
   };
 
-  const handleResetConfirm = async () => {
-    const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
+  const handleResetConfirm = async (resetAll: boolean) => {
+    try {
+      if (resetAll) {
+        console.log("Starting reset all process");
+        setAutoScheduledWeeks(new Map());
 
-    console.log("Starting reset with auto-scheduled items:", [
-      ...autoScheduledItems,
-    ]);
-    console.log("Current schedule:", currentSchedule);
+        const itemsToRemove: {
+          day: DayName;
+          itemId: string;
+          weekKey?: string;
+        }[] = [];
 
-    // Collect all items to remove
-    const itemsToRemove: { day: string; itemId: string }[] = [];
-
-    for (const day of daysOfWeek) {
-      const daySchedule = currentSchedule[day] || [];
-      console.log(`Checking day ${day}, found ${daySchedule.length} items`);
-
-      for (const scheduleItem of daySchedule) {
-        if (autoScheduledItems.has(scheduleItem.id)) {
-          console.log(
-            `Adding auto-scheduled item ${scheduleItem.id} from ${day} to removal list`
+        Object.entries(weeklySchedules).forEach(([weekKey, schedule]) => {
+          console.log(`Processing week: ${weekKey}`);
+          const weekAutoScheduledItems = localStorage.getItem(
+            `autoScheduledItems-${weekKey}`
           );
-          itemsToRemove.push({ day, itemId: scheduleItem.id });
+          console.log(
+            "Auto-scheduled items from storage:",
+            weekAutoScheduledItems
+              ? JSON.parse(weekAutoScheduledItems).map((id: string) => {
+                  const item = items.find((i) => i.id === id);
+                  return item
+                    ? getItemValue(item, ColumnTitles.Customer_Name)
+                    : id;
+                })
+              : null
+          );
+
+          const weekItems = weekAutoScheduledItems
+            ? new Set(JSON.parse(weekAutoScheduledItems))
+            : new Set();
+
+          console.log(
+            "Week items set:",
+            [...weekItems].map((id) => {
+              const item = items.find((i) => i.id === id);
+              return item ? getItemValue(item, ColumnTitles.Customer_Name) : id;
+            })
+          );
+
+          for (const day of daysOfWeek) {
+            const daySchedule = schedule[day] || [];
+            console.log(
+              `Day ${day} schedule:`,
+              daySchedule.map((item) => {
+                const fullItem = items.find((i) => i.id === item.id);
+                return fullItem
+                  ? getItemValue(fullItem, ColumnTitles.Customer_Name)
+                  : item.id;
+              })
+            );
+
+            for (const scheduleItem of daySchedule) {
+              const fullItem = items.find((i) => i.id === scheduleItem.id);
+              const customerName = fullItem
+                ? getItemValue(fullItem, ColumnTitles.Customer_Name)
+                : scheduleItem.id;
+
+              console.log(
+                `Checking item ${customerName}, is auto-scheduled:`,
+                weekItems.has(scheduleItem.id)
+              );
+
+              if (weekItems.has(scheduleItem.id)) {
+                itemsToRemove.push({ day, itemId: scheduleItem.id, weekKey });
+                console.log(`Added item to remove: ${customerName}`);
+              }
+            }
+          }
+
+          localStorage.removeItem(`autoScheduled-${weekKey}`);
+          localStorage.removeItem(`autoScheduledItems-${weekKey}`);
+        });
+
+        console.log(
+          "Final items to remove:",
+          itemsToRemove.map((item) => {
+            const fullItem = items.find((i) => i.id === item.itemId);
+            return {
+              ...item,
+              customerName: fullItem
+                ? getItemValue(fullItem, ColumnTitles.Customer_Name)
+                : item.itemId,
+            };
+          })
+        );
+
+        if (itemsToRemove.length > 0) {
+          await removeItemsFromSchedule(itemsToRemove);
         }
+
+        setAutoScheduledItems(new Set());
+        setAutoScheduled(false);
+        setShowResetConfirm(false);
+
+        toast.success(
+          `Successfully removed ${itemsToRemove.length} auto-scheduled ${
+            itemsToRemove.length === 1 ? "item" : "items"
+          } from all weeks`
+        );
+      } else {
+        // Reset single week
+        const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
+
+        // Get the auto-scheduled items for this specific week
+        const weekAutoScheduledItems = localStorage.getItem(
+          `autoScheduledItems-${currentWeekKey}`
+        );
+        const weekItems = weekAutoScheduledItems
+          ? new Set(JSON.parse(weekAutoScheduledItems))
+          : new Set();
+
+        const itemsToRemove: {
+          day: DayName;
+          itemId: string;
+          weekKey?: string;
+        }[] = [];
+
+        for (const day of daysOfWeek) {
+          const daySchedule = currentSchedule[day] || [];
+          for (const scheduleItem of daySchedule) {
+            if (weekItems.has(scheduleItem.id)) {
+              itemsToRemove.push({
+                day,
+                itemId: scheduleItem.id,
+                weekKey: currentWeekKey,
+              });
+            }
+          }
+        }
+
+        if (itemsToRemove.length > 0) {
+          await removeItemsFromSchedule(itemsToRemove);
+        }
+
+        localStorage.removeItem(`autoScheduled-${currentWeekKey}`);
+        localStorage.removeItem(`autoScheduledItems-${currentWeekKey}`);
+
+        // Update states for the current week
+        setAutoScheduledItems(new Set());
+        setAutoScheduled(false);
+        setShowResetConfirm(false);
+
+        // Update the week's status in the Map
+        setAutoScheduledWeeks((prev) => {
+          const newMap = new Map(prev);
+          newMap.delete(currentWeekKey);
+          return newMap;
+        });
+
+        toast.success(
+          `Successfully removed ${itemsToRemove.length} auto-scheduled ${
+            itemsToRemove.length === 1 ? "item" : "items"
+          } from this week`
+        );
       }
+    } catch (error) {
+      console.error("Reset failed:", error);
+      toast.error("Failed to reset schedule. Please try again.");
     }
-
-    // Remove all items in one batch
-    if (itemsToRemove.length > 0) {
-      await removeItemsFromSchedule(itemsToRemove);
-      console.log(`Removed ${itemsToRemove.length} items in batch`);
-    }
-
-    // Clear the localStorage flags
-    localStorage.removeItem(`autoScheduled-${currentWeekKey}`);
-    localStorage.removeItem(`autoScheduledItems-${currentWeekKey}`);
-
-    setAutoScheduledItems(new Set());
-    setAutoScheduled(false);
-    setShowResetConfirm(false);
-
-    toast.success(
-      `Successfully removed ${itemsToRemove.length} auto-scheduled ${
-        itemsToRemove.length === 1 ? "item" : "items"
-      }`
-    );
   };
+
+  const calculateBlocks = (item: Item): number => {
+    const sizeStr =
+      item.values.find((v) => v.columnName === "Size")?.text || "";
+    const dimensions = sizeStr.split("x").map((dim) => parseFloat(dim.trim()));
+    const width = dimensions[0] || 0;
+    const height = dimensions[1] || 0;
+    return width * height;
+  };
+
+  const handleWeekChange = (direction: "prev" | "next") => {
+    changeWeek(direction);
+  };
+
+  // Helper function to check if current week is auto-scheduled
+  const isCurrentWeekAutoScheduled = React.useMemo(() => {
+    const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+    return autoScheduledWeeks.get(weekKey) || false;
+  }, [currentWeekStart, autoScheduledWeeks]);
 
   return (
     <div className="flex flex-col h-screen p-4">
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
         <h1 className="text-2xl font-bold">Weekly Planner</h1>
-        {autoScheduled ? (
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={handleResetClick}
-          >
-            <RotateCcw className="h-4 w-4" />
-            Reset Schedule
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={handleAutoScheduleClick}
-          >
-            <Wand2 className="h-4 w-4" />
-            Auto Schedule
-          </Button>
-        )}
+        <div className="flex items-center gap-4 w-full sm:w-auto">
+          <WeekSelector
+            currentWeekStart={currentWeekStart}
+            onChangeWeek={handleWeekChange}
+            weekStartsOn={0}
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={handleAutoScheduleClick}
+            >
+              <Wand2 className="h-4 w-4" />
+              Auto Schedule
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={handleResetClick}
+              disabled={!isCurrentWeekAutoScheduled}
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset Schedule
+            </Button>
+          </div>
+        </div>
       </div>
       <hr className="border-gray-200 dark:border-gray-700 mb-4" />
 
       {/* Content sections */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-1">
-        {daysOfWeek.map((day) => (
-          <div
-            key={day}
-            className="border rounded-lg bg-white dark:bg-gray-700 shadow flex flex-col h-full"
-          >
-            <div className="p-4 border-b text-center bg-white dark:bg-gray-900">
-              <h2 className="font-semibold text-2xl text-black dark:text-white">
-                {day}
-              </h2>
-            </div>
-            <div className="p-4 flex-1 flex flex-col">
-              <div className="space-y-2">
-                {currentSchedule[day]?.map((scheduleItem, index) => {
-                  const item = items.find(
-                    (i: Item) => i.id === scheduleItem.id
-                  );
-                  if (!item) return null;
+        {daysOfWeek.map((day) => {
+          const daySchedule = currentSchedule[day] || [];
+          const totalBlocks = daySchedule.reduce((total, scheduleItem) => {
+            const item = items.find((i) => i.id === scheduleItem.id);
+            return total + (item ? calculateBlocks(item) : 0);
+          }, 0);
 
-                  const uniqueKey = `${day}-${scheduleItem.id}-${index}`;
-                  return (
-                    <div
-                      key={uniqueKey}
-                      className={`p-2 rounded-md ${
-                        scheduleItem.done || item.status === "Done"
-                          ? "bg-green-100 dark:bg-green-500/30"
-                          : "bg-gray-100 dark:bg-gray-600"
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">
-                            {getItemValue(item, ColumnTitles.Customer_Name)}
-                          </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {getItemValue(item, ColumnTitles.Design)} -{" "}
-                            {getItemValue(item, ColumnTitles.Size)}
-                          </p>
-                        </div>
-                        <div className="flex gap-1">
-                          {!scheduleItem.done && item.status !== "Done" && (
+          return (
+            <div
+              key={day}
+              className="border rounded-lg bg-white dark:bg-gray-700 shadow flex flex-col h-full"
+            >
+              <div className="p-4 border-b text-center bg-white dark:bg-gray-900">
+                <h2 className="font-semibold text-2xl text-black dark:text-white">
+                  {day}
+                </h2>
+                <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">
+                  Blocks: {totalBlocks}
+                </p>
+              </div>
+              <div className="p-4 flex-1 flex flex-col">
+                <div className="space-y-2">
+                  {currentSchedule[day]?.map((scheduleItem, index) => {
+                    const item = items.find(
+                      (i: Item) => i.id === scheduleItem.id
+                    );
+                    if (!item) return null;
+
+                    const dueDate = new Date(
+                      getItemValue(item, ColumnTitles.Due)
+                    );
+                    const badgeStatus = getDueDateStatus(
+                      isNaN(dueDate.getTime()) ? null : dueDate
+                    );
+
+                    const uniqueKey = `${day}-${scheduleItem.id}-${index}`;
+                    return (
+                      <div
+                        key={uniqueKey}
+                        className={`p-2 rounded-md ${
+                          scheduleItem.done || item.status === "Done"
+                            ? "bg-green-100 dark:bg-green-500/30"
+                            : "bg-gray-100 dark:bg-gray-600"
+                        }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">
+                                {getItemValue(item, ColumnTitles.Customer_Name)}
+                              </p>
+                              <span
+                                className={`px-2 py-0.5 text-xs font-medium rounded-full ${badgeStatus.classes}`}
+                              >
+                                {badgeStatus.text}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                              {getItemValue(item, ColumnTitles.Design)} -{" "}
+                              {getItemValue(item, ColumnTitles.Size)}
+                            </p>
+                          </div>
+                          <div className="flex gap-1">
+                            {!scheduleItem.done && item.status !== "Done" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-500"
+                                onClick={() => handleCompleteItem(item)}
+                              >
+                                <Check className="h-3 w-3" />
+                                <span className="sr-only">Complete item</span>
+                              </Button>
+                            )}
+                            {(scheduleItem.done || item.status === "Done") && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 hover:bg-green-200 dark:hover:bg-green-600/50"
+                                onClick={() => handleResetItem(item)}
+                              >
+                                <RotateCcw className="h-3 w-3" />
+                                <span className="sr-only">Reset item</span>
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-500"
-                              onClick={() => handleCompleteItem(item)}
+                              className={`h-6 w-6 p-0 ${
+                                scheduleItem.done || item.status === "Done"
+                                  ? "hover:bg-green-200 dark:hover:bg-green-600/50"
+                                  : "hover:bg-gray-200 dark:hover:bg-gray-500"
+                              }`}
+                              onClick={() =>
+                                handleRemoveItem(day, scheduleItem.id, item)
+                              }
                             >
-                              <Check className="h-3 w-3" />
-                              <span className="sr-only">Complete item</span>
+                              <Minus className="h-3 w-3" />
+                              <span className="sr-only">Remove item</span>
                             </Button>
-                          )}
-                          {(scheduleItem.done || item.status === "Done") && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0 hover:bg-green-200 dark:hover:bg-green-600/50"
-                              onClick={() => handleResetItem(item)}
-                            >
-                              <RotateCcw className="h-3 w-3" />
-                              <span className="sr-only">Reset item</span>
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className={`h-6 w-6 p-0 ${
-                              scheduleItem.done || item.status === "Done"
-                                ? "hover:bg-green-200 dark:hover:bg-green-600/50"
-                                : "hover:bg-gray-200 dark:hover:bg-gray-500"
-                            }`}
-                            onClick={() =>
-                              handleRemoveItem(day, scheduleItem.id, item)
-                            }
-                          >
-                            <Minus className="h-3 w-3" />
-                            <span className="sr-only">Remove item</span>
-                          </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                <Button
+                  className="mt-2 dark:bg-gray-700"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleAddItem(day)}
+                >
+                  <Plus className="mr-1 h-3 w-3" /> Add
+                </Button>
               </div>
-              <Button
-                className="mt-2 dark:bg-gray-700"
-                size="sm"
-                variant="outline"
-                onClick={() => handleAddItem(day)}
-              >
-                <Plus className="mr-1 h-3 w-3" /> Add
-              </Button>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <AddItemDialog
@@ -470,6 +806,7 @@ const WeeklyPlanner = () => {
         onClose={() => setShowAutoSchedule(false)}
         onConfirm={handleAutoScheduleConfirm}
         getItemValue={getItemValue}
+        plannerCurrentWeek={currentWeekStart}
       />
 
       <ConfirmScheduleResetDialog

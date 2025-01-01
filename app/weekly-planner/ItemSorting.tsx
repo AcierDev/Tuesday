@@ -1,5 +1,19 @@
-import { Item, DayName, DaySchedule, ColumnTitles } from "@/typings/types";
-import { addDays, isBefore, parseISO, startOfWeek } from "date-fns";
+import {
+  Item,
+  DayName,
+  DaySchedule,
+  ColumnTitles,
+  ColumnValue,
+  WeeklySchedules,
+} from "@/typings/types";
+import {
+  addDays,
+  isBefore,
+  parseISO,
+  startOfWeek,
+  addWeeks,
+  format,
+} from "date-fns";
 
 interface SortedItems {
   [key: string]: {
@@ -12,212 +26,357 @@ interface SortItemsProps {
   items: Item[];
   currentSchedule: DaySchedule;
   targetWeek?: Date;
+  weeklySchedules?: WeeklySchedules;
+}
+
+const BLOCKS_PER_DAY_LIMIT = 1000;
+
+// Define the days tuple type at the top level
+const daysOrder = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+] as const;
+type ValidDay = (typeof daysOrder)[number];
+
+// Calculate blocks for an item based on its size
+const calculateBlocks = (item: Item): number => {
+  const sizeStr = item.values.find((v) => v.columnName === "Size")?.text || "";
+  const dimensions = sizeStr.split("x").map((dim) => parseFloat(dim.trim()));
+
+  // Check if we have valid dimensions
+  const width = dimensions[0] || 0;
+  const height = dimensions[1] || 0;
+
+  return width * height;
+};
+
+// Track blocks per day
+interface DayBlocks {
+  Sunday: number;
+  Monday: number;
+  Tuesday: number;
+  Wednesday: number;
+  Thursday: number;
+}
+
+interface DayCapacities {
+  Sunday: number;
+  Monday: number;
+  Tuesday: number;
+  Wednesday: number;
+  Thursday: number;
 }
 
 export const sortItems = ({
   items,
   currentSchedule,
   targetWeek = new Date(),
+  weeklySchedules = {},
 }: SortItemsProps): SortedItems => {
-  const sortedItems = {} as SortedItems;
-
-  // Calculate the target week once
-  const weekStart = startOfWeek(targetWeek);
-  const weekKey = weekStart.toISOString().split("T")[0] as string;
-
-  // Initialize the array for this week
-  sortedItems[weekKey] = [];
-
-  // Get all currently scheduled item IDs for this week
-  const scheduledItemIds = new Set(
-    Object.values(currentSchedule)
-      .flat()
-      .map((item) => item.id)
-  );
-
-  // Filter out items that are:
-  // - Done
-  // - Deleted
-  // - Already in the current week's schedule
-  const activeItems = items.filter(
-    (item) =>
-      item.status !== "Done" && !item.deleted && !scheduledItemIds.has(item.id)
-  );
-
-  // Sort items by due date first
-  activeItems.sort((a, b) => {
-    const aDateText = a.values.find((v) => v.columnName === "Due Date")?.text;
-    const bDateText = b.values.find((v) => v.columnName === "Due Date")?.text;
-
-    // If either date is missing, use a far future date
-    if (!aDateText) return 1; // Move items without dates to the end
-    if (!bDateText) return -1; // Move items without dates to the end
-
-    const aDate = parseISO(aDateText);
-    const bDate = parseISO(bDateText);
-
-    return aDate.getTime() - bDate.getTime();
+  console.log("Starting sortItems with:", {
+    totalItems: items.length,
+    targetWeek: format(targetWeek, "yyyy-MM-dd"),
+    hasExistingSchedule: Object.keys(currentSchedule).length > 0,
   });
 
-  activeItems.forEach((item) => {
-    const dueDateValue = item.values.find(
-      (v) => v.columnName === "Due Date"
-    )?.text;
+  const sortedItems = {} as SortedItems;
 
-    if (!dueDateValue) return;
+  const scheduleItemsForWeek = (
+    itemsToSchedule: Item[],
+    weekStart: Date,
+    existingSchedule: DaySchedule
+  ): {
+    scheduledItems: Item[];
+    unscheduledItems: Item[];
+  } => {
+    const weekKey = format(weekStart, "yyyy-MM-dd");
+    console.log(`\nProcessing week: ${weekKey}`, {
+      itemsToSchedule: itemsToSchedule.length,
+      hasExistingSchedule: Object.keys(existingSchedule).length > 0,
+    });
 
-    try {
-      const dueDate = parseISO(dueDateValue);
-      if (isNaN(dueDate.getTime())) return;
+    if (!sortedItems[weekKey]) {
+      sortedItems[weekKey] = [];
+    }
 
-      const complexityScore = calculateComplexityScore(item);
-      const bestDay = determineBestDay(complexityScore, dueDate);
+    const dayBlocks: DayBlocks = {
+      Sunday: 0,
+      Monday: 0,
+      Tuesday: 0,
+      Wednesday: 0,
+      Thursday: 0,
+    };
 
-      // Ensure array exists before pushing (TypeScript safety)
+    // Handle existing scheduled items
+    const existingScheduledItems = new Set<string>();
+    Object.entries(existingSchedule).forEach(([day, scheduleItems]) => {
+      if (day in dayBlocks) {
+        scheduleItems.forEach((scheduleItem) => {
+          const existingItem = items.find((i) => i.id === scheduleItem.id);
+          if (existingItem) {
+            const itemBlocks = calculateBlocks(existingItem);
+            dayBlocks[day as keyof DayBlocks] += itemBlocks;
+            existingScheduledItems.add(existingItem.id);
+            //@ts-ignore
+            sortedItems[weekKey].push({
+              day: day as DayName,
+              item: existingItem,
+            });
+          }
+        });
+      }
+    });
+
+    console.log("Existing scheduled items:", {
+      count: existingScheduledItems.size,
+      dayBlocks,
+    });
+
+    // Filter and separate items
+    const activeItems = itemsToSchedule.filter(
+      (item) => !existingScheduledItems.has(item.id)
+    );
+
+    const urgentItems = activeItems.filter((item) => {
+      const dueDateValue = item.values.find(
+        (v) => v.columnName === "Due Date"
+      )?.text;
+      if (!dueDateValue) return false;
+
+      try {
+        const dueDate = parseISO(dueDateValue);
+        if (isNaN(dueDate.getTime())) return false;
+
+        const today = new Date();
+        const daysUntilDue = Math.floor(
+          (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        return daysUntilDue < 2;
+      } catch {
+        return false;
+      }
+    });
+
+    const nonUrgentItems = activeItems.filter(
+      (item) => !urgentItems.includes(item)
+    );
+
+    console.log("Items to schedule:", {
+      urgent: urgentItems.length,
+      nonUrgent: nonUrgentItems.length,
+    });
+
+    const unscheduledItems: Item[] = [];
+
+    // Helper function for scheduling items by design
+    const scheduleItemsByDesign = (items: Item[], isUrgent: boolean) => {
+      const itemsByDesign: Record<string, Item[]> = {};
+      items.forEach((item) => {
+        const design =
+          item.values.find((v) => v.columnName === "Design")?.text ||
+          "No Design";
+        if (!itemsByDesign[design]) {
+          itemsByDesign[design] = [];
+        }
+        itemsByDesign[design].push(item);
+      });
+
+      console.log(`Processing ${isUrgent ? "urgent" : "non-urgent"} items:`, {
+        designGroups: Object.keys(itemsByDesign).length,
+        itemsByDesign: Object.fromEntries(
+          Object.entries(itemsByDesign).map(([k, v]) => [k, v.length])
+        ),
+      });
+
+      Object.entries(itemsByDesign).forEach(([design, designItems]) => {
+        console.log(`\nScheduling design group: ${design}`, {
+          itemCount: designItems.length,
+          currentDayBlocks: { ...dayBlocks },
+        });
+
+        const remainingItems = scheduleDesignGroup(
+          designItems,
+          design,
+          isUrgent ? "urgent items" : "regular items",
+          weekKey,
+          sortedItems,
+          dayBlocks,
+          unscheduledItems
+        );
+
+        console.log(`Completed design group: ${design}`, {
+          scheduled: designItems.length - remainingItems.length,
+          unscheduled: remainingItems.length,
+          updatedDayBlocks: { ...dayBlocks },
+        });
+
+        unscheduledItems.push(...remainingItems);
+      });
+    };
+
+    scheduleItemsByDesign(urgentItems, true);
+    scheduleItemsByDesign(nonUrgentItems, false);
+
+    const result = {
+      scheduledItems: activeItems.filter(
+        (item) => !unscheduledItems.includes(item)
+      ),
+      unscheduledItems,
+    };
+
+    console.log(`\nWeek ${weekKey} scheduling complete:`, {
+      scheduled: result.scheduledItems.length,
+      unscheduled: result.unscheduledItems.length,
+      finalDayBlocks: { ...dayBlocks },
+    });
+
+    return result;
+  };
+
+  // Start scheduling with the target week
+  let currentWeekStart = startOfWeek(targetWeek);
+  let remainingItems = [...items];
+  let weekCount = 0;
+
+  while (remainingItems.length > 0) {
+    weekCount++;
+    console.log(`\n=== Processing Week ${weekCount} ===`);
+
+    const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+    const existingSchedule =
+      weekKey === format(targetWeek, "yyyy-MM-dd")
+        ? currentSchedule
+        : weeklySchedules[weekKey] || {
+            Sunday: [],
+            Monday: [],
+            Tuesday: [],
+            Wednesday: [],
+            Thursday: [],
+            Friday: [],
+            Saturday: [],
+          };
+
+    const { unscheduledItems } = scheduleItemsForWeek(
+      remainingItems,
+      currentWeekStart,
+      existingSchedule
+    );
+
+    if (unscheduledItems.length === 0) {
+      console.log("All items scheduled successfully!");
+      break;
+    }
+
+    console.log(`Moving ${unscheduledItems.length} items to next week`);
+    currentWeekStart = addWeeks(currentWeekStart, 1);
+    remainingItems = unscheduledItems;
+  }
+
+  console.log("\nFinal schedule:", {
+    weeksUsed: Object.keys(sortedItems).length,
+    totalItemsScheduled: Object.values(sortedItems).reduce(
+      (sum, week) => sum + week.length,
+      0
+    ),
+    itemsByWeek: Object.fromEntries(
+      Object.entries(sortedItems).map(([k, v]) => [k, v.length])
+    ),
+  });
+
+  return sortedItems;
+};
+
+// Helper function for finding optimal day and scheduling items
+const scheduleDesignGroup = (
+  items: Item[],
+  design: string,
+  itemType: string,
+  weekKey: string,
+  sortedItems: SortedItems,
+  dayBlocks: DayBlocks,
+  unscheduledItems: Item[]
+): Item[] => {
+  const dayCapacities: DayCapacities = {
+    Sunday: 0,
+    Monday: 0,
+    Tuesday: 0,
+    Wednesday: 0,
+    Thursday: 0,
+  };
+
+  // Simulate adding items to each day
+  for (const day of daysOrder) {
+    let theoreticalBlocks = dayBlocks[day];
+    let itemsFittingThisDay = 0;
+
+    for (const item of items) {
+      const itemBlocks = calculateBlocks(item);
+      if (theoreticalBlocks + itemBlocks <= BLOCKS_PER_DAY_LIMIT) {
+        itemsFittingThisDay++;
+        theoreticalBlocks += itemBlocks;
+      } else {
+        break;
+      }
+    }
+
+    dayCapacities[day] = itemsFittingThisDay;
+  }
+
+  // Check if any day can hold items
+  const maxCapacity = Math.max(...Object.values(dayCapacities));
+  if (maxCapacity === 0) {
+    items.forEach((item) => {
+      unscheduledItems.push(item);
+    });
+    return [];
+  }
+
+  // Find the day that can hold the most items
+  let bestDay: ValidDay = "Sunday";
+  for (const day of daysOrder) {
+    if (dayCapacities[day] > dayCapacities[bestDay]) {
+      bestDay = day;
+    }
+  }
+
+  // Schedule what fits on best day
+  const fittingItems: Item[] = [];
+  const remainingItems: Item[] = [];
+  let currentBlocks = dayBlocks[bestDay];
+
+  for (const item of items) {
+    const itemBlocks = calculateBlocks(item);
+    if (currentBlocks + itemBlocks <= BLOCKS_PER_DAY_LIMIT) {
+      dayBlocks[bestDay] += itemBlocks;
+      currentBlocks += itemBlocks;
       if (!sortedItems[weekKey]) {
         sortedItems[weekKey] = [];
       }
-
-      // Always add to target week regardless of item's due date
       sortedItems[weekKey].push({
         day: bestDay,
         item: item,
       });
-
-      const daysUntilDue = Math.floor(
-        (dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      const isUrgent = daysUntilDue <= 4;
-      const customerName =
-        item.values.find((v) => v.columnName === ColumnTitles.Customer_Name)
-          ?.text || "Unnamed";
-
-      let schedulingReason = "";
-      if (daysUntilDue <= 2) {
-        schedulingReason = "URGENT (≤2 days) - forced to Sunday";
-      } else if (daysUntilDue <= 4) {
-        schedulingReason = `URGENT (≤4 days) - ${
-          complexityScore > 60
-            ? "high complexity → Sunday"
-            : "lower complexity → Monday"
-        }`;
-      } else {
-        schedulingReason = `Normal scheduling based on complexity score`;
-      }
-
-      console.log(
-        `Item: "${customerName}" (ID: ${item.id})
-        • Complexity Score: ${complexityScore}
-        • Due in ${daysUntilDue} days ${isUrgent ? "🚨" : ""}
-        • Assigned to ${bestDay}
-        • Week starting: ${weekKey}
-        • Reason: ${schedulingReason}`,
-        {
-          complexityScore,
-          daysUntilDue,
-          bestDay,
-          dueDate: dueDateValue,
-          weekKey,
-        }
-      );
-    } catch (error) {
-      console.error("Error processing item:", item.id, error);
+      fittingItems.push(item);
+    } else {
+      remainingItems.push(item);
     }
-  });
-
-  console.log("Final sorted schedule:", sortedItems);
-  return sortedItems;
-};
-
-const calculateComplexityScore = (item: Item): number => {
-  let score = 0;
-
-  // Get size and parse dimensions
-  const sizeStr = item.values.find((v) => v.columnName === "Size")?.text || "";
-  const dimensions = sizeStr.split("x").map((dim) => parseFloat(dim.trim()));
-
-  // Check if we have valid dimensions before calculating area
-  const width = dimensions[0] || 0;
-  const height = dimensions[1] || 0;
-
-  if (width > 0 && height > 0) {
-    // Larger pieces are more complex
-    const area = width * height;
-    score += Math.min(area / 100, 40); // Up to 40 points for size
   }
 
-  // Certain designs are more complex
-  const design = item.values.find((v) => v.columnName === "Design")?.text;
-  if (design?.includes("Striped")) score += 25; // Striped designs are complex
-  if (design?.includes("Oceanic Harmony")) score += 20;
-  if (design?.includes("Coastal Dream")) score += 15;
-  if (design?.includes("Custom")) score += 30;
-
-  // Check progress
-  const painted =
-    item.values.find((v) => v.columnName === "Painted")?.text === "Done";
-  const hasBackboard =
-    item.values.find((v) => v.columnName === "Backboard")?.text === "Done";
-  const hasGlue =
-    item.values.find((v) => v.columnName === "Glued")?.text === "Done";
-
-  // Reduce complexity if work is already done
-  if (painted) score -= 10;
-  if (hasBackboard) score -= 15;
-  if (hasGlue) score -= 15;
-
-  const finalScore = Math.max(0, Math.min(score, 100));
-
-  console.log(
-    `Complexity breakdown for item ${item.id} - "${
-      item.values.find((v) => v.columnName === ColumnTitles.Customer_Name)
-        ?.text || "Unnamed"
-    }":`,
-    {
-      size: `${width}x${height}`,
+  // Recursively handle remaining items
+  if (remainingItems.length > 0) {
+    return scheduleDesignGroup(
+      remainingItems,
       design,
-      painted,
-      hasBackboard,
-      hasGlue,
-      finalScore,
-    }
-  );
-
-  return finalScore;
-};
-
-const determineBestDay = (complexity: number, dueDate: Date): DayName => {
-  // Logic for Sunday-Thursday work week:
-  // Sunday: Start complex items that need full week
-  // Monday: High complexity items
-  // Tuesday: Medium-high complexity or urgent items
-  // Wednesday: Medium complexity items
-  // Thursday: Low complexity and finishing items
-
-  const today = new Date();
-  const daysUntilDue = Math.floor(
-    (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  // Urgent items handling
-  if (daysUntilDue <= 2) {
-    return "Sunday"; // Most urgent items start immediately
-  }
-  if (daysUntilDue <= 4) {
-    return complexity > 60 ? "Sunday" : "Monday";
+      itemType,
+      weekKey,
+      sortedItems,
+      dayBlocks,
+      unscheduledItems
+    );
   }
 
-  // Normal scheduling based on complexity
-  if (complexity >= 80) {
-    return "Sunday"; // Most complex items start on Sunday
-  } else if (complexity >= 60) {
-    return "Monday"; // High complexity items
-  } else if (complexity >= 40) {
-    return "Tuesday"; // Medium complexity items
-  } else if (complexity >= 20) {
-    return "Wednesday"; // Lower medium complexity items
-  } else {
-    return "Thursday"; // Simple items and finishing work
-  }
+  return remainingItems;
 };
