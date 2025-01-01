@@ -46,7 +46,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Clock } from "lucide-react";
 
-const API_BASE_URL = "http://everwoodbackend.ddns.net:3004";
+const API_BASE_URL = "/api/outlets";
 
 interface Device {
   name: string;
@@ -77,13 +77,12 @@ const controlOutlet = async (
   autoOffMinutes?: number
 ) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/outlet/${action}`, {
+    const response = await fetch(`${API_BASE_URL}/${action}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ ip, autoOffMinutes }),
-      credentials: "include",
     });
 
     if (!response.ok) {
@@ -227,13 +226,12 @@ export default function OutletControl() {
 
     setRefreshing((prev) => [...prev, index]);
     try {
-      const response = await fetch(`${API_BASE_URL}/outlet/status`, {
+      const response = await fetch(`${API_BASE_URL}/status`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ ip: devices[index].ip }),
-        credentials: "include",
       });
 
       if (!response.ok) {

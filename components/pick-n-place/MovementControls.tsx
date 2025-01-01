@@ -44,6 +44,18 @@ interface MovementControlsProps {
   gridColumns: number;
   onGridRowsChange: (rows: number) => void;
   onGridColumnsChange: (columns: number) => void;
+  startX: number;
+  startY: number;
+  onStartXChange: (x: number) => void;
+  onStartYChange: (y: number) => void;
+  gridLength: number;
+  gridWidth: number;
+  onGridLengthChange: (length: number) => void;
+  onGridWidthChange: (width: number) => void;
+  pickupX: number;
+  pickupY: number;
+  onPickupXChange: (x: number) => void;
+  onPickupYChange: (y: number) => void;
 }
 
 interface DirectionButtonProps {
@@ -72,6 +84,18 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
   gridColumns,
   onGridRowsChange,
   onGridColumnsChange,
+  startX,
+  startY,
+  onStartXChange,
+  onStartYChange,
+  gridLength,
+  gridWidth,
+  onGridLengthChange,
+  onGridWidthChange,
+  pickupX,
+  pickupY,
+  onPickupXChange,
+  onPickupYChange,
 }) => {
   const [speed, setSpeed] = useState(50);
   const [acceleration, setAcceleration] = useState(50);
@@ -84,6 +108,14 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
   const [inputValues, setInputValues] = useState({
     x: position.x.toString(),
     y: position.y.toString(),
+    startX: "",
+    startY: "",
+    rows: "",
+    columns: "",
+    length: "",
+    width: "",
+    pickupX: "",
+    pickupY: "",
   });
 
   // Update target position when actual position changes
@@ -269,6 +301,19 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
     );
   };
 
+  // Update the handleKeyDown function to handle Tab
+  const handleKeyDown = (e: React.KeyboardEvent, axis: "x" | "y") => {
+    if (e.key === "Enter" && showMoveButton) {
+      handleMoveToPosition();
+    } else if (e.key === "Tab") {
+      e.preventDefault();
+      const nextInput = document.querySelector<HTMLInputElement>(
+        `input[name="${axis === "x" ? "y" : "x"}-position"]`
+      );
+      nextInput?.focus();
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Card Header */}
@@ -290,16 +335,18 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
               <div className="relative">
                 <Input
                   type="number"
+                  name={`${axis}-position`}
                   value={inputValues[axis as keyof typeof inputValues]}
                   onChange={(e) =>
                     handlePositionChange(axis as "x" | "y", e.target.value)
                   }
-                  className="bg-gray-50 dark:bg-gray-700 pr-16"
+                  onKeyDown={(e) => handleKeyDown(e, axis as "x" | "y")}
+                  className="bg-gray-50 dark:bg-gray-700 pr-12"
                   step="0.1"
                   disabled={!wsConnected}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
-                  mm
+                  inches
                 </span>
               </div>
             </div>
@@ -331,10 +378,19 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
                     type="number"
                     min={1}
                     max={10}
-                    value={gridRows}
-                    onChange={(e) =>
-                      onGridRowsChange(parseInt(e.target.value) || 1)
+                    value={
+                      gridRows === 1 && inputValues.rows === "" ? "" : gridRows
                     }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") {
+                        onGridRowsChange(1);
+                        setInputValues((prev) => ({ ...prev, rows: "" }));
+                      } else {
+                        onGridRowsChange(parseInt(val) || 1);
+                        setInputValues((prev) => ({ ...prev, rows: val }));
+                      }
+                    }}
                     className="bg-gray-50 dark:bg-gray-700"
                     disabled={!wsConnected}
                   />
@@ -349,16 +405,28 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
                     type="number"
                     min={1}
                     max={10}
-                    value={gridColumns}
-                    onChange={(e) =>
-                      onGridColumnsChange(parseInt(e.target.value) || 1)
+                    value={
+                      gridColumns === 1 && inputValues.columns === ""
+                        ? ""
+                        : gridColumns
                     }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") {
+                        onGridColumnsChange(1);
+                        setInputValues((prev) => ({ ...prev, columns: "" }));
+                      } else {
+                        onGridColumnsChange(parseInt(val) || 1);
+                        setInputValues((prev) => ({ ...prev, columns: val }));
+                      }
+                    }}
                     className="bg-gray-50 dark:bg-gray-700"
                     disabled={!wsConnected}
                   />
                 </div>
               </div>
             </div>
+
             <div className="flex items-center justify-center p-4 mt-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
               <div
                 className="grid gap-1"
@@ -373,6 +441,181 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
                     className="w-5 h-5 rounded-sm bg-gray-200 dark:bg-gray-700"
                   />
                 ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Box X
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={
+                      startX === 0 && inputValues.startX === "" ? "" : startX
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") {
+                        onStartXChange(0);
+                        setInputValues((prev) => ({ ...prev, startX: "" }));
+                      } else {
+                        onStartXChange(parseFloat(val) || 0);
+                        setInputValues((prev) => ({ ...prev, startX: val }));
+                      }
+                    }}
+                    className="bg-gray-50 dark:bg-gray-700 pr-12"
+                    disabled={!wsConnected}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Box Y
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={
+                      startY === 0 && inputValues.startY === "" ? "" : startY
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") {
+                        onStartYChange(0);
+                        setInputValues((prev) => ({ ...prev, startY: "" }));
+                      } else {
+                        onStartYChange(parseFloat(val) || 0);
+                        setInputValues((prev) => ({ ...prev, startY: val }));
+                      }
+                    }}
+                    className="bg-gray-50 dark:bg-gray-700 pr-12"
+                    disabled={!wsConnected}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Box Length
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={
+                      gridLength === 0 && inputValues.length === ""
+                        ? ""
+                        : gridLength
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") {
+                        onGridLengthChange(0);
+                        setInputValues((prev) => ({ ...prev, length: "" }));
+                      } else {
+                        onGridLengthChange(parseFloat(val) || 0);
+                        setInputValues((prev) => ({ ...prev, length: val }));
+                      }
+                    }}
+                    className="bg-gray-50 dark:bg-gray-700 pr-12"
+                    disabled={!wsConnected}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
+                    Inches
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Box Width
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={
+                      gridWidth === 0 && inputValues.width === ""
+                        ? ""
+                        : gridWidth
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") {
+                        onGridWidthChange(0);
+                        setInputValues((prev) => ({ ...prev, width: "" }));
+                      } else {
+                        onGridWidthChange(parseFloat(val) || 0);
+                        setInputValues((prev) => ({ ...prev, width: val }));
+                      }
+                    }}
+                    className="bg-gray-50 dark:bg-gray-700 pr-12"
+                    disabled={!wsConnected}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
+                    Inches
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Pickup X
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={
+                      pickupX === 0 && inputValues.pickupX === "" ? "" : pickupX
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") {
+                        onPickupXChange(0);
+                        setInputValues((prev) => ({ ...prev, pickupX: "" }));
+                      } else {
+                        onPickupXChange(parseFloat(val) || 0);
+                        setInputValues((prev) => ({ ...prev, pickupX: val }));
+                      }
+                    }}
+                    className="bg-gray-50 dark:bg-gray-700 pr-12"
+                    disabled={!wsConnected}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
+                    inches
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Pickup Y
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={
+                      pickupY === 0 && inputValues.pickupY === "" ? "" : pickupY
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") {
+                        onPickupYChange(0);
+                        setInputValues((prev) => ({ ...prev, pickupY: "" }));
+                      } else {
+                        onPickupYChange(parseFloat(val) || 0);
+                        setInputValues((prev) => ({ ...prev, pickupY: val }));
+                      }
+                    }}
+                    className="bg-gray-50 dark:bg-gray-700 pr-12"
+                    disabled={!wsConnected}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">
+                    inches
+                  </span>
+                </div>
               </div>
             </div>
           </div>

@@ -47,6 +47,12 @@ export default function PickNPlacePage() {
   const HEARTBEAT_INTERVAL = 30000; // 30 seconds
   const [gridRows, setGridRows] = useState(3);
   const [gridColumns, setGridColumns] = useState(3);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const [gridLength, setGridLength] = useState(0);
+  const [gridWidth, setGridWidth] = useState(0);
+  const [pickupX, setPickupX] = useState(0);
+  const [pickupY, setPickupY] = useState(0);
 
   const handleMessage = useCallback((message: any) => {
     try {
@@ -211,6 +217,14 @@ export default function PickNPlacePage() {
               <OperationControls
                 wsConnected={wsConnected}
                 sendCommand={sendCommand}
+                gridRows={gridRows}
+                gridColumns={gridColumns}
+                startX={startX}
+                startY={startY}
+                gridLength={gridLength}
+                gridWidth={gridWidth}
+                pickupX={pickupX}
+                pickupY={pickupY}
               />
             </div>
           </Card>
@@ -230,6 +244,18 @@ export default function PickNPlacePage() {
                 gridColumns={gridColumns}
                 onGridRowsChange={setGridRows}
                 onGridColumnsChange={setGridColumns}
+                startX={startX}
+                startY={startY}
+                onStartXChange={setStartX}
+                onStartYChange={setStartY}
+                gridLength={gridLength}
+                gridWidth={gridWidth}
+                onGridLengthChange={setGridLength}
+                onGridWidthChange={setGridWidth}
+                pickupX={pickupX}
+                pickupY={pickupY}
+                onPickupXChange={setPickupX}
+                onPickupYChange={setPickupY}
               />
             </div>
           </Card>

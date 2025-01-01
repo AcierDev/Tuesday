@@ -4,12 +4,28 @@ import { Play, Pause, Square } from "lucide-react";
 
 interface OperationControlsProps {
   wsConnected: boolean;
-  sendCommand: (command: { type: string; data?: { type: string } }) => void;
+  sendCommand: (command: { type: string; data?: any }) => void;
+  gridRows: number;
+  gridColumns: number;
+  startX: number;
+  startY: number;
+  gridLength: number;
+  gridWidth: number;
+  pickupX: number;
+  pickupY: number;
 }
 
 export const OperationControls: React.FC<OperationControlsProps> = ({
   wsConnected,
   sendCommand,
+  gridRows,
+  gridColumns,
+  startX,
+  startY,
+  gridLength,
+  gridWidth,
+  pickupX,
+  pickupY,
 }) => {
   return (
     <div className="grid grid-cols-3 gap-3">
@@ -28,6 +44,16 @@ export const OperationControls: React.FC<OperationControlsProps> = ({
             type: "command",
             data: {
               type: "start",
+              params: {
+                rows: gridRows,
+                cols: gridColumns,
+                startX,
+                startY,
+                gridLength,
+                gridWidth,
+                pickupX,
+                pickupY,
+              },
             },
           })
         }
