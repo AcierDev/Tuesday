@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import { useRealmApp } from "@/hooks/useRealmApp";
 import { ColumnTitles, Item, DayName, DaySchedule } from "@/typings/types";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Check, RotateCcw, Wand2 } from "lucide-react";
+import { Plus, Minus, Check, RotateCcw, Wand2, Trash2 } from "lucide-react";
 import { AddItemDialog } from "@/components/weekly-schedule/AddItemDialog";
 import { ConfirmRemoveDialog } from "./ConfirmRemoveDialog";
 import { ConfirmCompleteDialog } from "./ConfirmCompleteDialog";
@@ -17,6 +17,8 @@ import { ConfirmScheduleResetDialog } from "./ConfirmScheduleResetDialog";
 import { useAutoScheduleStore } from "./stores/useAutoScheduleStore";
 import { toast } from "sonner";
 import { WeekSelector } from "@/components/weekly-schedule/WeekSelector";
+import { ConfirmClearDialog } from "./ConfirmClearDialog";
+import { ConfirmClearWeekDialog } from "./ConfirmClearWeekDialog";
 
 type BadgeStatus = {
   text: string;
@@ -138,6 +140,8 @@ const WeeklyPlanner = () => {
       Thursday: boolean;
     };
   }>({});
+  const [dayToClear, setDayToClear] = useState<DayName | null>(null);
+  const [showClearWeekConfirm, setShowClearWeekConfirm] = useState(false);
 
   React.useEffect(() => {
     const loadItems = async () => {
@@ -234,9 +238,76 @@ const WeeklyPlanner = () => {
     setItemToRemove({ day, itemId, item });
   };
 
+  const checkAndUpdateAutoScheduledStatus = (weekKey: string) => {
+    // Get the auto-scheduled items for this week
+    const storedItems = localStorage.getItem(`autoScheduledItems-${weekKey}`);
+
+    // If no stored items, clear everything
+    if (!storedItems) {
+      localStorage.removeItem(`autoScheduled-${weekKey}`);
+      setAutoScheduled(false);
+      setAutoScheduledItems(new Set());
+      setAutoScheduledWeeks((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(weekKey);
+        return newMap;
+      });
+      return;
+    }
+
+    const autoScheduledSet = new Set(JSON.parse(storedItems) as string[]);
+    const weekSchedule = weeklySchedules[weekKey] || {};
+
+    // Create a set of all currently scheduled item IDs for quick lookup
+    const scheduledItemIds = new Set<string>();
+    Object.values(weekSchedule as DaySchedule).forEach((day) => {
+      day.forEach((scheduleItem) => {
+        scheduledItemIds.add(scheduleItem.id);
+      });
+    });
+
+    // Check if any auto-scheduled items are still in the schedule
+    const remainingAutoScheduledItems = new Set(
+      [...autoScheduledSet].filter((id) => scheduledItemIds.has(id))
+    );
+
+    // Changed threshold: now considers 1 or fewer items as non-auto-scheduled
+    const hasAutoScheduledItems = remainingAutoScheduledItems.size > 1;
+
+    // Update localStorage first
+    if (!hasAutoScheduledItems) {
+      localStorage.removeItem(`autoScheduled-${weekKey}`);
+      localStorage.removeItem(`autoScheduledItems-${weekKey}`);
+    } else {
+      localStorage.setItem(`autoScheduled-${weekKey}`, "true");
+      localStorage.setItem(
+        `autoScheduledItems-${weekKey}`,
+        JSON.stringify([...remainingAutoScheduledItems])
+      );
+    }
+
+    // Then update all states synchronously
+    if (weekKey === format(currentWeekStart, "yyyy-MM-dd")) {
+      setAutoScheduled(hasAutoScheduledItems);
+      setAutoScheduledItems(remainingAutoScheduledItems);
+    }
+
+    setAutoScheduledWeeks((prev) => {
+      const newMap = new Map(prev);
+      if (hasAutoScheduledItems) {
+        newMap.set(weekKey, true);
+      } else {
+        newMap.delete(weekKey);
+      }
+      return newMap;
+    });
+  };
+
   const handleConfirmRemove = async () => {
     if (itemToRemove) {
       await removeItemFromDay(itemToRemove.day, itemToRemove.itemId);
+      const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+      checkAndUpdateAutoScheduledStatus(weekKey);
       setItemToRemove(null);
     }
   };
@@ -635,6 +706,66 @@ const WeeklyPlanner = () => {
     return autoScheduledWeeks.get(weekKey) || false;
   }, [currentWeekStart, autoScheduledWeeks]);
 
+  const handleClearDay = (day: DayName) => {
+    setDayToClear(day);
+  };
+
+  const handleConfirmClear = async () => {
+    if (!dayToClear) return;
+
+    try {
+      const itemsToRemove = currentSchedule[dayToClear].map((scheduleItem) => ({
+        day: dayToClear,
+        itemId: scheduleItem.id,
+        weekKey: format(currentWeekStart, "yyyy-MM-dd"),
+      }));
+
+      await removeItemsFromSchedule(itemsToRemove);
+      const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+      checkAndUpdateAutoScheduledStatus(weekKey);
+      toast.success(`Successfully cleared ${dayToClear}`);
+    } catch (error) {
+      console.error("Failed to clear day:", error);
+      toast.error(`Failed to clear ${dayToClear}`);
+    }
+  };
+
+  const handleClearWeek = async () => {
+    try {
+      const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+      const allItemsToRemove = daysOfWeek.flatMap((day) =>
+        (currentSchedule[day] || []).map((scheduleItem) => ({
+          day,
+          itemId: scheduleItem.id,
+          weekKey,
+        }))
+      );
+
+      if (allItemsToRemove.length === 0) {
+        toast.info("No items to clear from this week");
+        return;
+      }
+
+      await removeItemsFromSchedule(allItemsToRemove);
+
+      // Directly clear auto-scheduled status for this week
+      localStorage.removeItem(`autoScheduled-${weekKey}`);
+      localStorage.removeItem(`autoScheduledItems-${weekKey}`);
+      setAutoScheduled(false);
+      setAutoScheduledItems(new Set());
+      setAutoScheduledWeeks((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(weekKey);
+        return newMap;
+      });
+
+      toast.success("Successfully cleared all items from this week");
+    } catch (error) {
+      console.error("Failed to clear week:", error);
+      toast.error("Failed to clear week");
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen p-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
@@ -662,6 +793,17 @@ const WeeklyPlanner = () => {
             >
               <RotateCcw className="h-4 w-4" />
               Reset Schedule
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950"
+              onClick={() => setShowClearWeekConfirm(true)}
+              disabled={
+                !daysOfWeek.some((day) => currentSchedule[day]?.length > 0)
+              }
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear Week
             </Button>
           </div>
         </div>
@@ -784,6 +926,16 @@ const WeeklyPlanner = () => {
                 >
                   <Plus className="mr-1 h-3 w-3" /> Add
                 </Button>
+                <div className="flex-1" />
+                <Button
+                  className="mt-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 dark:bg-gray-900 hover:bg-red-100 dark:hover:bg-red-950"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleClearDay(day)}
+                  disabled={!currentSchedule[day]?.length}
+                >
+                  Clear
+                </Button>
               </div>
             </div>
           );
@@ -846,6 +998,20 @@ const WeeklyPlanner = () => {
         isOpen={showResetConfirm}
         onClose={() => setShowResetConfirm(false)}
         onConfirm={handleResetConfirm}
+      />
+
+      <ConfirmClearDialog
+        isOpen={dayToClear !== null}
+        onClose={() => setDayToClear(null)}
+        onConfirm={handleConfirmClear}
+        day={dayToClear}
+      />
+
+      <ConfirmClearWeekDialog
+        isOpen={showClearWeekConfirm}
+        onClose={() => setShowClearWeekConfirm(false)}
+        onConfirm={handleClearWeek}
+        weekStart={currentWeekStart}
       />
     </div>
   );
