@@ -82,6 +82,15 @@ export const sortItems = ({
     hasExistingSchedule: Object.keys(currentSchedule).length > 0,
   });
 
+  // Filter out completed items first
+  const activeItems = items.filter((item) => item.status !== "Done");
+
+  console.log("Filtered out completed items:", {
+    totalItems: items.length,
+    activeItems: activeItems.length,
+    completedItems: items.length - activeItems.length,
+  });
+
   const sortedItems = {} as SortedItems;
 
   const scheduleItemsForWeek = (
@@ -236,9 +245,9 @@ export const sortItems = ({
     return result;
   };
 
-  // Start scheduling with the target week
+  // Start scheduling with the target week, but use filtered items
   let currentWeekStart = startOfWeek(targetWeek);
-  let remainingItems = [...items];
+  let remainingItems = [...activeItems]; // Use activeItems instead of items
   let weekCount = 0;
 
   while (remainingItems.length > 0) {

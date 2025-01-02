@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
 import { format } from "date-fns";
 import { useRealmApp } from "@/hooks/useRealmApp";
@@ -21,6 +21,14 @@ import { WeekSelector } from "@/components/weekly-schedule/WeekSelector";
 type BadgeStatus = {
   text: string;
   classes: string;
+};
+
+type WeekCheckStatus = {
+  Sunday: boolean;
+  Monday: boolean;
+  Tuesday: boolean;
+  Wednesday: boolean;
+  Thursday: boolean;
 };
 
 const getDueDateStatus = (dueDate: Date | null): BadgeStatus => {
@@ -121,6 +129,15 @@ const WeeklyPlanner = () => {
   const [autoScheduledWeeks, setAutoScheduledWeeks] = React.useState<
     Map<string, boolean>
   >(new Map());
+  const [weeklyCheckStatus, setWeeklyCheckStatus] = useState<{
+    [weekKey: string]: {
+      Sunday: boolean;
+      Monday: boolean;
+      Tuesday: boolean;
+      Wednesday: boolean;
+      Thursday: boolean;
+    };
+  }>({});
 
   React.useEffect(() => {
     const loadItems = async () => {
@@ -306,6 +323,18 @@ const WeeklyPlanner = () => {
       for (const [weekKey, weekSchedule] of Object.entries(proposedSchedule)) {
         const weekAutoScheduled = new Set<string>();
 
+        // Create a default status object with all days enabled
+        const defaultWeekStatus: WeekCheckStatus = {
+          Sunday: true,
+          Monday: true,
+          Tuesday: true,
+          Wednesday: true,
+          Thursday: true,
+        };
+
+        // Use the stored status or fall back to default
+        const weekStatus = weeklyCheckStatus[weekKey] || defaultWeekStatus;
+
         // Get currently scheduled items for this week to avoid duplicates
         const existingScheduledItems = new Set<string>();
         const weekExistingSchedule =
@@ -323,9 +352,11 @@ const WeeklyPlanner = () => {
           }
         );
 
-        // Filter out already scheduled items for this week
+        // Filter out already scheduled items and respect day selections
         const newItemsToSchedule = weekSchedule.filter(
-          ({ item }) => !existingScheduledItems.has(item.id)
+          ({ item, day }) =>
+            !existingScheduledItems.has(item.id) &&
+            weekStatus[day as keyof WeekCheckStatus] !== false
         );
 
         // Group items by day (only new items)
@@ -369,7 +400,6 @@ const WeeklyPlanner = () => {
           );
           autoScheduledByWeek.set(weekKey, weekAutoScheduled);
 
-          // Make sure to store in localStorage for each week
           localStorage.setItem(`autoScheduled-${weekKey}`, "true");
           localStorage.setItem(
             `autoScheduledItems-${weekKey}`,
@@ -805,8 +835,11 @@ const WeeklyPlanner = () => {
         isOpen={showAutoSchedule}
         onClose={() => setShowAutoSchedule(false)}
         onConfirm={handleAutoScheduleConfirm}
+        onUpdateCheckStatus={(status) => setWeeklyCheckStatus(status)}
         getItemValue={getItemValue}
         plannerCurrentWeek={currentWeekStart}
+        currentSchedule={currentSchedule}
+        weeklySchedules={weeklySchedules}
       />
 
       <ConfirmScheduleResetDialog
