@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
-import { format } from "date-fns";
+import { format, isToday, isSameDay, startOfDay } from "date-fns";
 import { useRealmApp } from "@/hooks/useRealmApp";
 import { ColumnTitles, Item, DayName, DaySchedule } from "@/typings/types";
 import { Button } from "@/components/ui/button";
@@ -766,6 +766,23 @@ const WeeklyPlanner = () => {
     }
   };
 
+  // Add this function to determine if a given day is today
+  const isCurrentDay = (day: DayName) => {
+    const today = new Date();
+    const dayIndex = daysOfWeek.indexOf(day);
+
+    // Return false if it's Friday (5) or Saturday (6)
+    if (today.getDay() === 5 || today.getDay() === 6) {
+      return false;
+    }
+
+    // For each day in the current week's schedule, check if it matches today
+    const currentDate = new Date(currentWeekStart);
+    currentDate.setDate(currentDate.getDate() + dayIndex);
+
+    return isSameDay(today, currentDate);
+  };
+
   return (
     <div className="flex flex-col h-screen p-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
@@ -820,122 +837,133 @@ const WeeklyPlanner = () => {
           }, 0);
 
           return (
-            <div
-              key={day}
-              className="border rounded-lg bg-white dark:bg-gray-700 shadow flex flex-col h-full"
-            >
-              <div className="p-4 border-b text-center bg-white dark:bg-gray-900">
-                <h2 className="font-semibold text-2xl text-black dark:text-white">
-                  {day}
-                </h2>
-                <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">
-                  Blocks: {totalBlocks}
-                </p>
-              </div>
-              <div className="p-4 flex-1 flex flex-col">
-                <div className="space-y-2">
-                  {currentSchedule[day]?.map((scheduleItem, index) => {
-                    const item = items.find(
-                      (i: Item) => i.id === scheduleItem.id
-                    );
-                    if (!item) return null;
+            <div key={day} className="relative">
+              {/* Overlay for today's highlight */}
+              {isCurrentDay(day) && (
+                <div className="absolute inset-0 rounded-lg border-2 border-blue-400 dark:border-blue-500 bg-blue-50/20 dark:bg-blue-500/10 pointer-events-none z-10" />
+              )}
 
-                    const dueDate = new Date(
-                      getItemValue(item, ColumnTitles.Due)
-                    );
-                    const badgeStatus = getDueDateStatus(
-                      isNaN(dueDate.getTime()) ? null : dueDate
-                    );
+              {/* Regular day card */}
+              <div
+                className={`rounded-lg shadow flex flex-col h-full relative border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-700`}
+              >
+                <div className="p-4 border-b text-center bg-white dark:bg-gray-900">
+                  <h2 className="font-semibold text-2xl text-black dark:text-white">
+                    {day}
+                  </h2>
+                  <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">
+                    Blocks: {totalBlocks}
+                  </p>
+                </div>
+                <div className="p-4 flex-1 flex flex-col">
+                  <div className="space-y-2">
+                    {currentSchedule[day]?.map((scheduleItem, index) => {
+                      const item = items.find(
+                        (i: Item) => i.id === scheduleItem.id
+                      );
+                      if (!item) return null;
 
-                    const uniqueKey = `${day}-${scheduleItem.id}-${index}`;
-                    return (
-                      <div
-                        key={uniqueKey}
-                        className={`p-2 rounded-md ${
-                          scheduleItem.done || item.status === "Done"
-                            ? "bg-green-100 dark:bg-green-500/30"
-                            : "bg-gray-100 dark:bg-gray-600"
-                        }`}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">
-                                {getItemValue(item, ColumnTitles.Customer_Name)}
+                      const dueDate = new Date(
+                        getItemValue(item, ColumnTitles.Due)
+                      );
+                      const badgeStatus = getDueDateStatus(
+                        isNaN(dueDate.getTime()) ? null : dueDate
+                      );
+
+                      const uniqueKey = `${day}-${scheduleItem.id}-${index}`;
+                      return (
+                        <div
+                          key={uniqueKey}
+                          className={`p-2 rounded-md ${
+                            scheduleItem.done || item.status === "Done"
+                              ? "bg-green-100 dark:bg-green-500/30"
+                              : "bg-gray-100 dark:bg-gray-600"
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {getItemValue(
+                                    item,
+                                    ColumnTitles.Customer_Name
+                                  )}
+                                </p>
+                                <span
+                                  className={`px-2 py-0.5 text-xs font-medium rounded-full ${badgeStatus.classes}`}
+                                >
+                                  {badgeStatus.text}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">
+                                {getItemValue(item, ColumnTitles.Design)} -{" "}
+                                {getItemValue(item, ColumnTitles.Size)}
                               </p>
-                              <span
-                                className={`px-2 py-0.5 text-xs font-medium rounded-full ${badgeStatus.classes}`}
-                              >
-                                {badgeStatus.text}
-                              </span>
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
-                              {getItemValue(item, ColumnTitles.Design)} -{" "}
-                              {getItemValue(item, ColumnTitles.Size)}
-                            </p>
-                          </div>
-                          <div className="flex gap-1">
-                            {!scheduleItem.done && item.status !== "Done" && (
+                            <div className="flex gap-1">
+                              {!scheduleItem.done && item.status !== "Done" && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-500"
+                                  onClick={() => handleCompleteItem(item)}
+                                >
+                                  <Check className="h-3 w-3" />
+                                  <span className="sr-only">Complete item</span>
+                                </Button>
+                              )}
+                              {(scheduleItem.done ||
+                                item.status === "Done") && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 hover:bg-green-200 dark:hover:bg-green-600/50"
+                                  onClick={() => handleResetItem(item)}
+                                >
+                                  <RotateCcw className="h-3 w-3" />
+                                  <span className="sr-only">Reset item</span>
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-500"
-                                onClick={() => handleCompleteItem(item)}
+                                className={`h-6 w-6 p-0 ${
+                                  scheduleItem.done || item.status === "Done"
+                                    ? "hover:bg-green-200 dark:hover:bg-green-600/50"
+                                    : "hover:bg-gray-200 dark:hover:bg-gray-500"
+                                }`}
+                                onClick={() =>
+                                  handleRemoveItem(day, scheduleItem.id, item)
+                                }
                               >
-                                <Check className="h-3 w-3" />
-                                <span className="sr-only">Complete item</span>
+                                <Minus className="h-3 w-3" />
+                                <span className="sr-only">Remove item</span>
                               </Button>
-                            )}
-                            {(scheduleItem.done || item.status === "Done") && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 hover:bg-green-200 dark:hover:bg-green-600/50"
-                                onClick={() => handleResetItem(item)}
-                              >
-                                <RotateCcw className="h-3 w-3" />
-                                <span className="sr-only">Reset item</span>
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className={`h-6 w-6 p-0 ${
-                                scheduleItem.done || item.status === "Done"
-                                  ? "hover:bg-green-200 dark:hover:bg-green-600/50"
-                                  : "hover:bg-gray-200 dark:hover:bg-gray-500"
-                              }`}
-                              onClick={() =>
-                                handleRemoveItem(day, scheduleItem.id, item)
-                              }
-                            >
-                              <Minus className="h-3 w-3" />
-                              <span className="sr-only">Remove item</span>
-                            </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                  <Button
+                    className="mt-2 dark:bg-gray-700"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleAddItem(day)}
+                  >
+                    <Plus className="mr-1 h-3 w-3" /> Add
+                  </Button>
+                  <div className="flex-1" />
+                  <Button
+                    className="mt-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 dark:bg-gray-900 hover:bg-red-100 dark:hover:bg-red-950"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleClearDay(day)}
+                    disabled={!currentSchedule[day]?.length}
+                  >
+                    Clear
+                  </Button>
                 </div>
-                <Button
-                  className="mt-2 dark:bg-gray-700"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleAddItem(day)}
-                >
-                  <Plus className="mr-1 h-3 w-3" /> Add
-                </Button>
-                <div className="flex-1" />
-                <Button
-                  className="mt-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 dark:bg-gray-900 hover:bg-red-100 dark:hover:bg-red-950"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleClearDay(day)}
-                  disabled={!currentSchedule[day]?.length}
-                >
-                  Clear
-                </Button>
               </div>
             </div>
           );
