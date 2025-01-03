@@ -14,7 +14,7 @@ import {
   WeeklySchedules,
   DaySchedule,
 } from "@/typings/types";
-import { useAutoScheduleStore } from "./stores/useAutoScheduleStore";
+import { useAutoScheduleStore } from "../../stores/useAutoScheduleStore";
 import { DialogWeekSelector } from "./DialogWeekSelector";
 import { useState, useEffect } from "react";
 import { startOfWeek, format } from "date-fns";

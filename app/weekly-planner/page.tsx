@@ -8,17 +8,17 @@ import { ColumnTitles, Item, DayName, DaySchedule } from "@/typings/types";
 import { Button } from "@/components/ui/button";
 import { Plus, Minus, Check, RotateCcw, Wand2, Trash2 } from "lucide-react";
 import { AddItemDialog } from "@/components/weekly-schedule/AddItemDialog";
-import { ConfirmRemoveDialog } from "./ConfirmRemoveDialog";
-import { ConfirmCompleteDialog } from "./ConfirmCompleteDialog";
-import { ConfirmResetDialog } from "./ConfirmResetDialog";
+import { ConfirmRemoveDialog } from "./dialogs/ConfirmRemoveDialog";
+import { ConfirmCompleteDialog } from "./dialogs/ConfirmCompleteDialog";
+import { ConfirmResetDialog } from "./dialogs/ConfirmResetDialog";
 import { sortItems } from "./ItemSorting";
-import { AutoScheduleDialog } from "./AutoScheduleDialog";
-import { ConfirmScheduleResetDialog } from "./ConfirmScheduleResetDialog";
+import AutoScheduleDialog from "./dialogs/auto-schedule";
+import { ConfirmScheduleResetDialog } from "./dialogs/ConfirmScheduleResetDialog";
 import { useAutoScheduleStore } from "./stores/useAutoScheduleStore";
 import { toast } from "sonner";
 import { WeekSelector } from "@/components/weekly-schedule/WeekSelector";
-import { ConfirmClearDialog } from "./ConfirmClearDialog";
-import { ConfirmClearWeekDialog } from "./ConfirmClearWeekDialog";
+import { ConfirmClearDialog } from "./dialogs/ConfirmClearDialog";
+import { ConfirmClearWeekDialog } from "./dialogs/ConfirmClearWeekDialog";
 
 type BadgeStatus = {
   text: string;
@@ -33,7 +33,10 @@ type WeekCheckStatus = {
   Thursday: boolean;
 };
 
-const getDueDateStatus = (dueDate: Date | null): BadgeStatus => {
+const getDueDateStatus = (
+  dueDate: Date | null,
+  useNumber: boolean
+): BadgeStatus => {
   if (!dueDate) {
     return {
       text: "No due date",
@@ -52,42 +55,52 @@ const getDueDateStatus = (dueDate: Date | null): BadgeStatus => {
 
   if (diffDays < 0) {
     return {
-      text: "Overdue",
+      text: useNumber
+        ? diffDays.toString()
+        : diffDays === -1
+        ? "Yesterday"
+        : diffDays === -2
+        ? "2 days ago"
+        : diffDays > -7 // Less than a week ago
+        ? "3+ days ago"
+        : diffDays > -30 // Less than a month ago
+        ? "Week+ ago"
+        : "Month+ ago",
       classes: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
     };
   } else if (diffDays === 0) {
     return {
-      text: "Today",
+      text: useNumber ? "0" : "Today",
       classes:
         "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
     };
   } else if (diffDays === 1) {
     return {
-      text: "Tomorrow",
+      text: useNumber ? "+1" : "Tomorrow",
       classes:
         "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
     };
   } else if (diffDays === 2) {
     return {
-      text: "2 days",
+      text: useNumber ? "+2" : "2 days",
       classes:
         "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
     };
   } else if (diffDays < 7) {
     return {
-      text: "3+ days",
+      text: useNumber ? `+${diffDays}` : "3+ days",
       classes:
         "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
     };
   } else if (diffDays < 30) {
     return {
-      text: "Week+",
+      text: useNumber ? `+${diffDays}` : "Week+",
       classes:
         "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
     };
   } else {
     return {
-      text: "Month+",
+      text: useNumber ? `+${diffDays}` : "Month+",
       classes:
         "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
     };
@@ -142,6 +155,7 @@ const WeeklyPlanner = () => {
   }>({});
   const [dayToClear, setDayToClear] = useState<DayName | null>(null);
   const [showClearWeekConfirm, setShowClearWeekConfirm] = useState(false);
+  const [useNumber, setUseNumber] = useState(false);
 
   React.useEffect(() => {
     const loadItems = async () => {
@@ -271,7 +285,8 @@ const WeeklyPlanner = () => {
       [...autoScheduledSet].filter((id) => scheduledItemIds.has(id))
     );
 
-    // Changed threshold: now considers 1 or fewer items as non-auto-scheduled
+    /* Consider week as non-auto-scheduled at 0-1 items to prevent a UI bug
+       where the auto-scheduled status appears to lag behind by one removal */
     const hasAutoScheduledItems = remainingAutoScheduledItems.size > 1;
 
     // Update localStorage first
@@ -813,6 +828,17 @@ const WeeklyPlanner = () => {
             </Button>
             <Button
               variant="outline"
+              className={`gap-2 ${
+                useNumber
+                  ? "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700"
+                  : "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900"
+              }`}
+              onClick={() => setUseNumber(!useNumber)}
+            >
+              {useNumber ? "Relative Badges" : "Number Badges"}
+            </Button>
+            <Button
+              variant="outline"
               className="gap-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950"
               onClick={() => setShowClearWeekConfirm(true)}
               disabled={
@@ -867,7 +893,8 @@ const WeeklyPlanner = () => {
                         getItemValue(item, ColumnTitles.Due)
                       );
                       const badgeStatus = getDueDateStatus(
-                        isNaN(dueDate.getTime()) ? null : dueDate
+                        isNaN(dueDate.getTime()) ? null : dueDate,
+                        useNumber
                       );
 
                       const uniqueKey = `${day}-${scheduleItem.id}-${index}`;
