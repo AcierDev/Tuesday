@@ -13,6 +13,7 @@ import {
   startOfWeek,
   addWeeks,
   format,
+  isThisWeek,
 } from "date-fns";
 
 interface SortedItems {
@@ -111,6 +112,7 @@ export const sortItems = ({
       sortedItems[weekKey] = [];
     }
 
+    // Initialize day blocks
     const dayBlocks: DayBlocks = {
       Sunday: 0,
       Monday: 0,
@@ -118,6 +120,25 @@ export const sortItems = ({
       Wednesday: 0,
       Thursday: 0,
     };
+
+    // Determine available days based on whether this is the current week
+    const today = new Date();
+    const isCurrentWeek = isThisWeek(weekStart, { weekStartsOn: 0 });
+    const currentDayIndex = today.getDay();
+
+    // Filter out past days if this is the current week
+    const availableDays = isCurrentWeek
+      ? [...daysOrder].filter((_, index) => {
+          const dayIndex = index;
+          return dayIndex >= currentDayIndex && currentDayIndex < 5;
+        })
+      : [...daysOrder];
+
+    console.log("Available days for scheduling:", {
+      isCurrentWeek,
+      currentDayIndex,
+      availableDays,
+    });
 
     // Handle existing scheduled items
     const existingScheduledItems = new Set<string>();
@@ -137,11 +158,6 @@ export const sortItems = ({
           }
         });
       }
-    });
-
-    console.log("Existing scheduled items:", {
-      count: existingScheduledItems.size,
-      dayBlocks,
     });
 
     // Filter and separate items
@@ -193,35 +209,17 @@ export const sortItems = ({
         itemsByDesign[design].push(item);
       });
 
-      console.log(`Processing ${isUrgent ? "urgent" : "non-urgent"} items:`, {
-        designGroups: Object.keys(itemsByDesign).length,
-        itemsByDesign: Object.fromEntries(
-          Object.entries(itemsByDesign).map(([k, v]) => [k, v.length])
-        ),
-      });
-
       Object.entries(itemsByDesign).forEach(([design, designItems]) => {
-        console.log(`\nScheduling design group: ${design}`, {
-          itemCount: designItems.length,
-          currentDayBlocks: { ...dayBlocks },
-        });
-
-        const remainingItems = scheduleDesignGroup(
+        const remainingItems = scheduleDesignGroupForWeek(
           designItems,
           design,
           isUrgent ? "urgent items" : "regular items",
+          availableDays,
+          dayBlocks,
           weekKey,
           sortedItems,
-          dayBlocks,
           unscheduledItems
         );
-
-        console.log(`Completed design group: ${design}`, {
-          scheduled: designItems.length - remainingItems.length,
-          unscheduled: remainingItems.length,
-          updatedDayBlocks: { ...dayBlocks },
-        });
-
         unscheduledItems.push(...remainingItems);
       });
     };
@@ -299,13 +297,14 @@ export const sortItems = ({
 };
 
 // Helper function for finding optimal day and scheduling items
-const scheduleDesignGroup = (
-  items: Item[],
+const scheduleDesignGroupForWeek = (
+  designItems: Item[],
   design: string,
   itemType: string,
+  availableDays: ValidDay[],
+  dayBlocks: DayBlocks,
   weekKey: string,
   sortedItems: SortedItems,
-  dayBlocks: DayBlocks,
   unscheduledItems: Item[]
 ): Item[] => {
   const dayCapacities: DayCapacities = {
@@ -316,12 +315,12 @@ const scheduleDesignGroup = (
     Thursday: 0,
   };
 
-  // Simulate adding items to each day
-  for (const day of daysOrder) {
-    let theoreticalBlocks = dayBlocks[day];
+  // Only check available days
+  for (const day of availableDays) {
+    let theoreticalBlocks = dayBlocks[day as keyof DayBlocks];
     let itemsFittingThisDay = 0;
 
-    for (const item of items) {
+    for (const item of designItems) {
       const itemBlocks = calculateBlocks(item);
       if (theoreticalBlocks + itemBlocks <= BLOCKS_PER_DAY_LIMIT) {
         itemsFittingThisDay++;
@@ -331,41 +330,46 @@ const scheduleDesignGroup = (
       }
     }
 
-    dayCapacities[day] = itemsFittingThisDay;
+    dayCapacities[day as keyof DayCapacities] = itemsFittingThisDay;
   }
 
-  // Check if any day can hold items
-  const maxCapacity = Math.max(...Object.values(dayCapacities));
+  // Find best day among available days only
+  const maxCapacity = Math.max(
+    ...availableDays.map((day) => dayCapacities[day as keyof DayCapacities])
+  );
   if (maxCapacity === 0) {
-    items.forEach((item) => {
-      unscheduledItems.push(item);
-    });
+    designItems.forEach((item) => unscheduledItems.push(item));
     return [];
   }
 
-  // Find the day that can hold the most items
-  let bestDay: ValidDay = "Sunday";
-  for (const day of daysOrder) {
-    if (dayCapacities[day] > dayCapacities[bestDay]) {
+  let bestDay = availableDays[0];
+  for (const day of availableDays) {
+    if (
+      dayCapacities[day as keyof DayCapacities] >
+      dayCapacities[bestDay as keyof DayCapacities]
+    ) {
       bestDay = day;
     }
   }
 
-  // Schedule what fits on best day
+  // Schedule items to best day
   const fittingItems: Item[] = [];
   const remainingItems: Item[] = [];
-  let currentBlocks = dayBlocks[bestDay];
+  let currentBlocks = dayBlocks[bestDay as keyof DayBlocks];
 
-  for (const item of items) {
+  for (const item of designItems) {
     const itemBlocks = calculateBlocks(item);
     if (currentBlocks + itemBlocks <= BLOCKS_PER_DAY_LIMIT) {
-      dayBlocks[bestDay] += itemBlocks;
+      dayBlocks[bestDay as keyof DayBlocks] += itemBlocks;
       currentBlocks += itemBlocks;
+
+      // Ensure the array exists for this week
       if (!sortedItems[weekKey]) {
         sortedItems[weekKey] = [];
       }
+
       sortedItems[weekKey].push({
-        day: bestDay,
+        day: bestDay as DayName,
         item: item,
       });
       fittingItems.push(item);
@@ -376,13 +380,14 @@ const scheduleDesignGroup = (
 
   // Recursively handle remaining items
   if (remainingItems.length > 0) {
-    return scheduleDesignGroup(
+    return scheduleDesignGroupForWeek(
       remainingItems,
       design,
       itemType,
+      availableDays,
+      dayBlocks,
       weekKey,
       sortedItems,
-      dayBlocks,
       unscheduledItems
     );
   }

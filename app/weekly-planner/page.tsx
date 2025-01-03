@@ -11,7 +11,7 @@ import { AddItemDialog } from "@/components/weekly-schedule/AddItemDialog";
 import { ConfirmRemoveDialog } from "./dialogs/ConfirmRemoveDialog";
 import { ConfirmCompleteDialog } from "./dialogs/ConfirmCompleteDialog";
 import { ConfirmResetDialog } from "./dialogs/ConfirmResetDialog";
-import { sortItems } from "./ItemSorting";
+import { sortItems } from "./AutoScheduling";
 import AutoScheduleDialog from "./dialogs/auto-schedule";
 import { ConfirmScheduleResetDialog } from "./dialogs/ConfirmScheduleResetDialog";
 import { useAutoScheduleStore } from "./stores/useAutoScheduleStore";
@@ -19,6 +19,14 @@ import { toast } from "sonner";
 import { WeekSelector } from "@/components/weekly-schedule/WeekSelector";
 import { ConfirmClearDialog } from "./dialogs/ConfirmClearDialog";
 import { ConfirmClearWeekDialog } from "./dialogs/ConfirmClearWeekDialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ConfirmWeekResetDialog } from "./dialogs/ConfirmWeekResetDialog";
+import { SingleWeekAutoScheduleDialog } from "./dialogs/auto-schedule/SingleWeekAutoScheduleDialog";
 
 type BadgeStatus = {
   text: string;
@@ -107,6 +115,16 @@ const getDueDateStatus = (
   }
 };
 
+const isPastWeek = (weekStart: Date): boolean => {
+  const today = new Date();
+  const currentWeekStart = startOfDay(new Date(today));
+  // Move to the most recent Sunday (week start)
+  currentWeekStart.setDate(
+    currentWeekStart.getDate() - currentWeekStart.getDay()
+  );
+  return weekStart < currentWeekStart;
+};
+
 const WeeklyPlanner = () => {
   const { boardCollection } = useRealmApp();
   const [items, setItems] = React.useState<Item[]>([]);
@@ -156,6 +174,9 @@ const WeeklyPlanner = () => {
   const [dayToClear, setDayToClear] = useState<DayName | null>(null);
   const [showClearWeekConfirm, setShowClearWeekConfirm] = useState(false);
   const [useNumber, setUseNumber] = useState(false);
+  const [showWeekResetConfirm, setShowWeekResetConfirm] = useState(false);
+  const [showSingleWeekAutoSchedule, setShowSingleWeekAutoSchedule] =
+    useState(false);
 
   React.useEffect(() => {
     const loadItems = async () => {
@@ -798,6 +819,42 @@ const WeeklyPlanner = () => {
     return isSameDay(today, currentDate);
   };
 
+  const handleSingleWeekAutoScheduleClick = () => {
+    const preview = sortItems({
+      items,
+      currentSchedule,
+      targetWeek: currentWeekStart,
+      weeklySchedules,
+    });
+
+    // Store the schedule for the current week only
+    const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+    if (preview[weekKey]) {
+      setProposedSchedule(weekKey, preview[weekKey]);
+    }
+
+    // Set initial check status for the week before opening dialog
+    setWeeklyCheckStatus((prev) => ({
+      ...prev,
+      [weekKey]: {
+        Sunday: true,
+        Monday: true,
+        Tuesday: true,
+        Wednesday: true,
+        Thursday: true,
+      },
+    }));
+
+    setShowSingleWeekAutoSchedule(true);
+  };
+
+  const onUpdateCheckStatus = (status: Record<string, WeekCheckStatus>) => {
+    setWeeklyCheckStatus((prev) => ({
+      ...prev,
+      ...status,
+    }));
+  };
+
   return (
     <div className="flex flex-col h-screen p-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
@@ -809,23 +866,62 @@ const WeeklyPlanner = () => {
             weekStartsOn={0}
           />
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={handleAutoScheduleClick}
-            >
-              <Wand2 className="h-4 w-4" />
-              Auto Schedule
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={handleResetClick}
-              disabled={!isCurrentWeekAutoScheduled}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reset Schedule
-            </Button>
+            <TooltipProvider>
+              <Tooltip delayDuration={100}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={handleAutoScheduleClick}
+                    disabled={isPastWeek(currentWeekStart)}
+                  >
+                    <Wand2 className="h-4 w-4" />
+                    Auto Schedule
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="p-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSingleWeekAutoScheduleClick();
+                    }}
+                  >
+                    Schedule This Week Only
+                  </Button>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip delayDuration={100}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => setShowResetConfirm(true)}
+                    disabled={!isCurrentWeekAutoScheduled}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Reset Schedule
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="p-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-50 dark:hover:bg-yellow-950"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowWeekResetConfirm(true);
+                    }}
+                  >
+                    Reset This Week Only
+                  </Button>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <Button
               variant="outline"
               className={`gap-2 ${
@@ -1042,7 +1138,7 @@ const WeeklyPlanner = () => {
         isOpen={showAutoSchedule}
         onClose={() => setShowAutoSchedule(false)}
         onConfirm={handleAutoScheduleConfirm}
-        onUpdateCheckStatus={(status) => setWeeklyCheckStatus(status)}
+        onUpdateCheckStatus={onUpdateCheckStatus}
         getItemValue={getItemValue}
         plannerCurrentWeek={currentWeekStart}
         currentSchedule={currentSchedule}
@@ -1067,6 +1163,31 @@ const WeeklyPlanner = () => {
         onClose={() => setShowClearWeekConfirm(false)}
         onConfirm={handleClearWeek}
         weekStart={currentWeekStart}
+      />
+
+      <ConfirmWeekResetDialog
+        isOpen={showWeekResetConfirm}
+        onClose={() => setShowWeekResetConfirm(false)}
+        onConfirm={() => handleResetConfirm(false)}
+        weekStart={currentWeekStart}
+      />
+
+      <SingleWeekAutoScheduleDialog
+        isOpen={showSingleWeekAutoSchedule}
+        onClose={() => {
+          setShowSingleWeekAutoSchedule(false);
+          clearProposedSchedule();
+        }}
+        onConfirm={() => {
+          handleAutoScheduleConfirm();
+          setShowSingleWeekAutoSchedule(false);
+          clearProposedSchedule();
+        }}
+        getItemValue={getItemValue}
+        plannerCurrentWeek={currentWeekStart}
+        currentSchedule={currentSchedule}
+        weeklySchedules={weeklySchedules}
+        onUpdateCheckStatus={onUpdateCheckStatus}
       />
     </div>
   );
