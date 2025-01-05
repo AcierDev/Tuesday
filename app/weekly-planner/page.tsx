@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ConfirmWeekResetDialog } from "./dialogs/ConfirmWeekResetDialog";
 import { SingleWeekAutoScheduleDialog } from "./dialogs/auto-schedule/SingleWeekAutoScheduleDialog";
+import { ConfirmBlockLimitDialog } from "./dialogs/ConfirmBlockLimitDialog";
 
 type BadgeStatus = {
   text: string;
@@ -115,14 +116,44 @@ const getDueDateStatus = (
   }
 };
 
-const isPastWeek = (weekStart: Date): boolean => {
+const isPastWorkWeek = (weekStart: Date): boolean => {
   const today = new Date();
   const currentWeekStart = startOfDay(new Date(today));
   // Move to the most recent Sunday (week start)
   currentWeekStart.setDate(
     currentWeekStart.getDate() - currentWeekStart.getDay()
   );
-  return weekStart < currentWeekStart;
+
+  // If it's a past week, disable
+  if (weekStart < currentWeekStart) return true;
+
+  // If it's the current week and today is Friday or Saturday, disable
+  if (isSameDay(weekStart, currentWeekStart)) {
+    const dayOfWeek = today.getDay();
+    if (dayOfWeek === 5 || dayOfWeek === 6) return true; // 5 = Friday, 6 = Saturday
+  }
+
+  return false;
+};
+
+const isWeekDisabled = (weekStart: Date): boolean => {
+  const today = new Date();
+  const currentWeekStart = startOfDay(new Date(today));
+  // Move to the most recent Sunday (week start)
+  currentWeekStart.setDate(
+    currentWeekStart.getDate() - currentWeekStart.getDay()
+  );
+
+  // If it's a past week, disable
+  if (weekStart < currentWeekStart) return true;
+
+  // If it's the current week and today is Friday or Saturday, disable
+  if (isSameDay(weekStart, currentWeekStart)) {
+    const dayOfWeek = today.getDay();
+    if (dayOfWeek === 5 || dayOfWeek === 6) return true; // 5 = Friday, 6 = Saturday
+  }
+
+  return false;
 };
 
 const WeeklyPlanner = () => {
@@ -177,6 +208,12 @@ const WeeklyPlanner = () => {
   const [showWeekResetConfirm, setShowWeekResetConfirm] = useState(false);
   const [showSingleWeekAutoSchedule, setShowSingleWeekAutoSchedule] =
     useState(false);
+  const [blockLimitItem, setBlockLimitItem] = useState<{
+    day: DayName;
+    item: Item;
+    currentBlocks: number;
+    newBlocks: number;
+  } | null>(null);
 
   React.useEffect(() => {
     const loadItems = async () => {
@@ -265,6 +302,28 @@ const WeeklyPlanner = () => {
   };
 
   const handleQuickAdd = async (day: DayName, item: Item) => {
+    // Calculate current blocks for the day
+    const daySchedule = currentSchedule[day] || [];
+    const currentBlocks = daySchedule.reduce((total, scheduleItem) => {
+      const scheduledItem = items.find((i) => i.id === scheduleItem.id);
+      return total + (scheduledItem ? calculateBlocks(scheduledItem) : 0);
+    }, 0);
+
+    // Calculate blocks for new item
+    const newItemBlocks = calculateBlocks(item);
+
+    // Check if adding this item would exceed 1000 blocks
+    if (currentBlocks + newItemBlocks > 1000) {
+      setBlockLimitItem({
+        day,
+        item,
+        currentBlocks,
+        newBlocks: newItemBlocks,
+      });
+      return;
+    }
+
+    // If not exceeding limit, proceed with adding
     await addItemToDay(day, item.id);
     setIsAddingItem(false);
   };
@@ -855,6 +914,14 @@ const WeeklyPlanner = () => {
     }));
   };
 
+  const handleConfirmBlockLimit = async () => {
+    if (blockLimitItem) {
+      await addItemToDay(blockLimitItem.day, blockLimitItem.item.id);
+      setBlockLimitItem(null);
+      setIsAddingItem(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen p-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
@@ -873,7 +940,7 @@ const WeeklyPlanner = () => {
                     variant="outline"
                     className="gap-2"
                     onClick={handleAutoScheduleClick}
-                    disabled={isPastWeek(currentWeekStart)}
+                    disabled={isPastWorkWeek(currentWeekStart)}
                   >
                     <Wand2 className="h-4 w-4" />
                     Auto Schedule
@@ -973,7 +1040,13 @@ const WeeklyPlanner = () => {
                   <h2 className="font-semibold text-2xl text-black dark:text-white">
                     {day}
                   </h2>
-                  <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">
+                  <p
+                    className={`text-sm mt-1 ${
+                      totalBlocks > 1000
+                        ? "text-red-600 dark:text-red-400 font-medium"
+                        : "text-gray-700 dark:text-gray-200"
+                    }`}
+                  >
                     Blocks: {totalBlocks}
                   </p>
                 </div>
@@ -1188,6 +1261,14 @@ const WeeklyPlanner = () => {
         currentSchedule={currentSchedule}
         weeklySchedules={weeklySchedules}
         onUpdateCheckStatus={onUpdateCheckStatus}
+      />
+
+      <ConfirmBlockLimitDialog
+        isOpen={blockLimitItem !== null}
+        onClose={() => setBlockLimitItem(null)}
+        onConfirm={handleConfirmBlockLimit}
+        totalBlocks={blockLimitItem?.currentBlocks || 0}
+        newBlocks={blockLimitItem?.newBlocks || 0}
       />
     </div>
   );
