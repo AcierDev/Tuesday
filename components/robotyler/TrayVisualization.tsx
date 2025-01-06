@@ -174,6 +174,8 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
     switch (side) {
       case "FRONT":
         return isHorizontal ? "-mb-16" : "-mb-12";
+      case "LIP":
+        return isHorizontal ? "-mb-16" : "-mb-12";
       case "BACK":
         return isHorizontal ? "-mt-16" : "-mt-12";
       case "RIGHT":
@@ -292,7 +294,8 @@ const TrayVisualization: React.FC<TrayVisualizationProps> = ({
               height: TRAY_HEIGHT + TRAY_PADDING * 2 + 8,
             }}
           >
-            {renderSideIndicator("FRONT", "bottom-0 left-1/2 -translate-x-1/2")}
+            {renderSideIndicator("FRONT", "bottom-0 left-2/3 -translate-x-1/2")}
+            {renderSideIndicator("LIP", "bottom-0 left-1/3 -translate-x-1/2")}
             {renderSideIndicator("BACK", "top-0 left-1/2 -translate-x-1/2")}
             {renderSideIndicator("LEFT", "top-1/2 right-0 -translate-y-1/2")}
             {renderSideIndicator("RIGHT", "top-1/2 left-0 -translate-y-1/2")}

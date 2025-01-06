@@ -111,6 +111,7 @@ export const INITIAL_STATUS: SystemState = {
 
 export interface SystemSettings {
   speeds: {
+    lip: number;
     back: number;
     front: number;
     right: number;

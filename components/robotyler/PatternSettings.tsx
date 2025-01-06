@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Save, ArrowUp, ArrowRight, FolderOpen, Plus } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -27,6 +28,7 @@ interface SystemSettings {
     right: number;
     back: number;
     left: number;
+    lip: number;
   };
   maintenance: {
     lastMaintenanceDate: string;
@@ -40,6 +42,7 @@ interface SystemSettings {
       right: { x: number; y: number; angle: number };
       back: { x: number; y: number; angle: number };
       left: { x: number; y: number; angle: number };
+      lip: { x: number; y: number; angle: number };
     };
     travelDistance: {
       horizontal: {
@@ -50,10 +53,21 @@ interface SystemSettings {
         x: number;
         y: number;
       };
+      lip: {
+        x: number;
+        y: number;
+      };
     };
     rows: {
       x: number;
       y: number;
+    };
+    enabledSides: {
+      front: boolean;
+      right: boolean;
+      back: boolean;
+      left: boolean;
+      lip: boolean;
     };
   };
 }
@@ -85,12 +99,21 @@ export function PatternSettings({
       right: { x: 0, y: 0, angle: 0 },
       back: { x: 0, y: 0, angle: 0 },
       left: { x: 0, y: 0, angle: 0 },
+      lip: { x: 0, y: 0, angle: 0 },
     },
     travelDistance: {
       horizontal: { x: 0, y: 0 },
       vertical: { x: 0, y: 0 },
+      lip: { x: 0, y: 0 },
     },
     rows: { x: 0, y: 0 },
+    enabledSides: {
+      front: true,
+      right: true,
+      back: true,
+      left: true,
+      lip: true,
+    },
   });
   const [hasChanges, setHasChanges] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -121,6 +144,11 @@ export function PatternSettings({
             y: settings.pattern.initialOffsets?.left?.y ?? 0,
             angle: settings.pattern.initialOffsets?.left?.angle ?? 0,
           },
+          lip: {
+            x: settings.pattern.initialOffsets?.lip?.x ?? 0,
+            y: settings.pattern.initialOffsets?.lip?.y ?? 0,
+            angle: settings.pattern.initialOffsets?.lip?.angle ?? 0,
+          },
         },
         travelDistance: {
           horizontal: {
@@ -131,10 +159,21 @@ export function PatternSettings({
             x: settings.pattern.travelDistance?.vertical?.x ?? 0,
             y: settings.pattern.travelDistance?.vertical?.y ?? 0,
           },
+          lip: {
+            x: settings.pattern.travelDistance?.lip?.x ?? 0,
+            y: settings.pattern.travelDistance?.lip?.y ?? 0,
+          },
         },
         rows: {
           x: settings.pattern.rows?.x ?? 0,
           y: settings.pattern.rows?.y ?? 0,
+        },
+        enabledSides: {
+          front: settings.pattern.enabledSides?.front ?? true,
+          right: settings.pattern.enabledSides?.right ?? true,
+          back: settings.pattern.enabledSides?.back ?? true,
+          left: settings.pattern.enabledSides?.left ?? true,
+          lip: settings.pattern.enabledSides?.lip ?? true,
         },
       });
       setHasChanges(false);
@@ -285,6 +324,23 @@ export function PatternSettings({
     });
   };
 
+  const handleSideToggle = (
+    side: keyof SystemSettings["pattern"]["enabledSides"]
+  ) => {
+    setPatternSettings((prev) => {
+      if (!prev) return prev;
+      const currentSettings = prev as SystemSettings["pattern"];
+      return {
+        ...currentSettings,
+        enabledSides: {
+          ...currentSettings.enabledSides,
+          [side]: !currentSettings.enabledSides[side],
+        },
+      };
+    });
+    setHasChanges(true);
+  };
+
   return (
     <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
       <CardHeader>
@@ -328,9 +384,9 @@ export function PatternSettings({
                   </span>
                 </DropdownMenuItem>
                 <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
-                {configs.map((config) => (
+                {configs?.map((config, index) => (
                   <DropdownMenuItem
-                    key={config.name}
+                    key={index}
                     onClick={() => handleLoadConfig(config.name)}
                     className="flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
                   >
@@ -348,6 +404,35 @@ export function PatternSettings({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-8">
+        {/* Enabled Sides Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Enabled Sides</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {Object.entries(patternSettings.enabledSides).map(
+              ([side, enabled]) => (
+                <div
+                  key={side}
+                  className="flex flex-col items-center p-4 bg-card rounded-lg border shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <Label htmlFor={`${side}-toggle`} className="mb-2 capitalize">
+                    {side}
+                  </Label>
+                  <Switch
+                    id={`${side}-toggle`}
+                    checked={enabled}
+                    onCheckedChange={() =>
+                      handleSideToggle(
+                        side as keyof SystemSettings["pattern"]["enabledSides"]
+                      )
+                    }
+                    className="data-[state=checked]:bg-green-500"
+                  />
+                </div>
+              )
+            )}
+          </div>
+        </div>
+
         {/* Initial Offsets */}
         <div className="space-y-4">
           <div className="border-b border-gray-200 dark:border-gray-700 pb-2">
@@ -359,7 +444,7 @@ export function PatternSettings({
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {["front", "right", "back", "left"].map((direction) => (
+            {["front", "right", "back", "left", "lip"].map((direction) => (
               <div
                 key={direction}
                 className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg space-y-3"
@@ -569,6 +654,51 @@ export function PatternSettings({
                         "y",
                         e.target.value
                       )
+                    }
+                    onKeyDown={handleKeyDown}
+                    className="dark:bg-gray-700"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Lip Travel */}
+            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg space-y-3">
+              <h4 className="text-base font-medium text-emerald-600 dark:text-emerald-400">
+                Lip Pattern
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="lip-travel-x"
+                    className="text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1"
+                  >
+                    X Distance <ArrowRight className="h-4 w-4" />
+                  </Label>
+                  <Input
+                    id="lip-travel-x"
+                    type="number"
+                    value={patternSettings.travelDistance.lip.x}
+                    onChange={(e) =>
+                      handleChange("travelDistance", "lip", "x", e.target.value)
+                    }
+                    onKeyDown={handleKeyDown}
+                    className="dark:bg-gray-700"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="lip-travel-y"
+                    className="text-sm text-rose-600 dark:text-rose-400 flex items-center gap-1"
+                  >
+                    Y Distance <ArrowUp className="h-4 w-4" />
+                  </Label>
+                  <Input
+                    id="lip-travel-y"
+                    type="number"
+                    value={patternSettings.travelDistance.lip.y}
+                    onChange={(e) =>
+                      handleChange("travelDistance", "lip", "y", e.target.value)
                     }
                     onKeyDown={handleKeyDown}
                     className="dark:bg-gray-700"
