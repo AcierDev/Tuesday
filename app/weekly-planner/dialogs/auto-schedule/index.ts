@@ -1,1 +1,1 @@
-export { AutoScheduleDialog as default } from "./AutoScheduleDialog";
+export { AutoScheduleDialog } from "./AutoScheduleDialog";

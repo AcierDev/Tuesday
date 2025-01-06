@@ -12,7 +12,7 @@ import { ConfirmRemoveDialog } from "./dialogs/ConfirmRemoveDialog";
 import { ConfirmCompleteDialog } from "./dialogs/ConfirmCompleteDialog";
 import { ConfirmResetDialog } from "./dialogs/ConfirmResetDialog";
 import { sortItems } from "./AutoScheduling";
-import AutoScheduleDialog from "./dialogs/auto-schedule";
+import { AutoScheduleDialog } from "./dialogs/auto-schedule";
 import { ConfirmScheduleResetDialog } from "./dialogs/ConfirmScheduleResetDialog";
 import { useAutoScheduleStore } from "./stores/useAutoScheduleStore";
 import { toast } from "sonner";
@@ -26,8 +26,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ConfirmWeekResetDialog } from "./dialogs/ConfirmWeekResetDialog";
-import { SingleWeekAutoScheduleDialog } from "./dialogs/auto-schedule/SingleWeekAutoScheduleDialog";
 import { ConfirmBlockLimitDialog } from "./dialogs/ConfirmBlockLimitDialog";
+import { cn } from "@/utils/functions";
+import { ConfirmMaximumsResetDialog } from "./dialogs/ConfirmMaximumsResetDialog";
 
 type BadgeStatus = {
   text: string;
@@ -214,6 +215,35 @@ const WeeklyPlanner = () => {
     currentBlocks: number;
     newBlocks: number;
   } | null>(null);
+  const [blockLimits, setBlockLimits] = useState<
+    Record<string, Record<DayName, number>>
+  >({});
+  const [showMaximumsResetConfirm, setShowMaximumsResetConfirm] =
+    useState(false);
+
+  React.useEffect(() => {
+    const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+    setBlockLimits((prev) => {
+      // If this week doesn't have limits set yet, initialize them
+      if (!prev[weekKey]) {
+        const defaultLimits: Record<DayName, number> = {
+          Sunday: 1000,
+          Monday: 1000,
+          Tuesday: 1000,
+          Wednesday: 1000,
+          Thursday: 1000,
+          Friday: 1000,
+          Saturday: 1000,
+        };
+
+        return {
+          ...prev,
+          [weekKey]: defaultLimits,
+        };
+      }
+      return prev;
+    });
+  }, [currentWeekStart]);
 
   React.useEffect(() => {
     const loadItems = async () => {
@@ -302,18 +332,17 @@ const WeeklyPlanner = () => {
   };
 
   const handleQuickAdd = async (day: DayName, item: Item) => {
-    // Calculate current blocks for the day
+    const weekKey = format(currentWeekStart, "yyyy-MM-dd");
     const daySchedule = currentSchedule[day] || [];
     const currentBlocks = daySchedule.reduce((total, scheduleItem) => {
       const scheduledItem = items.find((i) => i.id === scheduleItem.id);
       return total + (scheduledItem ? calculateBlocks(scheduledItem) : 0);
     }, 0);
 
-    // Calculate blocks for new item
     const newItemBlocks = calculateBlocks(item);
+    const weekDayLimit = blockLimits[weekKey]?.[day] ?? 1000;
 
-    // Check if adding this item would exceed 1000 blocks
-    if (currentBlocks + newItemBlocks > 1000) {
+    if (currentBlocks + newItemBlocks > weekDayLimit) {
       setBlockLimitItem({
         day,
         item,
@@ -323,7 +352,6 @@ const WeeklyPlanner = () => {
       return;
     }
 
-    // If not exceeding limit, proceed with adding
     await addItemToDay(day, item.id);
     setIsAddingItem(false);
   };
@@ -462,6 +490,7 @@ const WeeklyPlanner = () => {
       currentSchedule,
       targetWeek: currentWeekStart,
       weeklySchedules,
+      blockLimits,
     });
 
     // Store all weeks in the proposed schedule
@@ -484,9 +513,20 @@ const WeeklyPlanner = () => {
         "Wednesday",
         "Thursday",
       ];
+      const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
 
-      // Process each week in the proposed schedule
-      for (const [weekKey, weekSchedule] of Object.entries(proposedSchedule)) {
+      // In single mode, we only want the current week's schedule
+      let scheduleToProcess = proposedSchedule;
+      if (showSingleWeekAutoSchedule) {
+        // Only keep the current week's schedule, with a fallback to empty array if undefined
+        const currentWeekSchedule = proposedSchedule[currentWeekKey] || [];
+        scheduleToProcess = {
+          [currentWeekKey]: currentWeekSchedule,
+        };
+      }
+
+      // Process each week in the filtered schedule
+      for (const [weekKey, weekSchedule] of Object.entries(scheduleToProcess)) {
         const weekAutoScheduled = new Set<string>();
 
         // Create a default status object with all days enabled
@@ -506,7 +546,15 @@ const WeeklyPlanner = () => {
         const weekExistingSchedule =
           weekKey === format(currentWeekStart, "yyyy-MM-dd")
             ? currentSchedule
-            : weeklySchedules[weekKey] || {};
+            : weeklySchedules[weekKey] || {
+                Sunday: [],
+                Monday: [],
+                Tuesday: [],
+                Wednesday: [],
+                Thursday: [],
+                Friday: [],
+                Saturday: [],
+              };
 
         Object.entries(weekExistingSchedule as DaySchedule).forEach(
           ([day, scheduleItems]) => {
@@ -602,8 +650,12 @@ const WeeklyPlanner = () => {
         toast.success(
           `Successfully scheduled ${totalScheduled} ${
             totalScheduled === 1 ? "item" : "items"
-          } across ${autoScheduledByWeek.size} ${
-            autoScheduledByWeek.size === 1 ? "week" : "weeks"
+          }${
+            !showSingleWeekAutoSchedule
+              ? ` across ${autoScheduledByWeek.size} ${
+                  autoScheduledByWeek.size === 1 ? "week" : "weeks"
+                }`
+              : ""
           }`
         );
       } else {
@@ -884,6 +936,7 @@ const WeeklyPlanner = () => {
       currentSchedule,
       targetWeek: currentWeekStart,
       weeklySchedules,
+      blockLimits,
     });
 
     // Store the schedule for the current week only
@@ -920,6 +973,30 @@ const WeeklyPlanner = () => {
       setBlockLimitItem(null);
       setIsAddingItem(false);
     }
+  };
+
+  const handleBlockLimitChange = (day: DayName, value: number) => {
+    const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+    setBlockLimits((prev) => {
+      // Create a new week object with all existing days or default values
+      const updatedWeek: Record<DayName, number> = {
+        ...(prev[weekKey] || {
+          Sunday: 1000,
+          Monday: 1000,
+          Tuesday: 1000,
+          Wednesday: 1000,
+          Thursday: 1000,
+          Friday: 1000,
+          Saturday: 1000,
+        }),
+        [day]: Math.max(0, value),
+      };
+
+      return {
+        ...prev,
+        [weekKey]: updatedWeek,
+      };
+    });
   };
 
   return (
@@ -1002,6 +1079,16 @@ const WeeklyPlanner = () => {
             </Button>
             <Button
               variant="outline"
+              className="gap-2 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950"
+              disabled={daysOfWeek.every(
+                (day) => (blockLimits[weekKey]?.[day] ?? 1000) === 1000
+              )}
+              onClick={() => setShowMaximumsResetConfirm(true)}
+            >
+              Reset Maximums (1,000)
+            </Button>
+            <Button
+              variant="outline"
               className="gap-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950"
               onClick={() => setShowClearWeekConfirm(true)}
               disabled={
@@ -1040,15 +1127,71 @@ const WeeklyPlanner = () => {
                   <h2 className="font-semibold text-2xl text-black dark:text-white">
                     {day}
                   </h2>
-                  <p
-                    className={`text-sm mt-1 ${
-                      totalBlocks > 1000
-                        ? "text-red-600 dark:text-red-400 font-medium"
-                        : "text-gray-700 dark:text-gray-200"
-                    }`}
-                  >
-                    Blocks: {totalBlocks}
-                  </p>
+                  <div className="flex justify-center gap-4 mt-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-700 dark:text-gray-200">
+                        Max:
+                      </p>
+                      {(blockLimits[weekKey]?.[day] ?? 1000) === 1000 ? (
+                        <input
+                          type="number"
+                          value={blockLimits[weekKey]?.[day] ?? 1000}
+                          onChange={(e) =>
+                            handleBlockLimitChange(
+                              day,
+                              parseInt(e.target.value) || 0
+                            )
+                          }
+                          className="w-20 text-sm px-2 py-0.5 rounded border border-gray-200 dark:border-gray-600 
+                                   bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                          min="0"
+                          step="100"
+                        />
+                      ) : (
+                        <TooltipProvider>
+                          <Tooltip delayDuration={100}>
+                            <TooltipTrigger asChild>
+                              <input
+                                type="number"
+                                value={blockLimits[weekKey]?.[day] ?? 1000}
+                                onChange={(e) =>
+                                  handleBlockLimitChange(
+                                    day,
+                                    parseInt(e.target.value) || 0
+                                  )
+                                }
+                                className="w-20 text-sm px-2 py-0.5 rounded border border-gray-200 dark:border-gray-600 
+                                         bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                                min="0"
+                                step="100"
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="p-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950"
+                                onClick={() =>
+                                  handleBlockLimitChange(day, 1000)
+                                }
+                              >
+                                Reset (1,000)
+                              </Button>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
+                    <p
+                      className={`text-sm ${
+                        totalBlocks > (blockLimits[weekKey]?.[day] ?? 1000)
+                          ? "text-red-600 dark:text-red-400 font-medium"
+                          : "text-gray-700 dark:text-gray-200"
+                      }`}
+                    >
+                      Blocks: {totalBlocks}
+                    </p>
+                  </div>
                 </div>
                 <div className="p-4 flex-1 flex flex-col">
                   <div className="space-y-2">
@@ -1216,6 +1359,7 @@ const WeeklyPlanner = () => {
         plannerCurrentWeek={currentWeekStart}
         currentSchedule={currentSchedule}
         weeklySchedules={weeklySchedules}
+        mode="multi"
       />
 
       <ConfirmScheduleResetDialog
@@ -1245,7 +1389,7 @@ const WeeklyPlanner = () => {
         weekStart={currentWeekStart}
       />
 
-      <SingleWeekAutoScheduleDialog
+      <AutoScheduleDialog
         isOpen={showSingleWeekAutoSchedule}
         onClose={() => {
           setShowSingleWeekAutoSchedule(false);
@@ -1261,6 +1405,7 @@ const WeeklyPlanner = () => {
         currentSchedule={currentSchedule}
         weeklySchedules={weeklySchedules}
         onUpdateCheckStatus={onUpdateCheckStatus}
+        mode="single"
       />
 
       <ConfirmBlockLimitDialog
@@ -1269,6 +1414,33 @@ const WeeklyPlanner = () => {
         onConfirm={handleConfirmBlockLimit}
         totalBlocks={blockLimitItem?.currentBlocks || 0}
         newBlocks={blockLimitItem?.newBlocks || 0}
+        blockLimit={
+          blockLimitItem
+            ? blockLimits[weekKey]?.[blockLimitItem.day] ?? 1000
+            : 1000
+        }
+      />
+
+      <ConfirmMaximumsResetDialog
+        isOpen={showMaximumsResetConfirm}
+        onClose={() => setShowMaximumsResetConfirm(false)}
+        onConfirm={() => {
+          const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+          setBlockLimits((prev) => ({
+            ...prev,
+            [weekKey]: {
+              Sunday: 1000,
+              Monday: 1000,
+              Tuesday: 1000,
+              Wednesday: 1000,
+              Thursday: 1000,
+              Friday: 1000,
+              Saturday: 1000,
+            },
+          }));
+          setShowMaximumsResetConfirm(false);
+          toast.success("Successfully reset all block maximums to 1,000");
+        }}
       />
     </div>
   );

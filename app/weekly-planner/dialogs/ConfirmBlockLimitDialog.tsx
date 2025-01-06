@@ -16,24 +16,38 @@ interface ConfirmBlockLimitDialogProps {
   onConfirm: () => void;
   totalBlocks: number;
   newBlocks: number;
+  blockLimit?: number;
 }
 
 export const ConfirmBlockLimitDialog: React.FC<
   ConfirmBlockLimitDialogProps
-> = ({ isOpen, onClose, onConfirm, totalBlocks, newBlocks }) => {
+> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  totalBlocks,
+  newBlocks,
+  blockLimit = 1000,
+}) => {
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Block Limit Warning</AlertDialogTitle>
           <AlertDialogDescription>
-            Adding this item will bring the total block count to{" "}
-            {totalBlocks + newBlocks}
-            (current: {totalBlocks}, adding: {newBlocks}).
+            Adding this item will exceed the maximum block limit for this day.
             <br />
             <br />
-            It is not recommended to exceed 1,000 blocks per day. Would you like
-            to proceed anyway?
+            Current blocks: {totalBlocks}
+            <br />
+            Adding: {newBlocks}
+            <br />
+            Total after adding: {totalBlocks + newBlocks}
+            <br />
+            This day's maximum: {blockLimit}
+            <br />
+            <br />
+            Would you like to proceed anyway?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

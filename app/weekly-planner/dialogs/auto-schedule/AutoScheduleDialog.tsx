@@ -37,6 +37,7 @@ interface AutoScheduleDialogProps {
   currentSchedule: DaySchedule;
   weeklySchedules: WeeklySchedules;
   onUpdateCheckStatus: (status: Record<string, WeekCheckStatus>) => void;
+  mode: "single" | "multi";
 }
 
 type WeekCheckStatus = {
@@ -56,8 +57,10 @@ export function AutoScheduleDialog({
   currentSchedule,
   weeklySchedules,
   onUpdateCheckStatus,
+  mode,
 }: AutoScheduleDialogProps) {
-  const { proposedSchedule, setProposedSchedule } = useAutoScheduleStore();
+  const { proposedSchedule, setProposedSchedule, clearProposedSchedule } =
+    useAutoScheduleStore();
   const [selectedWeekStart, setSelectedWeekStart] = useState(() =>
     startOfWeek(plannerCurrentWeek, { weekStartsOn: 0 })
   );
@@ -165,11 +168,6 @@ export function AutoScheduleDialog({
     });
   };
 
-  // Get items for the selected week
-  const selectedWeekKey = format(selectedWeekStart, "yyyy-MM-dd");
-  const currentWeekItems = proposedSchedule[selectedWeekKey] || [];
-  const activeDays = getCurrentWeekActiveDays();
-
   const daysOfWeek: DayName[] = [
     "Sunday",
     "Monday",
@@ -177,6 +175,11 @@ export function AutoScheduleDialog({
     "Wednesday",
     "Thursday",
   ];
+
+  // Get current week's key and items (move this up before it's used)
+  const weekKey = format(selectedWeekStart, "yyyy-MM-dd");
+  const currentWeekItems = proposedSchedule[weekKey] || [];
+  const activeDays = getCurrentWeekActiveDays();
 
   const handleWeekChange = (direction: "prev" | "next") => {
     setSelectedWeekStart((prev) => {
@@ -202,9 +205,9 @@ export function AutoScheduleDialog({
   // Function to check if an item is new (not in original schedule)
   const isNewItem = (day: DayName, itemId: string) => {
     const weekExistingSchedule: DaySchedule =
-      selectedWeekKey === format(plannerCurrentWeek, "yyyy-MM-dd")
+      weekKey === format(plannerCurrentWeek, "yyyy-MM-dd")
         ? currentSchedule
-        : weeklySchedules[selectedWeekKey] || {
+        : weeklySchedules[weekKey] || {
             Sunday: [],
             Monday: [],
             Tuesday: [],
@@ -248,32 +251,46 @@ export function AutoScheduleDialog({
     );
   };
 
+  // Determine if we're showing week selector based on mode
+  const showWeekSelector = mode === "multi";
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[90vw] max-h-[80vh] overflow-y-auto dark:bg-gray-600">
         <DialogHeader className="space-y-4">
           <div>
-            <DialogTitle>Auto Schedule Preview</DialogTitle>
+            <DialogTitle>
+              Auto Schedule Preview {mode === "single" ? "- This Week" : ""}
+            </DialogTitle>
             <div className="text-center">
               <DialogDescription className="text-sm text-gray-400 dark:text-gray-300 mt-1">
-                Items will be scheduled starting from your selected week in the
-                planner
+                {mode === "single"
+                  ? "Items will be scheduled for the current week only"
+                  : "Items will be scheduled starting from your selected week in the planner"}
               </DialogDescription>
             </div>
           </div>
           <div className="space-y-2">
             <div className="relative flex justify-center">
-              <DialogWeekSelector
-                currentWeekStart={selectedWeekStart}
-                onChangeWeek={handleWeekChange}
-                referenceWeek={plannerCurrentWeek}
-                weekStartsOn={0}
-              />
+              {showWeekSelector ? (
+                <DialogWeekSelector
+                  currentWeekStart={selectedWeekStart}
+                  onChangeWeek={handleWeekChange}
+                  referenceWeek={plannerCurrentWeek}
+                  weekStartsOn={0}
+                />
+              ) : (
+                <div className="text-center border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    This Week
+                  </h3>
+                </div>
+              )}
               <div className="absolute right-0 top-1/2 -translate-y-1/2 flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={areAllDaysActive(selectedWeekKey)}
+                  disabled={areAllDaysActive(weekKey)}
                   onClick={() => {
                     const weekKey = format(selectedWeekStart, "yyyy-MM-dd");
                     const weekKeys = Object.keys(proposedSchedule).sort();
@@ -324,7 +341,7 @@ export function AutoScheduleDialog({
                   }}
                   className={cn(
                     "text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/30 hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-900/20 dark:hover:border-blue-700/30",
-                    areAllDaysActive(selectedWeekKey) &&
+                    areAllDaysActive(weekKey) &&
                       "opacity-40 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500"
                   )}
                 >
@@ -333,7 +350,7 @@ export function AutoScheduleDialog({
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={areAllDaysInactive(selectedWeekKey)}
+                  disabled={areAllDaysInactive(weekKey)}
                   onClick={() => {
                     const weekKey = format(selectedWeekStart, "yyyy-MM-dd");
                     const weekKeys = Object.keys(proposedSchedule).sort();
@@ -384,7 +401,7 @@ export function AutoScheduleDialog({
                   }}
                   className={cn(
                     "text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/30 hover:bg-red-50 hover:border-red-300 dark:hover:bg-red-900/20 dark:hover:border-red-700/30",
-                    areAllDaysInactive(selectedWeekKey) &&
+                    areAllDaysInactive(weekKey) &&
                       "opacity-40 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500"
                   )}
                 >
@@ -497,9 +514,16 @@ export function AutoScheduleDialog({
           </Button>
           <Button
             onClick={() => {
-              console.log(weeklyCheckStatus);
               onConfirm();
+              if (mode === "single") {
+                clearProposedSchedule();
+              }
             }}
+            disabled={areAllDaysInactive(weekKey)}
+            className={cn(
+              areAllDaysInactive(weekKey) &&
+                "opacity-40 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent"
+            )}
           >
             Confirm Schedule
           </Button>

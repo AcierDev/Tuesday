@@ -28,9 +28,8 @@ interface SortItemsProps {
   currentSchedule: DaySchedule;
   targetWeek?: Date;
   weeklySchedules?: WeeklySchedules;
+  blockLimits: Record<string, Record<DayName, number>>;
 }
-
-const BLOCKS_PER_DAY_LIMIT = 1000;
 
 // Define the days tuple type at the top level
 const daysOrder = [
@@ -76,6 +75,7 @@ export const sortItems = ({
   currentSchedule,
   targetWeek = new Date(),
   weeklySchedules = {},
+  blockLimits,
 }: SortItemsProps): SortedItems => {
   console.log("Starting sortItems with:", {
     totalItems: items.length,
@@ -196,6 +196,17 @@ export const sortItems = ({
 
     const unscheduledItems: Item[] = [];
 
+    // Get week-specific limits or use default
+    const weekLimits = blockLimits[weekKey] || {
+      Sunday: 1000,
+      Monday: 1000,
+      Tuesday: 1000,
+      Wednesday: 1000,
+      Thursday: 1000,
+      Friday: 1000,
+      Saturday: 1000,
+    };
+
     // Helper function for scheduling items by design
     const scheduleItemsByDesign = (items: Item[], isUrgent: boolean) => {
       const itemsByDesign: Record<string, Item[]> = {};
@@ -218,7 +229,8 @@ export const sortItems = ({
           dayBlocks,
           weekKey,
           sortedItems,
-          unscheduledItems
+          unscheduledItems,
+          weekLimits
         );
         unscheduledItems.push(...remainingItems);
       });
@@ -305,7 +317,8 @@ const scheduleDesignGroupForWeek = (
   dayBlocks: DayBlocks,
   weekKey: string,
   sortedItems: SortedItems,
-  unscheduledItems: Item[]
+  unscheduledItems: Item[],
+  weekLimits: Record<DayName, number>
 ): Item[] => {
   const dayCapacities: DayCapacities = {
     Sunday: 0,
@@ -322,7 +335,7 @@ const scheduleDesignGroupForWeek = (
 
     for (const item of designItems) {
       const itemBlocks = calculateBlocks(item);
-      if (theoreticalBlocks + itemBlocks <= BLOCKS_PER_DAY_LIMIT) {
+      if (theoreticalBlocks + itemBlocks <= weekLimits[day]) {
         itemsFittingThisDay++;
         theoreticalBlocks += itemBlocks;
       } else {
@@ -359,7 +372,7 @@ const scheduleDesignGroupForWeek = (
 
   for (const item of designItems) {
     const itemBlocks = calculateBlocks(item);
-    if (currentBlocks + itemBlocks <= BLOCKS_PER_DAY_LIMIT) {
+    if (currentBlocks + itemBlocks <= weekLimits[bestDay as DayName]) {
       dayBlocks[bestDay as keyof DayBlocks] += itemBlocks;
       currentBlocks += itemBlocks;
 
@@ -378,7 +391,7 @@ const scheduleDesignGroupForWeek = (
     }
   }
 
-  // Recursively handle remaining items
+  // Update recursive call to include weekLimits
   if (remainingItems.length > 0) {
     return scheduleDesignGroupForWeek(
       remainingItems,
@@ -388,7 +401,8 @@ const scheduleDesignGroupForWeek = (
       dayBlocks,
       weekKey,
       sortedItems,
-      unscheduledItems
+      unscheduledItems,
+      weekLimits
     );
   }
 
