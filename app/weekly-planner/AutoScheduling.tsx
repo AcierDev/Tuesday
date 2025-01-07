@@ -15,6 +15,7 @@ import {
   format,
   isThisWeek,
 } from "date-fns";
+import { useAutoScheduleStore } from "./stores/useAutoScheduleStore";
 
 interface SortedItems {
   [key: string]: {
@@ -29,6 +30,7 @@ interface SortItemsProps {
   targetWeek?: Date;
   weeklySchedules?: WeeklySchedules;
   blockLimits: Record<string, Record<DayName, number>>;
+  excludedDays: Record<string, Set<DayName>>;
 }
 
 // Define the days tuple type at the top level
@@ -76,6 +78,7 @@ export const sortItems = ({
   targetWeek = new Date(),
   weeklySchedules = {},
   blockLimits,
+  excludedDays,
 }: SortItemsProps): SortedItems => {
   console.log("Starting sortItems with:", {
     totalItems: items.length,
@@ -103,6 +106,7 @@ export const sortItems = ({
     unscheduledItems: Item[];
   } => {
     const weekKey = format(weekStart, "yyyy-MM-dd");
+    const weekExclusions = excludedDays[weekKey] || new Set();
     console.log(`\nProcessing week: ${weekKey}`, {
       itemsToSchedule: itemsToSchedule.length,
       hasExistingSchedule: Object.keys(existingSchedule).length > 0,
@@ -230,7 +234,8 @@ export const sortItems = ({
           weekKey,
           sortedItems,
           unscheduledItems,
-          weekLimits
+          weekLimits,
+          weekExclusions
         );
         unscheduledItems.push(...remainingItems);
       });
@@ -318,8 +323,18 @@ const scheduleDesignGroupForWeek = (
   weekKey: string,
   sortedItems: SortedItems,
   unscheduledItems: Item[],
-  weekLimits: Record<DayName, number>
+  weekLimits: Record<DayName, number>,
+  excludedDays: Set<DayName>
 ): Item[] => {
+  // Filter out excluded days from available days
+  const allowedDays = availableDays.filter((day) => !excludedDays.has(day));
+
+  // If no allowed days, all items are unscheduled
+  if (allowedDays.length === 0) {
+    designItems.forEach((item) => unscheduledItems.push(item));
+    return [];
+  }
+
   const dayCapacities: DayCapacities = {
     Sunday: 0,
     Monday: 0,
@@ -328,8 +343,8 @@ const scheduleDesignGroupForWeek = (
     Thursday: 0,
   };
 
-  // Only check available days
-  for (const day of availableDays) {
+  // Only check allowed days
+  for (const day of allowedDays) {
     let theoreticalBlocks = dayBlocks[day as keyof DayBlocks];
     let itemsFittingThisDay = 0;
 
@@ -346,17 +361,17 @@ const scheduleDesignGroupForWeek = (
     dayCapacities[day as keyof DayCapacities] = itemsFittingThisDay;
   }
 
-  // Find best day among available days only
+  // Find best day among allowed days only
   const maxCapacity = Math.max(
-    ...availableDays.map((day) => dayCapacities[day as keyof DayCapacities])
+    ...allowedDays.map((day) => dayCapacities[day as keyof DayCapacities])
   );
   if (maxCapacity === 0) {
     designItems.forEach((item) => unscheduledItems.push(item));
     return [];
   }
 
-  let bestDay = availableDays[0];
-  for (const day of availableDays) {
+  let bestDay = allowedDays[0];
+  for (const day of allowedDays) {
     if (
       dayCapacities[day as keyof DayCapacities] >
       dayCapacities[bestDay as keyof DayCapacities]
@@ -402,7 +417,8 @@ const scheduleDesignGroupForWeek = (
       weekKey,
       sortedItems,
       unscheduledItems,
-      weekLimits
+      weekLimits,
+      excludedDays
     );
   }
 

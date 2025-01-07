@@ -189,8 +189,12 @@ const WeeklyPlanner = () => {
   const [autoScheduledItems, setAutoScheduledItems] = React.useState<
     Set<string>
   >(new Set());
-  const { proposedSchedule, setProposedSchedule, clearProposedSchedule } =
-    useAutoScheduleStore();
+  const {
+    proposedSchedule,
+    setProposedSchedule,
+    clearProposedSchedule,
+    excludedDays,
+  } = useAutoScheduleStore();
   const [autoScheduledWeeks, setAutoScheduledWeeks] = React.useState<
     Map<string, boolean>
   >(new Map());
@@ -491,6 +495,7 @@ const WeeklyPlanner = () => {
       targetWeek: currentWeekStart,
       weeklySchedules,
       blockLimits,
+      excludedDays,
     });
 
     // Store all weeks in the proposed schedule
@@ -937,6 +942,7 @@ const WeeklyPlanner = () => {
       targetWeek: currentWeekStart,
       weeklySchedules,
       blockLimits,
+      excludedDays,
     });
 
     // Store the schedule for the current week only
@@ -1360,6 +1366,8 @@ const WeeklyPlanner = () => {
         currentSchedule={currentSchedule}
         weeklySchedules={weeklySchedules}
         mode="multi"
+        items={items}
+        blockLimits={blockLimits}
       />
 
       <ConfirmScheduleResetDialog
@@ -1406,6 +1414,8 @@ const WeeklyPlanner = () => {
         weeklySchedules={weeklySchedules}
         onUpdateCheckStatus={onUpdateCheckStatus}
         mode="single"
+        items={items}
+        blockLimits={blockLimits}
       />
 
       <ConfirmBlockLimitDialog
