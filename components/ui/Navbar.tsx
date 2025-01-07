@@ -20,6 +20,7 @@ import {
   ClipboardList,
   Router,
   SprayCan,
+  LayoutGrid,
 } from "lucide-react";
 import { GiCircularSaw } from "react-icons/gi";
 import { useTheme } from "next-themes";
@@ -41,6 +42,7 @@ const mainNavItems = [
   { type: "divider" },
   { href: "/robotyler", icon: SprayCan, label: "RoboTyler" },
   { href: "/router", icon: Router, label: "Router" },
+  { href: "/pick-and-place", icon: LayoutGrid, label: "Pick & Place" },
   { type: "divider" },
   { href: "/inventory", icon: ClipboardList, label: "Inventory" },
   { type: "divider" },
