@@ -23,6 +23,10 @@ const StepperControls = () => {
     sendCommand(`moveY ${stepSize}`);
   };
 
+  const handleHome = () => {
+    sendCommand("home");
+  };
+
   return (
     <div className="flex items-center gap-8">
       <StepSizeSelector value={stepSize} onChange={setStepSize} />
@@ -31,6 +35,7 @@ const StepperControls = () => {
         onXIncrement={handleXIncrement}
         onYDecrement={handleYDecrement}
         onYIncrement={handleYIncrement}
+        onHome={handleHome}
       />
     </div>
   );
