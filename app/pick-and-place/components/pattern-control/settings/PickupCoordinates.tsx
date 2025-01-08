@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useWebSocket } from "../../../contexts/WebSocketContext";
 
 const STORAGE_KEY = "pick-and-place-pickup-coordinates";
 
@@ -8,28 +9,46 @@ interface PickupCoordinatesData {
 }
 
 const DEFAULT_SETTINGS: PickupCoordinatesData = {
-  x: 0,
-  y: 0,
+  x: 15.5,
+  y: 3.5,
 };
 
-// Get initial settings synchronously
 const getInitialSettings = (): PickupCoordinatesData => {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
-
   const savedSettings = localStorage.getItem(STORAGE_KEY);
   return savedSettings ? JSON.parse(savedSettings) : DEFAULT_SETTINGS;
 };
 
 const PickupCoordinates = () => {
+  const { sendCommand } = useWebSocket();
   const [settings, setSettings] = useState<PickupCoordinatesData>(
     getInitialSettings()
   );
 
-  // Save settings to localStorage whenever they change
   const updateSettings = (key: keyof PickupCoordinatesData, value: number) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+
+    // Get other settings from localStorage
+    const { rows, columns } = JSON.parse(
+      localStorage.getItem("pick-and-place-grid") || '{"rows":5,"columns":7}'
+    );
+    const { x: startX, y: startY } = JSON.parse(
+      localStorage.getItem("pick-and-place-start-coordinates") ||
+        '{"x":2,"y":9}'
+    );
+    const { x: endX, y: endY } = JSON.parse(
+      localStorage.getItem("pick-and-place-end-coordinates") ||
+        '{"x":30.5,"y":28.5}'
+    );
+    const { speed, accel } = JSON.parse(
+      localStorage.getItem("pick-and-place-speed-accel") ||
+        '{"speed":7500,"accel":50000}'
+    );
+
+    const command = `pattern start ${rows} ${columns} ${startX} ${startY} ${endX} ${endY} ${newSettings.x} ${newSettings.y} ${speed} ${accel}`;
+    sendCommand(command);
   };
 
   return (

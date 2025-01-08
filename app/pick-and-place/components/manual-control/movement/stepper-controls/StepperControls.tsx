@@ -1,38 +1,36 @@
 import React, { useState } from "react";
 import StepSizeSelector, { type StepSize } from "./StepSizeSelector";
 import AxisControls from "./AxisControls";
+import { useWebSocket } from "../../../../contexts/WebSocketContext";
 
 const StepperControls = () => {
-  const [stepSize, setStepSize] = useState<StepSize>(50);
+  const { sendCommand } = useWebSocket();
+  const [stepSize, setStepSize] = useState<StepSize>(1000);
 
   const handleXDecrement = () => {
-    // TODO: Implement X decrement
+    sendCommand(`moveX -${stepSize}`);
   };
 
   const handleXIncrement = () => {
-    // TODO: Implement X increment
+    sendCommand(`moveX ${stepSize}`);
   };
 
   const handleYDecrement = () => {
-    // TODO: Implement Y decrement
+    sendCommand(`moveY -${stepSize}`);
   };
 
   const handleYIncrement = () => {
-    // TODO: Implement Y increment
+    sendCommand(`moveY ${stepSize}`);
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex items-center gap-8">
       <StepSizeSelector value={stepSize} onChange={setStepSize} />
       <AxisControls
-        axis="X"
-        onDecrement={handleXDecrement}
-        onIncrement={handleXIncrement}
-      />
-      <AxisControls
-        axis="Y"
-        onDecrement={handleYDecrement}
-        onIncrement={handleYIncrement}
+        onXDecrement={handleXDecrement}
+        onXIncrement={handleXIncrement}
+        onYDecrement={handleYDecrement}
+        onYIncrement={handleYIncrement}
       />
     </div>
   );

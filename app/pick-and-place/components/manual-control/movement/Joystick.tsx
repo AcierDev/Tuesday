@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useWebSocket } from "../../../contexts/WebSocketContext";
 
 interface Position {
   x: number;
@@ -7,14 +8,14 @@ interface Position {
 
 interface JoystickProps {
   size?: number;
-  onMove?: (x: number, y: number) => void;
-  onEnd?: () => void;
 }
 
-const Joystick = ({ size = 100, onMove, onEnd }: JoystickProps) => {
+const Joystick = ({ size = 100 }: JoystickProps) => {
+  const { sendCommand } = useWebSocket();
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
+  const lastCommandRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setDragging(true);
@@ -29,7 +30,10 @@ const Joystick = ({ size = 100, onMove, onEnd }: JoystickProps) => {
   const handleMouseUp = () => {
     setDragging(false);
     setPosition({ x: 0, y: 0 });
-    onEnd?.();
+    // Stop both axes when released
+    sendCommand("stopX");
+    sendCommand("stopY");
+    lastCommandRef.current = { x: 0, y: 0 };
   };
 
   const updatePosition = (e: MouseEvent | React.MouseEvent) => {
@@ -51,7 +55,33 @@ const Joystick = ({ size = 100, onMove, onEnd }: JoystickProps) => {
     }
 
     setPosition({ x, y });
-    onMove?.(x, -y); // Invert Y for intuitive control
+    updateMovement(x, -y); // Invert Y for intuitive control
+  };
+
+  const updateMovement = (x: number, y: number) => {
+    const deadzone = 0.2;
+
+    // Handle X axis
+    const newXDir = Math.abs(x) < deadzone ? 0 : Math.sign(x);
+    if (newXDir !== lastCommandRef.current.x) {
+      if (newXDir === 0) {
+        sendCommand("stopX");
+      } else {
+        sendCommand(`startX ${newXDir}`);
+      }
+      lastCommandRef.current.x = newXDir;
+    }
+
+    // Handle Y axis
+    const newYDir = Math.abs(y) < deadzone ? 0 : Math.sign(y);
+    if (newYDir !== lastCommandRef.current.y) {
+      if (newYDir === 0) {
+        sendCommand("stopY");
+      } else {
+        sendCommand(`startY ${newYDir}`);
+      }
+      lastCommandRef.current.y = newYDir;
+    }
   };
 
   useEffect(() => {
