@@ -10,7 +10,7 @@ import {
 } from "date-fns";
 import { toast } from "sonner";
 import { useRealmApp } from "@/hooks/useRealmApp";
-import { WeeklySchedules, DayName } from "@/typings/types";
+import { WeeklySchedules, DayName, DaySchedule } from "@/typings/types";
 import debounce from "lodash/debounce";
 
 export interface UseWeeklyScheduleReturn {
@@ -188,23 +188,52 @@ export const useWeeklySchedule = ({
     [currentWeekStart, saveSchedules]
   );
 
+  type ScheduleItem = { id: string; done: boolean };
+
   const removeItemFromDay = useCallback(
     async (day: string, itemId: string) => {
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-      const newSchedules = {
+      const emptySchedule: DaySchedule = {
+        Sunday: [],
+        Monday: [],
+        Tuesday: [],
+        Wednesday: [],
+        Thursday: [],
+        Friday: [],
+        Saturday: [],
+      };
+      const currentWeekSchedule = weeklySchedules[weekKey] || emptySchedule;
+      const typedDay = day as DayName;
+
+      const newSchedules: WeeklySchedules = {
         ...weeklySchedules,
         [weekKey]: {
-          ...weeklySchedules[weekKey],
-          [day]:
-            weeklySchedules[weekKey]?.[day]?.filter(
-              (item) => item.id !== itemId
-            ) || [],
-        },
+          ...currentWeekSchedule,
+          [typedDay]: (currentWeekSchedule[typedDay] || []).filter(
+            (item: ScheduleItem) => item.id !== itemId
+          ),
+        } as DaySchedule,
       };
       setWeeklySchedules(newSchedules);
-      await saveSchedules(newSchedules);
+
+      // Update the item's isScheduled field
+      if (collection) {
+        await collection.updateOne(
+          {},
+          {
+            $set: {
+              weeklySchedules: newSchedules,
+              "items_page.items.$[item].isScheduled": false,
+            },
+          },
+          {
+            arrayFilters: [{ "item.id": itemId }],
+            upsert: true,
+          }
+        );
+      }
     },
-    [weeklySchedules, currentWeekStart, saveSchedules]
+    [weeklySchedules, currentWeekStart, collection]
   );
 
   const moveItem = useCallback(
@@ -301,26 +330,55 @@ export const useWeeklySchedule = ({
         return acc;
       }, {} as Record<string, { day: DayName; itemId: string }[]>);
 
-      const newSchedules = { ...weeklySchedules };
+      const newSchedules: WeeklySchedules = { ...weeklySchedules };
+      const emptySchedule: DaySchedule = {
+        Sunday: [],
+        Monday: [],
+        Tuesday: [],
+        Wednesday: [],
+        Thursday: [],
+        Friday: [],
+        Saturday: [],
+      };
 
       Object.entries(groupedByWeek).forEach(([weekKey, items]) => {
-        const weekSchedule = newSchedules[weekKey];
-        if (!weekSchedule) return;
+        const baseSchedule = newSchedules[weekKey] || emptySchedule;
+        const currentSchedule = { ...baseSchedule };
 
         items.forEach(({ day, itemId }) => {
-          const daySchedule = weekSchedule[day as keyof typeof weekSchedule];
-          if (Array.isArray(daySchedule)) {
-            weekSchedule[day] = daySchedule.filter(
-              (item) => item.id !== itemId
+          const typedDay = day as keyof DaySchedule;
+          const daySchedule = currentSchedule[typedDay];
+          if (daySchedule) {
+            currentSchedule[typedDay] = daySchedule.filter(
+              (item: ScheduleItem) => item.id !== itemId
             );
           }
         });
+
+        newSchedules[weekKey] = currentSchedule as DaySchedule;
       });
 
       setWeeklySchedules(newSchedules);
-      await saveSchedules(newSchedules);
+
+      // Update the items' isScheduled fields
+      if (collection) {
+        const itemIds = itemsToRemove.map((item) => item.itemId);
+        await collection.updateOne(
+          {},
+          {
+            $set: {
+              weeklySchedules: newSchedules,
+              "items_page.items.$[item].isScheduled": false,
+            },
+          },
+          {
+            arrayFilters: [{ "item.id": { $in: itemIds } }],
+            upsert: true,
+          }
+        );
+      }
     },
-    [weeklySchedules, currentWeekStart, saveSchedules]
+    [weeklySchedules, currentWeekStart, collection]
   );
 
   useEffect(() => {

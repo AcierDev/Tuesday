@@ -109,6 +109,12 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && showMoveButton && wsConnected) {
+      handleMoveToPosition();
+    }
+  };
+
   const handleMoveToPosition = () => {
     sendCommand({
       type: "MOVE_TO_POSITION",
@@ -311,6 +317,7 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
                 type="number"
                 value={inputValues.x}
                 onChange={(e) => handlePositionChange("x", e.target.value)}
+                onKeyDown={handleKeyDown}
                 className="bg-gray-50 dark:bg-gray-700 pr-16"
                 step="0.1"
                 disabled={!wsConnected}
@@ -329,6 +336,7 @@ export const MovementControls: React.FC<MovementControlsProps> = ({
                 type="number"
                 value={inputValues.y}
                 onChange={(e) => handlePositionChange("y", e.target.value)}
+                onKeyDown={handleKeyDown}
                 className="bg-gray-50 dark:bg-gray-700 pr-16"
                 step="0.1"
                 disabled={!wsConnected}

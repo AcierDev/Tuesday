@@ -26,6 +26,7 @@ interface CombinedControlsProps {
     primeTime?: number;
     cleanTime?: number;
     backWashTime?: number;
+    pressurePotDelay?: number;
   };
   onPendingMaintenanceChange?: (
     setting: "primeTime" | "cleanTime" | "backWashTime",
@@ -340,6 +341,54 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                         {pendingMaintenanceSettings.backWashTime !== undefined
                           ? pendingMaintenanceSettings.backWashTime
                           : settings.maintenance.backWashTime ?? 15}
+                        s
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <span className="w-24 font-medium text-gray-700 dark:text-gray-300">
+                        Pressure Delay:
+                      </span>
+                      <Slider
+                        value={[
+                          pendingMaintenanceSettings.pressurePotDelay !==
+                          undefined
+                            ? pendingMaintenanceSettings.pressurePotDelay
+                            : settings.maintenance.pressurePotDelay ?? 5,
+                        ]}
+                        onValueChange={(value) => {
+                          const newValue = value[0] || 5;
+                          onPendingMaintenanceChange?.(
+                            "pressurePotDelay",
+                            newValue
+                          );
+                          onMaintenanceSettingChange?.(
+                            "pressurePotDelay",
+                            newValue
+                          );
+                        }}
+                        onKeyDown={(e) => {
+                          if (
+                            e.key === "Enter" &&
+                            hasUnsavedMaintenanceChanges &&
+                            wsConnected
+                          ) {
+                            onSaveMaintenanceChanges();
+                          }
+                        }}
+                        max={30}
+                        min={1}
+                        step={1}
+                        className="flex-1"
+                        disabled={!wsConnected}
+                      />
+                      <span className="w-20 text-right font-semibold bg-white dark:bg-gray-800 px-3 py-1 rounded-md">
+                        {pendingMaintenanceSettings.pressurePotDelay !==
+                        undefined
+                          ? pendingMaintenanceSettings.pressurePotDelay
+                          : settings.maintenance.pressurePotDelay ?? 5}
                         s
                       </span>
                     </div>

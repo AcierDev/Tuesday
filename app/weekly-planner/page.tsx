@@ -8,27 +8,28 @@ import { ColumnTitles, Item, DayName, DaySchedule } from "@/typings/types";
 import { Button } from "@/components/ui/button";
 import { Plus, Minus, Check, RotateCcw, Wand2, Trash2 } from "lucide-react";
 import { AddItemDialog } from "@/components/weekly-schedule/AddItemDialog";
-import { ConfirmRemoveDialog } from "./dialogs/ConfirmRemoveDialog";
-import { ConfirmCompleteDialog } from "./dialogs/ConfirmCompleteDialog";
-import { ConfirmResetDialog } from "./dialogs/ConfirmResetDialog";
 import { sortItems } from "./AutoScheduling";
-import { AutoScheduleDialog } from "./dialogs/auto-schedule";
-import { ConfirmScheduleResetDialog } from "./dialogs/ConfirmScheduleResetDialog";
+import { AutoScheduleDialog, BaseConfirmDialog } from "./dialogs";
 import { useAutoScheduleStore } from "./stores/useAutoScheduleStore";
 import { toast } from "sonner";
 import { WeekSelector } from "@/components/weekly-schedule/WeekSelector";
-import { ConfirmClearDialog } from "./dialogs/ConfirmClearDialog";
-import { ConfirmClearWeekDialog } from "./dialogs/ConfirmClearWeekDialog";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ConfirmWeekResetDialog } from "./dialogs/ConfirmWeekResetDialog";
-import { ConfirmBlockLimitDialog } from "./dialogs/ConfirmBlockLimitDialog";
 import { cn } from "@/utils/functions";
-import { ConfirmMaximumsResetDialog } from "./dialogs/ConfirmMaximumsResetDialog";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 type BadgeStatus = {
   text: string;
@@ -42,6 +43,71 @@ type WeekCheckStatus = {
   Wednesday: boolean;
   Thursday: boolean;
 };
+
+interface WeekSchedule {
+  [day: string]: { id: string; item: Item }[];
+}
+
+interface DayItemToRemove {
+  day: DayName;
+  itemId: string;
+  weekKey?: string;
+}
+
+interface WeeklyScheduleHooks {
+  weeklySchedules: Record<string, DaySchedule>;
+  currentWeekStart: Date;
+  addItemToDay: (
+    day: DayName,
+    itemId: string,
+    weekKey?: string
+  ) => Promise<void>;
+  removeItemFromDay: (day: DayName, itemId: string) => void;
+  removeItemsFromSchedule: (items: DayItemToRemove[]) => Promise<void>;
+  changeWeek: (direction: "prev" | "next") => void;
+}
+
+interface AddItemDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentDay: DayName;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  filterDesign: string;
+  setFilterDesign: (design: string) => void;
+  filterSize: string;
+  setFilterSize: (size: string) => void;
+  designs: string[];
+  sizes: string[];
+  filteredItems: Item[];
+  handleQuickAdd: (day: DayName, item: Item) => Promise<void>;
+  getItemValue: (item: Item, columnName: ColumnTitles) => string;
+}
+
+interface ScheduleItem {
+  id: string;
+  done: boolean;
+  item: Item;
+}
+
+interface DayCardProps {
+  day: DayName;
+  isCurrentDay: boolean;
+  daySchedule: ScheduleItem[];
+  totalBlocks: number;
+  blockLimit: number;
+  onBlockLimitChange: (day: DayName, value: number) => void;
+  onAddItem: (day: DayName) => void;
+  onClearDay: (day: DayName) => void;
+  onCompleteItem: (item: Item) => void;
+  onResetItem: (item: Item) => void;
+  onRemoveItem: (day: DayName, itemId: string, item: Item) => void;
+  getItemValue: (item: Item, columnName: ColumnTitles) => string;
+  useNumber: boolean;
+  weekKey: string;
+  items: Item[];
+  onBadgeClick: () => void;
+}
 
 const getDueDateStatus = (
   dueDate: Date | null,
@@ -157,6 +223,229 @@ const isWeekDisabled = (weekStart: Date): boolean => {
   return false;
 };
 
+const DayCard = ({
+  day,
+  isCurrentDay,
+  daySchedule,
+  totalBlocks,
+  blockLimit,
+  onBlockLimitChange,
+  onAddItem,
+  onClearDay,
+  onCompleteItem,
+  onResetItem,
+  onRemoveItem,
+  getItemValue,
+  useNumber,
+  weekKey,
+  items,
+  onBadgeClick,
+}: DayCardProps) => {
+  return (
+    <div className="relative group h-full">
+      {isCurrentDay && (
+        <div className="absolute inset-0 rounded-xl border-2 border-blue-400 dark:border-blue-500 bg-blue-50/20 dark:bg-blue-500/10 pointer-events-none z-10 animate-pulse" />
+      )}
+
+      <Card
+        className={cn(
+          "transition-all duration-300 group-hover:shadow-xl h-full flex flex-col",
+          "bg-white/90 dark:bg-gray-900/90",
+          "border border-gray-200/50 dark:border-gray-800/50",
+          "backdrop-blur-sm rounded-xl"
+        )}
+      >
+        <CardHeader
+          className={cn(
+            "bg-gradient-to-b from-white/50 to-gray-50/50 dark:from-gray-900/50 dark:to-gray-800/50",
+            "rounded-t-xl space-y-3 border-b border-gray-100/50 dark:border-gray-800/50",
+            "flex-none"
+          )}
+        >
+          <CardTitle className="text-center text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+            {day}
+          </CardTitle>
+          <div className="flex justify-center gap-4">
+            <TooltipProvider>
+              <Tooltip delayDuration={100}>
+                <TooltipTrigger asChild>
+                  <Input
+                    type="number"
+                    value={blockLimit}
+                    onChange={(e) =>
+                      onBlockLimitChange(day, parseInt(e.target.value) || 0)
+                    }
+                    className={cn(
+                      "w-20 text-sm",
+                      "bg-white/90 dark:bg-gray-800/90",
+                      "border-gray-200/50 dark:border-gray-700/50",
+                      "focus:ring-blue-500/50 dark:focus:ring-blue-400/50",
+                      "placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                    )}
+                    min="0"
+                    step="100"
+                  />
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  className="flex flex-col gap-2 p-2 z-50"
+                  sideOffset={5}
+                >
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onBlockLimitChange(day, 1000)}
+                  >
+                    Reset (1,000)
+                  </Button>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Badge
+              variant={totalBlocks > blockLimit ? "destructive" : "secondary"}
+              className={cn(
+                totalBlocks > blockLimit ? "animate-pulse" : "",
+                "dark:bg-gray-800/90 dark:text-gray-100",
+                "cursor-pointer hover:opacity-80 transition-opacity"
+              )}
+              onClick={onBadgeClick}
+            >
+              Blocks: {totalBlocks}
+            </Badge>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-4 flex-1 flex flex-col space-y-3 overflow-y-auto min-h-0 custom-scrollbar">
+          {daySchedule.map((scheduleItem: ScheduleItem, index: number) => {
+            const item = scheduleItem.item;
+            if (!item) return null;
+
+            const dueDate = new Date(getItemValue(item, ColumnTitles.Due));
+            const badgeStatus = getDueDateStatus(
+              isNaN(dueDate.getTime()) ? null : dueDate,
+              useNumber
+            );
+
+            return (
+              <div
+                key={`${day}-${scheduleItem.id}-${index}`}
+                className={cn(
+                  "transition-all duration-200 hover:shadow-md p-3 rounded-lg",
+                  scheduleItem.done || item.status === "Done"
+                    ? "bg-gradient-to-r from-green-100/90 to-green-50/80 dark:from-green-800/30 dark:to-green-900/20 border border-green-200/50 dark:border-green-800/30"
+                    : "bg-gradient-to-r from-gray-50/80 to-gray-100/30 dark:from-gray-800/30 dark:to-gray-700/20"
+                )}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium tracking-tight text-gray-900 dark:text-gray-100">
+                      {getItemValue(item, ColumnTitles.Customer_Name)}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "transition-all duration-200",
+                        badgeStatus.classes,
+                        "dark:border-gray-700/50",
+                        "cursor-pointer hover:opacity-80"
+                      )}
+                      onClick={onBadgeClick}
+                    >
+                      {badgeStatus.text}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    {getItemValue(item, ColumnTitles.Design)} -{" "}
+                    {getItemValue(item, ColumnTitles.Size)}
+                  </p>
+                </div>
+                <div className="flex gap-1.5">
+                  {!scheduleItem.done && item.status !== "Done" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={cn(
+                        "h-6 w-6 p-0",
+                        "hover:bg-gray-200/80 dark:hover:bg-gray-700/50",
+                        "text-gray-700 dark:text-gray-300"
+                      )}
+                      onClick={() => onCompleteItem(item)}
+                    >
+                      <Check className="h-3 w-3" />
+                      <span className="sr-only">Complete item</span>
+                    </Button>
+                  )}
+                  {(scheduleItem.done || item.status === "Done") && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={cn(
+                        "h-6 w-6 p-0",
+                        "hover:bg-green-200/80 dark:hover:bg-green-900/20",
+                        "text-green-700 dark:text-green-300"
+                      )}
+                      onClick={() => onResetItem(item)}
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      <span className="sr-only">Reset item</span>
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={cn(
+                      "h-6 w-6 p-0",
+                      scheduleItem.done || item.status === "Done"
+                        ? "hover:bg-green-200/80 dark:hover:bg-green-900/20 text-green-700 dark:text-green-300"
+                        : "hover:bg-gray-200/80 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300"
+                    )}
+                    onClick={() => onRemoveItem(day, scheduleItem.id, item)}
+                  >
+                    <Minus className="h-3 w-3" />
+                    <span className="sr-only">Remove item</span>
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+
+        <CardFooter className="flex flex-col gap-2 p-4 border-t border-gray-100 dark:border-gray-800 flex-none">
+          <Button
+            className={cn(
+              "w-full transition-all duration-200 hover:scale-105",
+              "bg-gradient-to-b from-white/80 to-gray-50/80 dark:from-gray-800/80 dark:to-gray-900/80",
+              "border-gray-200/50 dark:border-gray-700/50",
+              "text-gray-900 dark:text-gray-100",
+              "hover:from-gray-50/90 hover:to-gray-100/90 dark:hover:from-gray-700/90 dark:hover:to-gray-800/90"
+            )}
+            size="sm"
+            variant="outline"
+            onClick={() => onAddItem(day)}
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Item
+          </Button>
+          <Button
+            className={cn(
+              "w-full transition-all duration-200 hover:scale-105",
+              "bg-gradient-to-b from-red-50/10 to-red-100/10 dark:from-red-950/10 dark:to-red-900/10",
+              "border-red-200/30 dark:border-red-900/30",
+              "text-red-600 dark:text-red-400",
+              "hover:from-red-50/20 hover:to-red-100/20 dark:hover:from-red-950/20 dark:hover:to-red-900/20"
+            )}
+            size="sm"
+            variant="outline"
+            onClick={() => onClearDay(day)}
+            disabled={!daySchedule?.length}
+          >
+            Clear Day
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+};
+
 const WeeklyPlanner = () => {
   const { boardCollection } = useRealmApp();
   const [items, setItems] = React.useState<Item[]>([]);
@@ -169,7 +458,7 @@ const WeeklyPlanner = () => {
     changeWeek,
   } = useWeeklySchedule({
     weekStartsOn: 0,
-  });
+  }) as WeeklyScheduleHooks;
   const [isAddingItem, setIsAddingItem] = React.useState(false);
   const [currentDay, setCurrentDay] = React.useState<DayName | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -209,7 +498,7 @@ const WeeklyPlanner = () => {
   }>({});
   const [dayToClear, setDayToClear] = useState<DayName | null>(null);
   const [showClearWeekConfirm, setShowClearWeekConfirm] = useState(false);
-  const [useNumber, setUseNumber] = useState(false);
+  const [useNumber, setUseNumber] = useState(true);
   const [showWeekResetConfirm, setShowWeekResetConfirm] = useState(false);
   const [showSingleWeekAutoSchedule, setShowSingleWeekAutoSchedule] =
     useState(false);
@@ -337,27 +626,15 @@ const WeeklyPlanner = () => {
 
   const handleQuickAdd = async (day: DayName, item: Item) => {
     const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-    const daySchedule = currentSchedule[day] || [];
-    const currentBlocks = daySchedule.reduce((total, scheduleItem) => {
-      const scheduledItem = items.find((i) => i.id === scheduleItem.id);
-      return total + (scheduledItem ? calculateBlocks(scheduledItem) : 0);
-    }, 0);
+    await addItemToDay(day, item.id, weekKey);
+  };
 
-    const newItemBlocks = calculateBlocks(item);
-    const weekDayLimit = blockLimits[weekKey]?.[day] ?? 1000;
-
-    if (currentBlocks + newItemBlocks > weekDayLimit) {
-      setBlockLimitItem({
-        day,
-        item,
-        currentBlocks,
-        newBlocks: newItemBlocks,
-      });
-      return;
+  // Create a wrapper function that matches the expected signature
+  const handleQuickAddWrapper = (day: string, itemId: string) => {
+    const item = items.find((i) => i.id === itemId);
+    if (item) {
+      handleQuickAdd(day as DayName, item);
     }
-
-    await addItemToDay(day, item.id);
-    setIsAddingItem(false);
   };
 
   const handleRemoveItem = (day: DayName, itemId: string, item: Item) => {
@@ -1006,439 +1283,299 @@ const WeeklyPlanner = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen p-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-        <h1 className="text-2xl font-bold">Weekly Planner</h1>
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          <WeekSelector
-            currentWeekStart={currentWeekStart}
-            onChangeWeek={handleWeekChange}
-            weekStartsOn={0}
-          />
-          <div className="flex gap-2">
-            <TooltipProvider>
-              <Tooltip delayDuration={100}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    onClick={handleAutoScheduleClick}
-                    disabled={isPastWorkWeek(currentWeekStart)}
-                  >
-                    <Wand2 className="h-4 w-4" />
-                    Auto Schedule
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="p-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSingleWeekAutoScheduleClick();
-                    }}
-                  >
-                    Schedule This Week Only
-                  </Button>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip delayDuration={100}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    onClick={() => setShowResetConfirm(true)}
-                    disabled={!isCurrentWeekAutoScheduled}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Reset Schedule
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="p-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-50 dark:hover:bg-yellow-950"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowWeekResetConfirm(true);
-                    }}
-                  >
-                    Reset This Week Only
-                  </Button>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <Button
-              variant="outline"
-              className={`gap-2 ${
-                useNumber
-                  ? "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700"
-                  : "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900"
-              }`}
-              onClick={() => setUseNumber(!useNumber)}
-            >
-              {useNumber ? "Relative Badges" : "Number Badges"}
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950"
-              disabled={daysOfWeek.every(
-                (day) => (blockLimits[weekKey]?.[day] ?? 1000) === 1000
-              )}
-              onClick={() => setShowMaximumsResetConfirm(true)}
-            >
-              Reset Maximums (1,000)
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950"
-              onClick={() => setShowClearWeekConfirm(true)}
-              disabled={
-                !daysOfWeek.some((day) => currentSchedule[day]?.length > 0)
-              }
-            >
-              <Trash2 className="h-4 w-4" />
-              Clear Week
-            </Button>
-          </div>
-        </div>
-      </div>
-      <hr className="border-gray-200 dark:border-gray-700 mb-4" />
-
-      {/* Content sections */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-1">
-        {daysOfWeek.map((day) => {
-          const daySchedule = currentSchedule[day] || [];
-          const totalBlocks = daySchedule.reduce((total, scheduleItem) => {
-            const item = items.find((i) => i.id === scheduleItem.id);
-            return total + (item ? calculateBlocks(item) : 0);
-          }, 0);
-
-          return (
-            <div key={day} className="relative">
-              {/* Overlay for today's highlight */}
-              {isCurrentDay(day) && (
-                <div className="absolute inset-0 rounded-lg border-2 border-blue-400 dark:border-blue-500 bg-blue-50/20 dark:bg-blue-500/10 pointer-events-none z-10" />
-              )}
-
-              {/* Regular day card */}
-              <div
-                className={`rounded-lg shadow flex flex-col h-full relative border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-700`}
-              >
-                <div className="p-4 border-b text-center bg-white dark:bg-gray-900">
-                  <h2 className="font-semibold text-2xl text-black dark:text-white">
-                    {day}
-                  </h2>
-                  <div className="flex justify-center gap-4 mt-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-700 dark:text-gray-200">
-                        Max:
-                      </p>
-                      {(blockLimits[weekKey]?.[day] ?? 1000) === 1000 ? (
-                        <input
-                          type="number"
-                          value={blockLimits[weekKey]?.[day] ?? 1000}
-                          onChange={(e) =>
-                            handleBlockLimitChange(
-                              day,
-                              parseInt(e.target.value) || 0
-                            )
-                          }
-                          className="w-20 text-sm px-2 py-0.5 rounded border border-gray-200 dark:border-gray-600 
-                                   bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                          min="0"
-                          step="100"
-                        />
-                      ) : (
-                        <TooltipProvider>
-                          <Tooltip delayDuration={100}>
-                            <TooltipTrigger asChild>
-                              <input
-                                type="number"
-                                value={blockLimits[weekKey]?.[day] ?? 1000}
-                                onChange={(e) =>
-                                  handleBlockLimitChange(
-                                    day,
-                                    parseInt(e.target.value) || 0
-                                  )
-                                }
-                                className="w-20 text-sm px-2 py-0.5 rounded border border-gray-200 dark:border-gray-600 
-                                         bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                                min="0"
-                                step="100"
-                              />
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" className="p-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950"
-                                onClick={() =>
-                                  handleBlockLimitChange(day, 1000)
-                                }
-                              >
-                                Reset (1,000)
-                              </Button>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </div>
-                    <p
-                      className={`text-sm ${
-                        totalBlocks > (blockLimits[weekKey]?.[day] ?? 1000)
-                          ? "text-red-600 dark:text-red-400 font-medium"
-                          : "text-gray-700 dark:text-gray-200"
-                      }`}
-                    >
-                      Blocks: {totalBlocks}
-                    </p>
-                  </div>
-                </div>
-                <div className="p-4 flex-1 flex flex-col">
-                  <div className="space-y-2">
-                    {currentSchedule[day]?.map((scheduleItem, index) => {
-                      const item = items.find(
-                        (i: Item) => i.id === scheduleItem.id
-                      );
-                      if (!item) return null;
-
-                      const dueDate = new Date(
-                        getItemValue(item, ColumnTitles.Due)
-                      );
-                      const badgeStatus = getDueDateStatus(
-                        isNaN(dueDate.getTime()) ? null : dueDate,
-                        useNumber
-                      );
-
-                      const uniqueKey = `${day}-${scheduleItem.id}-${index}`;
-                      return (
-                        <div
-                          key={uniqueKey}
-                          className={`p-2 rounded-md ${
-                            scheduleItem.done || item.status === "Done"
-                              ? "bg-green-100 dark:bg-green-500/30"
-                              : "bg-gray-100 dark:bg-gray-600"
-                          }`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium">
-                                  {getItemValue(
-                                    item,
-                                    ColumnTitles.Customer_Name
-                                  )}
-                                </p>
-                                <span
-                                  className={`px-2 py-0.5 text-xs font-medium rounded-full ${badgeStatus.classes}`}
-                                >
-                                  {badgeStatus.text}
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-300">
-                                {getItemValue(item, ColumnTitles.Design)} -{" "}
-                                {getItemValue(item, ColumnTitles.Size)}
-                              </p>
-                            </div>
-                            <div className="flex gap-1">
-                              {!scheduleItem.done && item.status !== "Done" && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-500"
-                                  onClick={() => handleCompleteItem(item)}
-                                >
-                                  <Check className="h-3 w-3" />
-                                  <span className="sr-only">Complete item</span>
-                                </Button>
-                              )}
-                              {(scheduleItem.done ||
-                                item.status === "Done") && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0 hover:bg-green-200 dark:hover:bg-green-600/50"
-                                  onClick={() => handleResetItem(item)}
-                                >
-                                  <RotateCcw className="h-3 w-3" />
-                                  <span className="sr-only">Reset item</span>
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className={`h-6 w-6 p-0 ${
-                                  scheduleItem.done || item.status === "Done"
-                                    ? "hover:bg-green-200 dark:hover:bg-green-600/50"
-                                    : "hover:bg-gray-200 dark:hover:bg-gray-500"
-                                }`}
-                                onClick={() =>
-                                  handleRemoveItem(day, scheduleItem.id, item)
-                                }
-                              >
-                                <Minus className="h-3 w-3" />
-                                <span className="sr-only">Remove item</span>
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <Button
-                    className="mt-2 dark:bg-gray-700"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleAddItem(day)}
-                  >
-                    <Plus className="mr-1 h-3 w-3" /> Add
-                  </Button>
-                  <div className="flex-1" />
-                  <Button
-                    className="mt-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 dark:bg-gray-900 hover:bg-red-100 dark:hover:bg-red-950"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleClearDay(day)}
-                    disabled={!currentSchedule[day]?.length}
-                  >
-                    Clear
-                  </Button>
-                </div>
-              </div>
+    <div className="dark:bg-black">
+      <div className="flex flex-col min-h-screen h-full p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/70 dark:to-gray-900">
+        <Card className="mb-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-gray-200/50 dark:border-gray-800/50">
+          <CardHeader className="p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-gradient-to-b from-white/50 to-gray-50/50 dark:from-gray-900/50 dark:to-gray-800/50 rounded-t-xl border-b border-gray-100/50 dark:border-gray-800/50">
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Weekly Planner
+            </CardTitle>
+            <div className="flex-1 flex justify-center">
+              <WeekSelector
+                currentWeekStart={currentWeekStart}
+                onChangeWeek={handleWeekChange}
+                weekStartsOn={0}
+              />
             </div>
-          );
-        })}
-      </div>
+            <div className="flex items-center gap-2">
+              <TooltipProvider>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="transition-all duration-200 hover:scale-105"
+                      onClick={handleAutoScheduleClick}
+                      disabled={isPastWorkWeek(currentWeekStart)}
+                    >
+                      <Wand2 className="h-4 w-4" />
+                      <span className="sr-only">Auto Schedule</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    className="flex flex-col gap-2 p-2 z-50"
+                    sideOffset={5}
+                  >
+                    <p className="text-sm font-medium">Auto Schedule</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSingleWeekAutoScheduleClick();
+                      }}
+                    >
+                      Schedule This Week Only
+                    </Button>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-      <AddItemDialog
-        isOpen={isAddingItem}
-        onClose={() => setIsAddingItem(false)}
-        currentDay={currentDay || "Sunday"}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        filterDesign={filterDesign}
-        setFilterDesign={setFilterDesign}
-        filterSize={filterSize}
-        setFilterSize={setFilterSize}
-        designs={designs}
-        sizes={sizes}
-        filteredItems={filteredItems}
-        handleQuickAdd={handleQuickAdd}
-        getItemValue={getItemValue}
-      />
+              {isCurrentWeekAutoScheduled && (
+                <TooltipProvider>
+                  <Tooltip delayDuration={100}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowResetConfirm(true)}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        <span className="sr-only">Reset Schedule</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="bottom"
+                      className="flex flex-col gap-2 p-2 z-50"
+                      sideOffset={5}
+                    >
+                      <p className="text-sm font-medium">Reset Schedule</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-50 dark:hover:bg-yellow-950"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowWeekResetConfirm(true);
+                        }}
+                      >
+                        Reset This Week Only
+                      </Button>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
 
-      <ConfirmRemoveDialog
-        isOpen={itemToRemove !== null}
-        onClose={() => setItemToRemove(null)}
-        onConfirm={handleConfirmRemove}
-        item={itemToRemove?.item || null}
-        getItemValue={getItemValue}
-      />
+              {daysOfWeek.some(
+                (day) => (blockLimits[weekKey]?.[day] ?? 1000) !== 1000
+              ) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950"
+                  onClick={() => setShowMaximumsResetConfirm(true)}
+                >
+                  Reset Max
+                </Button>
+              )}
 
-      <ConfirmCompleteDialog
-        isOpen={itemToComplete !== null}
-        onClose={() => setItemToComplete(null)}
-        onConfirm={handleConfirmComplete}
-        item={itemToComplete}
-        getItemValue={getItemValue}
-      />
+              {daysOfWeek.some((day) => currentSchedule[day]?.length > 0) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950"
+                  onClick={() => setShowClearWeekConfirm(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="sr-only">Clear Week</span>
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+        </Card>
 
-      <ConfirmResetDialog
-        isOpen={itemToReset !== null}
-        onClose={() => setItemToReset(null)}
-        onConfirm={handleConfirmReset}
-        item={itemToReset}
-        getItemValue={getItemValue}
-      />
+        <Separator className="mb-4" />
 
-      <AutoScheduleDialog
-        isOpen={showAutoSchedule}
-        onClose={() => setShowAutoSchedule(false)}
-        onConfirm={handleAutoScheduleConfirm}
-        onUpdateCheckStatus={onUpdateCheckStatus}
-        getItemValue={getItemValue}
-        plannerCurrentWeek={currentWeekStart}
-        currentSchedule={currentSchedule}
-        weeklySchedules={weeklySchedules}
-        mode="multi"
-        items={items}
-        blockLimits={blockLimits}
-      />
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 flex-1">
+          {daysOfWeek.map((day) => {
+            const daySchedule = (currentSchedule[day] || [])
+              .map((scheduleItem) => ({
+                ...scheduleItem,
+                item: items.find((i) => i.id === scheduleItem.id)!,
+              }))
+              .filter((item) => item.item) as ScheduleItem[];
 
-      <ConfirmScheduleResetDialog
-        isOpen={showResetConfirm}
-        onClose={() => setShowResetConfirm(false)}
-        onConfirm={handleResetConfirm}
-      />
+            const totalBlocks = daySchedule.reduce((total, scheduleItem) => {
+              return total + calculateBlocks(scheduleItem.item);
+            }, 0);
 
-      <ConfirmClearDialog
-        isOpen={dayToClear !== null}
-        onClose={() => setDayToClear(null)}
-        onConfirm={handleConfirmClear}
-        day={dayToClear}
-      />
+            return (
+              <DayCard
+                key={day}
+                day={day}
+                isCurrentDay={isCurrentDay(day)}
+                daySchedule={daySchedule}
+                totalBlocks={totalBlocks}
+                blockLimit={blockLimits[weekKey]?.[day] ?? 1000}
+                onBlockLimitChange={handleBlockLimitChange}
+                onAddItem={handleAddItem}
+                onClearDay={handleClearDay}
+                onCompleteItem={handleCompleteItem}
+                onResetItem={handleResetItem}
+                onRemoveItem={handleRemoveItem}
+                getItemValue={getItemValue}
+                useNumber={useNumber}
+                weekKey={weekKey}
+                items={items}
+                onBadgeClick={() => setUseNumber(!useNumber)}
+              />
+            );
+          })}
+        </div>
 
-      <ConfirmClearWeekDialog
-        isOpen={showClearWeekConfirm}
-        onClose={() => setShowClearWeekConfirm(false)}
-        onConfirm={handleClearWeek}
-        weekStart={currentWeekStart}
-      />
+        <AddItemDialog
+          isOpen={isAddingItem}
+          onClose={() => setIsAddingItem(false)}
+          currentDay={currentDay || "Sunday"}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          filterDesign={filterDesign}
+          setFilterDesign={setFilterDesign}
+          filterSize={filterSize}
+          setFilterSize={setFilterSize}
+          designs={designs}
+          sizes={sizes}
+          filteredItems={filteredItems}
+          handleQuickAdd={handleQuickAddWrapper}
+          getItemValue={getItemValue}
+        />
 
-      <ConfirmWeekResetDialog
-        isOpen={showWeekResetConfirm}
-        onClose={() => setShowWeekResetConfirm(false)}
-        onConfirm={() => handleResetConfirm(false)}
-        weekStart={currentWeekStart}
-      />
+        {itemToRemove && (
+          <BaseConfirmDialog
+            isOpen={!!itemToRemove}
+            onClose={() => setItemToRemove(null)}
+            onConfirm={handleConfirmRemove}
+            title="Remove Item"
+            description="Are you sure you want to remove this item from the schedule?"
+            confirmText="Remove"
+            confirmVariant="destructive"
+          >
+            <p className="font-medium">
+              {getItemValue(itemToRemove.item, ColumnTitles.Customer_Name)}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {getItemValue(itemToRemove.item, ColumnTitles.Design)} -{" "}
+              {getItemValue(itemToRemove.item, ColumnTitles.Size)}
+            </p>
+          </BaseConfirmDialog>
+        )}
 
-      <AutoScheduleDialog
-        isOpen={showSingleWeekAutoSchedule}
-        onClose={() => {
-          setShowSingleWeekAutoSchedule(false);
-          clearProposedSchedule();
-        }}
-        onConfirm={() => {
-          handleAutoScheduleConfirm();
-          setShowSingleWeekAutoSchedule(false);
-          clearProposedSchedule();
-        }}
-        getItemValue={getItemValue}
-        plannerCurrentWeek={currentWeekStart}
-        currentSchedule={currentSchedule}
-        weeklySchedules={weeklySchedules}
-        onUpdateCheckStatus={onUpdateCheckStatus}
-        mode="single"
-        items={items}
-        blockLimits={blockLimits}
-      />
+        {itemToComplete && (
+          <BaseConfirmDialog
+            isOpen={!!itemToComplete}
+            onClose={() => setItemToComplete(null)}
+            onConfirm={handleConfirmComplete}
+            title="Complete Item"
+            description="Are you sure you want to mark this item as completed?"
+            confirmText="Complete"
+            confirmVariant="default"
+            confirmClassName="bg-green-600 hover:bg-green-700"
+          >
+            <p className="font-medium">
+              {getItemValue(itemToComplete, ColumnTitles.Customer_Name)}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {getItemValue(itemToComplete, ColumnTitles.Design)} -{" "}
+              {getItemValue(itemToComplete, ColumnTitles.Size)}
+            </p>
+          </BaseConfirmDialog>
+        )}
 
-      <ConfirmBlockLimitDialog
-        isOpen={blockLimitItem !== null}
-        onClose={() => setBlockLimitItem(null)}
-        onConfirm={handleConfirmBlockLimit}
-        totalBlocks={blockLimitItem?.currentBlocks || 0}
-        newBlocks={blockLimitItem?.newBlocks || 0}
-        blockLimit={
-          blockLimitItem
-            ? blockLimits[weekKey]?.[blockLimitItem.day] ?? 1000
-            : 1000
-        }
-      />
+        <BaseConfirmDialog
+          isOpen={showResetConfirm}
+          onClose={() => setShowResetConfirm(false)}
+          onConfirm={() => handleResetConfirm(true)}
+          title="Reset All Data"
+          description="Are you sure you want to reset all data? This will clear all schedules, maximums, and settings. This action cannot be undone."
+          confirmText="Reset All"
+          confirmVariant="destructive"
+        />
 
-      <ConfirmMaximumsResetDialog
-        isOpen={showMaximumsResetConfirm}
-        onClose={() => setShowMaximumsResetConfirm(false)}
-        onConfirm={() => {
-          const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-          setBlockLimits((prev) => ({
-            ...prev,
-            [weekKey]: {
+        <AutoScheduleDialog
+          isOpen={showAutoSchedule}
+          onClose={() => setShowAutoSchedule(false)}
+          onConfirm={handleAutoScheduleConfirm}
+          onUpdateCheckStatus={onUpdateCheckStatus}
+          getItemValue={getItemValue}
+          plannerCurrentWeek={currentWeekStart}
+          currentSchedule={currentSchedule}
+          weeklySchedules={weeklySchedules}
+          mode="multi"
+          items={items}
+          blockLimits={blockLimits}
+        />
+
+        {dayToClear && (
+          <BaseConfirmDialog
+            isOpen={!!dayToClear}
+            onClose={() => setDayToClear(null)}
+            onConfirm={handleConfirmClear}
+            title={`Clear ${dayToClear}`}
+            description={`Are you sure you want to clear all items from ${dayToClear}? This action cannot be undone.`}
+            confirmText="Clear Day"
+            confirmVariant="destructive"
+          />
+        )}
+
+        <BaseConfirmDialog
+          isOpen={showClearWeekConfirm}
+          onClose={() => setShowClearWeekConfirm(false)}
+          onConfirm={handleClearWeek}
+          title="Clear Week"
+          description={`Are you sure you want to clear all items for the week of ${format(
+            currentWeekStart,
+            "MMM d, yyyy"
+          )}? This action cannot be undone.`}
+          confirmText="Clear Week"
+          confirmVariant="destructive"
+        />
+
+        <BaseConfirmDialog
+          isOpen={showWeekResetConfirm}
+          onClose={() => setShowWeekResetConfirm(false)}
+          onConfirm={handleAutoScheduleConfirm}
+          title={`Reset Week from ${currentDay}`}
+          description={`Are you sure you want to reset all days starting from ${currentDay}? This action cannot be undone.`}
+          confirmText="Reset Week"
+          confirmVariant="destructive"
+        />
+
+        {blockLimitItem && (
+          <BaseConfirmDialog
+            isOpen={!!blockLimitItem}
+            onClose={() => setBlockLimitItem(null)}
+            onConfirm={handleConfirmBlockLimit}
+            title="Block Limit Warning"
+            description={`Adding this item will exceed the maximum blocks for ${
+              blockLimitItem.day
+            } (${blockLimitItem.currentBlocks}/${
+              blockLimits[format(currentWeekStart, "yyyy-MM-dd")]?.[
+                blockLimitItem.day
+              ] ?? 1000
+            } blocks). Would you like to proceed anyway?`}
+            confirmText="Add Anyway"
+            confirmVariant="default"
+            confirmClassName="bg-yellow-600 hover:bg-yellow-700"
+          />
+        )}
+
+        <BaseConfirmDialog
+          isOpen={showMaximumsResetConfirm}
+          onClose={() => setShowMaximumsResetConfirm(false)}
+          onConfirm={() => {
+            const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+            const defaultLimits: Record<DayName, number> = {
               Sunday: 1000,
               Monday: 1000,
               Tuesday: 1000,
@@ -1446,12 +1583,19 @@ const WeeklyPlanner = () => {
               Thursday: 1000,
               Friday: 1000,
               Saturday: 1000,
-            },
-          }));
-          setShowMaximumsResetConfirm(false);
-          toast.success("Successfully reset all block maximums to 1,000");
-        }}
-      />
+            };
+            setBlockLimits((prev) => ({
+              ...prev,
+              [weekKey]: defaultLimits,
+            }));
+            setShowMaximumsResetConfirm(false);
+          }}
+          title="Reset Maximums"
+          description="Are you sure you want to reset all daily maximums to their default values? This action cannot be undone."
+          confirmText="Reset Maximums"
+          confirmVariant="destructive"
+        />
+      </div>
     </div>
   );
 };
