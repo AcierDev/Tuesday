@@ -20,7 +20,7 @@ import { useState, useEffect } from "react";
 import { startOfWeek, format } from "date-fns";
 import { cn } from "@/utils/functions";
 import { Check } from "lucide-react";
-import { RescheduleConfirmDialog } from "./RescheduleConfirmDialog";
+import { BaseConfirmDialog } from "../BaseConfirmDialog";
 import { sortItems } from "../../AutoScheduling";
 
 interface AutoSchedulePreview {
@@ -836,7 +836,7 @@ export function AutoScheduleDialog({
           </Button>
         </DialogFooter>
 
-        <RescheduleConfirmDialog
+        <BaseConfirmDialog
           isOpen={dayToReschedule !== null}
           onClose={() => setDayToReschedule(null)}
           onConfirm={() => {
@@ -845,17 +845,27 @@ export function AutoScheduleDialog({
             }
             setDayToReschedule(null);
           }}
-          day={dayToReschedule || "Sunday"}
-          mode="day"
+          title="Reschedule Day"
+          description={`Would you like to reschedule the items from ${
+            dayToReschedule || "this day"
+          } to other available days?`}
+          confirmText="Reschedule"
+          confirmVariant="default"
+          confirmClassName="bg-blue-600 hover:bg-blue-700"
         />
-        <RescheduleConfirmDialog
+
+        <BaseConfirmDialog
           isOpen={showWeekReschedule}
           onClose={() => setShowWeekReschedule(false)}
           onConfirm={handleConfirmWeekReschedule}
-          mode="week"
-          weekStartDate={selectedWeekStart}
+          title="Reschedule Week"
+          description={`Would you like to reschedule the items from this week to other available weeks?`}
+          confirmText="Reschedule"
+          confirmVariant="default"
+          confirmClassName="bg-blue-600 hover:bg-blue-700"
         />
-        <RescheduleConfirmDialog
+
+        <BaseConfirmDialog
           isOpen={dayToReinclude !== null}
           onClose={() => setDayToReinclude(null)}
           onConfirm={() => {
@@ -863,15 +873,24 @@ export function AutoScheduleDialog({
               handleConfirmReinclude(dayToReinclude);
             }
           }}
-          day={dayToReinclude || "Sunday"}
-          mode="reinclude"
+          title="Include Day"
+          description={`Would you like to include ${
+            dayToReinclude || "this day"
+          } in the scheduling again?`}
+          confirmText="Include"
+          confirmVariant="default"
+          confirmClassName="bg-green-600 hover:bg-green-700"
         />
-        <RescheduleConfirmDialog
+
+        <BaseConfirmDialog
           isOpen={showRestoreWeekDialog}
           onClose={() => setShowRestoreWeekDialog(false)}
           onConfirm={handleConfirmRestoreWeek}
-          mode="restoreWeek"
-          weekStartDate={selectedWeekStart}
+          title="Restore Week"
+          description="Would you like to reschedule with all days in this week included?"
+          confirmText="Restore"
+          confirmVariant="default"
+          confirmClassName="bg-green-600 hover:bg-green-700"
         />
       </DialogContent>
     </Dialog>
