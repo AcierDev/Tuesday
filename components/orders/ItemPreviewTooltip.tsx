@@ -144,10 +144,10 @@ export function ItemPreviewTooltip({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.2 }}
       style={{
-        position: "absolute" as const,
-        zIndex: 100,
-        ...position,
+        position: "relative",
+        zIndex: 9999,
       }}
+      className="ml-2"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >

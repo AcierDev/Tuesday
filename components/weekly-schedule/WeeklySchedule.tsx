@@ -25,11 +25,21 @@ interface WeeklyScheduleProps {
   boardId: string;
 }
 
+const EMPTY_WEEK_SCHEDULE = {
+  Sunday: [],
+  Monday: [],
+  Tuesday: [],
+  Wednesday: [],
+  Thursday: [],
+  Friday: [],
+  Saturday: [],
+};
+
 export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   const { boardCollection: collection } = useRealmApp();
   const [weeklySchedules, setWeeklySchedules] = useState<WeeklySchedules>({});
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() =>
-    startOfWeek(new Date(), { weekStartsOn: 0 })
+    startOfWeek(new Date())
   );
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [currentDay, setCurrentDay] = useState("");
@@ -39,15 +49,42 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   const [confirmCompleteItem, setConfirmCompleteItem] = useState<Item | null>(
     null
   );
+  const [localItems, setLocalItems] = useState<Item[]>(items);
 
-  const loadSchedules = useCallback(async () => {
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
+
+  const createNewWeek = useCallback((weekStart: Date) => {
+    const adjustedWeekStart = startOfWeek(weekStart, { weekStartsOn: 0 });
+    const weekKey = format(adjustedWeekStart, "yyyy-MM-dd");
+
+    setWeeklySchedules((prev) => {
+      if (prev[weekKey]) return prev;
+
+      return {
+        ...prev,
+        [weekKey]: { ...EMPTY_WEEK_SCHEDULE },
+      };
+    });
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [boardId]);
+
+  const loadData = useCallback(async () => {
     if (!collection) return;
 
     try {
       const board = await collection.findOne({ id: boardId });
+      if (!board) return;
+
+      const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
+
       if (board?.weeklySchedules) {
         setWeeklySchedules(board.weeklySchedules);
-        const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
+
         if (!board.weeklySchedules[currentWeekKey]) {
           createNewWeek(currentWeekStart);
         }
@@ -55,49 +92,43 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
         createNewWeek(currentWeekStart);
       }
     } catch (err) {
-      console.error("Failed to load weekly schedules", err);
       toast.error("Failed to load weekly schedules. Please refresh the page.");
     }
-  }, [collection, boardId, currentWeekStart]);
+  }, [collection, boardId, currentWeekStart, createNewWeek]);
 
   useEffect(() => {
-    loadSchedules();
-  }, [loadSchedules]);
+    const handleScheduleUpdate = () => {
+      loadData();
+    };
 
-  const createNewWeek = useCallback((weekStart: Date) => {
-    const adjustedWeekStart = startOfWeek(weekStart, { weekStartsOn: 0 });
-    const weekKey = format(adjustedWeekStart, "yyyy-MM-dd");
-    setWeeklySchedules((prev) => ({
-      ...prev,
-      [weekKey]: {
-        Sunday: [],
-        Monday: [],
-        Tuesday: [],
-        Wednesday: [],
-        Thursday: [],
-        Friday: [],
-        Saturday: [],
-      },
-    }));
-    setCurrentWeekStart(adjustedWeekStart);
-  }, []);
+    window.addEventListener("weeklyScheduleUpdate", handleScheduleUpdate);
+    return () => {
+      window.removeEventListener("weeklyScheduleUpdate", handleScheduleUpdate);
+    };
+  }, [loadData]);
 
   const saveSchedules = useCallback(
     async (newSchedules: WeeklySchedules) => {
       if (!collection) return;
 
       try {
+        const currentStr = JSON.stringify(weeklySchedules);
+        const newStr = JSON.stringify(newSchedules);
+
+        if (currentStr === newStr) return;
+
         await collection.updateOne(
           { id: boardId },
-          { $set: { weeklySchedules: newSchedules } }
+          { $set: { weeklySchedules: newSchedules } },
+          { upsert: true }
         );
-        console.log("Weekly schedules saved successfully");
+
+        setWeeklySchedules(newSchedules);
       } catch (err) {
-        console.error("Failed to save weekly schedules", err);
         toast.error("Failed to save weekly schedules. Please try again.");
       }
     },
-    [collection, boardId]
+    [collection, boardId, weeklySchedules]
   );
 
   const handleAddItem = useCallback((day: string) => {
@@ -106,7 +137,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   }, []);
 
   const handleQuickAdd = useCallback(
-    async (day: DayName, item: Item) => {
+    async (day: DayName, itemId: string) => {
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
       const currentWeekSchedule =
         weeklySchedules[weekKey] || ({} as DaySchedule);
@@ -117,7 +148,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
           ...currentWeekSchedule,
           [day]: [
             ...(currentWeekSchedule[day] || []),
-            { id: item.id, done: false },
+            { id: itemId, done: false },
           ],
         },
       };
@@ -129,7 +160,13 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
         await collection.updateOne(
           { id: boardId },
           { $set: { "items_page.items.$[elem].isScheduled": true } },
-          { arrayFilters: [{ "elem.id": item.id }] }
+          { arrayFilters: [{ "elem.id": itemId }] }
+        );
+
+        setLocalItems((prevItems) =>
+          prevItems.map((item) =>
+            item.id === itemId ? { ...item, isScheduled: true } : item
+          )
         );
       }
     },
@@ -303,6 +340,8 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
     [currentWeekStart, weeklySchedules, createNewWeek]
   );
 
+  useEffect(() => {}, [weeklySchedules, currentWeekStart, boardId]);
+
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <div className="mb-6">
@@ -321,9 +360,9 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
                   key={day}
                   day={day as DayName}
                   dayItemIds={dayItems}
-                  items={items}
+                  items={localItems}
                   calculateTotalSquares={(dayItems) =>
-                    calculateTotalSquares(dayItems, items, getItemValue)
+                    calculateTotalSquares(dayItems, localItems, getItemValue)
                   }
                   handleAddItem={handleAddItem}
                   handleRemoveItem={handleRemoveItem}

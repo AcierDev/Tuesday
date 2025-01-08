@@ -17,6 +17,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { type Item } from "../../typings/types";
 
+interface Shipment {
+  tracking_code: string;
+}
+
 interface EditItemDialogProps {
   editingItem: Item | null;
   setEditingItem: (item: Item | null) => void;
@@ -78,7 +82,7 @@ export const EditItemDialog = ({
     if (editingItem) {
       const updatedItem = {
         ...editingItem,
-        receipt: localReceipt || undefined,
+        shippingDetails: localReceipt || undefined,
         vertical: isVertical,
       };
       setEditingItem(updatedItem);

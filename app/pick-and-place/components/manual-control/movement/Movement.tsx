@@ -2,7 +2,7 @@ import React from "react";
 import PresetButtons from "./PresetButtons";
 import GoToControls from "./GoToControls";
 import StepperControls from "./stepper-controls";
-import Joystick from "./Joystick";
+import Joystick from "./joystick";
 
 const Movement = () => {
   const handleJoystickMove = (x: number, y: number) => {

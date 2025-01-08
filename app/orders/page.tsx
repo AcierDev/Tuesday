@@ -3,10 +3,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { Toaster, toast } from "sonner";
 import { DropResult, ResponderProvided } from "@hello-pangea/dnd";
-import {
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Header } from "@/components/orders/Header";
 import { ItemList } from "@/components/orders/ItemList";
@@ -17,12 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { useRealmApp } from "@/hooks/useRealmApp";
-import {
-  Item,
-  ItemStatus,
-  ItemSizes,
-  ItemDesigns,
-} from "@/typings/types";
+import { Item, ItemStatus, ItemSizes, ItemDesigns } from "@/typings/types";
 import { useBoardOperations } from "@/components/orders/OrderHooks";
 import { ShippingDashboard } from "@/components/shipping/ShippingDashboard";
 import { cn } from "@/utils/functions";
@@ -182,29 +174,34 @@ export default function OrderManagementPage() {
     setIsConfirmationOpen(true);
   }, []);
 
-  const undoItemCompletion = useCallback(async (item: Item) => {
-    try {
-      const restoredItem = {
-        ...item,
-        status: item.previousStatus || ItemStatus.Todo,
-        completedAt: undefined
-      };
-      delete restoredItem.previousStatus;
-      
-      await updateItem(restoredItem);
-    } catch (error) {
-      console.error("Failed to undo completion:", error);
-      toast.error("Failed to undo completion", {
-        style: { background: "#EF4444", color: "white" },
-      });
-    }
-  }, [updateItem]);
+  const undoItemCompletion = useCallback(
+    async (item: Item) => {
+      try {
+        const restoredItem = {
+          ...item,
+          status: item.previousStatus || ItemStatus.Todo,
+          completedAt: undefined,
+        };
+        delete restoredItem.previousStatus;
+
+        await updateItem(restoredItem);
+      } catch (error) {
+        console.error("Failed to undo completion:", error);
+        toast.error("Failed to undo completion", {
+          style: { background: "#EF4444", color: "white" },
+        });
+      }
+    },
+    [updateItem]
+  );
 
   const handleConfirmComplete = useCallback(async () => {
     if (!itemToComplete) return;
 
     try {
-      const itemToUpdate = board?.items_page.items.find(item => item.id === itemToComplete);
+      const itemToUpdate = board?.items_page.items.find(
+        (item) => item.id === itemToComplete
+      );
       if (!itemToUpdate) {
         throw new Error("Item not found");
       }
@@ -213,17 +210,17 @@ export default function OrderManagementPage() {
         ...itemToUpdate,
         previousStatus: itemToUpdate.status,
         status: ItemStatus.Done,
-        completedAt: Date.now()
+        completedAt: Date.now(),
       };
 
       await updateItem(updatedItem);
-      
+
       toast.success("Item marked as completed", {
         style: { background: "#10B981", color: "white" },
         action: {
           label: "Undo",
-          onClick: () => undoItemCompletion(updatedItem)
-        }
+          onClick: () => undoItemCompletion(updatedItem),
+        },
       });
     } catch (error) {
       console.error("Failed to mark item as completed:", error);
@@ -342,8 +339,9 @@ export default function OrderManagementPage() {
             style: { background: "#10B981", color: "white" },
             action: {
               label: "Undo",
-              onClick: () => undoStatusChange(movedItem, source.droppableId as ItemStatus)
-            }
+              onClick: () =>
+                undoStatusChange(movedItem, source.droppableId as ItemStatus),
+            },
           });
         }
       } catch (error) {
@@ -483,57 +481,76 @@ export default function OrderManagementPage() {
     });
   }, [filteredGroups, settings.groupingField]);
 
-  const undoItemDeletion = useCallback(async (item: Item) => {
-    try {
-      const restoredItem = {
-        ...item,
-        deleted: false
-      };
-      await updateItem(restoredItem);
-    } catch (error) {
-      console.error("Failed to undo deletion:", error);
-      toast.error("Failed to undo deletion", {
-        style: { background: "#EF4444", color: "white" },
-      });
-    }
-  }, [updateItem]);
+  const undoItemDeletion = useCallback(
+    async (item: Item) => {
+      try {
+        const restoredItem = {
+          ...item,
+          deleted: false,
+        };
+        await updateItem(restoredItem);
+      } catch (error) {
+        console.error("Failed to undo deletion:", error);
+        toast.error("Failed to undo deletion", {
+          style: { background: "#EF4444", color: "white" },
+        });
+      }
+    },
+    [updateItem]
+  );
 
-  const undoStatusChange = useCallback(async (item: Item, previousStatus: ItemStatus) => {
-    try {
-      const restoredItem = {
-        ...item,
-        status: previousStatus,
-        completedAt: previousStatus === ItemStatus.Done ? Date.now() : undefined
-      };
-      await updateItem(restoredItem);
-    } catch (error) {
-      console.error("Failed to undo status change:", error);
-      toast.error("Failed to undo status change", {
-        style: { background: "#EF4444", color: "white" },
-      });
-    }
-  }, [updateItem]);
+  const undoStatusChange = useCallback(
+    async (item: Item, previousStatus: ItemStatus) => {
+      try {
+        const restoredItem = {
+          ...item,
+          status: previousStatus,
+          completedAt:
+            previousStatus === ItemStatus.Done ? Date.now() : undefined,
+        };
+        await updateItem(restoredItem);
+      } catch (error) {
+        console.error("Failed to undo status change:", error);
+        toast.error("Failed to undo status change", {
+          style: { background: "#EF4444", color: "white" },
+        });
+      }
+    },
+    [updateItem]
+  );
 
-  const onDelete = useCallback(async (itemId: string) => {
-    try {
-      const itemToDelete = board?.items_page.items.find(item => item.id === itemId);
-      if (!itemToDelete) return;
+  const onDelete = useCallback(
+    async (itemId: string) => {
+      try {
+        const itemToDelete = board?.items_page.items.find(
+          (item) => item.id === itemId
+        );
+        if (!itemToDelete) return;
 
-      await deleteItem(itemId);
-      toast.success("Item deleted", {
-        style: { background: "#10B981", color: "white" },
-        action: {
-          label: "Undo",
-          onClick: () => undoItemDeletion(itemToDelete)
-        }
-      });
-    } catch (error) {
-      console.error("Failed to delete item:", error);
-      toast.error("Failed to delete item", {
-        style: { background: "#EF4444", color: "white" },
-      });
+        await deleteItem(itemId);
+        toast.success("Item deleted", {
+          style: { background: "#10B981", color: "white" },
+          action: {
+            label: "Undo",
+            onClick: () => undoItemDeletion(itemToDelete),
+          },
+        });
+      } catch (error) {
+        console.error("Failed to delete item:", error);
+        toast.error("Failed to delete item", {
+          style: { background: "#EF4444", color: "white" },
+        });
+      }
+    },
+    [board, deleteItem, undoItemDeletion]
+  );
+
+  useEffect(() => {
+    if (isWeeklyPlannerOpen) {
+      const event = new CustomEvent("weeklyScheduleUpdate");
+      window.dispatchEvent(event);
     }
-  }, [board, deleteItem, undoItemDeletion]);
+  }, [isWeeklyPlannerOpen]);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -597,6 +614,7 @@ export default function OrderManagementPage() {
               {board && isWeeklyPlannerOpen && (
                 <div className="h-full bg-white dark:bg-gray-800 shadow-lg rounded-l-lg">
                   <WeeklySchedule
+                    key={isWeeklyPlannerOpen ? "open" : "closed"}
                     boardId={board.id}
                     items={board.items_page.items.filter(
                       (item) => !item.deleted && item.visible
@@ -657,9 +675,7 @@ export default function OrderManagementPage() {
             <h2 className="text-lg font-semibold">Confirm Completion</h2>
             <p>Are you sure you'd like to mark this item as done?</p>
             <div className="flex justify-end gap-3">
-              <Button onClick={handleConfirmComplete}>
-                Yes
-              </Button>
+              <Button onClick={handleConfirmComplete}>Yes</Button>
               <Button
                 variant="outline"
                 onClick={() => {

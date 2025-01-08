@@ -69,7 +69,7 @@ export default function RootLayout({
   return (
     <html className={`${geistSans.variable} ${geistMono.variable}`} lang="en">
       <body className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        <ThemeProvider enableSystem attribute="class" defaultTheme="system">
+        <ThemeProvider enableSystem attribute="class" defaultTheme="dark">
           <RealmAppProvider>
             <OrderSettingsProvider>
               <UserProvider>
@@ -80,7 +80,6 @@ export default function RootLayout({
             </OrderSettingsProvider>
           </RealmAppProvider>
         </ThemeProvider>
-        <Toaster />
       </body>
     </html>
   );

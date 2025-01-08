@@ -2,18 +2,17 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Settings, RotateCw, Save, Sliders, Grid } from "lucide-react";
+import { Settings, Save, Sliders, Grid } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatternSettings } from "./PatternSettings";
 import { SystemState, SystemSettings } from "@/app/robotyler/page";
-import { MovementControls } from "./MovementControls";
 
 interface CombinedControlsProps {
   status: SystemState;
   settings: SystemSettings;
   pendingSpeedChanges: Record<string, number>;
   handleSpeedChange: (
-    side: "left" | "right" | "front" | "back",
+    side: "left" | "right" | "front" | "back" | "lip",
     value: number[]
   ) => void;
   handleRotate: (direction: "left" | "right") => void;
@@ -45,6 +44,7 @@ interface CombinedControlsProps {
       max: boolean;
     };
   };
+  configs?: PatternConfig[];
 }
 
 const CombinedControls: React.FC<CombinedControlsProps> = ({
@@ -62,6 +62,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
   hasUnsavedMaintenanceChanges,
   sendCommand,
   limitSwitches,
+  configs = [],
 }) => {
   const [activeTab, setActiveTab] = React.useState("speeds");
   const [contentHeight, setContentHeight] = React.useState("auto");
@@ -175,17 +176,16 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                     >
                       <div className="flex items-center gap-4">
                         <span className="w-20 font-medium text-gray-700 dark:text-gray-300">
-                          {side.charAt(0).toUpperCase() + side.slice(1)}:
+                          {side === "lip"
+                            ? "Lip"
+                            : side.charAt(0).toUpperCase() + side.slice(1)}
+                          :
                         </span>
                         <Slider
                           value={[pendingSpeedChanges[side] ?? speed]}
                           onValueChange={(value) =>
                             handleSpeedChange(
-                              side == "front"
-                                ? "back"
-                                : side == "back"
-                                ? "front"
-                                : (side as keyof typeof settings.speeds),
+                              side as keyof typeof settings.speeds,
                               value
                             )
                           }
@@ -215,6 +215,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                   settings={settings}
                   onUpdate={sendCommand}
                   wsConnected={wsConnected}
+                  configs={configs}
                 />
               ) : (
                 <div className="space-y-4">

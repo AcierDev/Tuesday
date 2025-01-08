@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ItemSizes } from "@/typings/types";
 
 interface CostBreakdown {
   basePrice: number;
@@ -40,25 +41,65 @@ interface CostBreakdown {
   };
   tax: number;
   total: number;
+  debug?: {
+    dimensions: { height: number; width: number };
+    blocks: { height: number; width: number; total: number };
+  };
 }
 
 const BLOCK_SIZE = 3; // Block size in inches
-const DEFAULT_CARD_WIDTH = 400; // Default card width in pixels
+const DEFAULT_CARD_WIDTH = 480; // Default card width in pixels (increased from 400)
 const DIAGRAM_PADDING = 40; // Padding around the diagram
 
-enum ItemSizes {
-  Fourteen_By_Seven = "14 x 7",
-  Sixteen_By_Six = "16 x 6",
-  Sixteen_By_Ten = "16 x 10",
-  Nineteen_By_Ten = "19 x 10",
-  TwentyTwo_By_Ten = "22 x 10",
-  Nineteen_By_Eleven = "19 x 11",
-  TwentyTwo_By_Eleven = "22 x 11",
-  TwentySeven_By_Eleven = "27 x 11",
-  TwentySeven_By_Fifteen = "27 x 15",
-  ThirtyOne_By_Fifteen = "31 x 15",
-  ThirtySix_By_Fifteen = "36 x 15",
-}
+const PRICE_DATA_POINTS = [
+  { squares: 67, price: 385.0 },
+  { squares: 98, price: 485.0 },
+  { squares: 160, price: 720.0 },
+  { squares: 200, price: 850.0 },
+  { squares: 240, price: 950.0 },
+  { squares: 288, price: 1125.0 },
+  { squares: 336, price: 1225.0 },
+  { squares: 448, price: 1625.0 },
+  { squares: 512, price: 1825.0 },
+  { squares: 576, price: 2025.0 },
+];
+
+const interpolatePrice = (
+  squares: number,
+  points: typeof PRICE_DATA_POINTS
+): number => {
+  console.log(`Interpolating price for ${squares} squares`);
+
+  const exactMatch = points.find((point) => point.squares === squares);
+  if (exactMatch) {
+    console.log(`Found exact match: $${exactMatch.price}`);
+    return exactMatch.price;
+  }
+
+  for (let i = 1; i < points.length; i++) {
+    const lower = points[i - 1];
+    const upper = points[i];
+    if (!upper || !lower) continue;
+
+    if (squares < upper.squares) {
+      const proportion =
+        (squares - lower.squares) / (upper.squares - lower.squares);
+      const interpolatedPrice =
+        lower.price + proportion * (upper.price - lower.price);
+      console.log(
+        `Interpolated between ${lower.squares} ($${lower.price}) and ${upper.squares} ($${upper.price})`
+      );
+      console.log(
+        `Proportion: ${proportion}, Final price: $${interpolatedPrice}`
+      );
+      return interpolatedPrice;
+    }
+  }
+
+  const fallbackPrice = points[points.length - 1]?.price ?? 0;
+  console.log(`Using fallback price: $${fallbackPrice}`);
+  return fallbackPrice;
+};
 
 const ArtDiagram: React.FC<{
   height: number;
@@ -81,13 +122,13 @@ const ArtDiagram: React.FC<{
   return (
     <div className="px-6 pb-6">
       <div className="flex justify-end text-sm text-muted-foreground mb-2">
-        <span>
+        <span className="text-gray-400">
           {width} {unit} width
         </span>
       </div>
       <div className="flex items-start justify-center">
         <div
-          className="text-sm text-muted-foreground mr-2"
+          className="text-sm text-gray-400 mr-2"
           style={{
             writingMode: "vertical-rl",
             textOrientation: "mixed",
@@ -101,7 +142,7 @@ const ArtDiagram: React.FC<{
           {height} {unit} height
         </div>
         <div
-          className="relative border border-gray-400"
+          className="relative border border-gray-600 bg-gray-900/50 rounded-lg"
           style={{
             width: diagramWidth,
             height: diagramHeight,
@@ -118,7 +159,7 @@ const ArtDiagram: React.FC<{
                       left: colIndex * blockSizePx,
                       width: blockSizePx,
                       height: blockSizePx,
-                      border: "1px solid blue",
+                      border: "1px solid rgba(59, 130, 246, 0.3)",
                       boxSizing: "border-box",
                     }}
                   />
@@ -129,19 +170,6 @@ const ArtDiagram: React.FC<{
       </div>
     </div>
   );
-};
-
-type CheckedState = boolean | "indeterminate";
-
-interface ParsedSize {
-  width: number;
-  height: number;
-}
-
-const parseSizeString = (size: string): ParsedSize | null => {
-  const [w, h] = size.split(" x ").map((s) => parseInt(s));
-  if (isNaN(w) || isNaN(h)) return null;
-  return { width: w * BLOCK_SIZE, height: h * BLOCK_SIZE };
 };
 
 export default function CustomArtRequest() {
@@ -166,8 +194,9 @@ export default function CustomArtRequest() {
   const [showBlocks, setShowBlocks] = useState(false);
   const [scale, setScale] = useState(1);
   const cardRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"dimensions" | "preview">(
+    "dimensions"
+  );
 
   useEffect(() => {
     updateCostBreakdown(formData.height, formData.width);
@@ -210,10 +239,25 @@ export default function CustomArtRequest() {
     w: number,
     expedited: boolean
   ): CostBreakdown => {
-    const pricePerSquareInch = 0.5;
-    const basePrice = h * w * pricePerSquareInch;
+    // Convert dimensions to blocks (3 inches per block)
+    const heightInBlocks = Math.round(h / BLOCK_SIZE);
+    const widthInBlocks = Math.round(w / BLOCK_SIZE);
+    const totalBlocks = heightInBlocks * widthInBlocks;
 
-    const baseShipping = 20;
+    const debugInfo = {
+      dimensions: { height: h, width: w },
+      blocks: {
+        height: heightInBlocks,
+        width: widthInBlocks,
+        total: totalBlocks,
+      },
+    };
+
+    // Calculate base price using interpolation
+    const basePrice = interpolatePrice(totalBlocks, PRICE_DATA_POINTS);
+
+    // Calculate shipping
+    const baseShipping = 0;
     let additionalHeightCharge = 0;
     if (h > 65) {
       const extraHeight = h - 65;
@@ -223,9 +267,11 @@ export default function CustomArtRequest() {
     const totalShipping =
       baseShipping + additionalHeightCharge + expeditedCharge;
 
+    // Calculate tax
     const taxRate = 0.1;
     const tax = (basePrice + totalShipping) * taxRate;
 
+    // Calculate total
     const total = basePrice + totalShipping + tax;
 
     return {
@@ -238,12 +284,11 @@ export default function CustomArtRequest() {
       },
       tax,
       total,
+      debug: debugInfo,
     };
   };
 
   const updateCostBreakdown = (h: string, w: string) => {
-    setIsLoading(true);
-    setError(null);
     const heightInInches = parseFloat(h) * (formData.unit === "feet" ? 12 : 1);
     const widthInInches = parseFloat(w) * (formData.unit === "feet" ? 12 : 1);
     if (!isNaN(heightInInches) && !isNaN(widthInInches) && widthInInches > 0) {
@@ -251,7 +296,6 @@ export default function CustomArtRequest() {
         calculateCost(heightInInches, widthInInches, formData.isExpedited)
       );
     } else {
-      setError("Invalid dimensions. Please check your input.");
       setCostBreakdown({
         basePrice: 0,
         shipping: { base: 0, additionalHeight: 0, expedited: 0, total: 0 },
@@ -259,7 +303,6 @@ export default function CustomArtRequest() {
         total: 0,
       });
     }
-    setIsLoading(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -293,27 +336,37 @@ export default function CustomArtRequest() {
   };
 
   const handleExpeditedChange = (checked: boolean) => {
+    // Update the form data first
     setFormData((prev) => ({
       ...prev,
       isExpedited: checked,
     }));
-    updateCostBreakdown(formData.height, formData.width);
+
+    // Calculate dimensions in inches
+    const heightInInches =
+      parseFloat(formData.height) * (formData.unit === "feet" ? 12 : 1);
+    const widthInInches =
+      parseFloat(formData.width) * (formData.unit === "feet" ? 12 : 1);
+
+    // Update cost breakdown with the new expedited status
+    setCostBreakdown(calculateCost(heightInInches, widthInInches, checked));
   };
 
   const handleSizeSelect = (size: ItemSizes | "custom") => {
     if (size !== "custom") {
-      const parsedSize = parseSizeString(size);
-      if (parsedSize) {
-        const { width, height } = parsedSize;
-        setFormData((prev) => ({
-          ...prev,
-          selectedSize: size,
-          width: width.toString(),
-          height: height.toString(),
-          unit: "inches",
-        }));
-        updateCostBreakdown(height.toString(), width.toString());
-      }
+      const [width = "0", height = "0"] = size
+        .split(" x ")
+        .map((s) => parseInt(s) * BLOCK_SIZE);
+      const newWidth = width.toString();
+      const newHeight = height.toString();
+      setFormData((prev) => ({
+        ...prev,
+        selectedSize: size,
+        width: newWidth,
+        height: newHeight,
+        unit: "inches",
+      }));
+      updateCostBreakdown(newHeight, newWidth);
     } else {
       setFormData((prev) => ({
         ...prev,
@@ -324,10 +377,6 @@ export default function CustomArtRequest() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (error) {
-      alert("Please correct the errors before submitting.");
-      return;
-    }
     alert(
       `Request submitted for a ${formData.height} ${formData.unit} x ${
         formData.width
@@ -338,196 +387,172 @@ export default function CustomArtRequest() {
   };
 
   return (
-    <Card
-      ref={cardRef}
-      className="w-full mx-auto bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 shadow-lg border-t border-gray-100 dark:border-gray-800"
-      style={{
-        maxWidth: `${Math.max(
-          scale * parseFloat(formData.width) + DIAGRAM_PADDING * 2,
-          DEFAULT_CARD_WIDTH
-        )}px`,
-      }}
-    >
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-          Custom Art Request
-        </CardTitle>
-        <CardDescription className="text-lg">
-          Design your perfect piece with our interactive size calculator
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="dimensions" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 rounded-lg p-1 bg-gray-100 dark:bg-gray-800">
-            <TabsTrigger
-              value="dimensions"
-              className="data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-md transition-all duration-200"
-            >
-              Dimensions
-            </TabsTrigger>
-            <TabsTrigger
-              value="preview"
-              className="data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-md transition-all duration-200"
-            >
-              Preview
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="dimensions">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid w-full items-center gap-4">
-                {error && (
-                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-                    {error}
-                  </div>
-                )}
-                <div>
-                  <Label htmlFor="size-select" className="text-lg font-medium">
-                    Select Size
-                  </Label>
-                  <Select
-                    value={formData.selectedSize}
-                    onValueChange={handleSizeSelect}
-                  >
-                    <SelectTrigger
-                      id="size-select"
-                      className="w-full border-2 hover:border-primary transition-colors duration-200"
-                      aria-label="Select Size"
-                      aria-describedby="size-select-description"
-                    >
-                      <SelectValue placeholder="Choose a size" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px] overflow-y-auto">
-                      <SelectItem value="custom" className="font-medium">
-                        Custom Size
-                      </SelectItem>
-                      <div className="h-px bg-gray-200 my-2" />
-                      {Object.values(ItemSizes).map((size) => (
-                        <SelectItem key={size} value={size}>
-                          {size} inches
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div
-                    id="size-select-description"
-                    className="text-sm text-gray-500"
-                  >
-                    Choose a predefined size or enter custom dimensions.
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col space-y-1.5">
-                    <Label htmlFor="height" className="text-lg font-medium">
-                      Height
+    <div className="min-h-screen w-full flex items-center justify-center p-4">
+      <Card
+        ref={cardRef}
+        className="w-full mx-auto bg-[#1a1f2b]/95 border-gray-800 backdrop-blur-sm"
+        style={{
+          maxWidth:
+            activeTab === "preview"
+              ? `${Math.max(
+                  scale * parseFloat(formData.width) + DIAGRAM_PADDING * 2,
+                  DEFAULT_CARD_WIDTH
+                )}px`
+              : `${DEFAULT_CARD_WIDTH}px`,
+        }}
+      >
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            Custom Art Request
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            Enter the dimensions for your custom art piece
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs
+            defaultValue="dimensions"
+            className="w-full"
+            onValueChange={(value) =>
+              setActiveTab(value as "dimensions" | "preview")
+            }
+          >
+            <TabsList className="grid w-full grid-cols-2 bg-gray-800/50">
+              <TabsTrigger
+                value="dimensions"
+                className="data-[state=active]:bg-gray-700"
+              >
+                Dimensions
+              </TabsTrigger>
+              <TabsTrigger
+                value="preview"
+                className="data-[state=active]:bg-gray-700"
+              >
+                Preview
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="dimensions">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid w-full items-center gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="size-select" className="text-gray-300">
+                      Select Size
                     </Label>
-                    <div className="relative">
+                    <Select
+                      value={formData.selectedSize}
+                      onValueChange={handleSizeSelect}
+                    >
+                      <SelectTrigger
+                        id="size-select"
+                        className="bg-gray-800 border-gray-700"
+                      >
+                        <SelectValue placeholder="Choose a size" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-800 border-gray-700">
+                        <SelectItem value="custom">Custom</SelectItem>
+                        {Object.values(ItemSizes).map((size) => (
+                          <SelectItem key={size} value={size}>
+                            {size}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="height" className="text-gray-300">
+                        Height
+                      </Label>
                       <Input
                         required
                         id="height"
                         name="height"
-                        className="pl-3 pr-12 border-2 hover:border-primary transition-colors duration-200"
                         placeholder="Enter height"
                         type="number"
-                        min="1"
-                        step="0.01"
                         value={formData.height}
                         onChange={handleInputChange}
-                        aria-label="Height"
-                        aria-describedby="height-description"
+                        className="bg-gray-800 border-gray-700"
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
-                        {formData.unit}
-                      </span>
                     </div>
-                  </div>
-                  <div className="flex flex-col space-y-1.5">
-                    <Label htmlFor="width" className="text-lg font-medium">
-                      Width
-                    </Label>
-                    <div className="relative">
+                    <div className="space-y-2">
+                      <Label htmlFor="width" className="text-gray-300">
+                        Width
+                      </Label>
                       <Input
                         required
                         id="width"
                         name="width"
-                        className="pl-3 pr-12 border-2 hover:border-primary transition-colors duration-200"
                         placeholder="Enter width"
                         type="number"
-                        min="1"
-                        step="0.01"
                         value={formData.width}
                         onChange={handleInputChange}
-                        aria-label="Width"
-                        aria-describedby="width-description"
+                        className="bg-gray-800 border-gray-700"
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
-                        {formData.unit}
-                      </span>
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-300">Unit</Label>
+                    <RadioGroup
+                      value={formData.unit}
+                      onValueChange={handleUnitChange}
+                      className="flex space-x-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem id="inches" value="inches" />
+                        <Label
+                          htmlFor="inches"
+                          className="text-gray-300 cursor-pointer"
+                        >
+                          Inches
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem id="feet" value="feet" />
+                        <Label
+                          htmlFor="feet"
+                          className="text-gray-300 cursor-pointer"
+                        >
+                          Feet
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className="flex items-center space-x-2 pt-2">
+                    <Checkbox
+                      checked={formData.isExpedited}
+                      id="expedited"
+                      onCheckedChange={(checked) =>
+                        handleExpeditedChange(checked === true)
+                      }
+                    />
+                    <Label
+                      htmlFor="expedited"
+                      className="text-gray-300 cursor-pointer"
+                    >
+                      Expedited Shipping (+$75)
+                    </Label>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-lg font-medium">Unit</Label>
-                  <RadioGroup
-                    value={formData.unit}
-                    onValueChange={handleUnitChange}
-                    className="mt-2"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem id="inches" value="inches" />
-                      <Label htmlFor="inches">Inches</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem id="feet" value="feet" />
-                      <Label htmlFor="feet">Feet</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={formData.isExpedited}
-                    id="expedited"
-                    onCheckedChange={handleExpeditedChange}
-                  />
-                  <Label htmlFor="expedited" className="text-lg">
-                    Expedited Shipping (+$75)
-                  </Label>
-                </div>
-                <Button
-                  className="mt-4 w-full"
-                  type="submit"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Submitting..." : "Submit"}
-                </Button>
-              </div>
-            </form>
-          </TabsContent>
-          <TabsContent
-            value="preview"
-            className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4"
-          >
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              </form>
+            </TabsContent>
+            <TabsContent value="preview">
+              <div className="space-y-4">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={showBlocks}
                     id="showBlocks"
-                    className="border-2"
-                    onCheckedChange={(checked: CheckedState) => {
-                      if (typeof checked === "boolean") {
-                        setShowBlocks(checked);
-                      }
-                    }}
+                    onCheckedChange={setShowBlocks}
                   />
-                  <Label htmlFor="showBlocks" className="text-sm font-medium">
-                    Show Grid
+                  <Label
+                    htmlFor="showBlocks"
+                    className="text-gray-300 cursor-pointer"
+                  >
+                    Show Blocks
                   </Label>
                 </div>
-                <div className="text-sm text-gray-500">
-                  Scale: {(scale * 100).toFixed(0)}%
-                </div>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-inner p-4">
                 <ArtDiagram
                   height={parseFloat(formData.height)}
                   scale={scale}
@@ -536,89 +561,89 @@ export default function CustomArtRequest() {
                   width={parseFloat(formData.width)}
                 />
               </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-      <CardFooter className="flex flex-col items-start space-y-4">
-        <div className="w-full space-y-2 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-lg p-4">
-          <div className="flex justify-between items-center">
-            <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Total Cost: ${costBreakdown.total.toFixed(2)}
-            </span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button size="icon" variant="outline">
-                  <Info className="h-5 w-5" />
-                  <span className="sr-only">Cost breakdown</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-lg">Cost Breakdown</h4>
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Base Price:</span>
-                      <span>${costBreakdown.basePrice.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Shipping:</span>
-                      <span>${costBreakdown.shipping.total.toFixed(2)}</span>
-                    </div>
-                    <div className="pl-4 space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span>Base Shipping:</span>
-                        <span>${costBreakdown.shipping.base.toFixed(2)}</span>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+        <CardFooter className="flex flex-col items-start border-t border-gray-800 pt-6">
+          <div className="w-full space-y-2">
+            <div className="mb-4 p-4 bg-gray-900 rounded-md text-sm font-mono">
+              <h4 className="text-gray-400 mb-2">Debug Information:</h4>
+              {costBreakdown.debug && (
+                <div className="space-y-1 text-gray-300">
+                  <div>
+                    Dimensions: {costBreakdown.debug.dimensions.height}" ×{" "}
+                    {costBreakdown.debug.dimensions.width}"
+                  </div>
+                  <div>
+                    Blocks: {costBreakdown.debug.blocks.height} ×{" "}
+                    {costBreakdown.debug.blocks.width} ={" "}
+                    {costBreakdown.debug.blocks.total} total blocks
+                  </div>
+                  <div>Base Price: ${costBreakdown.basePrice.toFixed(2)}</div>
+                  <div>
+                    Price per Block: $
+                    {(
+                      costBreakdown.basePrice / costBreakdown.debug.blocks.total
+                    ).toFixed(2)}
+                  </div>
+                  <div className="mt-2 border-t border-gray-800 pt-2">
+                    <div>Shipping Breakdown:</div>
+                    <div className="pl-4">
+                      <div>
+                        Base Shipping: ${costBreakdown.shipping.base.toFixed(2)}
                       </div>
-                      <div className="flex justify-between">
-                        <span>Additional Height:</span>
-                        <span>
-                          ${costBreakdown.shipping.additionalHeight.toFixed(2)}
-                        </span>
+                      <div>
+                        Height Charge: $
+                        {costBreakdown.shipping.additionalHeight.toFixed(2)}
                       </div>
-                      <div className="flex justify-between">
-                        <span>Expedited:</span>
-                        <span>
-                          ${costBreakdown.shipping.expedited.toFixed(2)}
-                        </span>
+                      <div>
+                        Expedited Fee: $
+                        {costBreakdown.shipping.expedited.toFixed(2)}
                       </div>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Tax:</span>
-                      <span>${costBreakdown.tax.toFixed(2)}</span>
+                      <div>
+                        Total Shipping: $
+                        {costBreakdown.shipping.total.toFixed(2)}
+                      </div>
                     </div>
                   </div>
+                  <div className="border-t border-gray-800 pt-2">
+                    <div>
+                      Subtotal (Pre-tax): $
+                      {(
+                        costBreakdown.basePrice + costBreakdown.shipping.total
+                      ).toFixed(2)}
+                    </div>
+                    <div>Tax (10%): ${costBreakdown.tax.toFixed(2)}</div>
+                  </div>
                 </div>
-              </PopoverContent>
-            </Popover>
+              )}
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-xl font-semibold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+                Total Cost: ${costBreakdown.total.toFixed(2)}
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-          <Button
-            className="w-full text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all duration-200"
-            disabled={isLoading}
-          >
-            <ShoppingCart className="w-5 h-5 mr-2" />
-            Order Now
-          </Button>
-          <Button
-            className="w-full text-lg"
-            variant="outline"
-            disabled={isLoading}
-          >
-            <Mail className="w-5 h-5 mr-2" />
-            Email
-          </Button>
-          <Button
-            className="w-full text-lg"
-            variant="secondary"
-            disabled={isLoading}
-          >
-            <ExternalLink className="w-5 h-5 mr-2" />
-            Etsy
-          </Button>
-        </div>
-      </CardFooter>
-    </Card>
+          <div className="grid grid-cols-3 gap-2 w-full mt-4">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700">
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              Order
+            </Button>
+            <Button
+              className="w-full border-gray-700 hover:bg-gray-800"
+              variant="outline"
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Email
+            </Button>
+            <Button className="w-full bg-gray-700 hover:bg-gray-600">
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Etsy
+            </Button>
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }

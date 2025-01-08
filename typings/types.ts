@@ -53,8 +53,23 @@ export type Item = {
   visible: boolean;
   deleted: boolean;
   isScheduled?: boolean;
-  shippingDetails: Address;
+  shippingDetails?: ShippingDetails;
 };
+
+export type ShippingDetails = {
+  id?: number;
+  buyer_email?: string;
+  name?: string;
+  street1?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  shipments?: Shipment[];
+};
+
+export interface Shipment {
+  tracking_code: string;
+}
 
 export type ColumnValue = ColorColumnValue | GenericColumnValue;
 
