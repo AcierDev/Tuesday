@@ -20,6 +20,7 @@ import {
   ClipboardList,
   Router,
   SprayCan,
+  LayoutGrid,
   Magnet,
 } from "lucide-react";
 import { GiCircularSaw } from "react-icons/gi";
@@ -32,6 +33,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const mainNavItems = [
   { href: "/orders", icon: Logs, label: "Orders", hotkey: "1" },
+  { href: "/weekly-planner", icon: ClipboardList, label: "Weekly Planner" },
   { href: "/shipping", icon: Truck, label: "Shipping", hotkey: "2" },
   { type: "divider" },
   { href: "/paint", icon: PaintbrushVertical, label: "Paint", hotkey: "3" },
@@ -42,6 +44,7 @@ const mainNavItems = [
   { href: "/robotyler", icon: SprayCan, label: "RoboTyler" },
   { href: "/pick-n-place", icon: Magnet, label: "Pick N Place" },
   { href: "/router", icon: Router, label: "Router" },
+  { href: "/pick-and-place", icon: LayoutGrid, label: "Pick & Place" },
   { type: "divider" },
   { href: "/inventory", icon: ClipboardList, label: "Inventory" },
   { type: "divider" },
@@ -56,6 +59,8 @@ const mainNavItems = [
   { href: "/calculator", icon: Calculator, label: "Calculator", hotkey: "6" },
 ];
 
+const EASTER_EGG_SEQUENCE = ["/orders", "/shipping", "/orders", "/shipping"];
+
 interface NavbarProps {
   onOpenSettings: () => void;
 }
@@ -66,6 +71,7 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(pathname);
+  const [navigationSequence, setNavigationSequence] = useState<string[]>([]);
 
   useEffect(() => {
     setActiveTab(pathname);
@@ -118,6 +124,26 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
 
   const NavLink = ({ href, icon: Icon, label }) => {
     if (!href) return null;
+
+    const handleClick = (e: React.MouseEvent) => {
+      e.preventDefault(); // Prevent default Link navigation
+
+      // Update sequence by keeping last 3 items and adding new href
+      const newSequence = [...navigationSequence.slice(-3), href];
+      setNavigationSequence(newSequence);
+
+      // Check if sequence matches
+      if (
+        newSequence.length === 4 &&
+        newSequence.every((path, i) => path === EASTER_EGG_SEQUENCE[i])
+      ) {
+        router.push("/surprise-page");
+        setNavigationSequence([]); // Reset sequence
+      } else {
+        router.push(href); // Normal navigation if sequence doesn't match
+      }
+    };
+
     return (
       <Link
         href={href}
@@ -126,7 +152,7 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
             ? "bg-secondary text-secondary-foreground"
             : "text-muted-foreground hover:bg-muted hover:text-primary"
         } ${!sidebarOpen ? "justify-center" : ""}`}
-        onClick={() => setActiveTab(href)}
+        onClick={handleClick}
       >
         <Icon
           className={`h-5 w-5 flex-shrink-0 ${!sidebarOpen ? "mr-0" : "mr-3"}`}

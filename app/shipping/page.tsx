@@ -34,72 +34,66 @@ import { useRealmApp } from "@/hooks/useRealmApp";
 import { Activity, ShippingItem } from "@/typings/interfaces";
 import { ShippingStatus, type Board, type Item } from "@/typings/types";
 
-interface UPSTrackingResponse {
-  trackingNumber: string;
-  status: string;
-  estimatedDelivery: string;
-  currentStatusDescription?: string;
-  trackingHistory?: TrackingEvent[];
-  weight?: string;
-  dimension?: string;
-  serviceDescription?: string;
-  referenceNumbers?: string[];
+interface TrackingResponse {
+  tracking_number: string;
+  tracking_url: string;
+  status_code: string;
+  status_detail_code: string;
+  carrier_code: string;
+  carrier_id: number;
+  status_description: string;
+  status_detail_description: string;
+  carrier_status_code: string;
+  carrier_detail_code: string;
+  carrier_status_description: string;
+  ship_date: string;
+  estimated_delivery_date: string;
+  actual_delivery_date?: string;
+  exception_description?: string;
+  events: TrackingEvent[];
 }
 
 interface TrackingEvent {
-  location: string;
-  status: string;
-  date: string;
-  time: string;
-  gmtDate: string;
-  gmtOffset: string;
-  gmtTime: string;
+  occurred_at: string;
+  carrier_occurred_at: string;
+  description: string;
+  city_locality: string;
+  state_province: string;
+  postal_code: string;
+  country_code: string;
+  company_name: string;
+  signer: string;
+  event_code: string;
+  carrier_detail_code: string;
+  status_code: string;
+  status_detail_code: string;
+  status_description: string;
+  status_detail_description: string;
+  carrier_status_code: string;
+  carrier_status_description: string;
+  latitude: number;
+  longitude: number;
 }
 
-async function fetchTrackingData(
-  trackingNumber: string
-): Promise<UPSTrackingResponse> {
+async function fetchTrackingData(labelId: string): Promise<TrackingResponse> {
   try {
     const response = await fetch(
-      `/api/ups-tracking?trackingNumber=${trackingNumber}`
+      `https://docs.shipstation.com/_mock/openapi/v2/labels/${labelId}/track`,
+      {
+        method: "GET",
+        headers: {
+          "api-key": process.env.NEXT_PUBLIC_SHIP_STATION_API_KEY || "",
+        },
+      }
     );
+
     if (!response.ok) {
-      throw new Error("Failed to fetch tracking information");
+      throw new Error(`Failed to fetch tracking data: ${response.statusText}`);
     }
-    const data = await response.json();
 
-    // Extract additional details from the response if available
-    const shipment = data.package?.[0];
-    const currentStatusDescription = shipment?.currentStatus?.description || "";
-    const weight = shipment?.weight?.weight;
-    const dimension = shipment?.dimension
-      ? `${shipment.dimension.length}x${shipment.dimension.width}x${shipment.dimension.height} ${shipment.dimension.unitOfDimension}`
-      : "";
-    const serviceDescription = shipment?.service?.description || "";
-    const referenceNumbers =
-      shipment?.referenceNumber?.map((ref: any) => ref.number) || [];
-    const trackingHistory =
-      shipment?.activity?.map((activity: any) => ({
-        location: activity.location?.address?.city || "N/A",
-        status: activity.status?.description || "N/A",
-        date: activity.date,
-        time: activity.time,
-        gmtDate: activity.gmtDate,
-        gmtOffset: activity.gmtOffset,
-        gmtTime: activity.gmtTime,
-      })) || [];
-
-    return {
-      ...data,
-      currentStatusDescription,
-      trackingHistory,
-      weight,
-      dimension,
-      serviceDescription,
-      referenceNumbers,
-    };
+    return await response.json();
   } catch (error: any) {
-    console.error("Error fetching UPS tracking data:", error);
+    console.error("Error fetching ShipStation tracking data:", error);
     throw error;
   }
 }
@@ -137,7 +131,7 @@ export default function ShippingPage() {
 
   const loadItems = async () => {
     try {
-      const board: Board = await collection!.findOne({
+      const board: Board | null = await collection!.findOne({
         /* query to find the board */
       });
       if (board) {
@@ -147,6 +141,12 @@ export default function ShippingPage() {
             shippingDetails: item.shippingDetails || undefined,
           }))
           .filter((item) => !item.deleted && item.visible) as ShippingItem[];
+
+        // // Log the complete item data for each customer
+        // itemsWithReceipts.forEach((item) => {
+        //   console.log(`${item.shippingDetails?.name}:`, item);
+        // });
+
         setItems(itemsWithReceipts);
         updateShipmentStatuses(itemsWithReceipts);
       }
@@ -165,32 +165,37 @@ export default function ShippingPage() {
       items.map(async (item) => {
         if (item.receipt?.shipments && item.receipt.shipments.length > 0) {
           const shipment = item.receipt.shipments[0]!;
-          const trackingCode = shipment.tracking_code;
-          if (trackingCode) {
+          const labelId = shipment.label_id;
+
+          if (labelId) {
             try {
-              const trackingData = await fetchTrackingData(trackingCode);
+              const trackingData = await fetchTrackingData(labelId);
+              console.log(`${item.shippingDetails?.name}:`, trackingData);
+
               return {
                 ...item,
-                shipmentStatus: mapUPSStatusToShippingStatus(
-                  trackingData.status
+                shipmentStatus: mapShipStationStatusToShippingStatus(
+                  trackingData.status_detail_code
                 ),
                 trackingInfo: {
-                  carrier: "UPS",
-                  status: trackingData.status,
-                  estimatedDelivery:
-                    trackingData.trackingInfo?.estimatedDelivery,
-                  currentStatusDescription: trackingData,
-                  weight: trackingData.trackingInfo?.weight,
-                  dimension: trackingData.trackingInfo?.dimensions,
-                  serviceDescription:
-                    trackingData.trackingInfo?.serviceDescription,
-                  referenceNumbers: trackingData.trackingInfo?.referenceNumbers,
-                  trackingHistory: trackingData.activity,
+                  carrier: trackingData.carrier_code,
+                  status: trackingData.status_description,
+                  estimatedDelivery: trackingData.estimated_delivery_date,
+                  currentStatusDescription:
+                    trackingData.carrier_status_description,
+                  trackingUrl: trackingData.tracking_url,
+                  trackingNumber: trackingData.tracking_number,
+                  events: trackingData.events.map((event) => ({
+                    date: event.occurred_at,
+                    description: event.description,
+                    location: `${event.city_locality}, ${event.state_province} ${event.postal_code}`,
+                    status: event.status_description,
+                  })),
                 },
               };
             } catch (error) {
               console.error(
-                `Failed to fetch status for item ${item.id} tracking code ${trackingCode}`,
+                `Failed tracking update for ${item.shippingDetails?.name}:`,
                 error
               );
               return item;
@@ -200,72 +205,26 @@ export default function ShippingPage() {
         return { ...item, shipmentStatus: "unshipped" };
       })
     );
+
     setItems(updatedItems);
   };
 
-  // ShippingPage.tsx
-
-  const mapUPSStatusToShippingStatus = (upsStatus: string): ShippingStatus => {
-    switch (upsStatus.toLowerCase()) {
-      case "delivered":
+  const mapShipStationStatusToShippingStatus = (
+    statusCode: string
+  ): ShippingStatus => {
+    switch (statusCode) {
+      case "DELIVERED":
         return "delivered";
-      case "in transit":
+      case "IN_TRANSIT":
+      case "OUT_FOR_DELIVERY":
         return "in_transit";
-      case "origin scan":
-      case "pickup":
+      case "ACCEPTED":
+      case "COLLECTION_FAILED":
         return "pre_transit";
-      case "customs clearance in progress":
-        return "pre_transit"; // Example mapping
       default:
         return "unshipped";
     }
   };
-
-  async function fetchTrackingData(
-    trackingNumber: string
-  ): Promise<ShippingItem> {
-    try {
-      const response = await fetch(
-        `/api/ups-tracking?trackingNumber=${trackingNumber}`
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch tracking information");
-      }
-      const data = await response.json();
-
-      // Parse additional details
-      const shipment = data.package[0];
-      const weight = shipment.weight
-        ? `${shipment.weight.weight} ${shipment.weight.unitOfMeasurement}`
-        : undefined;
-      const dimensions = shipment.dimension
-        ? `${shipment.dimension.length}x${shipment.dimension.width}x${shipment.dimension.height} ${shipment.dimension.unitOfDimension}`
-        : undefined;
-      const serviceDescription = shipment.service?.description;
-      const referenceNumbers =
-        shipment.referenceNumber?.map((ref: any) => ref.number) || [];
-      const activity: Activity[] = shipment.activity.map((act: any) => ({
-        date: act.date,
-        time: act.time,
-        description: act.status.description,
-        location: act.location.address?.city || "Unknown Location",
-      }));
-
-      return {
-        trackingNumber: data.trackingNumber,
-        status: data.status,
-        estimatedDelivery: data.estimatedDelivery,
-        weight,
-        dimensions,
-        serviceDescription,
-        referenceNumbers,
-        activity,
-      };
-    } catch (error: any) {
-      console.error("Error fetching UPS tracking data:", error);
-      throw error;
-    }
-  }
 
   const getStatusIcon = (status: ShippingStatus) => {
     switch (status) {
@@ -277,8 +236,6 @@ export default function ShippingPage() {
         return <Truck className="h-5 w-5 text-blue-500" />;
       case "delivered":
         return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-      case "customs_clearance":
-        return <AlertCircle className="h-5 w-5 text-orange-500" />;
       default:
         return <AlertCircle className="h-5 w-5 text-red-500" />;
     }
@@ -342,24 +299,26 @@ export default function ShippingPage() {
                       className="hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
                       <TableCell className="text-gray-900 dark:text-gray-100">
-                        {item.receipt?.receipt_id || "N/A"}
+                        {item.id}
                       </TableCell>
                       <TableCell className="text-gray-900 dark:text-gray-100">
-                        {item.receipt?.name || "N/A"}
+                        {item.shippingDetails?.name || "N/A"}
                       </TableCell>
                       <TableCell className="text-gray-900 dark:text-gray-100">
-                        {item.trackingInfo?.carrier || "N/A"}
+                        {item.receipt?.shipments?.[0]?.carrier || "N/A"}
                       </TableCell>
                       <TableCell className="text-gray-900 dark:text-gray-100">
-                        {item.trackingInfo?.serviceDescription || "N/A"}
+                        {item.receipt?.shipments?.[0]?.service || "N/A"}
                       </TableCell>
                       <TableCell className="text-gray-900 dark:text-gray-100">
-                        {item.trackingInfo?.estimatedDelivery || "N/A"}
+                        {item.trackingInfo?.estimatedDelivery
+                          ? new Date(
+                              item.trackingInfo.estimatedDelivery
+                            ).toLocaleDateString()
+                          : "N/A"}
                       </TableCell>
                       <TableCell className="text-gray-900 dark:text-gray-100">
-                        {item.trackingInfo?.status ||
-                          item.trackingInfo?.status ||
-                          "N/A"}
+                        {item.trackingInfo?.status || "unknown"}
                       </TableCell>
                       <TableCell>
                         <Button
@@ -386,15 +345,6 @@ export default function ShippingPage() {
   };
 
   return (
-    // <div className="relative w-full h-full min-h-[300px] bg-white dark:bg-gray-800">
-    //   <Image
-    //     src="/images/thoon.gif"
-    //     alt="Centered GIF"
-    //     layout="fill"
-    //     objectFit="contain"
-    //     className="mx-auto"
-    //   />
-    // </div>
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-8">
       <Card className="w-full max-w-7xl mx-auto mb-8 bg-white dark:bg-gray-800">
         <CardHeader className="bg-black text-white dark:bg-gray-800">
