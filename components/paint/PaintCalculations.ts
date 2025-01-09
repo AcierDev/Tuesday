@@ -76,11 +76,11 @@ export function calculatePaintRequirements(
     }
   });
 
-  requirements[ItemDesigns.Oceanic_Harmony] = {};
-
-  if (Object.keys(requirements[ItemDesigns.Tidal] || {}).length === 0) {
-    requirements[ItemDesigns.Tidal] = {};
-  }
+  Object.keys(requirements).forEach((design) => {
+    if (Object.keys(requirements[design as ItemDesigns]).length === 0) {
+      delete requirements[design as ItemDesigns];
+    }
+  });
 
   return requirements;
 }

@@ -800,7 +800,6 @@ const WeeklyPlanner = () => {
       // In single mode, we only want the current week's schedule
       let scheduleToProcess = proposedSchedule;
       if (showSingleWeekAutoSchedule) {
-        // Only keep the current week's schedule, with a fallback to empty array if undefined
         const currentWeekSchedule = proposedSchedule[currentWeekKey] || [];
         scheduleToProcess = {
           [currentWeekKey]: currentWeekSchedule,
@@ -864,7 +863,7 @@ const WeeklyPlanner = () => {
           return acc;
         }, {} as Record<DayName, string[]>);
 
-        // Process each day's items
+        // Process each day's items in batches
         for (const [day, itemIds] of Object.entries(itemsByDay)) {
           const BATCH_SIZE = 3;
           for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
@@ -885,17 +884,8 @@ const WeeklyPlanner = () => {
           }
         }
 
-        // Store auto-scheduled items for this week immediately after scheduling them
         if (weekAutoScheduled.size > 0) {
-          console.log(
-            `Storing auto-scheduled items for week ${weekKey}:`,
-            [...weekAutoScheduled].map((id) => {
-              const item = items.find((i) => i.id === id);
-              return item ? getItemValue(item, ColumnTitles.Customer_Name) : id;
-            })
-          );
           autoScheduledByWeek.set(weekKey, weekAutoScheduled);
-
           localStorage.setItem(`autoScheduled-${weekKey}`, "true");
           localStorage.setItem(
             `autoScheduledItems-${weekKey}`,
@@ -925,27 +915,19 @@ const WeeklyPlanner = () => {
           autoScheduledByWeek.get(currentWeekKey) || new Set()
         );
 
-        clearProposedSchedule();
         setShowAutoSchedule(false);
         setAutoScheduled(true);
 
-        toast.success(
-          `Successfully scheduled ${totalScheduled} ${
-            totalScheduled === 1 ? "item" : "items"
-          }${
-            !showSingleWeekAutoSchedule
-              ? ` across ${autoScheduledByWeek.size} ${
-                  autoScheduledByWeek.size === 1 ? "week" : "weeks"
-                }`
-              : ""
-          }`
-        );
+        console.log("Auto-scheduling successful, resolving promise");
+        return Promise.resolve();
       } else {
-        toast.error("No new items to schedule.");
+        console.log("No items to schedule, rejecting promise");
+        return Promise.reject(new Error("No items to schedule"));
       }
     } catch (error) {
       console.error("Auto-schedule failed:", error);
-      toast.error("Failed to auto-schedule items. Please try again.");
+      console.log("Rejecting promise with error");
+      return Promise.reject(error);
     }
   };
 

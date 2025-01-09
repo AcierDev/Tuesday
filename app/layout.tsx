@@ -80,6 +80,7 @@ export default function RootLayout({
             </OrderSettingsProvider>
           </RealmAppProvider>
         </ThemeProvider>
+        <Toaster />
       </body>
     </html>
   );

@@ -18,10 +18,13 @@ import { OverviewTab } from "@/components/paint/OverviewTab";
 import { DetailsTab } from "@/components/paint/DetailsTab";
 import { useBoardOperations } from "@/components/orders/OrderHooks";
 import { Board, ColumnTitles, Group, Item, ItemStatus } from "@/typings/types";
+import { WeekView } from "@/components/shared/WeekView";
+import { DAYS_OF_WEEK } from "@/typings/constants";
 
 export default function PaintSchedulePage() {
   const { boardCollection: collection, isLoading } = useRealmApp();
   const [items, setItems] = useState<Item[]>([]);
+  const [isItemsLoading, setIsItemsLoading] = useState(true);
   const [board, setBoard] = useState<Board | undefined>(undefined);
   const [paintRequirements, setPaintRequirements] = useState<
     Record<string, PaintRequirement>
@@ -45,27 +48,42 @@ export default function PaintSchedulePage() {
     isCurrentWeek,
   } = useWeeklySchedule({ weekStartsOn: 0 });
   const { theme } = useTheme();
+  const [viewMode, setViewMode] = useState<"week" | "calendar">("week");
 
   const loadItems = useCallback(async () => {
-    if (!collection) return;
+    console.log("loadItems called");
+    if (!collection) {
+      console.log("No collection available");
+      return;
+    }
 
     try {
+      setIsItemsLoading(true);
       const loadedBoard = await collection.findOne({});
-      setBoard(loadedBoard || undefined);
-      setItems(loadedBoard?.items_page.items || []);
       console.log("Board loaded:", loadedBoard);
+
+      if (!loadedBoard) {
+        console.warn("No board found");
+        return;
+      }
+
+      setBoard(loadedBoard);
+      const loadedItems = loadedBoard.items_page.items || [];
+      console.log("Items being loaded:", {
+        count: loadedItems.length,
+        sample: loadedItems[0],
+        itemIds: loadedItems.map((item) => item.id).slice(0, 3),
+      });
+      setItems(loadedItems);
     } catch (err) {
       console.error("Failed to load board", err);
-      toast.error("Failed to load board. Please refresh the page.", {
-        style: {
-          background: theme === "dark" ? "#EF4444" : "#FEE2E2",
-          color: theme === "dark" ? "white" : "#991B1B",
-        },
-      });
+      toast.error("Failed to load board. Please refresh the page.");
       setBoard(undefined);
       setItems([]);
+    } finally {
+      setIsItemsLoading(false);
     }
-  }, [collection, theme]);
+  }, [collection]);
 
   const boardOperations = useBoardOperations(board!, collection, {});
 
@@ -78,10 +96,21 @@ export default function PaintSchedulePage() {
   }, [board, collection, boardOperations]);
 
   useEffect(() => {
+    console.log("Effect triggered:", {
+      isLoading,
+      hasCollection: !!collection,
+    });
     if (!isLoading && collection) {
       loadItems();
     }
   }, [isLoading, collection, loadItems]);
+
+  useEffect(() => {
+    console.log("Items state changed:", {
+      count: items.length,
+      sampleIds: items.slice(0, 3).map((item) => item.id),
+    });
+  }, [items]);
 
   const toggleDateSelection = (date: Date) => {
     setSelectedDates((prev) => {
@@ -101,23 +130,16 @@ export default function PaintSchedulePage() {
     const currentWeekSchedule = weeklySchedules[weekKey] || {};
 
     const scheduledItems = new Set<string>();
-    const dayNames = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
 
-    dayNames.forEach((dayName, index) => {
+    DAYS_OF_WEEK.forEach((dayName, index) => {
       const dayDate = format(addDays(currentWeekStart, index), "yyyy-MM-dd");
       if (
         selectedDateStrings.includes(dayDate) &&
         currentWeekSchedule[dayName]
       ) {
-        currentWeekSchedule[dayName].forEach((id) => scheduledItems.add(id));
+        currentWeekSchedule[dayName].forEach((item) =>
+          scheduledItems.add(item.id)
+        );
       }
     });
 
@@ -151,6 +173,7 @@ export default function PaintSchedulePage() {
   useEffect(() => {
     const requirements = calculatePaintRequirements(filteredPaintGroup);
     setPaintRequirements(requirements);
+    console.log("Updated paint requirements:", requirements);
   }, [filteredPaintGroup]);
 
   const filteredRequirements = Object.entries(paintRequirements);
@@ -166,6 +189,18 @@ export default function PaintSchedulePage() {
       );
     },
     0
+  );
+
+  const WeekViewSection = () => (
+    <WeekView
+      currentWeekStart={currentWeekStart}
+      selectedDates={selectedDates}
+      schedule={weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {}}
+      toggleDateSelection={toggleDateSelection}
+      isMobile={isMobile}
+      weeklySchedule={weeklySchedules}
+      items={items}
+    />
   );
 
   return (
@@ -222,7 +257,42 @@ export default function PaintSchedulePage() {
         selectedDates={selectedDates}
         schedule={weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {}}
         toggleDateSelection={toggleDateSelection}
-      />
+      >
+        {!isItemsLoading ? (
+          items.length > 0 ? (
+            <>
+              {viewMode === "week" ? (
+                <>{WeekViewSection()}</>
+              ) : (
+                <WeekView
+                  currentWeekStart={currentWeekStart}
+                  selectedDates={selectedDates}
+                  schedule={
+                    weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] ||
+                    {}
+                  }
+                  toggleDateSelection={toggleDateSelection}
+                  isMobile={isMobile}
+                  weeklySchedule={weeklySchedules}
+                  items={items}
+                />
+              )}
+            </>
+          ) : (
+            <div className="flex items-center justify-center p-8">
+              <div className="text-gray-500 dark:text-gray-400">
+                No items found in schedule
+              </div>
+            </div>
+          )
+        ) : (
+          <div className="flex items-center justify-center p-8">
+            <div className="text-gray-500 dark:text-gray-400">
+              Loading schedule...
+            </div>
+          </div>
+        )}
+      </SchedulePageLayout>
     </div>
   );
 }

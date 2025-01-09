@@ -13,7 +13,7 @@ import { OverviewTab } from "@/components/backboards/OverviewTab";
 import { DetailsTab } from "@/components/backboards/DetailsTab";
 import { useBoardOperations } from "@/components/orders/OrderHooks";
 import { BackboardCalculations } from "@/components/backboards/BackboardCalculations";
-import { backboardData } from "@/typings/constants";
+import { backboardData, DAYS_OF_WEEK } from "@/typings/constants";
 import {
   BackboardRequirement,
   Board,
@@ -93,23 +93,16 @@ export default function BackboardSchedulePage() {
     const currentWeekSchedule = weeklySchedules[weekKey] || {};
 
     const scheduledItems = new Set<string>();
-    const dayNames = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
 
-    dayNames.forEach((dayName, index) => {
+    DAYS_OF_WEEK.forEach((dayName, index) => {
       const dayDate = format(addDays(currentWeekStart, index), "yyyy-MM-dd");
       if (
         selectedDateStrings.includes(dayDate) &&
         currentWeekSchedule[dayName]
       ) {
-        currentWeekSchedule[dayName].forEach((id) => scheduledItems.add(id));
+        currentWeekSchedule[dayName].forEach((item) =>
+          scheduledItems.add(item.id)
+        );
       }
     });
 
@@ -143,10 +136,10 @@ export default function BackboardSchedulePage() {
     () =>
       BackboardCalculations({
         schedule: weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {},
-        items,
+        items: itemsNeedingBackboards,
         selectedDates,
       }),
-    [weeklySchedules, currentWeekStart, items, selectedDates]
+    [weeklySchedules, currentWeekStart, itemsNeedingBackboards, selectedDates]
   );
 
   const filteredRequirements = Object.entries(backboardRequirements).filter(
