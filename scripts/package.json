@@ -1,0 +1,9 @@
+{
+  "name": "everwood-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for Everwood data management",
+  "main": "uploadToMongo.js",
+  "dependencies": {
+    "mongodb": "^6.3.0"
+  }
+}

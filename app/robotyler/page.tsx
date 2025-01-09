@@ -438,22 +438,25 @@ export default function Dashboard() {
   const isPaused = state.status === "PAUSED";
 
   // SHOW BUTTONS
-  const showStartButton = state.status == "HOMED";
+  const showStartButton = state.status === "HOMED" || state.status === "PAUSED";
   const showPauseButton =
-    state.status == "EXECUTING_PATTERN" ||
-    state.status == "HOMING_X" ||
-    state.status == "HOMING_Y" ||
-    state.status == "PAINTING_SIDE";
+    state.status === "EXECUTING_PATTERN" ||
+    state.status === "HOMING_X" ||
+    state.status === "HOMING_Y" ||
+    state.status === "PAINTING_SIDE";
   const showStopButton =
-    state.status == "DEPRESSURIZE_POT" ||
-    state.status == "CLEANING" ||
-    state.status == "EXECUTING_PATTERN" ||
-    state.status == "HOMING_X" ||
-    state.status == "HOMING_Y" ||
-    state.status == "PAINTING_SIDE";
-  const showPrimeButton = state.status == "STOPPED" || state.status == "HOMED";
-  const showCleanButton = state.status == "STOPPED" || state.status == "HOMED";
-  const showHomeButton = state.status !== "HOMED";
+    state.status === "DEPRESSURIZE_POT" ||
+    state.status === "CLEANING" ||
+    state.status === "EXECUTING_PATTERN" ||
+    state.status === "HOMING_X" ||
+    state.status === "HOMING_Y" ||
+    state.status === "PAINTING_SIDE" ||
+    state.status === "PAUSED";
+  const showPrimeButton =
+    state.status === "STOPPED" || state.status === "HOMED";
+  const showCleanButton =
+    state.status === "STOPPED" || state.status === "HOMED";
+  const showHomeButton = state.status !== "HOMED" || state.status === "PAUSED";
 
   const handleMaintenanceSettingChange = (
     setting: "primeTime" | "cleanTime" | "backWashTime",
@@ -683,7 +686,7 @@ export default function Dashboard() {
                   >
                     <Play className="w-5 h-5 text-green-500 dark:text-green-400 mb-2" />
                     <span className="font-medium text-sm text-gray-700 dark:text-gray-300 text-center">
-                      Start
+                      {isPaused ? "Resume" : "Start"}
                     </span>
                   </Button>
 
@@ -701,13 +704,9 @@ export default function Dashboard() {
                     disabled={!showPauseButton || !wsConnected}
                   >
                     <div className="flex flex-col items-center justify-center gap-2">
-                      {isPaused ? (
-                        <Play className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mb-2" />
-                      ) : (
-                        <Pause className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mb-2" />
-                      )}
+                      <Pause className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mb-2" />
                       <span className="font-medium text-sm text-gray-700 dark:text-gray-300 text-center">
-                        {isPaused ? "Resume" : "Pause"}
+                        Pause
                       </span>
                     </div>
                   </Button>
