@@ -1,11 +1,22 @@
 import React, { useState } from "react";
+import { useWebSocket } from "../../../contexts/WebSocketContext";
 
 const GoToControls = () => {
+  const { sendCommand } = useWebSocket();
   const [coordinates, setCoordinates] = useState({ x: 0, y: 0 });
+
+  const handleGoto = () => {
+    const speed = 7500;
+    const accel = 50000;
+    sendCommand(`goto ${coordinates.x} ${coordinates.y} ${speed} ${accel}`);
+  };
 
   return (
     <div className="flex items-end gap-4">
-      <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+      <button
+        onClick={handleGoto}
+        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+      >
         Go to:
       </button>
       <div className="flex gap-4 flex-1">

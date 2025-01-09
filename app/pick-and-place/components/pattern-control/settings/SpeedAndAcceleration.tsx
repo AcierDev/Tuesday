@@ -1,35 +1,54 @@
 import React, { useState } from "react";
+import { useWebSocket } from "../../../contexts/WebSocketContext";
 
 const STORAGE_KEY = "pick-and-place-speed-accel";
 
 interface SpeedAccelData {
   speed: number;
-  acceleration: number;
+  accel: number;
 }
 
 const DEFAULT_SETTINGS: SpeedAccelData = {
-  speed: 100,
-  acceleration: 50,
+  speed: 7500,
+  accel: 50000,
 };
 
-// Get initial settings synchronously
 const getInitialSettings = (): SpeedAccelData => {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
-
   const savedSettings = localStorage.getItem(STORAGE_KEY);
   return savedSettings ? JSON.parse(savedSettings) : DEFAULT_SETTINGS;
 };
 
 const SpeedAndAcceleration = () => {
+  const { sendCommand } = useWebSocket();
   const [settings, setSettings] = useState<SpeedAccelData>(
     getInitialSettings()
   );
 
-  // Save settings to localStorage whenever they change
   const updateSettings = (key: keyof SpeedAccelData, value: number) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+
+    // Get other settings from localStorage
+    const { rows, columns } = JSON.parse(
+      localStorage.getItem("pick-and-place-grid") || '{"rows":5,"columns":7}'
+    );
+    const { x: startX, y: startY } = JSON.parse(
+      localStorage.getItem("pick-and-place-start-coordinates") ||
+        '{"x":2,"y":9}'
+    );
+    const { x: endX, y: endY } = JSON.parse(
+      localStorage.getItem("pick-and-place-end-coordinates") ||
+        '{"x":30.5,"y":28.5}'
+    );
+    const { x: pickupX, y: pickupY } = JSON.parse(
+      localStorage.getItem("pick-and-place-pickup-coordinates") ||
+        '{"x":15.5,"y":3.5}'
+    );
+
+    const command = `pattern start ${rows} ${columns} ${startX} ${startY} ${endX} ${endY} ${pickupX} ${pickupY} ${newSettings.speed} ${newSettings.accel}`;
+    sendCommand(command);
   };
 
   return (
@@ -43,33 +62,33 @@ const SpeedAndAcceleration = () => {
             htmlFor="speed"
             className="block text-sm font-medium text-gray-700 dark:text-gray-200"
           >
-            Speed
+            Speed (steps/sec)
           </label>
           <input
             type="number"
             id="speed"
-            min="0"
+            min="1"
             value={settings.speed}
             onChange={(e) =>
-              updateSettings("speed", parseInt(e.target.value) || 0)
+              updateSettings("speed", parseInt(e.target.value) || 1)
             }
             className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
         </div>
         <div className="space-y-2">
           <label
-            htmlFor="acceleration"
+            htmlFor="accel"
             className="block text-sm font-medium text-gray-700 dark:text-gray-200"
           >
-            Acceleration
+            Acceleration (steps/sec²)
           </label>
           <input
             type="number"
-            id="acceleration"
-            min="0"
-            value={settings.acceleration}
+            id="accel"
+            min="1"
+            value={settings.accel}
             onChange={(e) =>
-              updateSettings("acceleration", parseInt(e.target.value) || 0)
+              updateSettings("accel", parseInt(e.target.value) || 1)
             }
             className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />

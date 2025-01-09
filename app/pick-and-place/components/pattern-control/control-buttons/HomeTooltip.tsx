@@ -1,11 +1,19 @@
 import React from "react";
+import { useWebSocket } from "../../../contexts/WebSocketContext";
 
 interface HomeTooltipProps {
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+  isHoming: boolean;
 }
 
-const HomeTooltip = ({ onMouseEnter, onMouseLeave }: HomeTooltipProps) => {
+const HomeTooltip = ({
+  onMouseEnter,
+  onMouseLeave,
+  isHoming,
+}: HomeTooltipProps) => {
+  const { sendCommand } = useWebSocket();
+
   return (
     <>
       <div
@@ -18,10 +26,26 @@ const HomeTooltip = ({ onMouseEnter, onMouseLeave }: HomeTooltipProps) => {
         onMouseLeave={onMouseLeave}
       >
         <div className="flex gap-1 p-1">
-          <button className="flex-1 px-4 py-2 bg-cyan-500 text-white rounded hover:bg-cyan-600 transition-colors">
+          <button
+            onClick={() => sendCommand("homeX")}
+            disabled={isHoming}
+            className={`flex-1 px-4 py-2 text-white rounded transition-colors ${
+              isHoming
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-cyan-500 hover:bg-cyan-600"
+            }`}
+          >
             Home X
           </button>
-          <button className="flex-1 px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors">
+          <button
+            onClick={() => sendCommand("homeY")}
+            disabled={isHoming}
+            className={`flex-1 px-4 py-2 text-white rounded transition-colors ${
+              isHoming
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-indigo-500 hover:bg-indigo-600"
+            }`}
+          >
             Home Y
           </button>
         </div>
