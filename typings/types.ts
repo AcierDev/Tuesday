@@ -553,3 +553,9 @@ export interface SortedItems {
     item: Item;
   }>;
 }
+
+export interface PatternConfig {
+  name: string;
+  description?: string;
+  timestamp: string;
+}

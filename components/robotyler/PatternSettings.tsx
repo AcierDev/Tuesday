@@ -412,7 +412,7 @@ export function PatternSettings({
               ([side, enabled]) => (
                 <div
                   key={side}
-                  className="flex flex-col items-center p-4 bg-card rounded-lg border shadow-sm hover:shadow-md transition-shadow"
+                  className="flex flex-col items-center p-4 bg-card rounded-lg border shadow-sm hover:shadow-md transition-shadow dark:bg-gray-700"
                 >
                   <Label htmlFor={`${side}-toggle`} className="mb-2 capitalize">
                     {side}
