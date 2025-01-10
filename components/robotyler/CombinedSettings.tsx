@@ -2,10 +2,20 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Settings, Save, Sliders, Grid } from "lucide-react";
+import {
+  Settings,
+  Save,
+  Sliders,
+  Grid,
+  ArrowRight,
+  ArrowUp,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatternSettings } from "./PatternSettings";
 import { SystemState, SystemSettings } from "@/app/robotyler/page";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { PatternConfig } from "@/typings/types";
 
 interface CombinedControlsProps {
   status: SystemState;
@@ -19,7 +29,7 @@ interface CombinedControlsProps {
   handleSaveChanges: () => void;
   wsConnected: boolean;
   onMaintenanceSettingChange?: (
-    setting: "primeTime" | "cleanTime" | "backWashTime",
+    setting: "primeTime" | "cleanTime" | "backWashTime" | "pressurePotDelay",
     value: number
   ) => void;
   pendingMaintenanceSettings?: {
@@ -27,10 +37,24 @@ interface CombinedControlsProps {
     cleanTime?: number;
     backWashTime?: number;
     pressurePotDelay?: number;
+    positions?: {
+      prime?: { x: number; y: number; angle: number };
+      clean?: { x: number; y: number; angle: number };
+    };
   };
   onPendingMaintenanceChange?: (
-    setting: "primeTime" | "cleanTime" | "backWashTime",
-    value: number
+    setting:
+      | "primeTime"
+      | "cleanTime"
+      | "backWashTime"
+      | "pressurePotDelay"
+      | "positions",
+    value:
+      | number
+      | {
+          prime?: { x: number; y: number; angle: number };
+          clean?: { x: number; y: number; angle: number };
+        }
   ) => void;
   onSaveMaintenanceChanges: () => void;
   hasUnsavedMaintenanceChanges: boolean;
@@ -92,6 +116,28 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
       icon: Grid,
     },
   ];
+
+  const handlePositionChange = (
+    type: "prime" | "clean",
+    field: "x" | "y" | "angle",
+    value: number
+  ) => {
+    onPendingMaintenanceChange?.("positions", {
+      ...settings.maintenance.positions,
+      ...pendingMaintenanceSettings.positions,
+      [type]: {
+        ...settings.maintenance.positions?.[type],
+        ...pendingMaintenanceSettings.positions?.[type],
+        [field]: value,
+      },
+    });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && hasUnsavedMaintenanceChanges && wsConnected) {
+      onSaveMaintenanceChanges();
+    }
+  };
 
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -236,15 +282,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                           onPendingMaintenanceChange?.("primeTime", newValue);
                           onMaintenanceSettingChange?.("primeTime", newValue);
                         }}
-                        onKeyDown={(e) => {
-                          if (
-                            e.key === "Enter" &&
-                            hasUnsavedMaintenanceChanges &&
-                            wsConnected
-                          ) {
-                            onSaveMaintenanceChanges();
-                          }
-                        }}
+                        onKeyDown={handleKeyDown}
                         max={30}
                         min={1}
                         step={1}
@@ -276,15 +314,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                           onPendingMaintenanceChange?.("cleanTime", newValue);
                           onMaintenanceSettingChange?.("cleanTime", newValue);
                         }}
-                        onKeyDown={(e) => {
-                          if (
-                            e.key === "Enter" &&
-                            hasUnsavedMaintenanceChanges &&
-                            wsConnected
-                          ) {
-                            onSaveMaintenanceChanges();
-                          }
-                        }}
+                        onKeyDown={handleKeyDown}
                         max={30}
                         min={1}
                         step={1}
@@ -322,15 +352,7 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                             newValue
                           );
                         }}
-                        onKeyDown={(e) => {
-                          if (
-                            e.key === "Enter" &&
-                            hasUnsavedMaintenanceChanges &&
-                            wsConnected
-                          ) {
-                            onSaveMaintenanceChanges();
-                          }
-                        }}
+                        onKeyDown={handleKeyDown}
                         max={30}
                         min={1}
                         step={1}
@@ -355,29 +377,21 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                         value={[
                           pendingMaintenanceSettings.pressurePotDelay !==
                           undefined
-                            ? pendingMaintenanceSettings.pressurePotDelay
-                            : settings.maintenance.pressurePotDelay ?? 5,
+                            ? pendingMaintenanceSettings.pressurePotDelay / 1000
+                            : settings.maintenance.pressurePotDelay / 1000 ?? 5,
                         ]}
                         onValueChange={(value) => {
                           const newValue = value[0] || 5;
                           onPendingMaintenanceChange?.(
                             "pressurePotDelay",
-                            newValue
+                            newValue * 1000
                           );
                           onMaintenanceSettingChange?.(
                             "pressurePotDelay",
-                            newValue
+                            newValue * 1000
                           );
                         }}
-                        onKeyDown={(e) => {
-                          if (
-                            e.key === "Enter" &&
-                            hasUnsavedMaintenanceChanges &&
-                            wsConnected
-                          ) {
-                            onSaveMaintenanceChanges();
-                          }
-                        }}
+                        onKeyDown={handleKeyDown}
                         max={30}
                         min={1}
                         step={1}
@@ -387,10 +401,190 @@ const CombinedControls: React.FC<CombinedControlsProps> = ({
                       <span className="w-20 text-right font-semibold bg-white dark:bg-gray-800 px-3 py-1 rounded-md">
                         {pendingMaintenanceSettings.pressurePotDelay !==
                         undefined
-                          ? pendingMaintenanceSettings.pressurePotDelay
-                          : settings.maintenance.pressurePotDelay ?? 5}
+                          ? pendingMaintenanceSettings.pressurePotDelay / 1000
+                          : settings.maintenance.pressurePotDelay / 1000 ?? 5}
                         s
                       </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                    <h3 className="font-medium mb-4">Prime Position</h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="prime-pos-x"
+                          className="text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1"
+                        >
+                          X Position <ArrowRight className="h-4 w-4" />
+                        </Label>
+                        <Input
+                          id="prime-pos-x"
+                          type="number"
+                          value={
+                            pendingMaintenanceSettings.positions?.prime?.x ??
+                            settings.maintenance.positions?.prime?.x ??
+                            0
+                          }
+                          onChange={(e) => {
+                            handlePositionChange(
+                              "prime",
+                              "x",
+                              parseFloat(e.target.value)
+                            );
+                          }}
+                          onKeyDown={handleKeyDown}
+                          className="dark:bg-gray-700"
+                          disabled={!wsConnected}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="prime-pos-y"
+                          className="text-sm text-rose-600 dark:text-rose-400 flex items-center gap-1"
+                        >
+                          Y Position <ArrowUp className="h-4 w-4" />
+                        </Label>
+                        <Input
+                          id="prime-pos-y"
+                          type="number"
+                          value={
+                            pendingMaintenanceSettings.positions?.prime?.y ??
+                            settings.maintenance.positions?.prime?.y ??
+                            0
+                          }
+                          onChange={(e) => {
+                            handlePositionChange(
+                              "prime",
+                              "y",
+                              parseFloat(e.target.value)
+                            );
+                          }}
+                          onKeyDown={handleKeyDown}
+                          className="dark:bg-gray-700"
+                          disabled={!wsConnected}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="prime-pos-angle"
+                          className="text-sm text-purple-600 dark:text-purple-400 flex items-center gap-1"
+                        >
+                          Gun Angle
+                        </Label>
+                        <Input
+                          id="prime-pos-angle"
+                          type="number"
+                          value={
+                            pendingMaintenanceSettings.positions?.prime
+                              ?.angle ??
+                            settings.maintenance.positions?.prime?.angle ??
+                            90
+                          }
+                          onChange={(e) => {
+                            handlePositionChange(
+                              "prime",
+                              "angle",
+                              parseFloat(e.target.value)
+                            );
+                          }}
+                          onKeyDown={handleKeyDown}
+                          className="dark:bg-gray-700"
+                          disabled={!wsConnected}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                    <h3 className="font-medium mb-4">Clean Position</h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="clean-pos-x"
+                          className="text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1"
+                        >
+                          X Position <ArrowRight className="h-4 w-4" />
+                        </Label>
+                        <Input
+                          id="clean-pos-x"
+                          type="number"
+                          value={
+                            pendingMaintenanceSettings.positions?.clean?.x ??
+                            settings.maintenance.positions?.clean?.x ??
+                            0
+                          }
+                          onChange={(e) => {
+                            handlePositionChange(
+                              "clean",
+                              "x",
+                              parseFloat(e.target.value)
+                            );
+                          }}
+                          onKeyDown={handleKeyDown}
+                          className="dark:bg-gray-700"
+                          disabled={!wsConnected}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="clean-pos-y"
+                          className="text-sm text-rose-600 dark:text-rose-400 flex items-center gap-1"
+                        >
+                          Y Position <ArrowUp className="h-4 w-4" />
+                        </Label>
+                        <Input
+                          id="clean-pos-y"
+                          type="number"
+                          value={
+                            pendingMaintenanceSettings.positions?.clean?.y ??
+                            settings.maintenance.positions?.clean?.y ??
+                            0
+                          }
+                          onChange={(e) => {
+                            handlePositionChange(
+                              "clean",
+                              "y",
+                              parseFloat(e.target.value)
+                            );
+                          }}
+                          onKeyDown={handleKeyDown}
+                          className="dark:bg-gray-700"
+                          disabled={!wsConnected}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="clean-pos-angle"
+                          className="text-sm text-purple-600 dark:text-purple-400 flex items-center gap-1"
+                        >
+                          Gun Angle
+                        </Label>
+                        <Input
+                          id="clean-pos-angle"
+                          type="number"
+                          value={
+                            pendingMaintenanceSettings.positions?.clean
+                              ?.angle ??
+                            settings.maintenance.positions?.clean?.angle ??
+                            90
+                          }
+                          onChange={(e) => {
+                            handlePositionChange(
+                              "clean",
+                              "angle",
+                              parseFloat(e.target.value)
+                            );
+                          }}
+                          onKeyDown={handleKeyDown}
+                          className="dark:bg-gray-700"
+                          disabled={!wsConnected}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -123,6 +123,11 @@ export interface SystemSettings {
     primeTime: number;
     cleanTime: number;
     backWashTime: number;
+    pressurePotDelay: number;
+    positions: {
+      prime: { x: number; y: number; angle: number };
+      clean: { x: number; y: number; angle: number };
+    };
   };
   pattern: {
     offsets: { x: number; y: number };
@@ -290,27 +295,8 @@ export default function Dashboard() {
                 );
                 return newPending;
               });
-              setPendingMaintenanceSettings((prev) => {
-                const newPending = { ...prev };
-                if (message.payload.maintenance.primeTime === prev.primeTime) {
-                  delete newPending.primeTime;
-                }
-                if (message.payload.maintenance.cleanTime === prev.cleanTime) {
-                  delete newPending.cleanTime;
-                }
-                if (
-                  message.payload.maintenance.backWashTime === prev.backWashTime
-                ) {
-                  delete newPending.backWashTime;
-                }
-                return newPending;
-              });
-              // Update hasUnsavedMaintenanceChanges based on whether there are any pending changes
-              setHasUnsavedMaintenanceChanges((prev) => {
-                const hasChanges =
-                  Object.keys(pendingMaintenanceSettings).length > 0;
-                return hasChanges;
-              });
+              setPendingMaintenanceSettings({}); // Clear all pending maintenance settings
+              setHasUnsavedMaintenanceChanges(false); // Reset the flag
               break;
 
             case "SERIAL_DATA":
@@ -466,13 +452,28 @@ export default function Dashboard() {
   };
 
   const handlePendingMaintenanceChange = (
-    setting: "primeTime" | "cleanTime" | "backWashTime",
-    value: number
+    setting:
+      | "primeTime"
+      | "cleanTime"
+      | "backWashTime"
+      | "pressurePotDelay"
+      | "positions",
+    value:
+      | number
+      | {
+          prime?: { x: number; y: number; angle: number };
+          clean?: { x: number; y: number; angle: number };
+        }
   ) => {
-    setPendingMaintenanceSettings((prev) => ({
-      ...prev,
-      [setting]: value,
-    }));
+    setPendingMaintenanceSettings((prev) => {
+      const newState = {
+        ...prev,
+        [setting]: value,
+      };
+      return newState;
+    });
+
+    // Add this line to set hasUnsavedMaintenanceChanges
     setHasUnsavedMaintenanceChanges(true);
   };
 
