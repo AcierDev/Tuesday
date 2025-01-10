@@ -18,6 +18,8 @@ export const DAYS_OF_WEEK = [
   "Saturday",
 ];
 
+export const WORK_DAYS = DAYS_OF_WEEK.slice(0, 5);
+
 export const COASTAL_COLORS: Record<number, { hex: string; name: string }> = {
   1: { hex: "#B0744A", name: "Santa Fe" },
   2: { hex: "#C18F6A", name: "Antique Brass" },

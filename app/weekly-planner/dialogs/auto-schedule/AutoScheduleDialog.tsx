@@ -22,6 +22,7 @@ import { cn } from "@/utils/functions";
 import { Check } from "lucide-react";
 import { BaseConfirmDialog } from "../BaseConfirmDialog";
 import { sortItems } from "../../AutoScheduling";
+import { toast } from "sonner";
 
 interface AutoSchedulePreview {
   [key: string]: {
@@ -33,7 +34,7 @@ interface AutoSchedulePreview {
 interface AutoScheduleDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void>;
   getItemValue: (item: Item, columnName: ColumnTitles) => string;
   plannerCurrentWeek: Date;
   currentSchedule: DaySchedule;
@@ -641,6 +642,57 @@ export function AutoScheduleDialog({
     setShowRestoreWeekDialog(false);
   };
 
+  const handleConfirmSchedule = async () => {
+    console.log("Starting scheduling process...");
+
+    // Show loading toast immediately before any async operations
+    const loadingMessage =
+      mode === "single"
+        ? "Scheduling items for this week..."
+        : "Scheduling items across weeks...";
+
+    console.log("Showing loading toast:", loadingMessage);
+    const loadingId = toast.loading(loadingMessage);
+
+    // Close the dialog immediately to prevent double-clicks
+    onClose();
+
+    // Add a small delay to ensure the loading toast is visible
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    try {
+      console.log("Calling onConfirm...");
+      await onConfirm();
+
+      if (mode === "single") {
+        console.log("Single mode - clearing proposed schedule");
+        clearProposedSchedule();
+      }
+
+      // Handle success - dismiss loading and show success together
+      console.log("Scheduling complete - showing success");
+      Promise.all([
+        toast.dismiss(loadingId),
+        toast.success(
+          mode === "single"
+            ? "Items scheduled for this week"
+            : "Items scheduled across weeks"
+        ),
+      ]);
+    } catch (error) {
+      console.error("Failed to schedule items:", error);
+
+      // Handle error - dismiss loading and show error together
+      console.log("Scheduling failed - showing error");
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to schedule items. Please try again.";
+
+      Promise.all([toast.dismiss(loadingId), toast.error(errorMessage)]);
+    }
+  };
+
   return (
     <Dialog
       open={isOpen}
@@ -820,15 +872,11 @@ export function AutoScheduleDialog({
             Cancel
           </Button>
           <Button
-            onClick={() => {
-              onConfirm();
-              if (mode === "single") {
-                clearProposedSchedule();
-              }
-            }}
-            disabled={areAllDaysInactive(weekKey)}
+            onClick={handleConfirmSchedule}
+            disabled={mode === "single" && areAllDaysInactive(weekKey)}
             className={cn(
-              areAllDaysInactive(weekKey) &&
+              mode === "single" &&
+                areAllDaysInactive(weekKey) &&
                 "opacity-40 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent"
             )}
           >

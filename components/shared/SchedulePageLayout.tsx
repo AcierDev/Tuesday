@@ -299,6 +299,8 @@ export function SchedulePageLayout({
               onReorder={() => {}}
               onDragToWeeklySchedule={() => {}}
               isPreview={true}
+              isCollapsible={true}
+              defaultCollapsed={true}
             />
             <div className="flex-grow">{renderTabs()}</div>
           </>
@@ -329,6 +331,8 @@ export function SchedulePageLayout({
               onReorder={() => {}}
               onDragToWeeklySchedule={() => {}}
               isPreview={true}
+              isCollapsible={true}
+              defaultCollapsed={true}
             />
           </>
         )}
