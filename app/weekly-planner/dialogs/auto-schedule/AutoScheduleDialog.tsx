@@ -252,7 +252,7 @@ export function AutoScheduleDialog({
     });
 
     // Update the proposed schedule
-    Object.entries(newSchedule).forEach(([weekKey, schedule]) => {
+    Object.entries(newSchedule.schedule).forEach(([weekKey, schedule]) => {
       setProposedSchedule(weekKey, schedule);
     });
 
@@ -443,8 +443,8 @@ export function AutoScheduleDialog({
     });
 
     // Update the proposed schedule
-    Object.entries(newSchedule).forEach(([key, schedule]) => {
-      setProposedSchedule(key, schedule);
+    Object.entries(newSchedule.schedule).forEach(([weekKey, schedule]) => {
+      setProposedSchedule(weekKey, schedule);
     });
 
     setShowWeekReschedule(false);
@@ -480,8 +480,8 @@ export function AutoScheduleDialog({
     });
 
     // Update the proposed schedule
-    Object.entries(newSchedule).forEach(([key, schedule]) => {
-      setProposedSchedule(key, schedule);
+    Object.entries(newSchedule.schedule).forEach(([weekKey, schedule]) => {
+      setProposedSchedule(weekKey, schedule);
     });
 
     // Check the day after re-including it
@@ -596,8 +596,8 @@ export function AutoScheduleDialog({
     });
 
     // Update the proposed schedule
-    Object.entries(newSchedule).forEach(([key, schedule]) => {
-      setProposedSchedule(key, schedule);
+    Object.entries(newSchedule.schedule).forEach(([weekKey, schedule]) => {
+      setProposedSchedule(weekKey, schedule);
     });
 
     // Check all days in this week

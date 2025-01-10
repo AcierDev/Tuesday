@@ -30,6 +30,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { HighBlockWarningDialog } from "./dialogs/auto-schedule/HighBlockWarningDialog";
+import { HighBlockItem } from "./types";
 
 type BadgeStatus = {
   text: string;
@@ -84,16 +86,21 @@ interface AddItemDialogProps {
   getItemValue: (item: Item, columnName: ColumnTitles) => string;
 }
 
-interface ScheduleItem {
+interface DayScheduleItem {
   id: string;
   done: boolean;
+  item: Item;
+}
+
+interface AutoScheduleItem {
+  day: DayName;
   item: Item;
 }
 
 interface DayCardProps {
   day: DayName;
   isCurrentDay: boolean;
-  daySchedule: ScheduleItem[];
+  daySchedule: DayScheduleItem[];
   totalBlocks: number;
   blockLimit: number;
   onBlockLimitChange: (day: DayName, value: number) => void;
@@ -107,6 +114,11 @@ interface DayCardProps {
   weekKey: string;
   items: Item[];
   onBadgeClick: () => void;
+}
+
+interface ScheduleItem {
+  day: DayName;
+  item: Item;
 }
 
 const getDueDateStatus = (
@@ -316,7 +328,7 @@ const DayCard = ({
         </CardHeader>
 
         <CardContent className="p-4 flex-1 flex flex-col space-y-3 overflow-y-auto min-h-0 custom-scrollbar">
-          {daySchedule.map((scheduleItem: ScheduleItem, index: number) => {
+          {daySchedule.map((scheduleItem: DayScheduleItem, index: number) => {
             const item = scheduleItem.item;
             if (!item) return null;
 
@@ -513,6 +525,8 @@ const WeeklyPlanner = () => {
   >({});
   const [showMaximumsResetConfirm, setShowMaximumsResetConfirm] =
     useState(false);
+  const [highBlockItems, setHighBlockItems] = useState<HighBlockItem[]>([]);
+  const [showHighBlockWarning, setShowHighBlockWarning] = useState(false);
 
   React.useEffect(() => {
     const weekKey = format(currentWeekStart, "yyyy-MM-dd");
@@ -766,6 +780,7 @@ const WeeklyPlanner = () => {
   );
 
   const handleAutoScheduleClick = () => {
+    // First check for high block items
     const preview = sortItems({
       items,
       currentSchedule,
@@ -775,160 +790,46 @@ const WeeklyPlanner = () => {
       excludedDays,
     });
 
+    // Get the active high block items from the preview
+    const { activeHighBlockItems } = preview;
+
+    // Check for high block items
+    if (activeHighBlockItems && activeHighBlockItems.length > 0) {
+      setHighBlockItems(activeHighBlockItems);
+      setShowHighBlockWarning(true);
+      return;
+    }
+
+    // If no high block items, proceed with normal flow
+    proceedWithAutoSchedule(preview.schedule);
+  };
+
+  const proceedWithAutoSchedule = (
+    schedule: Record<string, ScheduleItem[]>
+  ) => {
     // Store all weeks in the proposed schedule
-    Object.entries(preview).forEach(([weekKey, weekSchedule]) => {
+    Object.entries(schedule).forEach(([weekKey, weekSchedule]) => {
       setProposedSchedule(weekKey, weekSchedule);
     });
 
     setShowAutoSchedule(true);
   };
 
-  const handleAutoScheduleConfirm = async () => {
-    const autoScheduledByWeek = new Map<string, Set<string>>();
+  const handleHighBlockWarningClose = () => {
+    setShowHighBlockWarning(false);
 
-    try {
-      // Define valid days
-      const validDays = [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-      ];
-      const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
+    // Proceed with auto-schedule after warning
+    const preview = sortItems({
+      items,
+      currentSchedule,
+      targetWeek: currentWeekStart,
+      weeklySchedules,
+      blockLimits,
+      excludedDays,
+    });
 
-      // In single mode, we only want the current week's schedule
-      let scheduleToProcess = proposedSchedule;
-      if (showSingleWeekAutoSchedule) {
-        const currentWeekSchedule = proposedSchedule[currentWeekKey] || [];
-        scheduleToProcess = {
-          [currentWeekKey]: currentWeekSchedule,
-        };
-      }
-
-      // Process each week in the filtered schedule
-      for (const [weekKey, weekSchedule] of Object.entries(scheduleToProcess)) {
-        const weekAutoScheduled = new Set<string>();
-
-        // Create a default status object with all days enabled
-        const defaultWeekStatus: WeekCheckStatus = {
-          Sunday: true,
-          Monday: true,
-          Tuesday: true,
-          Wednesday: true,
-          Thursday: true,
-        };
-
-        // Use the stored status or fall back to default
-        const weekStatus = weeklyCheckStatus[weekKey] || defaultWeekStatus;
-
-        // Get currently scheduled items for this week to avoid duplicates
-        const existingScheduledItems = new Set<string>();
-        const weekExistingSchedule =
-          weekKey === format(currentWeekStart, "yyyy-MM-dd")
-            ? currentSchedule
-            : weeklySchedules[weekKey] || {
-                Sunday: [],
-                Monday: [],
-                Tuesday: [],
-                Wednesday: [],
-                Thursday: [],
-                Friday: [],
-                Saturday: [],
-              };
-
-        Object.entries(weekExistingSchedule as DaySchedule).forEach(
-          ([day, scheduleItems]) => {
-            if (validDays.includes(day)) {
-              scheduleItems.forEach((item) => {
-                existingScheduledItems.add(item.id);
-              });
-            }
-          }
-        );
-
-        // Filter out already scheduled items and respect day selections
-        const newItemsToSchedule = weekSchedule.filter(
-          ({ item, day }) =>
-            !existingScheduledItems.has(item.id) &&
-            weekStatus[day as keyof WeekCheckStatus] !== false
-        );
-
-        // Group items by day (only new items)
-        const itemsByDay = newItemsToSchedule.reduce((acc, { day, item }) => {
-          if (!acc[day]) {
-            acc[day] = [];
-          }
-          acc[day].push(item.id);
-          return acc;
-        }, {} as Record<DayName, string[]>);
-
-        // Process each day's items in batches
-        for (const [day, itemIds] of Object.entries(itemsByDay)) {
-          const BATCH_SIZE = 3;
-          for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
-            const batch = itemIds.slice(i, i + BATCH_SIZE);
-            await Promise.all(
-              batch.map(async (id) => {
-                try {
-                  await addItemToDay(day as DayName, id, weekKey);
-                  weekAutoScheduled.add(id);
-                } catch (error) {
-                  console.warn(
-                    `Failed to add item ${id} to ${day} in week ${weekKey}:`,
-                    error
-                  );
-                }
-              })
-            );
-          }
-        }
-
-        if (weekAutoScheduled.size > 0) {
-          autoScheduledByWeek.set(weekKey, weekAutoScheduled);
-          localStorage.setItem(`autoScheduled-${weekKey}`, "true");
-          localStorage.setItem(
-            `autoScheduledItems-${weekKey}`,
-            JSON.stringify([...weekAutoScheduled])
-          );
-        }
-      }
-
-      const totalScheduled = Array.from(autoScheduledByWeek.values()).reduce(
-        (total, set) => total + set.size,
-        0
-      );
-
-      if (totalScheduled > 0) {
-        // Update the auto-scheduled status for all affected weeks
-        setAutoScheduledWeeks((prev) => {
-          const newMap = new Map(prev);
-          for (const weekKey of autoScheduledByWeek.keys()) {
-            newMap.set(weekKey, true);
-          }
-          return newMap;
-        });
-
-        // Set current week's items for the UI
-        const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
-        setAutoScheduledItems(
-          autoScheduledByWeek.get(currentWeekKey) || new Set()
-        );
-
-        setShowAutoSchedule(false);
-        setAutoScheduled(true);
-
-        console.log("Auto-scheduling successful, resolving promise");
-        return Promise.resolve();
-      } else {
-        console.log("No items to schedule, rejecting promise");
-        return Promise.reject(new Error("No items to schedule"));
-      }
-    } catch (error) {
-      console.error("Auto-schedule failed:", error);
-      console.log("Rejecting promise with error");
-      return Promise.reject(error);
-    }
+    // Use preview.schedule instead of preview directly
+    proceedWithAutoSchedule(preview.schedule);
   };
 
   const handleResetClick = () => {
@@ -1206,8 +1107,8 @@ const WeeklyPlanner = () => {
 
     // Store the schedule for the current week only
     const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-    if (preview[weekKey]) {
-      setProposedSchedule(weekKey, preview[weekKey]);
+    if (preview.schedule[weekKey]) {
+      setProposedSchedule(weekKey, preview.schedule[weekKey]);
     }
 
     // Set initial check status for the week before opening dialog
@@ -1262,6 +1163,42 @@ const WeeklyPlanner = () => {
         [weekKey]: updatedWeek,
       };
     });
+  };
+
+  const handleAutoScheduleConfirm = async () => {
+    const weekKeys = Object.keys(proposedSchedule);
+    const itemsToSchedule: DayItemToRemove[] = [];
+
+    // Collect all items that need to be scheduled
+    weekKeys.forEach((weekKey) => {
+      // Add null check for proposedSchedule[weekKey]
+      if (proposedSchedule[weekKey]) {
+        proposedSchedule[weekKey].forEach(({ day, item }) => {
+          itemsToSchedule.push({
+            day,
+            itemId: item.id,
+            weekKey,
+          });
+        });
+      }
+    });
+
+    try {
+      await removeItemsFromSchedule(itemsToSchedule);
+      setAutoScheduled(true);
+      setAutoScheduledWeeks((prev) => {
+        const newMap = new Map(prev);
+        weekKeys.forEach((weekKey) => {
+          newMap.set(weekKey, true);
+        });
+        return newMap;
+      });
+      clearProposedSchedule();
+      setShowAutoSchedule(false);
+    } catch (error) {
+      console.error("Failed to auto-schedule items:", error);
+      toast.error("Failed to auto-schedule items. Please try again.");
+    }
   };
 
   return (
@@ -1383,10 +1320,12 @@ const WeeklyPlanner = () => {
           {daysOfWeek.map((day) => {
             const daySchedule = (currentSchedule[day] || [])
               .map((scheduleItem) => ({
-                ...scheduleItem,
+                day, // Add the day property
                 item: items.find((i) => i.id === scheduleItem.id)!,
+                id: scheduleItem.id,
+                done: scheduleItem.done,
               }))
-              .filter((item) => item.item) as ScheduleItem[];
+              .filter((item) => item.item);
 
             const totalBlocks = daySchedule.reduce((total, scheduleItem) => {
               return total + calculateBlocks(scheduleItem.item);
@@ -1576,6 +1515,12 @@ const WeeklyPlanner = () => {
           description="Are you sure you want to reset all daily maximums to their default values? This action cannot be undone."
           confirmText="Reset Maximums"
           confirmVariant="destructive"
+        />
+
+        <HighBlockWarningDialog
+          isOpen={showHighBlockWarning}
+          onClose={handleHighBlockWarningClose}
+          items={highBlockItems}
         />
       </div>
     </div>

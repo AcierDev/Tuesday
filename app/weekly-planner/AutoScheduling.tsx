@@ -72,6 +72,14 @@ interface DayCapacities {
   Thursday: number;
 }
 
+interface HighBlockItem {
+  id: string;
+  customerName: string;
+  design: string;
+  size: string;
+  blocks: number;
+}
+
 export const sortItems = ({
   items,
   currentSchedule,
@@ -79,7 +87,10 @@ export const sortItems = ({
   weeklySchedules = {},
   blockLimits,
   excludedDays,
-}: SortItemsProps): SortedItems => {
+}: SortItemsProps): {
+  schedule: SortedItems;
+  activeHighBlockItems: HighBlockItem[];
+} => {
   console.log("Starting sortItems with:", {
     totalItems: items.length,
     targetWeek: format(targetWeek, "yyyy-MM-dd"),
@@ -89,10 +100,72 @@ export const sortItems = ({
   // Filter out completed items first
   const activeItems = items.filter((item) => item.status !== "Done");
 
-  console.log("Filtered out completed items:", {
+  // Identify ALL items with blocks > 1000 (both completed and uncompleted)
+  const allHighBlockItems: HighBlockItem[] = [];
+  const activeHighBlockItems: HighBlockItem[] = [];
+
+  // First check all items for logging purposes
+  items.forEach((item) => {
+    const blocks = calculateBlocks(item);
+    if (blocks > 1000) {
+      const highBlockItem = {
+        id: item.id,
+        customerName:
+          item.values.find((v) => v.columnName === "Customer Name")?.text ||
+          "Unknown",
+        design:
+          item.values.find((v) => v.columnName === "Design")?.text || "Unknown",
+        size:
+          item.values.find((v) => v.columnName === "Size")?.text || "Unknown",
+        blocks: blocks,
+      };
+
+      allHighBlockItems.push(highBlockItem);
+      if (item.status !== "Done") {
+        activeHighBlockItems.push(highBlockItem);
+      }
+    }
+  });
+
+  // Then filter active items to get valid ones for scheduling
+  const validActiveItems = activeItems.filter((item) => {
+    const blocks = calculateBlocks(item);
+    return blocks <= 1000;
+  });
+
+  // Log all items with high block counts
+  if (allHighBlockItems.length > 0) {
+    console.log(
+      "All items with block count > 1000 (including completed):",
+      allHighBlockItems.map((item) => ({
+        customerName: item.customerName,
+        design: item.design,
+        size: item.size,
+        blocks: item.blocks,
+      }))
+    );
+  }
+
+  // Log active (non-completed) items with high block counts
+  if (activeHighBlockItems.length > 0) {
+    console.log(
+      "Active items excluded from auto-scheduling due to high block count:",
+      activeHighBlockItems.map((item) => ({
+        customerName: item.customerName,
+        design: item.design,
+        size: item.size,
+        blocks: item.blocks,
+      }))
+    );
+  }
+
+  console.log("Filtered items:", {
     totalItems: items.length,
     activeItems: activeItems.length,
     completedItems: items.length - activeItems.length,
+    totalHighBlockItems: allHighBlockItems.length,
+    activeHighBlockItems: activeHighBlockItems.length,
+    validItemsForScheduling: validActiveItems.length,
   });
 
   const sortedItems = {} as SortedItems;
@@ -260,9 +333,9 @@ export const sortItems = ({
     return result;
   };
 
-  // Start scheduling with the target week, but use filtered items
+  // Start scheduling with validActiveItems instead of activeItems
   let currentWeekStart = startOfWeek(targetWeek);
-  let remainingItems = [...activeItems]; // Use activeItems instead of items
+  let remainingItems = [...validActiveItems]; // Use validActiveItems here instead of activeItems
   let weekCount = 0;
 
   while (remainingItems.length > 0) {
@@ -284,7 +357,7 @@ export const sortItems = ({
           };
 
     const { unscheduledItems } = scheduleItemsForWeek(
-      remainingItems,
+      remainingItems, // These are now from validActiveItems
       currentWeekStart,
       existingSchedule
     );
@@ -310,7 +383,10 @@ export const sortItems = ({
     ),
   });
 
-  return sortedItems;
+  return {
+    schedule: sortedItems,
+    activeHighBlockItems: activeHighBlockItems,
+  };
 };
 
 // Helper function for finding optimal day and scheduling items
