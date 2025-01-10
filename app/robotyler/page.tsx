@@ -167,13 +167,18 @@ export default function Dashboard() {
   const [hasUnsavedMaintenanceChanges, setHasUnsavedMaintenanceChanges] =
     useState(false);
   const [settings, setSettings] = useState<SystemSettings>({
-    speeds: { back: 0, front: 0, right: 0, left: 0 },
+    speeds: { lip: 0, back: 0, front: 0, right: 0, left: 0 },
     maintenance: {
       lastMaintenanceDate: new Date().toISOString(),
       maintenanceInterval: 30,
       primeTime: 5,
       cleanTime: 10,
       backWashTime: 15,
+      pressurePotDelay: 5000,
+      positions: {
+        prime: { x: 0, y: 0, angle: 90 },
+        clean: { x: 0, y: 0, angle: 90 },
+      },
     },
     pattern: {
       offsets: { x: 0, y: 0 },
@@ -442,10 +447,10 @@ export default function Dashboard() {
     state.status === "STOPPED" || state.status === "HOMED";
   const showCleanButton =
     state.status === "STOPPED" || state.status === "HOMED";
-  const showHomeButton = state.status !== "HOMED" || state.status === "PAUSED";
+  const showHomeButton = state.status !== "HOMED" && state.status !== "PAUSED";
 
   const handleMaintenanceSettingChange = (
-    setting: "primeTime" | "cleanTime" | "backWashTime",
+    setting: "primeTime" | "cleanTime" | "backWashTime" | "pressurePotDelay",
     value: number
   ) => {
     handlePendingMaintenanceChange(setting, value);
@@ -765,7 +770,9 @@ export default function Dashboard() {
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <LiveCameraFeed initialWsIp={selectedIp} />
+                    <LiveCameraFeed
+                      initialWsIp={selectedIp.replace("8080", "3090")}
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>

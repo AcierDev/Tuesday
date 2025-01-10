@@ -8,18 +8,24 @@ import {
   ArrowLeft,
   ArrowRight,
 } from "lucide-react";
-import { SystemState } from "@/app/robotyler/page";
+import { SystemState, SystemSettings } from "@/app/robotyler/page";
 
 interface TrayVisualizationProps {
   status: SystemState;
+  settings: SystemSettings;
   className?: string;
   onSideClick?: (side: string) => void;
+  onUpdateSettings: (command: { type: string; payload?: any }) => void;
+  wsConnected: boolean;
 }
 
 const TrayVisualization: React.FC<TrayVisualizationProps> = ({
   status,
+  settings,
   className = "",
   onSideClick,
+  onUpdateSettings,
+  wsConnected,
 }) => {
   // Constants for visualization
   const ROWS = 8;

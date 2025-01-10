@@ -136,7 +136,7 @@ const LiveCameraFeed: React.FC<LiveCameraFeedProps> = ({
           <CardTitle className="text-lg font-semibold flex items-center justify-between">
             <div className="flex items-center">
               <Video className="mr-2 h-5 w-5 text-blue-500" />
-              Live Camera Feed
+              Live Camera Feed 4da boiz
               {connectionStatus === "connected" && (
                 <span className="ml-2 text-xs text-gray-500">
                   {imageData

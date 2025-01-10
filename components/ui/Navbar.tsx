@@ -171,7 +171,14 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
         } transition-all duration-300 ease-in-out border-r bg-background dark:bg-gray-800 hidden lg:flex lg:flex-col`}
       >
         <div className="flex items-center justify-between px-4 py-4">
-          {sidebarOpen && <span className="text-lg font-bold">Tuesday</span>}
+          {sidebarOpen && (
+            <span
+              className="text-lg font-bold cursor-pointer text-foreground hover:text-primary dark:text-gray-100 dark:hover:text-primary transition-colors rounded-lg px-2 py-1 hover:bg-muted dark:hover:bg-muted"
+              onClick={() => router.push("/dashboard")}
+            >
+              Tuesday
+            </span>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -243,7 +250,12 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <span className="text-xl font-bold mr-4">Tuesday</span>
+            <span
+              className="text-xl font-bold mr-4 cursor-pointer text-foreground hover:text-primary dark:text-gray-100 dark:hover:text-primary transition-colors rounded-lg px-2 py-1 hover:bg-muted dark:hover:bg-muted"
+              onClick={() => router.push("/dashboard")}
+            >
+              Tuesday
+            </span>
 
             <SheetContent side="left" className="w-64 p-0 dark:bg-gray-800">
               <div className="flex flex-col h-full">
