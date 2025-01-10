@@ -253,6 +253,26 @@ const DayCard = ({
   items,
   onBadgeClick,
 }: DayCardProps) => {
+  const [showDone, setShowDone] = useState(true);
+  const toggleShowDone = () => setShowDone(!showDone);
+
+  // Add the calculateBlocks helper function
+  const calculateBlocks = (item: Item): number => {
+    const sizeStr = getItemValue(item, ColumnTitles.Size);
+    const dimensions = sizeStr.split("x").map((dim) => parseFloat(dim.trim()));
+    const width = dimensions[0] || 0;
+    const height = dimensions[1] || 0;
+    return width * height;
+  };
+
+  // Calculate total blocks for completed items
+  const doneBlocks = daySchedule.reduce((total, scheduleItem) => {
+    if (scheduleItem.done || scheduleItem.item.status === "Done") {
+      return total + calculateBlocks(scheduleItem.item);
+    }
+    return total;
+  }, 0);
+
   return (
     <div className="relative group h-full">
       {isCurrentDay && (
@@ -277,42 +297,7 @@ const DayCard = ({
           <CardTitle className="text-center text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
             {day}
           </CardTitle>
-          <div className="flex justify-center gap-4">
-            <TooltipProvider>
-              <Tooltip delayDuration={100}>
-                <TooltipTrigger asChild>
-                  <Input
-                    type="number"
-                    value={blockLimit}
-                    onChange={(e) =>
-                      onBlockLimitChange(day, parseInt(e.target.value) || 0)
-                    }
-                    className={cn(
-                      "w-20 text-sm",
-                      "bg-white/90 dark:bg-gray-800/90",
-                      "border-gray-200/50 dark:border-gray-700/50",
-                      "focus:ring-blue-500/50 dark:focus:ring-blue-400/50",
-                      "placeholder:text-gray-500 dark:placeholder:text-gray-400"
-                    )}
-                    min="0"
-                    step="100"
-                  />
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  className="flex flex-col gap-2 p-2 z-50"
-                  sideOffset={5}
-                >
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onBlockLimitChange(day, 1000)}
-                  >
-                    Reset (1,000)
-                  </Button>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          <div className="flex justify-center gap-2">
             <Badge
               variant={totalBlocks > blockLimit ? "destructive" : "secondary"}
               className={cn(
@@ -324,6 +309,31 @@ const DayCard = ({
             >
               Blocks: {totalBlocks}
             </Badge>
+            {showDone ? (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+                  "border-green-200 dark:border-green-800",
+                  "cursor-pointer hover:opacity-80 transition-opacity"
+                )}
+                onClick={toggleShowDone}
+              >
+                Done: {doneBlocks}
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+                  "border-red-200 dark:border-red-800",
+                  "cursor-pointer hover:opacity-80 transition-opacity"
+                )}
+                onClick={toggleShowDone}
+              >
+                Undone: {totalBlocks - doneBlocks}
+              </Badge>
+            )}
           </div>
         </CardHeader>
 
@@ -423,6 +433,48 @@ const DayCard = ({
         </CardContent>
 
         <CardFooter className="flex flex-col gap-2 p-4 border-t border-gray-100 dark:border-gray-800 flex-none">
+          <div className="flex justify-center w-full gap-2">
+            <TooltipProvider>
+              <Tooltip delayDuration={100}>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Block Limit:
+                    </span>
+                    <Input
+                      type="number"
+                      value={blockLimit}
+                      onChange={(e) =>
+                        onBlockLimitChange(day, parseInt(e.target.value) || 0)
+                      }
+                      className={cn(
+                        "w-20 text-sm",
+                        "bg-white/90 dark:bg-gray-800/90",
+                        "border-gray-200/50 dark:border-gray-700/50",
+                        "focus:ring-blue-500/50 dark:focus:ring-blue-400/50",
+                        "placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                      )}
+                      min="0"
+                      step="100"
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  className="flex flex-col gap-2 p-2 z-50"
+                  sideOffset={5}
+                >
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onBlockLimitChange(day, 1000)}
+                  >
+                    Reset (1,000)
+                  </Button>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <Button
             className={cn(
               "w-full transition-all duration-200 hover:scale-105",

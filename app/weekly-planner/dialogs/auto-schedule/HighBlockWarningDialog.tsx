@@ -21,8 +21,9 @@ export function HighBlockWarningDialog({
   onClose,
   items,
 }: HighBlockWarningDialogProps) {
+  const itemsLength = items.length;
   const [Items, their, These_items] =
-    items.length === 1
+    itemsLength === 1
       ? ["item", "its", "This item"]
       : ["items", "their", "These items"];
 
@@ -30,11 +31,13 @@ export function HighBlockWarningDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[425px] dark:bg-gray-800">
         <DialogHeader>
-          <DialogTitle>Items Need Manual Attention</DialogTitle>
+          <DialogTitle>
+            {itemsLength} I{Items.slice(1)} Need Manual Attention
+          </DialogTitle>
           <DialogDescription>
-            {items.length} {Items} cannot be auto-scheduled because {their}{" "}
-            block count exceeds the daily limit (1,000). {These_items} will need
-            to be scheduled manually.
+            {itemsLength} {Items} cannot be auto-scheduled because {their} block
+            count exceeds the daily limit (1,000). {These_items} will need to be
+            scheduled manually.
           </DialogDescription>
         </DialogHeader>
 
