@@ -5,9 +5,7 @@ export async function GET() {
   try {
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB);
-    const collection = db.collection(
-      `cuttingHistory-${process.env.NEXT_PUBLIC_MODE}`
-    );
+    const collection = db.collection("cutting-history");
 
     const history = await collection.find({}).toArray();
     return NextResponse.json(history);
@@ -23,9 +21,7 @@ export async function POST(request: Request) {
   try {
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB);
-    const collection = db.collection(
-      `cuttingHistory-${process.env.NEXT_PUBLIC_MODE}`
-    );
+    const collection = db.collection("cutting-history");
 
     const data = await request.json();
     const result = await collection.updateOne(

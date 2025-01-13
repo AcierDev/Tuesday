@@ -1,37 +1,47 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ItemStatus, ColumnTitles } from '@/typings/types'
-import { Settings, Columns, ChevronDown, ChevronUp } from "lucide-react"
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ItemStatus, ColumnTitles } from "@/typings/types";
+import { Settings, Columns, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ColumnVisibilitySettingsProps {
-  columnVisibility: Record<string, Record<string, boolean>>
-  showSortingIcons: boolean
-  updateSettings: (updates: Partial<any>) => void
-  updateColumnVisibility: (group: string, field: string, visible: boolean) => void
+  columnVisibility: Record<string, Record<string, boolean>>;
+  showSortingIcons: boolean;
+  updateSettings: (updates: Partial<any>) => void;
+  updateColumnVisibility: (
+    group: string,
+    field: string,
+    visible: boolean
+  ) => void;
 }
 
 export function ColumnVisibilitySettings({
   columnVisibility,
   showSortingIcons,
   updateSettings,
-  updateColumnVisibility
+  updateColumnVisibility,
 }: ColumnVisibilitySettingsProps) {
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null)
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
 
   const toggleColumnVisibility = (group: string, field: string) => {
-    updateColumnVisibility(group, field, !columnVisibility[group]?.[field])
-  }
+    updateColumnVisibility(group, field, !columnVisibility[group]?.[field]);
+  };
 
   const toggleGroupExpansion = (group: string) => {
-    setExpandedGroup(expandedGroup === group ? null : group)
-  }
+    setExpandedGroup(expandedGroup === group ? null : group);
+  };
 
   return (
     <Card className="w-full max-w-4xl mx-auto shadow-lg dark:bg-gray-900">
@@ -40,13 +50,15 @@ export function ColumnVisibilitySettings({
           <Settings className="w-8 h-8" />
           Table Configuration
         </CardTitle>
-        <CardDescription>Customize your table view and manage column visibility</CardDescription>
+        <CardDescription>
+          Customize your table view and manage column visibility
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="general" className="w-full">
+        <Tabs defaultValue="columns" className="w-full">
           <TabsList className="grid w-full grid-cols-2 dark:bg-gray-800">
-            <TabsTrigger value="general">General Settings</TabsTrigger>
             <TabsTrigger value="columns">Column Visibility</TabsTrigger>
+            <TabsTrigger value="general">General Settings</TabsTrigger>
           </TabsList>
           <TabsContent value="general">
             <Card className="dark:bg-gray-800">
@@ -57,7 +69,10 @@ export function ColumnVisibilitySettings({
               <CardContent>
                 <div className="flex items-center justify-between p-4 bg-secondary rounded-lg dark:bg-gray-700">
                   <div className="space-y-0.5">
-                    <Label htmlFor="show-sorting-icons" className="text-base font-medium">
+                    <Label
+                      htmlFor="show-sorting-icons"
+                      className="text-base font-medium"
+                    >
                       Sorting Icons
                     </Label>
                     <p className="text-sm text-muted-foreground">
@@ -68,7 +83,7 @@ export function ColumnVisibilitySettings({
                     checked={showSortingIcons}
                     id="show-sorting-icons"
                     onCheckedChange={(checked) => {
-                      updateSettings({ showSortingIcons: checked })
+                      updateSettings({ showSortingIcons: checked });
                     }}
                   />
                 </div>
@@ -82,17 +97,24 @@ export function ColumnVisibilitySettings({
                   <Columns className="w-5 h-5" />
                   Column Visibility
                 </CardTitle>
-                <CardDescription>Manage visible columns for each item group</CardDescription>
+                <CardDescription>
+                  Manage visible columns for each item group
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {Object.values(ItemStatus).map((group) => (
-                    <div key={group} className="border rounded-lg overflow-hidden">
+                    <div
+                      key={group}
+                      className="border rounded-lg overflow-hidden"
+                    >
                       <button
                         onClick={() => toggleGroupExpansion(group)}
                         className="w-full p-4 text-left bg-secondary hover:bg-secondary/80 transition-colors flex justify-between items-center dark:bg-gray-900"
                       >
-                        <span className="text-lg font-semibold">{group} Items</span>
+                        <span className="text-lg font-semibold">
+                          {group} Items
+                        </span>
                         {expandedGroup === group ? (
                           <ChevronUp className="w-5 h-5" />
                         ) : (
@@ -109,12 +131,20 @@ export function ColumnVisibilitySettings({
                           >
                             <div className="p-4 bg-card dark:bg-gray-700">
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {Object.values(ColumnTitles).map((field) => (
-                                  <div key={field} className="flex items-center space-x-3">
+                                {[
+                                  "Shipping",
+                                  ...Object.values(ColumnTitles),
+                                ].map((field) => (
+                                  <div
+                                    key={field}
+                                    className="flex items-center space-x-3"
+                                  >
                                     <Checkbox
                                       checked={columnVisibility[group]?.[field]}
                                       id={`${group}-${field}`}
-                                      onCheckedChange={() => toggleColumnVisibility(group, field)}
+                                      onCheckedChange={() =>
+                                        toggleColumnVisibility(group, field)
+                                      }
                                     />
                                     <Label
                                       htmlFor={`${group}-${field}`}
@@ -138,5 +168,5 @@ export function ColumnVisibilitySettings({
         </Tabs>
       </CardContent>
     </Card>
-  )
+  );
 }

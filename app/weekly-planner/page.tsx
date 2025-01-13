@@ -3,7 +3,13 @@
 import React, { useState } from "react";
 import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
 import { format, isToday, isSameDay, startOfDay } from "date-fns";
-import { ColumnTitles, Item, DayName, DaySchedule } from "@/typings/types";
+import {
+  ColumnTitles,
+  Item,
+  DayName,
+  DaySchedule,
+  ItemStatus,
+} from "@/typings/types";
 import { Button } from "@/components/ui/button";
 import { Plus, Minus, Check, RotateCcw, Wand2, Trash2 } from "lucide-react";
 import { AddItemDialog } from "@/components/weekly-schedule/AddItemDialog";
@@ -699,6 +705,9 @@ const WeeklyPlanner = () => {
       items.filter(
         (item) =>
           !item.isScheduled &&
+          item.status !== ItemStatus.Done &&
+          item.status !== ItemStatus.Hidden &&
+          item.visible &&
           getItemValue(item, ColumnTitles.Customer_Name)
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) &&

@@ -172,7 +172,7 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
     const newItem = {
       values: Object.entries(ColumnTitles).map(([key, title]) => {
         let value = optionalFields[title];
-        let type = boardConfig.columns[title].type || ColumnTypes.Text;
+        let type = boardConfig.columns[title]?.type || ColumnTypes.Text;
 
         if (title === ColumnTitles.Customer_Name) {
           value = customerName;

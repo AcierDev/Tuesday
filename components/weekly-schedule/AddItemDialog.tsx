@@ -53,7 +53,7 @@ export function AddItemDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] dark:bg-gray-800">
-        <DialogHeader className="border-b pb-4">
+        <DialogHeader className="border-b pb-4 dark:border-gray-700">
           <DialogTitle className="text-xl font-semibold">
             Add Items to {currentDay}
           </DialogTitle>
@@ -142,7 +142,7 @@ export function AddItemDialog({
           </div>
         </div>
 
-        <DialogFooter className="border-t pt-4">
+        <DialogFooter className="border-t pt-4 dark:border-gray-700">
           <Button
             variant="outline"
             onClick={onClose}
