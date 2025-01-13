@@ -44,6 +44,13 @@ export function RecentActivityFeed({
   }, [selectedEmployee]);
 
   const getStatusColor = (text: string, field?: string) => {
+    const normalizedText = text.toLowerCase().trim();
+
+    // Check for "none" first
+    if (normalizedText === "none") {
+      return "text-gray-500 italic";
+    }
+
     // Return date styling if it's a date field
     if (field?.toLowerCase().includes("date")) {
       return "text-violet-600 font-mono";
@@ -64,7 +71,16 @@ export function RecentActivityFeed({
       return "text-indigo-600 font-medium";
     }
 
-    const normalizedText = text.toLowerCase().trim();
+    // Return notes styling if it's a notes field
+    if (field?.toLowerCase().includes("note")) {
+      return "text-purple-600 dark:text-purple-400 font-normal italic";
+    }
+
+    // Return number styling if text is a number between 1-10
+    if (/^([1-9]|10)$/.test(text.trim())) {
+      return "text-amber-600 font-semibold";
+    }
+
     switch (normalizedText) {
       case "done":
         return "text-green-500";
@@ -74,8 +90,6 @@ export function RecentActivityFeed({
         return "text-red-500";
       case "didn't start":
         return "text-gray-400";
-      case "none":
-        return "text-gray-500 italic";
       default:
         return "text-gray-600";
     }
