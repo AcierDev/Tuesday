@@ -217,6 +217,29 @@ export default function OrderManagementPage() {
         };
 
         await updateItem(restoredItem);
+
+        await logActivity(
+          item.id!,
+          "status_change",
+          [
+            {
+              field: "status",
+              oldValue: item.status,
+              newValue: previousStatus,
+              isRestore: true,
+            },
+          ],
+          {
+            customerName: item.values?.find(
+              (v) => v.columnName === ColumnTitles.Customer_Name
+            )?.text,
+            design: item.values?.find(
+              (v) => v.columnName === ColumnTitles.Design
+            )?.text,
+            size: item.values?.find((v) => v.columnName === ColumnTitles.Size)
+              ?.text,
+          }
+        );
       } catch (error) {
         console.error("Failed to undo status change:", error);
         toast.error("Failed to undo status change", {
@@ -224,7 +247,7 @@ export default function OrderManagementPage() {
         });
       }
     },
-    [updateItem]
+    [updateItem, logActivity]
   );
 
   const onDragEnd = useCallback(
@@ -244,14 +267,19 @@ export default function OrderManagementPage() {
         (status) => status === destination.droppableId
       );
 
-      if (!newStatus) {
-        return;
-      }
+      if (!newStatus) return;
 
       const sourceStatus = source.droppableId as ItemStatus;
       const statusChanged = sourceStatus !== newStatus;
 
       try {
+        const movedItem = board.items_page.items.find(
+          (item) => item.id === draggableId
+        );
+        if (!movedItem) return;
+
+        const originalStatus = movedItem.status;
+
         await reorderItems(
           draggableId,
           sourceStatus,
@@ -260,18 +288,42 @@ export default function OrderManagementPage() {
         );
 
         if (statusChanged) {
-          const movedItem = board.items_page.items.find(
-            (item) => item.id === draggableId
-          );
-          if (movedItem) {
-            toast.success(getStatusChangeMessage(newStatus), {
-              style: { background: "#10B981", color: "white" },
-              action: {
-                label: "Undo",
-                onClick: () => undoStatusChange(movedItem, sourceStatus),
+          const updatedItem = {
+            ...movedItem,
+            previousStatus: originalStatus,
+            status: newStatus,
+          };
+
+          await logActivity(
+            updatedItem.id!,
+            "status_change",
+            [
+              {
+                field: "status",
+                oldValue: originalStatus,
+                newValue: newStatus,
               },
-            });
-          }
+            ],
+            {
+              customerName: updatedItem.values?.find(
+                (v) => v.columnName === ColumnTitles.Customer_Name
+              )?.text,
+              design: updatedItem.values?.find(
+                (v) => v.columnName === ColumnTitles.Design
+              )?.text,
+              size: updatedItem.values?.find(
+                (v) => v.columnName === ColumnTitles.Size
+              )?.text,
+            }
+          );
+
+          toast.success(getStatusChangeMessage(newStatus), {
+            style: { background: "#10B981", color: "white" },
+            action: {
+              label: "Undo",
+              onClick: () => undoStatusChange(updatedItem, originalStatus),
+            },
+          });
         }
       } catch (error) {
         console.error("Failed to update item status:", error);
@@ -280,7 +332,7 @@ export default function OrderManagementPage() {
         });
       }
     },
-    [board, reorderItems, undoStatusChange]
+    [board, reorderItems, undoStatusChange, logActivity]
   );
 
   const getUniqueGroupValues = useCallback((items: Item[], field: string) => {
@@ -408,6 +460,30 @@ export default function OrderManagementPage() {
           deleted: false,
         };
         await updateItem(restoredItem);
+
+        await logActivity(
+          item.id,
+          "restore",
+          [
+            {
+              field: "deleted",
+              oldValue: "true",
+              newValue: "false",
+              isRestore: true,
+            },
+          ],
+          {
+            customerName: item.values?.find(
+              (v) => v.columnName === ColumnTitles.Customer_Name
+            )?.text,
+            design: item.values?.find(
+              (v) => v.columnName === ColumnTitles.Design
+            )?.text,
+            size: item.values?.find((v) => v.columnName === ColumnTitles.Size)
+              ?.text,
+          }
+        );
+
         toast.success("Item restored");
       } catch (error) {
         console.error("Failed to restore item:", error);
@@ -419,7 +495,7 @@ export default function OrderManagementPage() {
     [updateItem, logActivity]
   );
 
-  const onDelete = useCallback(
+  const handleDeleteItem = useCallback(
     async (itemId: string) => {
       try {
         const itemToDelete = board?.items_page.items.find(
@@ -430,6 +506,30 @@ export default function OrderManagementPage() {
         }
 
         await deleteItem(itemId);
+
+        // Log the deletion
+        await logActivity(
+          itemId,
+          "delete",
+          [
+            {
+              field: "deleted",
+              oldValue: "false",
+              newValue: "true",
+            },
+          ],
+          {
+            customerName: itemToDelete.values?.find(
+              (v) => v.columnName === ColumnTitles.Customer_Name
+            )?.text,
+            design: itemToDelete.values?.find(
+              (v) => v.columnName === ColumnTitles.Design
+            )?.text,
+            size: itemToDelete.values?.find(
+              (v) => v.columnName === ColumnTitles.Size
+            )?.text,
+          }
+        );
 
         toast.success("Item deleted", {
           style: { background: "#10B981", color: "white" },
@@ -455,15 +555,87 @@ export default function OrderManagementPage() {
   }, [isWeeklyPlannerOpen]);
 
   const handleUpdateItem = async (item: Item, changedField?: ColumnTitles) => {
-    await updateItem(item, changedField);
+    try {
+      // Find the old item to compare values
+      const oldItem = board?.items_page.items.find((i) => i.id === item.id);
+
+      await updateItem(item, changedField);
+
+      // Only log if we have a changed field and can find the old value
+      if (changedField && oldItem) {
+        const oldValue =
+          oldItem.values.find((v) => v.columnName === changedField)?.text || "";
+        const newValue =
+          item.values.find((v) => v.columnName === changedField)?.text || "";
+
+        // Only log if the value actually changed
+        if (oldValue !== newValue) {
+          await logActivity(
+            item.id!,
+            "update",
+            [
+              {
+                field: changedField,
+                oldValue,
+                newValue,
+              },
+            ],
+            {
+              customerName: item.values?.find(
+                (v) => v.columnName === ColumnTitles.Customer_Name
+              )?.text,
+              design: item.values?.find(
+                (v) => v.columnName === ColumnTitles.Design
+              )?.text,
+              size: item.values?.find((v) => v.columnName === ColumnTitles.Size)
+                ?.text,
+            }
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update item:", error);
+      toast.error("Failed to update item", {
+        style: { background: "#EF4444", color: "white" },
+      });
+    }
   };
 
   const handleAddNewItem = async (newItem: Partial<Item>) => {
-    await addNewItem(newItem);
-  };
+    try {
+      await addNewItem(newItem);
 
-  const handleDeleteItem = async (itemId: string) => {
-    await deleteItem(itemId);
+      // Log the creation of a new item
+      if (newItem.id) {
+        await logActivity(
+          newItem.id,
+          "create",
+          [
+            {
+              field: "status",
+              oldValue: "",
+              newValue: ItemStatus.New,
+            },
+          ],
+          {
+            customerName: newItem.values?.find(
+              (v) => v.columnName === ColumnTitles.Customer_Name
+            )?.text,
+            design: newItem.values?.find(
+              (v) => v.columnName === ColumnTitles.Design
+            )?.text,
+            size: newItem.values?.find(
+              (v) => v.columnName === ColumnTitles.Size
+            )?.text,
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Failed to add new item:", error);
+      toast.error("Failed to add new item", {
+        style: { background: "#EF4444", color: "white" },
+      });
+    }
   };
 
   if (!orderSettingsContext) {
@@ -497,7 +669,7 @@ export default function OrderManagementPage() {
               <ItemList
                 board={board!}
                 groups={sortedGroups}
-                onDelete={onDelete}
+                onDelete={handleDeleteItem}
                 onDragEnd={onDragEnd}
                 onGetLabel={onGetLabel}
                 onMarkCompleted={markItemCompleted}
