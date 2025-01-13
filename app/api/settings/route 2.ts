@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
 import clientPromise from "../db/connect";
-import { Board } from "@/typings/types";
+import { Settings } from "@/typings/types";
 
 export async function GET() {
   try {
     const client = await clientPromise;
     const db = client.db("react-web-app");
-    const collection = db.collection<Board>(`${process.env.NEXT_PUBLIC_MODE}`);
-    const board = await collection.findOne({});
-    return NextResponse.json(board);
+    const collection = db.collection<Settings>(
+      `settings-${process.env.NODE_ENV}`
+    );
+
+    const settings = await collection.findOne({});
+    return NextResponse.json(settings);
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch board" },
+      { error: "Failed to fetch settings" },
       { status: 500 }
     );
   }
@@ -21,23 +24,21 @@ export async function PATCH(request: Request) {
   try {
     const client = await clientPromise;
     const db = client.db("react-web-app");
-    const collection = db.collection<Board>(`${process.env.NEXT_PUBLIC_MODE}`);
+    const collection = db.collection<Settings>(
+      `settings-${process.env.NODE_ENV}`
+    );
 
-    const { id, updates, arrayFilters } = await request.json();
-
-    // If arrayFilters is provided, use it in the update operation
-    const updateOptions = arrayFilters ? { arrayFilters } : undefined;
-
+    const updates = await request.json();
     const result = await collection.updateOne(
-      { id },
+      {}, // Update the single settings document
       { $set: updates },
-      updateOptions
+      { upsert: true }
     );
 
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update board" },
+      { error: "Failed to update settings" },
       { status: 500 }
     );
   }

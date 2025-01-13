@@ -50,6 +50,7 @@ import { ItemPreviewTooltip } from "./ItemPreviewTooltip";
 import { Portal } from "@/components/ui/portal";
 import { DueDateTooltip } from "./DueDateTooltip";
 import { useWeeklySchedule } from "../weekly-schedule/UseWeeklySchedule";
+import { ShippingStatusIcon } from "./ShippingStatusIcon";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
 
@@ -360,6 +361,11 @@ export function ItemGroupSection({
                       <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
                         Order
                       </TableHead>
+                      {visibleColumns.includes("Shipping" as ColumnTitles) && (
+                        <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center w-12">
+                          Shipping
+                        </TableHead>
+                      )}
                       {visibleColumns.map((columnName) => (
                         <TableHead
                           key={columnName}
@@ -371,25 +377,25 @@ export function ItemGroupSection({
                           )}
                         >
                           <Button
-                            className="h-8 flex items-center justify-between w-full text-gray-900 dark:text-gray-100"
+                            className="h-8 flex items-center justify-center gap-2 w-full text-gray-900 dark:text-gray-400"
                             disabled={isDragging}
                             variant="ghost"
                             onClick={() =>
                               !isDragging && handleSort(columnName)
                             }
                           >
-                            {columnName}
+                            <span>{columnName}</span>
                             {settings.showSortingIcons ? (
                               sortColumn === columnName ? (
                                 sortDirection === "asc" ? (
-                                  <ArrowUp className="ml-2 h-4 w-4" />
+                                  <ArrowUp className="h-4 w-4" />
                                 ) : sortDirection === "desc" ? (
-                                  <ArrowDown className="ml-2 h-4 w-4" />
+                                  <ArrowDown className="h-4 w-4" />
                                 ) : (
-                                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                                  <ArrowUpDown className="h-4 w-4" />
                                 )
                               ) : (
-                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                <ArrowUpDown className="h-4 w-4" />
                               )
                             ) : null}
                           </Button>
@@ -430,12 +436,21 @@ export function ItemGroupSection({
                             >
                               <GripVertical className="cursor-grab inline-block" />
                             </TableCell>
+                            {visibleColumns.includes(
+                              "Shipping" as ColumnTitles
+                            ) && (
+                              <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+                                <ShippingStatusIcon orderId={item.id} />
+                              </TableCell>
+                            )}
                             {visibleColumns.map((columnName, cellIndex) => {
                               const columnValue = item.values.find(
                                 (value) => value.columnName === columnName
                               ) || {
                                 columnName,
-                                type: boardConfig.columns[columnName].type,
+                                type:
+                                  boardConfig.columns[columnName]?.type ||
+                                  ColumnTypes.Text,
                                 text: "\u00A0", // Unicode non-breaking space
                               };
                               const showPreviewTooltip =
@@ -627,6 +642,9 @@ export function ItemGroupSection({
             >
               <TableHeader className="sticky top-[132px] z-20 bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)]">
                 <TableRow>
+                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center w-12">
+                    Status
+                  </TableHead>
                   {visibleColumns.map((columnName) => (
                     <TableHead
                       key={columnName}
@@ -673,12 +691,17 @@ export function ItemGroupSection({
                         "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]"
                     )}
                   >
+                    <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+                      <ShippingStatusIcon orderId={item.id} />
+                    </TableCell>
                     {visibleColumns.map((columnName, cellIndex) => {
                       const columnValue = item.values.find(
                         (value) => value.columnName === columnName
                       ) || {
                         columnName,
-                        type: boardConfig.columns[columnName].type,
+                        type:
+                          boardConfig.columns[columnName]?.type ||
+                          ColumnTypes.Text,
                         text: "\u00A0", // Unicode non-breaking space
                       };
                       const showPreviewTooltip =

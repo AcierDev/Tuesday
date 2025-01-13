@@ -594,6 +594,7 @@ export const STATUS_COLORS: Record<ItemStatus, string> = {
   [ItemStatus.Hidden]: "white/10",
   [ItemStatus.Shipping]: "red-500",
 };
+
 export const DEFAULT_ROUTER_SETTINGS: RouterSettings = {
   slave: {
     pushTime: 1000,

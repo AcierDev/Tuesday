@@ -239,7 +239,6 @@ export enum ColumnTitles {
   Notes = "Notes",
   Rating = "Rating",
   Labels = "Labels",
-  Status = "Status",
 }
 
 export enum ColumnTypes {
