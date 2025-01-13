@@ -16,7 +16,6 @@ import {
 import { OrderCompletionChart } from "@/components/dashboard/OrderCompletionChart";
 import { RecentActivityFeed } from "@/components/dashboard/RecentActivityFeed";
 import { Board } from "@/typings/types";
-import { useRealmApp } from "@/hooks/useRealmApp";
 import { toast } from "sonner";
 import {
   DragDropContext,
@@ -28,6 +27,7 @@ import { AverageCompletionTimeChart } from "@/components/dashboard/AverageComple
 import { GluingActivityChart } from "@/components/dashboard/GluingActicityChart";
 import { cn } from "@/utils/functions";
 import TopPerformers from "@/components/dashboard/TopPerformers";
+import { useOrderStore } from "@/stores/useOrderStore";
 
 type TimeRange = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -45,34 +45,9 @@ interface DashboardCard {
 
 export default function Dashboard() {
   const [timeRange, setTimeRange] = useState<TimeRange>("daily");
-  const [board, setBoard] = useState<Board | undefined>(undefined);
-  const { boardCollection: collection, isLoading } = useRealmApp();
   const [cards, setCards] = useState<DashboardCard[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
-
-  const loadBoard = useCallback(async () => {
-    if (!collection) return;
-
-    try {
-      const loadedBoard = await collection.findOne({});
-      if (loadedBoard) {
-        setBoard(loadedBoard);
-      } else {
-        throw new Error("No board found");
-      }
-    } catch (err) {
-      console.error("Failed to load board", err);
-      toast.error("Failed to load board. Please refresh the page.", {
-        style: { background: "#EF4444", color: "white" },
-      });
-    }
-  }, [collection]);
-
-  useEffect(() => {
-    if (!isLoading && collection) {
-      loadBoard();
-    }
-  }, [isLoading, collection, loadBoard]);
+  const { board, isLoading } = useOrderStore();
 
   useEffect(() => {
     const defaultCards: DashboardCard[] = [

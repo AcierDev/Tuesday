@@ -40,8 +40,8 @@ export function DayColumn({
 
   return (
     <>
-      <Card className="flex-1 flex flex-col m-1 bg-background shadow-sm overflow-hidden dark:bg-gray-800">
-        <CardHeader className="py-2 px-3 bg-muted dark:bg-gray-700">
+      <Card className="flex-1 flex flex-col m-1 bg-background shadow-sm overflow-hidden dark:bg-gray-700">
+        <CardHeader className="py-2 px-3 bg-muted dark:bg-gray-600">
           <CardTitle className="text-sm flex justify-between items-center">
             <span>{day}</span>
             <div className="flex items-center space-x-2">
@@ -85,7 +85,7 @@ export function DayColumn({
                             "p-2 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 text-xs",
                             scheduleItem.done || item.status === ItemStatus.Done
                               ? "bg-green-100 dark:bg-green-500/30"
-                              : "bg-muted dark:bg-gray-700"
+                              : "bg-muted dark:bg-gray-600"
                           )}
                         >
                           <div className="flex items-center justify-between">
@@ -146,7 +146,7 @@ export function DayColumn({
           </Droppable>
         </CardContent>
         <Button
-          className="m-2 dark:bg-gray-700"
+          className="m-2 dark:bg-gray-600"
           size="sm"
           variant="outline"
           onClick={() => handleAddItem(day)}

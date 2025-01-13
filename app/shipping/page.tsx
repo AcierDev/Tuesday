@@ -1,17 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  Loader2,
   Package,
   Search,
   Truck,
-  List,
-  Info,
-  PackageIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -29,10 +24,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useToast } from "@/hooks/UseToast";
-import { useRealmApp } from "@/hooks/useRealmApp";
-import { Activity, ShippingItem } from "@/typings/interfaces";
-import { ShippingStatus, type Board, type Item } from "@/typings/types";
+import { ShippingItem } from "@/typings/interfaces";
+import { ShippingStatus } from "@/typings/types";
+import { useOrderStore } from "@/stores/useOrderStore";
 
 interface TrackingResponse {
   tracking_number: string;
@@ -104,14 +98,7 @@ export default function ShippingPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItem, setSelectedItem] = useState<ShippingItem | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const { boardCollection: collection } = useRealmApp();
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (collection) {
-      loadItems();
-    }
-  }, [collection]);
+  const { board } = useOrderStore();
 
   useEffect(() => {
     const filtered = items.filter(
@@ -129,36 +116,19 @@ export default function ShippingPage() {
     setFilteredItems(filtered);
   }, [items, searchTerm]);
 
-  const loadItems = async () => {
-    try {
-      const board: Board | null = await collection!.findOne({
-        /* query to find the board */
-      });
-      if (board) {
-        const itemsWithReceipts = board.items_page.items
-          .map((item) => ({
-            ...item,
-            shippingDetails: item.shippingDetails || undefined,
-          }))
-          .filter((item) => !item.deleted && item.visible) as ShippingItem[];
+  useEffect(() => {
+    if (board) {
+      const itemsWithReceipts = board.items_page.items
+        .map((item) => ({
+          ...item,
+          shippingDetails: item.shippingDetails || undefined,
+        }))
+        .filter((item) => !item.deleted && item.visible) as ShippingItem[];
 
-        // // Log the complete item data for each customer
-        // itemsWithReceipts.forEach((item) => {
-        //   console.log(`${item.shippingDetails?.name}:`, item);
-        // });
-
-        setItems(itemsWithReceipts);
-        updateShipmentStatuses(itemsWithReceipts);
-      }
-    } catch (err) {
-      console.error("Failed to load items", err);
-      toast({
-        title: "Error",
-        description: "Failed to load items. Please try again.",
-        variant: "destructive",
-      });
+      setItems(itemsWithReceipts);
+      updateShipmentStatuses(itemsWithReceipts);
     }
-  };
+  }, [board]);
 
   const updateShipmentStatuses = async (items: ShippingItem[]) => {
     const updatedItems = await Promise.all(
@@ -364,14 +334,6 @@ export default function ShippingPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button
-              className="flex items-center"
-              variant="outline"
-              onClick={loadItems}
-            >
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Refresh
-            </Button>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {renderStatusCard("unshipped")}
@@ -389,7 +351,6 @@ export default function ShippingPage() {
               onClose={() => {
                 setIsDetailsOpen(false);
                 setSelectedItem(null);
-                loadItems(); // Reload items after closing the shipping details
               }}
             />
           ) : null}

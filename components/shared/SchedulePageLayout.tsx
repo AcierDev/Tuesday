@@ -12,11 +12,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { ItemGroupSection } from "../orders/ItemGroup";
-import { WeeklySchedules } from "@/components/weekly-schedule/UseWeeklySchedule";
 import { WeekView } from "@/components/shared/WeekView";
 import { CalendarView } from "@/components/shared/CalendarView";
-import { Board, ColumnTitles, Group, Item } from "@/typings/types";
+import { Board, ColumnTitles, DayName, Group, Item } from "@/typings/types";
 import { cn } from "@/utils/functions";
+import { useOrderStore } from "@/stores/useOrderStore";
 
 type SchedulePageLayoutProps = {
   title: string;
@@ -37,10 +37,8 @@ type SchedulePageLayoutProps = {
   weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   isCurrentWeek: boolean;
   group: Group;
-  board: Board;
-  updateItem: (updatedItem: Item, changedField: ColumnTitles) => Promise<void>;
   selectedDates: Date[];
-  schedule: WeeklySchedules;
+  schedule: Record<string, Record<DayName, number>>;
   toggleDateSelection: (date: Date) => void;
 };
 
@@ -59,8 +57,6 @@ export function SchedulePageLayout({
   weekStartsOn,
   isCurrentWeek,
   group,
-  board,
-  updateItem,
   selectedDates,
   schedule,
   toggleDateSelection,
@@ -70,6 +66,7 @@ export function SchedulePageLayout({
   const calendarRef = useRef<HTMLDivElement>(null);
   const tabsCardRef = useRef<HTMLDivElement>(null);
   const fullscreenRef = useRef<HTMLDivElement>(null);
+  const { board, updateItem } = useOrderStore();
 
   useEffect(() => {
     const adjustTabsCardHeight = () => {
@@ -111,15 +108,19 @@ export function SchedulePageLayout({
     };
   }, []);
 
-  const renderWeekView = () => (
-    <WeekView
-      currentWeekStart={currentWeekStart}
-      selectedDates={selectedDates}
-      schedule={schedule}
-      toggleDateSelection={toggleDateSelection}
-      isMobile={isMobile}
-    />
-  );
+  const renderWeekView = () =>
+    board && (
+      <WeekView
+        currentWeekStart={currentWeekStart}
+        selectedDates={selectedDates}
+        schedule={schedule}
+        toggleDateSelection={toggleDateSelection}
+        isMobile={isMobile}
+        items={board.items_page.items.filter(
+          (item) => !item.deleted && item.visible
+        )}
+      />
+    );
 
   const renderCalendarView = () => (
     <div ref={calendarRef}>

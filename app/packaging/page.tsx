@@ -1,26 +1,22 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { format, addDays } from "date-fns";
-import { toast } from "sonner";
 
-import { useRealmApp } from "@/hooks/useRealmApp";
 import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
 import { useIsMobile } from "@/components/shared/UseIsMobile";
 import { SchedulePageLayout } from "@/components/shared/SchedulePageLayout";
 import { Filters } from "@/components/shared/Filters";
 import { OverviewTab } from "@/components/packaging/OverviewTab";
 import { DetailsTab } from "@/components/packaging/DetailsTab";
-import { useBoardOperations } from "@/components/orders/OrderHooks";
 import { calculateBoxRequirements } from "@/components/packaging/BoxCalculations";
-import { Board, Group, Item, ItemStatus } from "@/typings/types";
+import { DayName, Group } from "@/typings/types";
 import { BoxRequirement } from "@/typings/interfaces";
 import { DAYS_OF_WEEK } from "@/typings/constants";
+import { useOrderStore } from "@/stores/useOrderStore";
 
 export default function BoxSchedulePage() {
-  const { boardCollection: collection, isLoading } = useRealmApp();
-  const [items, setItems] = useState<Item[]>([]);
-  const [board, setBoard] = useState<Board | null>(null);
+  const { board } = useOrderStore();
   const [boxRequirements, setBoxRequirements] = useState<
     Record<string, BoxRequirement>
   >({});
@@ -38,40 +34,6 @@ export default function BoxSchedulePage() {
     resetToCurrentWeek,
     isCurrentWeek,
   } = useWeeklySchedule({ weekStartsOn: 0 });
-  const [updateItem, setUpdateItem] =
-    useState<(updatedItem: Item) => Promise<void>>();
-
-  const loadItems = useCallback(async () => {
-    if (!collection) return;
-
-    try {
-      const loadedBoard = await collection.findOne({});
-      setBoard(loadedBoard);
-      setItems(loadedBoard?.items_page.items || []);
-      console.log("Board loaded:", loadedBoard);
-    } catch (err) {
-      console.error("Failed to load board", err);
-      toast.error("Failed to load board. Please refresh the page.", {
-        style: { background: "#EF4444", color: "white" },
-      });
-    }
-  }, [collection, setBoard, setItems]);
-
-  useEffect(() => {
-    if (!isLoading && collection) {
-      loadItems();
-    }
-  }, [isLoading, collection, loadItems]);
-
-  const boardOperations = useBoardOperations(board, collection, {});
-
-  useEffect(() => {
-    if (board && collection) {
-      setUpdateItem(() => boardOperations.updateItem);
-    } else {
-      setUpdateItem(undefined);
-    }
-  }, [board, collection, boardOperations]);
 
   const toggleDateSelection = (date: Date) => {
     setSelectedDates((prev) => {
@@ -96,19 +58,21 @@ export default function BoxSchedulePage() {
       const dayDate = format(addDays(currentWeekStart, index), "yyyy-MM-dd");
       if (
         selectedDateStrings.includes(dayDate) &&
-        currentWeekSchedule[dayName]
+        currentWeekSchedule[dayName as DayName]
       ) {
-        currentWeekSchedule[dayName].forEach((item) =>
+        currentWeekSchedule[dayName as DayName].forEach((item) =>
           scheduledItems.add(item.id)
         );
       }
     });
 
-    return items.filter((item) => scheduledItems.has(item.id));
-  }, [items, selectedDates, weeklySchedules, currentWeekStart]);
+    return board?.items_page.items.filter((item) =>
+      scheduledItems.has(item.id)
+    );
+  }, [board, selectedDates, weeklySchedules, currentWeekStart]);
 
   const filteredItemsNeedingBoxes = useMemo(() => {
-    return itemsNeedingBoxes.filter((item) => {
+    return itemsNeedingBoxes?.filter((item) => {
       const sizeValue =
         item.values.find((value) => value.columnName === "Size")?.text || "";
       const matchesSize = filterSize === "all" || sizeValue === filterSize;
@@ -125,7 +89,7 @@ export default function BoxSchedulePage() {
     () => ({
       id: "box-group",
       title: "Selected Items",
-      items: filteredItemsNeedingBoxes,
+      items: filteredItemsNeedingBoxes || [],
     }),
     [filteredItemsNeedingBoxes]
   );
@@ -192,8 +156,6 @@ export default function BoxSchedulePage() {
         weekStartsOn={0}
         isCurrentWeek={isCurrentWeek()}
         group={filteredBoxGroup}
-        board={board!}
-        updateItem={updateItem!}
         selectedDates={selectedDates}
         schedule={weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {}}
         toggleDateSelection={toggleDateSelection}

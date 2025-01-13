@@ -1,31 +1,25 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { format, addDays } from "date-fns";
-import { toast } from "sonner";
 
-import { useRealmApp } from "@/hooks/useRealmApp";
 import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
 import { useIsMobile } from "@/components/shared/UseIsMobile";
 import { SchedulePageLayout } from "@/components/shared/SchedulePageLayout";
 import { Filters } from "@/components/shared/Filters";
 import { OverviewTab } from "@/components/backboards/OverviewTab";
 import { DetailsTab } from "@/components/backboards/DetailsTab";
-import { useBoardOperations } from "@/components/orders/OrderHooks";
 import { BackboardCalculations } from "@/components/backboards/BackboardCalculations";
 import { backboardData, DAYS_OF_WEEK } from "@/typings/constants";
 import {
   BackboardRequirement,
-  Board,
+  DayName,
   Group,
-  Item,
   ItemSizes,
 } from "@/typings/types";
+import { useOrderStore } from "@/stores/useOrderStore";
 
 export default function BackboardSchedulePage() {
-  const { boardCollection: collection, isLoading } = useRealmApp();
-  const [items, setItems] = useState<Item[]>([]);
-  const [board, setBoard] = useState<Board | null>(null);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [filterSize, setFilterSize] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -40,40 +34,7 @@ export default function BackboardSchedulePage() {
     resetToCurrentWeek,
     isCurrentWeek,
   } = useWeeklySchedule({ weekStartsOn: 0 });
-  const [updateItem, setUpdateItem] =
-    useState<(updatedItem: Item) => Promise<void>>();
-
-  const boardOperations = useBoardOperations(board, collection, {});
-
-  useEffect(() => {
-    if (board && collection) {
-      setUpdateItem(() => boardOperations.updateItem);
-    } else {
-      setUpdateItem(undefined);
-    }
-  }, [board, collection, boardOperations]);
-
-  const loadItems = useCallback(async () => {
-    if (!collection) return;
-
-    try {
-      const loadedBoard = await collection.findOne({});
-      setBoard(loadedBoard);
-      setItems(loadedBoard?.items_page.items || []);
-      console.log("Board loaded:", loadedBoard);
-    } catch (err) {
-      console.error("Failed to load board", err);
-      toast.error("Failed to load board. Please refresh the page.", {
-        style: { background: "#EF4444", color: "white" },
-      });
-    }
-  }, [collection, setBoard, setItems]);
-
-  useEffect(() => {
-    if (!isLoading && collection) {
-      loadItems();
-    }
-  }, [isLoading, collection, loadItems]);
+  const { board } = useOrderStore();
 
   const toggleDateSelection = (date: Date) => {
     setSelectedDates((prev) => {
@@ -98,19 +59,21 @@ export default function BackboardSchedulePage() {
       const dayDate = format(addDays(currentWeekStart, index), "yyyy-MM-dd");
       if (
         selectedDateStrings.includes(dayDate) &&
-        currentWeekSchedule[dayName]
+        currentWeekSchedule[dayName as DayName]
       ) {
-        currentWeekSchedule[dayName].forEach((item) =>
+        currentWeekSchedule[dayName as DayName].forEach((item) =>
           scheduledItems.add(item.id)
         );
       }
     });
 
-    return items.filter((item) => scheduledItems.has(item.id));
-  }, [items, selectedDates, weeklySchedules, currentWeekStart]);
+    return board?.items_page.items.filter((item) =>
+      scheduledItems.has(item.id)
+    );
+  }, [board, selectedDates, weeklySchedules, currentWeekStart]);
 
   const filteredItemsNeedingBackboards = useMemo(() => {
-    return itemsNeedingBackboards.filter((item) => {
+    return itemsNeedingBackboards?.filter((item) => {
       const sizeValue =
         item.values.find((value) => value.columnName === "Size")?.text || "";
       const matchesSize = filterSize === "all" || sizeValue === filterSize;
@@ -127,7 +90,7 @@ export default function BackboardSchedulePage() {
     () => ({
       id: "backboard-group",
       title: "Selected Items",
-      items: filteredItemsNeedingBackboards,
+      items: filteredItemsNeedingBackboards || [],
     }),
     [filteredItemsNeedingBackboards]
   );
@@ -136,7 +99,7 @@ export default function BackboardSchedulePage() {
     () =>
       BackboardCalculations({
         schedule: weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {},
-        items: itemsNeedingBackboards,
+        items: itemsNeedingBackboards || [],
         selectedDates,
       }),
     [weeklySchedules, currentWeekStart, itemsNeedingBackboards, selectedDates]
@@ -196,7 +159,7 @@ export default function BackboardSchedulePage() {
               <DetailsTab
                 isMobile={isMobile}
                 filteredRequirements={filteredRequirements}
-                selectedItems={filteredItemsNeedingBackboards}
+                selectedItems={filteredItemsNeedingBackboards || []}
               />
             ),
           },
@@ -208,8 +171,6 @@ export default function BackboardSchedulePage() {
         weekStartsOn={0}
         isCurrentWeek={isCurrentWeek()}
         group={filteredBackboardGroup}
-        board={board!}
-        updateItem={updateItem!}
         selectedDates={selectedDates}
         schedule={weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {}}
         toggleDateSelection={toggleDateSelection}

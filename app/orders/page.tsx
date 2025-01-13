@@ -13,7 +13,6 @@ import { SettingsPanel } from "@/components/setttings/SettingsPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
-import { useRealmApp } from "@/hooks/useRealmApp";
 import {
   Item,
   ItemStatus,
@@ -21,7 +20,7 @@ import {
   ItemDesigns,
   ColumnTitles,
 } from "@/typings/types";
-import { useBoardOperations } from "@/components/orders/OrderHooks";
+import { useOrderStore } from "@/stores/useOrderStore";
 import { ShippingDashboard } from "@/components/shipping/ShippingDashboard";
 import { cn } from "@/utils/functions";
 import { useActivities } from "@/hooks/useActivities";
@@ -29,7 +28,6 @@ import { useActivities } from "@/hooks/useActivities";
 export default function OrderManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentMode, setCurrentMode] = useState("all");
-  const { boardCollection: collection, user, isLoading } = useRealmApp();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false);
   const [isShippingDashboardOpen, setIsShippingDashboardOpen] = useState(false);
@@ -43,8 +41,8 @@ export default function OrderManagementPage() {
   const settings = orderSettingsContext.settings || {};
   const updateSettings = orderSettingsContext.updateSettings || (() => {});
 
-  const { board, setBoard, updateItem, addNewItem, deleteItem } =
-    useBoardOperations(null, collection, settings);
+  const { board, updateItem, addNewItem, deleteItem, reorderItems } =
+    useOrderStore();
 
   const { logActivity } = useActivities();
 
@@ -54,25 +52,6 @@ export default function OrderManagementPage() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
-
-  const loadBoard = useCallback(async () => {
-    if (!collection) return;
-
-    try {
-      const loadedBoard = await collection.findOne({});
-      setBoard(loadedBoard);
-    } catch (err) {
-      toast.error("Failed to load board. Please refresh the page.", {
-        style: { background: "#EF4444", color: "white" },
-      });
-    }
-  }, [collection, setBoard]);
-
-  useEffect(() => {
-    if (!isLoading && collection) {
-      loadBoard();
-    }
-  }, [isLoading, collection, loadBoard]);
 
   const isItemDue = useCallback(
     (item: Item) => {
@@ -133,39 +112,6 @@ export default function OrderManagementPage() {
     return counts;
   }, [board, isItemDue]);
 
-  useEffect(() => {
-    if (!collection) return;
-
-    let isActive = true;
-
-    const watchForChanges = async () => {
-      while (isActive) {
-        try {
-          for await (const change of collection.watch()) {
-            if (!isActive) break;
-            switch (change.operationType) {
-              case "update": {
-                const { fullDocument } = change;
-                if (fullDocument && fullDocument.id === board?.id) {
-                  setBoard(fullDocument);
-                }
-                break;
-              }
-            }
-          }
-        } catch (error) {
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-        }
-      }
-    };
-
-    watchForChanges();
-
-    return () => {
-      isActive = false;
-    };
-  }, [collection, board?.id, setBoard]);
-
   const shipItem = useCallback(async (itemId: string) => {
     toast.success("Item marked as shipped", {
       style: { background: "#10B981", color: "white" },
@@ -176,48 +122,6 @@ export default function OrderManagementPage() {
     setItemToComplete(itemId);
     setIsConfirmationOpen(true);
   }, []);
-
-  const undoItemCompletion = useCallback(
-    async (item: Item) => {
-      try {
-        const restoredItem = {
-          ...item,
-          status: item.previousStatus || ItemStatus.Todo,
-          completedAt: undefined,
-        };
-        delete restoredItem.previousStatus;
-
-        await updateItem(restoredItem, "status", true);
-        await logActivity(
-          item.id!,
-          "status_change",
-          [
-            {
-              field: "status",
-              oldValue: ItemStatus.Done,
-              newValue: restoredItem.status,
-              isRestore: true,
-            },
-          ],
-          {
-            customerName: item.values?.find(
-              (v) => v.columnName === ColumnTitles.Customer_Name
-            )?.text,
-            design: item.values?.find(
-              (v) => v.columnName === ColumnTitles.Design
-            )?.text,
-            size: item.values?.find((v) => v.columnName === ColumnTitles.Size)
-              ?.text,
-          }
-        );
-      } catch (error) {
-        toast.error("Failed to undo completion", {
-          style: { background: "#EF4444", color: "white" },
-        });
-      }
-    },
-    [updateItem, logActivity]
-  );
 
   const handleConfirmComplete = useCallback(async () => {
     if (!itemToComplete) return;
@@ -264,10 +168,6 @@ export default function OrderManagementPage() {
 
       toast.success("Item marked as completed", {
         style: { background: "#10B981", color: "white" },
-        action: {
-          label: "Undo",
-          onClick: () => undoItemCompletion(updatedItem),
-        },
       });
     } catch (error) {
       toast.error("Failed to mark item as completed", {
@@ -277,7 +177,7 @@ export default function OrderManagementPage() {
       setIsConfirmationOpen(false);
       setItemToComplete(null);
     }
-  }, [board, updateItem, itemToComplete, undoItemCompletion, logActivity]);
+  }, [board, updateItem, itemToComplete]);
 
   const onGetLabel = useCallback((item: Item) => {
     setSelectedItem(item);
@@ -307,11 +207,31 @@ export default function OrderManagementPage() {
     }
   };
 
+  const undoStatusChange = useCallback(
+    async (item: Item, previousStatus: ItemStatus) => {
+      try {
+        const restoredItem = {
+          ...item,
+          status: previousStatus,
+          completedAt: undefined,
+        };
+
+        await updateItem(restoredItem);
+      } catch (error) {
+        console.error("Failed to undo status change:", error);
+        toast.error("Failed to undo status change", {
+          style: { background: "#EF4444", color: "white" },
+        });
+      }
+    },
+    [updateItem]
+  );
+
   const onDragEnd = useCallback(
     async (result: DropResult, provided: ResponderProvided) => {
       const { source, destination, draggableId } = result;
 
-      if (!destination) return;
+      if (!destination || !board) return;
 
       if (
         source.droppableId === destination.droppableId &&
@@ -319,15 +239,6 @@ export default function OrderManagementPage() {
       ) {
         return;
       }
-
-      if (!board) return;
-
-      const movedItemIndex = board.items_page.items.findIndex(
-        (item) => item.id === draggableId
-      );
-      if (movedItemIndex === -1) return;
-
-      const movedItem = { ...board.items_page.items[movedItemIndex] };
 
       const newStatus = Object.values(ItemStatus).find(
         (status) => status === destination.droppableId
@@ -337,82 +248,39 @@ export default function OrderManagementPage() {
         return;
       }
 
-      const updatedItems = [...board.items_page.items];
-      updatedItems.splice(movedItemIndex, 1);
+      const sourceStatus = source.droppableId as ItemStatus;
+      const statusChanged = sourceStatus !== newStatus;
 
-      const statusChanged = movedItem.status !== newStatus;
-      if (statusChanged) {
-        movedItem.status = newStatus;
-        if (newStatus === ItemStatus.Done) {
-          movedItem.completedAt = Date.now();
-        } else {
-          delete movedItem.completedAt;
-        }
+      try {
+        await reorderItems(
+          draggableId,
+          sourceStatus,
+          newStatus,
+          destination.index
+        );
 
-        try {
-          await collection!.updateOne(
-            { id: board.id },
-            { $set: { "items_page.items": updatedItems } }
+        if (statusChanged) {
+          const movedItem = board.items_page.items.find(
+            (item) => item.id === draggableId
           );
-
-          setBoard((prevBoard) => ({
-            ...prevBoard!,
-            items_page: {
-              ...prevBoard!.items_page,
-              items: updatedItems,
-            },
-          }));
-
-          await logActivity(
-            movedItem.id!,
-            "status_change",
-            [
-              {
-                field: "status",
-                oldValue: source.droppableId,
-                newValue: newStatus,
+          if (movedItem) {
+            toast.success(getStatusChangeMessage(newStatus), {
+              style: { background: "#10B981", color: "white" },
+              action: {
+                label: "Undo",
+                onClick: () => undoStatusChange(movedItem, sourceStatus),
               },
-            ],
-            {
-              customerName: movedItem.values?.find(
-                (v) => v.columnName === ColumnTitles.Customer_Name
-              )?.text,
-              design: movedItem.values?.find(
-                (v) => v.columnName === ColumnTitles.Design
-              )?.text,
-              size: movedItem.values?.find(
-                (v) => v.columnName === ColumnTitles.Size
-              )?.text,
-            }
-          );
-
-          toast.success(getStatusChangeMessage(newStatus), {
-            style: { background: "#10B981", color: "white" },
-            action: {
-              label: "Undo",
-              onClick: () =>
-                undoStatusChange(movedItem, source.droppableId as ItemStatus),
-            },
-          });
-        } catch (error) {
-          toast.error(
-            "Failed to update item status and order. Please try again.",
-            {
-              style: { background: "#EF4444", color: "white" },
-            }
-          );
+            });
+          }
         }
+      } catch (error) {
+        console.error("Failed to update item status:", error);
+        toast.error("Failed to update item status. Please try again.", {
+          style: { background: "#EF4444", color: "white" },
+        });
       }
     },
-    [
-      board,
-      collection,
-      setBoard,
-      settings.groupingField,
-      settings.showCompletedOrders,
-      searchTerm,
-      logActivity,
-    ]
+    [board, reorderItems, undoStatusChange]
   );
 
   const getUniqueGroupValues = useCallback((items: Item[], field: string) => {
@@ -539,76 +407,11 @@ export default function OrderManagementPage() {
           ...item,
           deleted: false,
         };
-
-        await updateItem(restoredItem, "status", true);
-
-        await logActivity(
-          item.id,
-          "restore",
-          [
-            {
-              field: "deleted",
-              oldValue: "true",
-              newValue: "false",
-              isRestore: true,
-            },
-          ],
-          {
-            customerName: item.values?.find(
-              (v) => v.columnName === ColumnTitles.Customer_Name
-            )?.text,
-            design: item.values?.find(
-              (v) => v.columnName === ColumnTitles.Design
-            )?.text,
-            size: item.values?.find((v) => v.columnName === ColumnTitles.Size)
-              ?.text,
-          }
-        );
+        await updateItem(restoredItem);
+        toast.success("Item restored");
       } catch (error) {
-        toast.error("Failed to undo deletion", {
-          style: { background: "#EF4444", color: "white" },
-        });
-      }
-    },
-    [updateItem, logActivity]
-  );
-
-  const undoStatusChange = useCallback(
-    async (item: Item, previousStatus: ItemStatus) => {
-      try {
-        const restoredItem = {
-          ...item,
-          status: previousStatus,
-          completedAt:
-            previousStatus === ItemStatus.Done ? Date.now() : undefined,
-        };
-
-        await updateItem(restoredItem, "status", true);
-
-        await logActivity(
-          item.id!,
-          "status_change",
-          [
-            {
-              field: "status",
-              oldValue: item.status,
-              newValue: previousStatus,
-              isRestore: true,
-            },
-          ],
-          {
-            customerName: item.values?.find(
-              (v) => v.columnName === ColumnTitles.Customer_Name
-            )?.text,
-            design: item.values?.find(
-              (v) => v.columnName === ColumnTitles.Design
-            )?.text,
-            size: item.values?.find((v) => v.columnName === ColumnTitles.Size)
-              ?.text,
-          }
-        );
-      } catch (error) {
-        toast.error("Failed to undo status change", {
+        console.error("Failed to restore item:", error);
+        toast.error("Failed to restore item", {
           style: { background: "#EF4444", color: "white" },
         });
       }
@@ -651,17 +454,17 @@ export default function OrderManagementPage() {
     }
   }, [isWeeklyPlannerOpen]);
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  const handleUpdateItem = async (item: Item, changedField?: ColumnTitles) => {
+    await updateItem(item, changedField);
+  };
 
-  if (!collection || !user) {
-    return (
-      <div>
-        Error: Unable to connect to the database. Please try again later.
-      </div>
-    );
-  }
+  const handleAddNewItem = async (newItem: Partial<Item>) => {
+    await addNewItem(newItem);
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    await deleteItem(itemId);
+  };
 
   if (!orderSettingsContext) {
     return (
@@ -699,7 +502,7 @@ export default function OrderManagementPage() {
                 onGetLabel={onGetLabel}
                 onMarkCompleted={markItemCompleted}
                 onShip={shipItem}
-                onUpdate={updateItem}
+                onUpdate={handleUpdateItem}
               />
             </div>
             <div
@@ -711,7 +514,7 @@ export default function OrderManagementPage() {
               )}
             >
               {board && isWeeklyPlannerOpen && (
-                <div className="h-full bg-white dark:bg-gray-800 shadow-lg rounded-l-lg">
+                <div className="h-full bg-white dark:bg-transparent shadow-lg rounded-l-lg">
                   <WeeklySchedule
                     key={isWeeklyPlannerOpen ? "open" : "closed"}
                     boardId={board.id}
@@ -750,7 +553,7 @@ export default function OrderManagementPage() {
         board={board}
         isOpen={isNewItemModalOpen}
         onClose={() => setIsNewItemModalOpen(false)}
-        onSubmit={addNewItem}
+        onSubmit={handleAddNewItem}
       />
       <Dialog
         open={isShippingDashboardOpen}

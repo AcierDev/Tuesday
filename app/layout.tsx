@@ -10,11 +10,9 @@ import {
   OrderSettingsProvider,
   useOrderSettings,
 } from "@/contexts/OrderSettingsContext";
-import { RealmAppProvider } from "@/hooks/useRealmApp";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { SettingsPanel } from "@/components/setttings/SettingsPanel";
 import { UserProvider } from "@/contexts/UserContext";
-import { InventoryProvider } from "@/contexts/InventoryContext";
 import { Toaster } from "sonner";
 
 // Load custom fonts
@@ -70,17 +68,12 @@ export default function RootLayout({
     <html className={`${geistSans.variable} ${geistMono.variable}`} lang="en">
       <body className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <ThemeProvider enableSystem attribute="class" defaultTheme="dark">
-          <RealmAppProvider>
-            <OrderSettingsProvider>
-              <UserProvider>
-                <InventoryProvider>
-                  <LayoutContent>{children}</LayoutContent>
-                </InventoryProvider>
-              </UserProvider>
-            </OrderSettingsProvider>
-          </RealmAppProvider>
+          <OrderSettingsProvider>
+            <UserProvider>
+              <LayoutContent>{children}</LayoutContent>
+            </UserProvider>
+          </OrderSettingsProvider>
         </ThemeProvider>
-        <Toaster />
       </body>
     </html>
   );

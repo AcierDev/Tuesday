@@ -6,7 +6,6 @@ import { cn } from "@/utils/functions";
 import { ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Item, WeeklySchedules, ColumnTitles } from "@/typings/types";
-import { useRealmApp } from "@/hooks/useRealmApp";
 import { Button } from "@/components/ui/button";
 import { WORK_DAYS } from "@/typings/constants";
 
@@ -16,7 +15,6 @@ type WeekViewProps = {
   schedule: WeeklySchedules;
   toggleDateSelection: (date: Date) => void;
   isMobile: boolean;
-  weeklySchedule?: WeeklySchedules;
   items: Item[];
 };
 
@@ -26,54 +24,14 @@ export function WeekView({
   schedule,
   toggleDateSelection,
   isMobile,
-  weeklySchedule = {},
   items = [],
 }: WeekViewProps) {
-  const { boardCollection: collection } = useRealmApp();
-  const [localItems, setLocalItems] = useState<Item[]>(items);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
 
   // Add this effect to collapse all chevrons when week changes
   useEffect(() => {
     setExpandedDays({}); // Reset all expanded states when week changes
   }, [currentWeekStart]);
-
-  // Load items directly in the WeekView component
-  useEffect(() => {
-    async function loadLocalItems() {
-      if (items.length > 0) {
-        setLocalItems(items);
-        return;
-      }
-
-      if (!collection) return;
-
-      try {
-        const board = await collection.findOne({});
-        if (!board) {
-          console.warn("No board found");
-          return;
-        }
-
-        const loadedItems = board.items_page.items || [];
-        setLocalItems(loadedItems);
-      } catch (err) {
-        console.error("Failed to load items in WeekView:", err);
-      }
-    }
-
-    loadLocalItems();
-  }, [collection, items]);
-
-  console.log("WeekView Props:", {
-    currentWeekStart,
-    weeklySchedule: JSON.stringify(weeklySchedule),
-    schedule: JSON.stringify(schedule),
-    items: {
-      length: items.length,
-      itemIds: items.map((item) => item.id).slice(0, 3),
-    },
-  });
 
   const toggleDay = (day: string) => {
     setExpandedDays((prev) => ({
@@ -83,7 +41,7 @@ export function WeekView({
   };
 
   const getItemDetails = (itemId: string) => {
-    const item = localItems.find((i) => i.id === itemId);
+    const item = items.find((i) => i.id === itemId);
     if (!item) {
       console.log(`Item not found: ${itemId}`);
       return null;
@@ -252,9 +210,7 @@ export function WeekView({
                   <div className="p-3 space-y-2">
                     {daySchedule.length > 0 ? (
                       daySchedule.map((scheduleItem) => {
-                        console.log("Processing schedule item:", scheduleItem);
                         const details = getItemDetails(scheduleItem.id);
-                        console.log("Item details:", details);
 
                         if (!details) return null;
 

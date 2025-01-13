@@ -57,19 +57,130 @@ export type Item = {
 };
 
 export type ShippingDetails = {
-  id?: number;
+  name: string;
+  company: string | null;
+  street1: string;
+  street2: string;
+  street3: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string | null;
+  residential: boolean;
+  addressVerified: string;
   buyer_email?: string;
-  name?: string;
-  street1?: string;
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  shipments?: Shipment[];
 };
 
-export interface Shipment {
-  tracking_code: string;
-}
+export type OrderTrackingInfo = {
+  orderId: string;
+  trackers: Tracker[];
+};
+
+export type Tracker = {
+  id: string; // Unique identifier, begins with "trk_"
+  object: "Tracker"; // Object type
+  mode: "test" | "production"; // API mode
+  tracking_code: string; // Tracking code provided by carrier
+  status: TrackerStatus; // Current status of package
+  status_detail: StatusDetail; // Additional status details
+  signed_by: string | null; // Name of person who signed for package
+  weight: number | null; // Weight in ounces
+  est_delivery_date: string | null; // Estimated delivery date
+  shipment_id: string | null; // Associated EasyPost Shipment ID
+  carrier: string; // Name of carrier
+  tracking_details: TrackingDetail[]; // Array of tracking events
+  carrier_detail: CarrierDetail | null; // Additional carrier information
+  public_url: string; // Public tracking URL
+  fees: Fee[]; // Array of associated fees
+  created_at: string; // Creation timestamp
+  updated_at: string; // Last update timestamp
+};
+
+export type TrackerStatus =
+  | "unknown"
+  | "pre_transit"
+  | "in_transit"
+  | "out_for_delivery"
+  | "delivered"
+  | "available_for_pickup"
+  | "return_to_sender"
+  | "failure"
+  | "cancelled"
+  | "error";
+
+export type StatusDetail =
+  | "address_correction"
+  | "arrived_at_destination"
+  | "arrived_at_facility"
+  | "arrived_at_pickup_location"
+  | "awaiting_information"
+  | "cancelled"
+  | "damaged"
+  | "delayed"
+  | "delivery_exception"
+  | "departed_facility"
+  | "departed_origin_facility"
+  | "expired"
+  | "failure"
+  | "held"
+  | "in_transit"
+  | "label_created"
+  | "lost"
+  | "missorted"
+  | "out_for_delivery"
+  | "received_at_destination_facility"
+  | "received_at_origin_facility"
+  | "refused"
+  | "return"
+  | "status_update"
+  | "transferred_to_destination_carrier"
+  | "transit_exception"
+  | "unknown"
+  | "weather_delay";
+
+export type TrackingDetail = {
+  object: "TrackingDetail";
+  message: string; // Summary of scan event
+  description: string;
+  status: TrackerStatus; // Status at time of scan
+  status_detail: StatusDetail; // Additional status details
+  datetime: string; // Timestamp of scan
+  source: string; // Source of scan information
+  carrier_code: string;
+  tracking_location: TrackingLocation;
+};
+
+export type TrackingLocation = {
+  object: "TrackingLocation";
+  city: string | null; // City where scan occurred
+  state: string | null; // State where scan occurred
+  country: string | null; // Country where scan occurred
+  zip: string | null; // Postal code where scan occurred
+};
+
+export type CarrierDetail = {
+  object: "CarrierDetail";
+  service: string | null; // Service level
+  container_type: string | null; // Type of shipping container
+  est_delivery_date_local: string | null; // Local estimated delivery date
+  est_delivery_time_local: string | null; // Local estimated delivery time
+  origin_location: string | null; // Origin location string
+  origin_tracking_location: TrackingLocation | null;
+  destination_location: string | null; // Destination location string
+  destination_tracking_location: TrackingLocation | null;
+  guaranteed_delivery_date: string | null;
+  alternate_identifier: string | null;
+  initial_delivery_attempt: string | null;
+};
+
+export type Fee = {
+  object: "Fee";
+  type: string;
+  amount: string;
+  charged: boolean;
+  refunded: boolean;
+};
 
 export type ColumnValue = ColorColumnValue | GenericColumnValue;
 
@@ -195,7 +306,8 @@ export type ItemSortFuncs = Record<
 >;
 
 export type Settings = {
-  automatronSettings: AutomatronSettings;
+  isAutomatronActive?: boolean;
+  automatronRules?: AutomatronRule[];
 };
 
 export type AutomatronSettings = PartialRecord<
@@ -208,8 +320,7 @@ type PartialRecord<K extends keyof any, T> = {
 };
 
 export type AutomatronRule = {
-  id: string;
-  field: string;
+  field: ColumnTitles;
   value: string;
   newStatus: string;
 };
