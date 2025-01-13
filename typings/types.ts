@@ -128,6 +128,7 @@ export enum ColumnTitles {
   Notes = "Notes",
   Rating = "Rating",
   Labels = "Labels",
+  Status = "Status",
 }
 
 export enum ColumnTypes {
@@ -558,4 +559,40 @@ export interface PatternConfig {
   name: string;
   description?: string;
   timestamp: string;
+}
+
+export type ActivityType =
+  | "update"
+  | "create"
+  | "delete"
+  | "status_change"
+  | "restore";
+
+// First, let's define the change type to be used consistently
+export type ActivityChange = {
+  field: ColumnTitles | "status" | "deleted";
+  oldValue?: string;
+  newValue: string;
+  isRestore?: boolean;
+};
+
+// Define the base activity interface first
+export interface BaseActivity {
+  id: string;
+  itemId: string;
+  timestamp: number;
+  type: ActivityType;
+  userName?: string;
+  changes: ActivityChange[];
+  metadata?: {
+    customerName?: string;
+    design?: string;
+    size?: string;
+  };
+}
+
+// Then define the full Activity interface extending BaseActivity
+export interface Activity extends BaseActivity {
+  _id: string;
+  id: string;
 }

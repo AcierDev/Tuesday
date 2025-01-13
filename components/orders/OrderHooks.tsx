@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useActivities } from "@/hooks/useActivities";
 
 import {
   type Board,
   type Item,
   ItemStatus,
-  RouterSettings,
+  OrderSettings,
   ColumnTitles,
+  AutomatronRule,
 } from "@/typings/types";
 
 export function useBoardOperations(
   initialBoard: Board | null,
   collection: any,
-  settings: RouterSettings
+  settings: OrderSettings
 ) {
   const [board, setBoard] = useState<Board | null>(initialBoard);
+  const { logActivity } = useActivities();
 
   useEffect(() => {
     setBoard(initialBoard);
@@ -27,8 +30,7 @@ export function useBoardOperations(
       const updatedItem = { ...item };
       let statusChanged = false;
 
-      // Filter rules that apply to the changed field
-      const relevantRules = settings.automatronRules.filter(
+      const relevantRules: AutomatronRule[] = settings.automatronRules.filter(
         (rule) => rule.field === changedField
       );
 
@@ -44,9 +46,6 @@ export function useBoardOperations(
       }
 
       if (statusChanged) {
-        console.log(
-          `Automatron applied: Item ${item.id} status updated to ${updatedItem.status}`
-        );
         toast.success(`Item status updated to ${updatedItem.status}`, {
           style: { background: "#10B981", color: "white" },
         });
@@ -58,15 +57,18 @@ export function useBoardOperations(
   );
 
   const updateItem = useCallback(
-    async (updatedItem: Item, changedField: ColumnTitles) => {
+    async (
+      updatedItem: Item,
+      changedField: ColumnTitles | "status",
+      skipActivityLog?: boolean
+    ) => {
       if (!board) return;
-      console.log(
-        `Updating item: ${updatedItem.id}, Changed field: ${changedField}`
-      );
 
       const currentTimestamp = Date.now();
+      const originalItem = board.items_page.items.find(
+        (item) => item.id === updatedItem.id
+      );
 
-      // Update the lastModifiedTimestamp for the changed column
       const updatedValues = updatedItem.values.map((value) =>
         value.columnName === changedField
           ? { ...value, lastModifiedTimestamp: currentTimestamp }
@@ -87,36 +89,68 @@ export function useBoardOperations(
             },
           }
         );
-        console.log("Database update successful");
 
-        const updatedItems = board.items_page.items.map((item) =>
-          item.id === itemWithUpdatedTimestamp.id
-            ? itemWithUpdatedTimestamp
-            : item
-        );
+        if (!skipActivityLog && changedField !== "status") {
+          const originalValue = originalItem?.values.find(
+            (v) => v.columnName === changedField
+          )?.text;
+          const newValue = updatedItem.values.find(
+            (v) => v.columnName === changedField
+          )?.text;
+
+          if (originalValue !== newValue) {
+            await logActivity(
+              updatedItem.id,
+              "update",
+              [
+                {
+                  field: changedField,
+                  oldValue: originalValue || "",
+                  newValue: newValue || "",
+                },
+              ],
+              {
+                customerName: updatedItem.values.find(
+                  (v) => v.columnName === ColumnTitles.Customer_Name
+                )?.text,
+                design: updatedItem.values.find(
+                  (v) => v.columnName === ColumnTitles.Design
+                )?.text,
+                size: updatedItem.values.find(
+                  (v) => v.columnName === ColumnTitles.Size
+                )?.text,
+              }
+            );
+          }
+        }
 
         setBoard({
           ...board,
-          items_page: { ...board.items_page, items: updatedItems },
+          items_page: {
+            ...board.items_page,
+            items: board.items_page.items.map((item) =>
+              item.id === itemWithUpdatedTimestamp.id
+                ? itemWithUpdatedTimestamp
+                : item
+            ),
+          },
         });
-        console.log("Board state updated");
 
         const itemWithRulesApplied = applyAutomatronRules(
           itemWithUpdatedTimestamp,
-          changedField
+          changedField as ColumnTitles
         );
         if (itemWithRulesApplied.status !== itemWithUpdatedTimestamp.status) {
           await updateItem(itemWithRulesApplied, changedField);
         }
       } catch (err) {
-        console.error("Failed to update item", err);
         toast.error("Failed to update item. Please try again.", {
           style: { background: "#EF4444", color: "white" },
         });
         throw err;
       }
     },
-    [board, collection, applyAutomatronRules]
+    [board, collection, applyAutomatronRules, logActivity]
   );
 
   const addNewItem = useCallback(
@@ -134,13 +168,24 @@ export function useBoardOperations(
         isScheduled: false,
       };
 
-      console.log("Adding new item:", fullNewItem);
-
       try {
         await collection.updateOne(
           { id: board.id },
           { $push: { "items_page.items": fullNewItem } }
         );
+
+        await logActivity(fullNewItem.id, "create", [], {
+          customerName: fullNewItem.values.find(
+            (v) => v.columnName === ColumnTitles.Customer_Name
+          )?.text,
+          design: fullNewItem.values.find(
+            (v) => v.columnName === ColumnTitles.Design
+          )?.text,
+          size: fullNewItem.values.find(
+            (v) => v.columnName === ColumnTitles.Size
+          )?.text,
+        });
+
         setBoard({
           ...board,
           items_page: {
@@ -148,34 +193,36 @@ export function useBoardOperations(
             items: [...board.items_page.items, fullNewItem],
           },
         });
-        console.log("New item added successfully");
+
         toast.success("New item added successfully", {
           style: { background: "#10B981", color: "white" },
         });
       } catch (err) {
-        console.error("Failed to add new item", err);
         toast.error("Failed to add new item. Please try again.", {
           style: { background: "#EF4444", color: "white" },
         });
       }
     },
-    [board, collection]
+    [board, collection, logActivity]
   );
 
   const deleteItem = useCallback(
     async (itemId: string) => {
       if (!board) return;
 
-      console.log(`Marking item as deleted: ${itemId}`);
-
       try {
-        // Update the item in the database
+        const itemToDelete = board.items_page.items.find(
+          (item) => item.id === itemId
+        );
+        if (!itemToDelete) {
+          return;
+        }
+
         await collection.updateOne(
           { id: board.id, "items_page.items.id": itemId },
           { $set: { "items_page.items.$.deleted": true } }
         );
 
-        // Update the local state
         setBoard({
           ...board,
           items_page: {
@@ -186,18 +233,28 @@ export function useBoardOperations(
           },
         });
 
-        console.log("Item marked as deleted successfully");
+        await logActivity(itemId, "delete", [], {
+          customerName: itemToDelete.values.find(
+            (v) => v.columnName === ColumnTitles.Customer_Name
+          )?.text,
+          design: itemToDelete.values.find(
+            (v) => v.columnName === ColumnTitles.Design
+          )?.text,
+          size: itemToDelete.values.find(
+            (v) => v.columnName === ColumnTitles.Size
+          )?.text,
+        });
+
         toast.success("Item marked as deleted successfully", {
           style: { background: "#10B981", color: "white" },
         });
       } catch (err) {
-        console.error("Failed to mark item as deleted", err);
         toast.error("Failed to delete item. Please try again.", {
           style: { background: "#EF4444", color: "white" },
         });
       }
     },
-    [board, collection, setBoard]
+    [board, collection, setBoard, logActivity]
   );
 
   return {

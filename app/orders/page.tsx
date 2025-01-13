@@ -14,10 +14,17 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { useRealmApp } from "@/hooks/useRealmApp";
-import { Item, ItemStatus, ItemSizes, ItemDesigns } from "@/typings/types";
+import {
+  Item,
+  ItemStatus,
+  ItemSizes,
+  ItemDesigns,
+  ColumnTitles,
+} from "@/typings/types";
 import { useBoardOperations } from "@/components/orders/OrderHooks";
 import { ShippingDashboard } from "@/components/shipping/ShippingDashboard";
 import { cn } from "@/utils/functions";
+import { useActivities } from "@/hooks/useActivities";
 
 export default function OrderManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,6 +46,8 @@ export default function OrderManagementPage() {
   const { board, setBoard, updateItem, addNewItem, deleteItem } =
     useBoardOperations(null, collection, settings);
 
+  const { logActivity } = useActivities();
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -52,9 +61,7 @@ export default function OrderManagementPage() {
     try {
       const loadedBoard = await collection.findOne({});
       setBoard(loadedBoard);
-      console.log("Board loaded:", loadedBoard);
     } catch (err) {
-      console.error("Failed to load board", err);
       toast.error("Failed to load board. Please refresh the page.", {
         style: { background: "#EF4444", color: "white" },
       });
@@ -134,14 +141,12 @@ export default function OrderManagementPage() {
     const watchForChanges = async () => {
       while (isActive) {
         try {
-          console.log("Starting board watch");
           for await (const change of collection.watch()) {
             if (!isActive) break;
             switch (change.operationType) {
               case "update": {
                 const { fullDocument } = change;
                 if (fullDocument && fullDocument.id === board?.id) {
-                  console.log("Board updated:", fullDocument);
                   setBoard(fullDocument);
                 }
                 break;
@@ -149,7 +154,6 @@ export default function OrderManagementPage() {
             }
           }
         } catch (error) {
-          console.error("Watch stream error:", error);
           await new Promise((resolve) => setTimeout(resolve, 5000));
         }
       }
@@ -163,7 +167,6 @@ export default function OrderManagementPage() {
   }, [collection, board?.id, setBoard]);
 
   const shipItem = useCallback(async (itemId: string) => {
-    console.log(`Shipping item: ${itemId}`);
     toast.success("Item marked as shipped", {
       style: { background: "#10B981", color: "white" },
     });
@@ -184,15 +187,36 @@ export default function OrderManagementPage() {
         };
         delete restoredItem.previousStatus;
 
-        await updateItem(restoredItem);
+        await updateItem(restoredItem, "status", true);
+        await logActivity(
+          item.id!,
+          "status_change",
+          [
+            {
+              field: "status",
+              oldValue: ItemStatus.Done,
+              newValue: restoredItem.status,
+              isRestore: true,
+            },
+          ],
+          {
+            customerName: item.values?.find(
+              (v) => v.columnName === ColumnTitles.Customer_Name
+            )?.text,
+            design: item.values?.find(
+              (v) => v.columnName === ColumnTitles.Design
+            )?.text,
+            size: item.values?.find((v) => v.columnName === ColumnTitles.Size)
+              ?.text,
+          }
+        );
       } catch (error) {
-        console.error("Failed to undo completion:", error);
         toast.error("Failed to undo completion", {
           style: { background: "#EF4444", color: "white" },
         });
       }
     },
-    [updateItem]
+    [updateItem, logActivity]
   );
 
   const handleConfirmComplete = useCallback(async () => {
@@ -213,7 +237,30 @@ export default function OrderManagementPage() {
         completedAt: Date.now(),
       };
 
-      await updateItem(updatedItem);
+      await updateItem(updatedItem, "status", true);
+
+      await logActivity(
+        itemToUpdate.id!,
+        "status_change",
+        [
+          {
+            field: "status",
+            oldValue: itemToUpdate.status,
+            newValue: ItemStatus.Done,
+          },
+        ],
+        {
+          customerName: itemToUpdate.values?.find(
+            (v) => v.columnName === ColumnTitles.Customer_Name
+          )?.text,
+          design: itemToUpdate.values?.find(
+            (v) => v.columnName === ColumnTitles.Design
+          )?.text,
+          size: itemToUpdate.values?.find(
+            (v) => v.columnName === ColumnTitles.Size
+          )?.text,
+        }
+      );
 
       toast.success("Item marked as completed", {
         style: { background: "#10B981", color: "white" },
@@ -223,7 +270,6 @@ export default function OrderManagementPage() {
         },
       });
     } catch (error) {
-      console.error("Failed to mark item as completed:", error);
       toast.error("Failed to mark item as completed", {
         style: { background: "#EF4444", color: "white" },
       });
@@ -231,10 +277,9 @@ export default function OrderManagementPage() {
       setIsConfirmationOpen(false);
       setItemToComplete(null);
     }
-  }, [board, updateItem, itemToComplete, undoItemCompletion]);
+  }, [board, updateItem, itemToComplete, undoItemCompletion, logActivity]);
 
   const onGetLabel = useCallback((item: Item) => {
-    console.log(`Getting label for item: ${item.id}`);
     setSelectedItem(item);
     setIsShippingDashboardOpen(true);
   }, []);
@@ -289,10 +334,6 @@ export default function OrderManagementPage() {
       );
 
       if (!newStatus) {
-        console.warn(
-          "Invalid destination droppableId:",
-          destination.droppableId
-        );
         return;
       }
 
@@ -302,39 +343,49 @@ export default function OrderManagementPage() {
       const statusChanged = movedItem.status !== newStatus;
       if (statusChanged) {
         movedItem.status = newStatus;
-        // Set completedAt when the item is moved to Done status
         if (newStatus === ItemStatus.Done) {
           movedItem.completedAt = Date.now();
         } else {
-          // If the item is moved out of Done status, remove the completedAt field
           delete movedItem.completedAt;
         }
-      }
 
-      let insertionIndex = 0;
-      for (const group of sortedGroups) {
-        if (group.id === newStatus) break;
-        insertionIndex += group.items.length;
-      }
+        try {
+          await collection!.updateOne(
+            { id: board.id },
+            { $set: { "items_page.items": updatedItems } }
+          );
 
-      insertionIndex += destination.index;
-      updatedItems.splice(insertionIndex, 0, movedItem);
+          setBoard((prevBoard) => ({
+            ...prevBoard!,
+            items_page: {
+              ...prevBoard!.items_page,
+              items: updatedItems,
+            },
+          }));
 
-      try {
-        await collection!.updateOne(
-          { id: board.id },
-          { $set: { "items_page.items": updatedItems } }
-        );
+          await logActivity(
+            movedItem.id!,
+            "status_change",
+            [
+              {
+                field: "status",
+                oldValue: source.droppableId,
+                newValue: newStatus,
+              },
+            ],
+            {
+              customerName: movedItem.values?.find(
+                (v) => v.columnName === ColumnTitles.Customer_Name
+              )?.text,
+              design: movedItem.values?.find(
+                (v) => v.columnName === ColumnTitles.Design
+              )?.text,
+              size: movedItem.values?.find(
+                (v) => v.columnName === ColumnTitles.Size
+              )?.text,
+            }
+          );
 
-        setBoard((prevBoard) => ({
-          ...prevBoard!,
-          items_page: {
-            ...prevBoard!.items_page,
-            items: updatedItems,
-          },
-        }));
-
-        if (statusChanged) {
           toast.success(getStatusChangeMessage(newStatus), {
             style: { background: "#10B981", color: "white" },
             action: {
@@ -343,15 +394,14 @@ export default function OrderManagementPage() {
                 undoStatusChange(movedItem, source.droppableId as ItemStatus),
             },
           });
+        } catch (error) {
+          toast.error(
+            "Failed to update item status and order. Please try again.",
+            {
+              style: { background: "#EF4444", color: "white" },
+            }
+          );
         }
-      } catch (error) {
-        console.error("Failed to update item status and order:", error);
-        toast.error(
-          "Failed to update item status and order. Please try again.",
-          {
-            style: { background: "#EF4444", color: "white" },
-          }
-        );
       }
     },
     [
@@ -361,6 +411,7 @@ export default function OrderManagementPage() {
       settings.groupingField,
       settings.showCompletedOrders,
       searchTerm,
+      logActivity,
     ]
   );
 
@@ -488,15 +539,38 @@ export default function OrderManagementPage() {
           ...item,
           deleted: false,
         };
-        await updateItem(restoredItem);
+
+        await updateItem(restoredItem, "status", true);
+
+        await logActivity(
+          item.id,
+          "restore",
+          [
+            {
+              field: "deleted",
+              oldValue: "true",
+              newValue: "false",
+              isRestore: true,
+            },
+          ],
+          {
+            customerName: item.values?.find(
+              (v) => v.columnName === ColumnTitles.Customer_Name
+            )?.text,
+            design: item.values?.find(
+              (v) => v.columnName === ColumnTitles.Design
+            )?.text,
+            size: item.values?.find((v) => v.columnName === ColumnTitles.Size)
+              ?.text,
+          }
+        );
       } catch (error) {
-        console.error("Failed to undo deletion:", error);
         toast.error("Failed to undo deletion", {
           style: { background: "#EF4444", color: "white" },
         });
       }
     },
-    [updateItem]
+    [updateItem, logActivity]
   );
 
   const undoStatusChange = useCallback(
@@ -508,15 +582,38 @@ export default function OrderManagementPage() {
           completedAt:
             previousStatus === ItemStatus.Done ? Date.now() : undefined,
         };
-        await updateItem(restoredItem);
+
+        await updateItem(restoredItem, "status", true);
+
+        await logActivity(
+          item.id!,
+          "status_change",
+          [
+            {
+              field: "status",
+              oldValue: item.status,
+              newValue: previousStatus,
+              isRestore: true,
+            },
+          ],
+          {
+            customerName: item.values?.find(
+              (v) => v.columnName === ColumnTitles.Customer_Name
+            )?.text,
+            design: item.values?.find(
+              (v) => v.columnName === ColumnTitles.Design
+            )?.text,
+            size: item.values?.find((v) => v.columnName === ColumnTitles.Size)
+              ?.text,
+          }
+        );
       } catch (error) {
-        console.error("Failed to undo status change:", error);
         toast.error("Failed to undo status change", {
           style: { background: "#EF4444", color: "white" },
         });
       }
     },
-    [updateItem]
+    [updateItem, logActivity]
   );
 
   const onDelete = useCallback(
@@ -525,9 +622,12 @@ export default function OrderManagementPage() {
         const itemToDelete = board?.items_page.items.find(
           (item) => item.id === itemId
         );
-        if (!itemToDelete) return;
+        if (!itemToDelete) {
+          return;
+        }
 
         await deleteItem(itemId);
+
         toast.success("Item deleted", {
           style: { background: "#10B981", color: "white" },
           action: {
@@ -536,7 +636,6 @@ export default function OrderManagementPage() {
           },
         });
       } catch (error) {
-        console.error("Failed to delete item:", error);
         toast.error("Failed to delete item", {
           style: { background: "#EF4444", color: "white" },
         });

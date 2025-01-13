@@ -57,7 +57,6 @@ export default function Dashboard() {
       const loadedBoard = await collection.findOne({});
       if (loadedBoard) {
         setBoard(loadedBoard);
-        console.log("Board loaded:", loadedBoard);
       } else {
         throw new Error("No board found");
       }
