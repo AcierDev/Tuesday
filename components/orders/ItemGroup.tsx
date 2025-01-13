@@ -530,14 +530,30 @@ export function ItemGroupSection({
                                   ) : columnValue.columnName ===
                                     ColumnTitles.Due ? (
                                     <>
-                                      <div onClick={handleDueDateClick}>
-                                        <CustomTableCell
-                                          board={board}
-                                          columnValue={columnValue}
-                                          isNameColumn={cellIndex === 0}
-                                          item={item}
-                                          onUpdate={onUpdate}
-                                        />
+                                      <div
+                                        onClick={handleDueDateClick}
+                                        className="relative"
+                                      >
+                                        {item.isScheduled && (
+                                          <div
+                                            className="absolute -left-2 -top-[10px] w-3 h-3 bg-amber-400"
+                                            style={{
+                                              borderBottomRightRadius: "100%",
+                                              borderTopRightRadius: "0",
+                                              borderBottomLeftRadius: "0",
+                                              borderTopLeftRadius: "0",
+                                            }}
+                                          />
+                                        )}
+                                        <div className="relative">
+                                          <CustomTableCell
+                                            board={board}
+                                            columnValue={columnValue}
+                                            isNameColumn={cellIndex === 0}
+                                            item={item}
+                                            onUpdate={onUpdate}
+                                          />
+                                        </div>
                                       </div>
                                       {showPreviewTooltip &&
                                         hoveredColumn === ColumnTitles.Due &&
@@ -764,14 +780,30 @@ export function ItemGroupSection({
                             </>
                           ) : columnValue.columnName === ColumnTitles.Due ? (
                             <>
-                              <div onClick={handleDueDateClick}>
-                                <CustomTableCell
-                                  board={board}
-                                  columnValue={columnValue}
-                                  isNameColumn={cellIndex === 0}
-                                  item={item}
-                                  onUpdate={onUpdate}
-                                />
+                              <div
+                                onClick={handleDueDateClick}
+                                className="relative"
+                              >
+                                {item.isScheduled && (
+                                  <div
+                                    className="absolute -left-2 -top-[10px] w-3 h-3 bg-amber-400"
+                                    style={{
+                                      borderBottomRightRadius: "100%",
+                                      borderTopRightRadius: "0",
+                                      borderBottomLeftRadius: "0",
+                                      borderTopLeftRadius: "0",
+                                    }}
+                                  />
+                                )}
+                                <div className="relative">
+                                  <CustomTableCell
+                                    board={board}
+                                    columnValue={columnValue}
+                                    isNameColumn={cellIndex === 0}
+                                    item={item}
+                                    onUpdate={onUpdate}
+                                  />
+                                </div>
                               </div>
                               {showPreviewTooltip &&
                                 hoveredColumn === ColumnTitles.Due &&
