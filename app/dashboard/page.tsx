@@ -12,6 +12,7 @@ import {
   Activity,
   Clock,
   GripVertical,
+  Calendar,
 } from "lucide-react";
 import { OrderCompletionChart } from "@/components/dashboard/OrderCompletionChart";
 import { RecentActivityFeed } from "@/components/dashboard/RecentActivityFeed";
@@ -28,6 +29,7 @@ import { GluingActivityChart } from "@/components/dashboard/GluingActicityChart"
 import { cn } from "@/utils/functions";
 import TopPerformers from "@/components/dashboard/TopPerformers";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { TodaysSchedule } from "@/components/dashboard/TodaysSchedule";
 
 type TimeRange = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -130,6 +132,17 @@ export default function Dashboard() {
         ),
         visible: true,
       },
+      {
+        id: "todaysSchedule",
+        title: "Today's Schedule",
+        icon: (
+          <Calendar className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
+        ),
+        content: (board, timeRange, selectedEmployee) => (
+          <TodaysSchedule board={board} selectedEmployee={selectedEmployee} />
+        ),
+        visible: true,
+      },
     ];
 
     const savedCards = localStorage.getItem("dashboardCards");
@@ -179,7 +192,7 @@ export default function Dashboard() {
           Everwood Overview
         </h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {[...Array(5)].map((_, i) => (
+          {[...Array(6)].map((_, i) => (
             <Card key={i} className="dark:bg-gray-800 h-[400px]">
               <CardHeader>
                 <Skeleton className="h-4 w-[250px]" />
