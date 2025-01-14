@@ -109,11 +109,8 @@ export default function Dashboard() {
         icon: (
           <Activity className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
         ),
-        content: (board, _, selectedEmployee) => (
-          <RecentActivityFeed
-            board={board}
-            selectedEmployee={selectedEmployee}
-          />
+        content: (_, __, selectedEmployee) => (
+          <RecentActivityFeed selectedEmployee={selectedEmployee} />
         ),
         visible: true,
       },

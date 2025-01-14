@@ -44,7 +44,7 @@ export function RecentActivityFeed({
     fetchActivities();
     const interval = setInterval(fetchActivities, 30000);
     return () => clearInterval(interval);
-  }, [selectedEmployee]);
+  }, []);
 
   const getStatusColor = (text: string, field?: string) => {
     const normalizedText = text.toLowerCase().trim();
@@ -181,32 +181,39 @@ export function RecentActivityFeed({
   };
 
   const filteredActivities = useMemo(() => {
-    let filtered;
+    let filtered = activities;
+
+    // Apply employee filter first if selected
+    if (selectedEmployee) {
+      filtered = filtered.filter(
+        (activity) => activity.userName === selectedEmployee
+      );
+    }
+
+    // Then apply tab filtering
     switch (activeTab) {
       case "updates":
-        filtered = activities.filter((activity) => activity.type === "update");
+        filtered = filtered.filter((activity) => activity.type === "update");
         break;
       case "status":
-        filtered = activities.filter(
+        filtered = filtered.filter(
           (activity) => activity.type === "status_change"
         );
         break;
       case "deleted":
-        filtered = activities.filter(
+        filtered = filtered.filter(
           (activity) =>
             activity.type === "delete" || activity.type === "restore"
         );
         break;
       case "creations":
-        filtered = activities.filter((activity) => activity.type === "create");
+        filtered = filtered.filter((activity) => activity.type === "create");
         break;
-      default:
-        filtered = activities;
     }
-    // Sort activities by timestamp in descending order (newest first)
-    // and take the first 10
+
+    // Sort activities by timestamp in descending order and take the first 10
     return filtered.sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
-  }, [activities, activeTab]);
+  }, [activities, activeTab, selectedEmployee]);
 
   if (isLoading) {
     return (
