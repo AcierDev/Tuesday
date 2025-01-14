@@ -1,23 +1,11 @@
 import { NextResponse } from "next/server";
 import { Activity } from "@/typings/types";
-import { MongoClient, ObjectId } from "mongodb";
-
-let cachedClient: MongoClient | null = null;
-
-async function getMongoClient() {
-  if (cachedClient) {
-    return cachedClient;
-  }
-
-  const client = new MongoClient(process.env.MONGODB_URI!);
-  await client.connect();
-  cachedClient = client;
-  return client;
-}
+import { ObjectId } from "mongodb";
+import { getDb } from "../db/connect";
 
 async function getCollection() {
-  const client = await getMongoClient();
-  return client.db("react-web-app").collection<Activity>("activities");
+  const db = await getDb();
+  return db.collection<Activity>("activities");
 }
 
 export async function POST(request: Request) {

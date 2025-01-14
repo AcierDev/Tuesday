@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import clientPromise from "../../db/connect";
+import { getDb } from "../../db/connect";
 import { Board } from "@/typings/types";
 
 export async function GET() {
@@ -10,19 +10,34 @@ export async function GET() {
   const response = new Response(
     new ReadableStream({
       async start(controller) {
-        const client = await clientPromise;
-        const db = client.db("react-web-app");
+        const db = await getDb();
         const collection = db.collection<Board>(`${process.env.NODE_ENV}`);
 
         let changeStream: any;
         let isConnectionActive = true;
+
+        // Add cleanup function
+        const cleanup = async () => {
+          isConnectionActive = false;
+          if (changeStream) {
+            try {
+              await changeStream.close();
+            } catch (error) {
+              console.error("Error closing change stream:", error);
+            }
+          }
+          try {
+            controller.close();
+          } catch (closeError) {
+            // Controller might already be closed, ignore the error
+          }
+        };
 
         try {
           changeStream = collection.watch();
 
           // Handle each change
           for await (const change of changeStream) {
-            // Check if the connection is still active before sending data
             if (!isConnectionActive) break;
 
             if (change.operationType === "update") {
@@ -38,42 +53,28 @@ export async function GET() {
                     board,
                   });
 
-                  // Wrap the enqueue in a try-catch to handle closed controller
                   try {
                     controller.enqueue(`data: ${message}\n\n`);
                   } catch (enqueueError) {
                     console.log(
                       "Failed to send message, connection might be closed"
                     );
-                    isConnectionActive = false;
+                    await cleanup();
                     break;
                   }
                 }
               } catch (findError) {
                 console.error("Error fetching updated board:", findError);
-                // Continue watching for other changes even if one update fails
                 continue;
               }
             }
           }
         } catch (error) {
           console.error("Change stream error:", error);
-          isConnectionActive = false;
-        } finally {
-          // Clean up the change stream
-          if (changeStream) {
-            await changeStream.close();
-          }
-          // Ensure controller is closed if not already
-          try {
-            controller.close();
-          } catch (closeError) {
-            // Controller might already be closed, ignore the error
-          }
+          await cleanup();
         }
       },
       cancel() {
-        // This will be called when the client disconnects
         console.log("Client disconnected");
       },
     }),

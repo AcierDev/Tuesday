@@ -7,11 +7,14 @@ interface TrackingState {
   trackingInfo: OrderTrackingInfo[];
   isLoading: boolean;
   error: string | null;
+  eventSource: EventSource | null;
 
   // Actions
   fetchTrackingInfo: () => Promise<void>;
   addTrackingInfo: (tracking: OrderTrackingInfo) => Promise<void>;
   updateTrackingInfo: (tracking: OrderTrackingInfo) => Promise<void>;
+  startWatchingChanges: () => void;
+  stopWatchingChanges: () => void;
   init: () => Promise<void>;
 }
 
@@ -21,6 +24,37 @@ export const useTrackingStore = create<TrackingState>()(
       trackingInfo: [],
       isLoading: false,
       error: null,
+      eventSource: null,
+
+      startWatchingChanges: () => {
+        const eventSource = new EventSource("/api/boards/changes");
+
+        eventSource.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.type === "tracker.updated") {
+            const store = get();
+            store.fetchTrackingInfo();
+          }
+        };
+
+        eventSource.onerror = () => {
+          eventSource.close();
+          setTimeout(() => {
+            const store = get();
+            store.startWatchingChanges();
+          }, 5000);
+        };
+
+        set({ eventSource });
+      },
+
+      stopWatchingChanges: () => {
+        const { eventSource } = get();
+        if (eventSource) {
+          eventSource.close();
+          set({ eventSource: null });
+        }
+      },
 
       fetchTrackingInfo: async () => {
         try {
@@ -94,6 +128,7 @@ export const useTrackingStore = create<TrackingState>()(
       init: async () => {
         const store = get();
         await store.fetchTrackingInfo();
+        store.startWatchingChanges();
       },
     }),
     { name: "tracking-store" }

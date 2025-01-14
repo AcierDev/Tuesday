@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import clientPromise from "../db/connect";
+import { getDb } from "../db/connect";
 
 export async function GET() {
   try {
-    const client = await clientPromise;
-    const db = client.db(process.env.MONGODB_DB);
+    const db = await getDb();
     const collection = db.collection(
       `cuttingHistory-${process.env.NEXT_PUBLIC_MODE}`
     );
@@ -21,8 +20,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const client = await clientPromise;
-    const db = client.db(process.env.MONGODB_DB);
+    const db = await getDb();
     const collection = db.collection(
       `cuttingHistory-${process.env.NEXT_PUBLIC_MODE}`
     );

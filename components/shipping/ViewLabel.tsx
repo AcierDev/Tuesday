@@ -52,7 +52,6 @@ export function ViewLabel({ orderId }: { orderId: string }) {
   const [pdfExists, setPdfExists] = useState<boolean | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [pdfUrls, setPdfUrls] = useState<string[]>([]);
