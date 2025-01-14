@@ -36,7 +36,10 @@ export function TodaysSchedule({
   const weekKey = format(currentWeekStart, "yyyy-MM-dd");
 
   // Get today's schedule from the weekly schedules
-  const todaysSchedule = board.weeklySchedules?.[weekKey]?.[todayName] || [];
+  const todaysSchedule: { id: string; done: boolean }[] =
+    board.weeklySchedules?.[weekKey]?.[
+      todayName as keyof (typeof board.weeklySchedules)[string]
+    ] || [];
 
   // Helper function to get item value
   const getItemValue = (item: Item, columnName: ColumnTitles): string => {
@@ -54,7 +57,7 @@ export function TodaysSchedule({
 
   // Get the full items for today's schedule
   const scheduledItems = todaysSchedule
-    .map((scheduleItem) => {
+    .map((scheduleItem: { id: string; done: boolean }) => {
       const item = board.items_page.items.find(
         (i) => i.id === scheduleItem.id && !i.deleted
       );
@@ -63,14 +66,17 @@ export function TodaysSchedule({
     .filter((item): item is { item: Item; done: boolean } => item !== null);
 
   // Calculate total blocks for the day
-  const totalBlocks = scheduledItems.reduce((total, { item }) => {
+  const totalBlocks = scheduledItems.reduce((total: number, { item }) => {
     return total + calculateBlocks(item);
   }, 0);
 
   // Calculate total blocks for completed items
-  const completedBlocks = scheduledItems.reduce((total, { item, done }) => {
-    return done ? total + calculateBlocks(item) : total;
-  }, 0);
+  const completedBlocks = scheduledItems.reduce(
+    (total: number, { item, done }) => {
+      return done ? total + calculateBlocks(item) : total;
+    },
+    0
+  );
 
   // Add helper function for due date
   const getFormattedDueDate = (item: Item): string => {
@@ -78,15 +84,6 @@ export function TodaysSchedule({
     if (!dueDate) return "";
     return format(new Date(dueDate), "MM/dd/yyyy");
   };
-
-  if (dayIndex > 4) {
-    // Friday or Saturday
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        No schedule for weekend
-      </div>
-    );
-  }
 
   if (scheduledItems.length === 0) {
     return (
@@ -134,7 +131,7 @@ export function TodaysSchedule({
           </div>
         </div>
 
-        {scheduledItems.map(({ item, done }, index) => {
+        {scheduledItems.map(({ item, done }, index: number) => {
           const blocks = calculateBlocks(item);
           const dueDate = getFormattedDueDate(item);
 

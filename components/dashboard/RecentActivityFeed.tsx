@@ -183,14 +183,7 @@ export function RecentActivityFeed({
   const filteredActivities = useMemo(() => {
     let filtered = activities;
 
-    // Apply employee filter first if selected
-    if (selectedEmployee) {
-      filtered = filtered.filter(
-        (activity) => activity.userName === selectedEmployee
-      );
-    }
-
-    // Then apply tab filtering
+    // Apply tab filtering first
     switch (activeTab) {
       case "updates":
         filtered = filtered.filter((activity) => activity.type === "update");
@@ -211,8 +204,18 @@ export function RecentActivityFeed({
         break;
     }
 
-    // Sort activities by timestamp in descending order and take the first 10
-    return filtered.sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
+    // Sort all activities by timestamp first
+    filtered = filtered.sort((a, b) => b.timestamp - a.timestamp);
+
+    // Then apply employee filter if selected
+    if (selectedEmployee) {
+      filtered = filtered.filter(
+        (activity) => activity.userName === selectedEmployee
+      );
+    }
+
+    // Finally take the first 10 items
+    return filtered.slice(0, 10);
   }, [activities, activeTab, selectedEmployee]);
 
   if (isLoading) {
