@@ -2,7 +2,8 @@
 
 import { Activity } from "@/typings/types";
 import { useActivities } from "@/hooks/useActivities";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function RecentActivityFeed({
   selectedEmployee,
@@ -24,12 +25,14 @@ export function RecentActivityFeed({
   const { getActivities } = useActivities();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("all");
+  const [currentTab, setCurrentTab] = useState("all");
 
   useEffect(() => {
     const fetchActivities = async () => {
       try {
         setIsLoading(true);
-        const response = await getActivities(undefined, 10);
+        const response = await getActivities(undefined);
         setActivities(response.activities || []);
       } catch (error) {
         setActivities([]);
@@ -41,7 +44,7 @@ export function RecentActivityFeed({
     fetchActivities();
     const interval = setInterval(fetchActivities, 30000);
     return () => clearInterval(interval);
-  }, [selectedEmployee]);
+  }, []);
 
   const getStatusColor = (text: string, field?: string) => {
     const normalizedText = text.toLowerCase().trim();
@@ -152,7 +155,7 @@ export function RecentActivityFeed({
         );
       case "create":
         return (
-          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+          <span className="text-purple-600 dark:text-purple-400 font-medium">
             Created new order
           </span>
         );
@@ -176,6 +179,44 @@ export function RecentActivityFeed({
         );
     }
   };
+
+  const filteredActivities = useMemo(() => {
+    let filtered = activities;
+
+    // Apply tab filtering first
+    switch (activeTab) {
+      case "updates":
+        filtered = filtered.filter((activity) => activity.type === "update");
+        break;
+      case "status":
+        filtered = filtered.filter(
+          (activity) => activity.type === "status_change"
+        );
+        break;
+      case "deleted":
+        filtered = filtered.filter(
+          (activity) =>
+            activity.type === "delete" || activity.type === "restore"
+        );
+        break;
+      case "creations":
+        filtered = filtered.filter((activity) => activity.type === "create");
+        break;
+    }
+
+    // Sort all activities by timestamp first
+    filtered = filtered.sort((a, b) => b.timestamp - a.timestamp);
+
+    // Then apply employee filter if selected
+    if (selectedEmployee) {
+      filtered = filtered.filter(
+        (activity) => activity.userName === selectedEmployee
+      );
+    }
+
+    // Finally take the first 10 items
+    return filtered.slice(0, 10);
+  }, [activities, activeTab, selectedEmployee]);
 
   if (isLoading) {
     return (
@@ -203,9 +244,9 @@ export function RecentActivityFeed({
     );
   }
 
-  return (
+  const ActivityList = () => (
     <div className="space-y-4 pt-1">
-      {activities.map((activity) => (
+      {filteredActivities.map((activity) => (
         <div key={activity.id} className="flex items-center space-x-4">
           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
           <div className="flex-1">
@@ -231,5 +272,64 @@ export function RecentActivityFeed({
         </div>
       ))}
     </div>
+  );
+
+  return (
+    <Tabs
+      defaultValue={currentTab}
+      className="w-full"
+      onValueChange={(value) => {
+        setActiveTab(value);
+        setCurrentTab(value);
+      }}
+    >
+      <TabsList className="grid w-full grid-cols-5 mb-4">
+        <TabsTrigger
+          value="all"
+          className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+        >
+          All
+        </TabsTrigger>
+        <TabsTrigger
+          value="updates"
+          className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+        >
+          Updates
+        </TabsTrigger>
+        <TabsTrigger
+          value="status"
+          className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+        >
+          Status Changes
+        </TabsTrigger>
+        <TabsTrigger
+          value="deleted"
+          className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+        >
+          Deleted
+        </TabsTrigger>
+        <TabsTrigger
+          value="creations"
+          className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+        >
+          Creations
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="all" className="mt-0">
+        <ActivityList />
+      </TabsContent>
+      <TabsContent value="updates" className="mt-0">
+        <ActivityList />
+      </TabsContent>
+      <TabsContent value="status" className="mt-0">
+        <ActivityList />
+      </TabsContent>
+      <TabsContent value="deleted" className="mt-0">
+        <ActivityList />
+      </TabsContent>
+      <TabsContent value="creations" className="mt-0">
+        <ActivityList />
+      </TabsContent>
+    </Tabs>
   );
 }

@@ -607,12 +607,11 @@ export default function OrderManagementPage() {
 
   const handleAddNewItem = async (newItem: Partial<Item>) => {
     try {
-      await addNewItem(newItem);
+      const createdItem = await addNewItem(newItem);
 
-      // Log the creation of a new item
-      if (newItem.id) {
+      if (createdItem?.id) {
         await logActivity(
-          newItem.id,
+          createdItem.id,
           "create",
           [
             {
@@ -622,13 +621,13 @@ export default function OrderManagementPage() {
             },
           ],
           {
-            customerName: newItem.values?.find(
+            customerName: createdItem.values?.find(
               (v) => v.columnName === ColumnTitles.Customer_Name
             )?.text,
-            design: newItem.values?.find(
+            design: createdItem.values?.find(
               (v) => v.columnName === ColumnTitles.Design
             )?.text,
-            size: newItem.values?.find(
+            size: createdItem.values?.find(
               (v) => v.columnName === ColumnTitles.Size
             )?.text,
           }

@@ -252,9 +252,11 @@ export const useOrderStore = create<OrderState>()(
           });
 
           toast.success("New item added successfully");
+          return fullNewItem;
         } catch (err) {
           console.error("Failed to add new item", err);
           toast.error("Failed to add new item. Please try again.");
+          throw err;
         }
       },
 
