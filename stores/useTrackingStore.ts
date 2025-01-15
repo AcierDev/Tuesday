@@ -115,7 +115,6 @@ export const useTrackingStore = create<TrackingState>()(
           set((state) => ({
             trackingInfo: [...state.trackingInfo, tracking],
           }));
-
           toast.success("Tracking information added successfully");
         } catch (error) {
           const errorMessage =

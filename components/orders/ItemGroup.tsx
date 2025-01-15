@@ -49,6 +49,7 @@ import { Portal } from "@/components/ui/portal";
 import { DueDateTooltip } from "./DueDateTooltip";
 import { useWeeklySchedule } from "../weekly-schedule/UseWeeklySchedule";
 import { ShippingStatusIcon } from "./ShippingStatusIcon";
+import { ShippingCell } from "../cells/ShippingCell";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
 
@@ -443,7 +444,7 @@ export function ItemGroupSection({
                                 "Shipping" as ColumnTitles
                               ) && (
                                 <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
-                                  <ShippingStatusIcon orderId={item.id} />
+                                  <ShippingCell item={item} />
                                 </TableCell>
                               )}
                               {visibleColumns

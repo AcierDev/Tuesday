@@ -246,6 +246,7 @@ export enum ColumnTypes {
   Text = "text",
   Number = "number",
   Date = "date",
+  Shipping = "shipping",
 }
 
 export enum ItemDesigns {

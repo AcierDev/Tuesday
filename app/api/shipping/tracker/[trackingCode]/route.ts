@@ -10,7 +10,10 @@ export async function GET(
   { params }: { params: { trackingCode: string } }
 ) {
   const { trackingCode } = await params;
-  const carrier = request.nextUrl.searchParams.get("carrier") || "UPS";
+  let carrier = request.nextUrl.searchParams.get("carrier") || "UPS";
+  if (carrier === "FedEx") {
+    carrier = "FedExDefault";
+  }
 
   try {
     // First try to create a new tracker
@@ -38,8 +41,14 @@ export async function GET(
           },
         }
       );
+
       if (!listResponse.ok) {
-        throw new Error("Failed to retrieve tracker");
+        const errorData = await listResponse.text();
+        console.error("EasyPost API error:", errorData);
+        return NextResponse.json(
+          { error: `Failed to retrieve tracker: ${errorData}` },
+          { status: listResponse.status }
+        );
       }
 
       const listData = await listResponse.json();
@@ -47,7 +56,10 @@ export async function GET(
         return NextResponse.json(listData.trackers[0]);
       }
 
-      throw new Error("No tracking information found");
+      return NextResponse.json(
+        { error: "No tracking information found" },
+        { status: 404 }
+      );
     }
 
     const trackerData = await createResponse.json();
@@ -55,7 +67,10 @@ export async function GET(
   } catch (error) {
     console.error("Error with tracker:", error);
     return NextResponse.json(
-      { error: "Failed to fetch tracking information" },
+      {
+        error: "Failed to fetch tracking information",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

@@ -18,6 +18,7 @@ import {
 } from "@/typings/types";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import React, { useEffect } from "react";
+import { ShippingCell } from "./ShippingCell";
 
 export const CustomTableCell = ({
   item,
@@ -61,6 +62,8 @@ export const CustomTableCell = ({
 
   const cellContent = () => {
     switch (columnValue.type) {
+      case ColumnTypes.Shipping:
+        return <ShippingCell item={item} />;
       case ColumnTypes.Dropdown:
         if (columnValue.columnName === ColumnTitles.Design) {
           return (
