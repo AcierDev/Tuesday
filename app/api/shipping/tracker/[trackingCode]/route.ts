@@ -51,7 +51,6 @@ export async function GET(
     }
 
     const trackerData = await createResponse.json();
-    console.log("trackerData", trackerData);
     return NextResponse.json(trackerData);
   } catch (error) {
     console.error("Error with tracker:", error);

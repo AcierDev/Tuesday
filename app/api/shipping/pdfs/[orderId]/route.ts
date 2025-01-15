@@ -6,12 +6,31 @@ export async function GET(
 ) {
   try {
     const orderId = (await params).orderId;
+
+    if (!orderId) {
+      return NextResponse.json(
+        { error: "Order ID is required" },
+        { status: 400 }
+      );
+    }
+
     const response = await fetch(`http://144.172.71.72:3003/pdfs/${orderId}`);
+
+    if (!response.ok) {
+      throw new Error(`PDF service returned status: ${response.status}`);
+    }
+
     const data = await response.json();
-    return NextResponse.json(data);
+
+    // Ensure we're returning an array
+    return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (error) {
+    console.error(`Failed to fetch PDFs for order ${params.orderId}:`, error);
     return NextResponse.json(
-      { error: "Failed to fetch PDFs" },
+      {
+        error: "Failed to fetch PDFs",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }

@@ -363,41 +363,43 @@ export function ItemGroupSection({
                           Shipping
                         </TableHead>
                       )}
-                      {visibleColumns.map((columnName) => (
-                        <TableHead
-                          key={columnName}
-                          className={cn(
-                            "border border-gray-200 dark:border-gray-600 p-2 text-center",
-                            columnName === ColumnTitles.Customer_Name
-                              ? "w-1/3"
-                              : ""
-                          )}
-                        >
-                          <Button
-                            className="h-8 flex items-center justify-center gap-2 w-full text-gray-900 dark:text-gray-400"
-                            disabled={isDragging}
-                            variant="ghost"
-                            onClick={() =>
-                              !isDragging && handleSort(columnName)
-                            }
+                      {visibleColumns
+                        .filter((columnName) => columnName !== "Shipping")
+                        .map((columnName) => (
+                          <TableHead
+                            key={columnName}
+                            className={cn(
+                              "border border-gray-200 dark:border-gray-600 p-2 text-center",
+                              columnName === ColumnTitles.Customer_Name
+                                ? "w-1/3"
+                                : ""
+                            )}
                           >
-                            <span>{columnName}</span>
-                            {settings.showSortingIcons ? (
-                              sortColumn === columnName ? (
-                                sortDirection === "asc" ? (
-                                  <ArrowUp className="h-4 w-4" />
-                                ) : sortDirection === "desc" ? (
-                                  <ArrowDown className="h-4 w-4" />
+                            <Button
+                              className="h-8 flex items-center justify-center gap-2 w-full text-gray-900 dark:text-gray-400"
+                              disabled={isDragging}
+                              variant="ghost"
+                              onClick={() =>
+                                !isDragging && handleSort(columnName)
+                              }
+                            >
+                              <span>{columnName}</span>
+                              {settings.showSortingIcons ? (
+                                sortColumn === columnName ? (
+                                  sortDirection === "asc" ? (
+                                    <ArrowUp className="h-4 w-4" />
+                                  ) : sortDirection === "desc" ? (
+                                    <ArrowDown className="h-4 w-4" />
+                                  ) : (
+                                    <ArrowUpDown className="h-4 w-4" />
+                                  )
                                 ) : (
                                   <ArrowUpDown className="h-4 w-4" />
                                 )
-                              ) : (
-                                <ArrowUpDown className="h-4 w-4" />
-                              )
-                            ) : null}
-                          </Button>
-                        </TableHead>
-                      ))}
+                              ) : null}
+                            </Button>
+                          </TableHead>
+                        ))}
                       <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
                         Actions
                       </TableHead>
@@ -444,136 +446,75 @@ export function ItemGroupSection({
                                   <ShippingStatusIcon orderId={item.id} />
                                 </TableCell>
                               )}
-                              {visibleColumns.map((columnName, cellIndex) => {
-                                const columnValue = item.values.find(
-                                  (value) => value.columnName === columnName
-                                ) || {
-                                  columnName,
-                                  type:
-                                    boardConfig.columns[columnName]?.type ||
-                                    ColumnTypes.Text,
-                                  text: "\u00A0", // Unicode non-breaking space
-                                };
-                                const showPreviewTooltip =
-                                  hoveredItemId === item.id &&
-                                  hoveredColumn === columnName;
-                                return (
-                                  <TableCell
-                                    key={`${item.id}-${columnName}`}
-                                    className={cn(
-                                      "border border-gray-200 dark:border-gray-600 p-2 relative",
-                                      cellIndex === 0 ? "w-1/3" : "",
-                                      getStatusColor(columnValue)
-                                    )}
-                                    onMouseEnter={(e) => {
-                                      if (
-                                        columnName === ColumnTitles.Size ||
-                                        columnName === ColumnTitles.Design
-                                      ) {
-                                        handlePreviewMouseEnter(
-                                          item.id,
-                                          columnName,
-                                          e.currentTarget
-                                        );
-                                      } else if (
-                                        columnName === ColumnTitles.Due
-                                      ) {
-                                        handleMouseEnter(
-                                          item.id,
-                                          columnName,
-                                          e.currentTarget
-                                        );
-                                      }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      if (
-                                        columnName === ColumnTitles.Size ||
-                                        columnName === ColumnTitles.Design
-                                      ) {
-                                        handlePreviewMouseLeave();
-                                      } else if (
-                                        columnName === ColumnTitles.Due
-                                      ) {
-                                        handleMouseLeave();
-                                      }
-                                    }}
-                                  >
-                                    {columnName === ColumnTitles.Size ||
-                                    columnName === ColumnTitles.Design ? (
-                                      <>
-                                        <CustomTableCell
-                                          board={board}
-                                          columnValue={columnValue}
-                                          isNameColumn={cellIndex === 0}
-                                          item={item}
-                                          onUpdate={onUpdate}
-                                        />
-                                        {showPreviewTooltip && (
-                                          <Portal>
-                                            <div
-                                              className="fixed pointer-events-none"
-                                              style={{
-                                                top:
-                                                  hoveredElementRef.current?.getBoundingClientRect()
-                                                    .top || 0,
-                                                left:
-                                                  hoveredElementRef.current?.getBoundingClientRect()
-                                                    .right || 0,
-                                                zIndex: 9999,
-                                              }}
-                                            >
-                                              <div className="pointer-events-auto">
-                                                <ItemPreviewTooltip
-                                                  item={item}
-                                                  onMouseEnter={() =>
-                                                    setIsPreviewTooltipHovered(
-                                                      true
-                                                    )
-                                                  }
-                                                  onMouseLeave={() => {
-                                                    setIsPreviewTooltipHovered(
-                                                      false
-                                                    );
-                                                    setHoveredItemId(null);
-                                                    setHoveredColumn(null);
-                                                  }}
-                                                />
-                                              </div>
-                                            </div>
-                                          </Portal>
-                                        )}
-                                      </>
-                                    ) : columnValue.columnName ===
-                                      ColumnTitles.Due ? (
-                                      <>
-                                        <div
-                                          onClick={handleDueDateClick}
-                                          className="relative"
-                                        >
-                                          {item.isScheduled && (
-                                            <div
-                                              className="absolute -left-2 -top-[10px] w-3 h-3 bg-amber-400"
-                                              style={{
-                                                borderBottomRightRadius: "100%",
-                                                borderTopRightRadius: "0",
-                                                borderBottomLeftRadius: "0",
-                                                borderTopLeftRadius: "0",
-                                              }}
-                                            />
-                                          )}
-                                          <div className="relative">
-                                            <CustomTableCell
-                                              board={board}
-                                              columnValue={columnValue}
-                                              isNameColumn={cellIndex === 0}
-                                              item={item}
-                                              onUpdate={onUpdate}
-                                            />
-                                          </div>
-                                        </div>
-                                        {showPreviewTooltip &&
-                                          hoveredColumn === ColumnTitles.Due &&
-                                          !ignoreHoverRef.current && (
+                              {visibleColumns
+                                .filter(
+                                  (columnName) => columnName !== "Shipping"
+                                )
+                                .map((columnName, cellIndex) => {
+                                  const columnValue = item.values.find(
+                                    (value) => value.columnName === columnName
+                                  ) || {
+                                    columnName,
+                                    type:
+                                      boardConfig.columns[columnName]?.type ||
+                                      ColumnTypes.Text,
+                                    text: "\u00A0", // Unicode non-breaking space
+                                  };
+                                  const showPreviewTooltip =
+                                    hoveredItemId === item.id &&
+                                    hoveredColumn === columnName;
+                                  return (
+                                    <TableCell
+                                      key={`${item.id}-${columnName}`}
+                                      className={cn(
+                                        "border border-gray-200 dark:border-gray-600 p-2 relative",
+                                        cellIndex === 0 ? "w-1/3" : "",
+                                        getStatusColor(columnValue)
+                                      )}
+                                      onMouseEnter={(e) => {
+                                        if (
+                                          columnName === ColumnTitles.Size ||
+                                          columnName === ColumnTitles.Design
+                                        ) {
+                                          handlePreviewMouseEnter(
+                                            item.id,
+                                            columnName,
+                                            e.currentTarget
+                                          );
+                                        } else if (
+                                          columnName === ColumnTitles.Due
+                                        ) {
+                                          handleMouseEnter(
+                                            item.id,
+                                            columnName,
+                                            e.currentTarget
+                                          );
+                                        }
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        if (
+                                          columnName === ColumnTitles.Size ||
+                                          columnName === ColumnTitles.Design
+                                        ) {
+                                          handlePreviewMouseLeave();
+                                        } else if (
+                                          columnName === ColumnTitles.Due
+                                        ) {
+                                          handleMouseLeave();
+                                        }
+                                      }}
+                                    >
+                                      {columnName === ColumnTitles.Size ||
+                                      columnName === ColumnTitles.Design ? (
+                                        <>
+                                          <CustomTableCell
+                                            board={board}
+                                            columnValue={columnValue}
+                                            isNameColumn={cellIndex === 0}
+                                            item={item}
+                                            onUpdate={onUpdate}
+                                          />
+                                          {showPreviewTooltip && (
                                             <Portal>
                                               <div
                                                 className="fixed pointer-events-none"
@@ -588,53 +529,120 @@ export function ItemGroupSection({
                                                 }}
                                               >
                                                 <div className="pointer-events-auto">
-                                                  <DueDateTooltip
-                                                    onSelectDay={(date) =>
-                                                      handleDaySelect(
-                                                        item.id,
-                                                        date
-                                                      )
-                                                    }
+                                                  <ItemPreviewTooltip
+                                                    item={item}
                                                     onMouseEnter={() =>
-                                                      setIsDueDateTooltipHovered(
+                                                      setIsPreviewTooltipHovered(
                                                         true
                                                       )
                                                     }
                                                     onMouseLeave={() => {
-                                                      setIsDueDateTooltipHovered(
+                                                      setIsPreviewTooltipHovered(
                                                         false
                                                       );
                                                       setHoveredItemId(null);
                                                       setHoveredColumn(null);
                                                     }}
-                                                    item={item}
-                                                    weeklySchedules={
-                                                      weeklySchedules
-                                                    }
-                                                    onAddToSchedule={
-                                                      addItemToDay
-                                                    }
-                                                    onScheduleUpdate={
-                                                      handleScheduleUpdate
-                                                    }
                                                   />
                                                 </div>
                                               </div>
                                             </Portal>
                                           )}
-                                      </>
-                                    ) : (
-                                      <CustomTableCell
-                                        board={board}
-                                        columnValue={columnValue}
-                                        isNameColumn={cellIndex === 0}
-                                        item={item}
-                                        onUpdate={onUpdate}
-                                      />
-                                    )}
-                                  </TableCell>
-                                );
-                              })}
+                                        </>
+                                      ) : columnValue.columnName ===
+                                        ColumnTitles.Due ? (
+                                        <>
+                                          <div
+                                            onClick={handleDueDateClick}
+                                            className="relative"
+                                          >
+                                            {item.isScheduled && (
+                                              <div
+                                                className="absolute -left-2 -top-[10px] w-3 h-3 bg-amber-400"
+                                                style={{
+                                                  borderBottomRightRadius:
+                                                    "100%",
+                                                  borderTopRightRadius: "0",
+                                                  borderBottomLeftRadius: "0",
+                                                  borderTopLeftRadius: "0",
+                                                }}
+                                              />
+                                            )}
+                                            <div className="relative">
+                                              <CustomTableCell
+                                                board={board}
+                                                columnValue={columnValue}
+                                                isNameColumn={cellIndex === 0}
+                                                item={item}
+                                                onUpdate={onUpdate}
+                                              />
+                                            </div>
+                                          </div>
+                                          {showPreviewTooltip &&
+                                            hoveredColumn ===
+                                              ColumnTitles.Due &&
+                                            !ignoreHoverRef.current && (
+                                              <Portal>
+                                                <div
+                                                  className="fixed pointer-events-none"
+                                                  style={{
+                                                    top:
+                                                      hoveredElementRef.current?.getBoundingClientRect()
+                                                        .top || 0,
+                                                    left:
+                                                      hoveredElementRef.current?.getBoundingClientRect()
+                                                        .right || 0,
+                                                    zIndex: 9999,
+                                                  }}
+                                                >
+                                                  <div className="pointer-events-auto">
+                                                    <DueDateTooltip
+                                                      onSelectDay={(date) =>
+                                                        handleDaySelect(
+                                                          item.id,
+                                                          date
+                                                        )
+                                                      }
+                                                      onMouseEnter={() =>
+                                                        setIsDueDateTooltipHovered(
+                                                          true
+                                                        )
+                                                      }
+                                                      onMouseLeave={() => {
+                                                        setIsDueDateTooltipHovered(
+                                                          false
+                                                        );
+                                                        setHoveredItemId(null);
+                                                        setHoveredColumn(null);
+                                                      }}
+                                                      item={item}
+                                                      weeklySchedules={
+                                                        weeklySchedules
+                                                      }
+                                                      onAddToSchedule={
+                                                        addItemToDay
+                                                      }
+                                                      onScheduleUpdate={
+                                                        handleScheduleUpdate
+                                                      }
+                                                    />
+                                                  </div>
+                                                </div>
+                                              </Portal>
+                                            )}
+                                        </>
+                                      ) : (
+                                        <CustomTableCell
+                                          board={board}
+                                          columnValue={columnValue}
+                                          isNameColumn={cellIndex === 0}
+                                          item={item}
+                                          onUpdate={onUpdate}
+                                        />
+                                      )}
+                                    </TableCell>
+                                  );
+                                })}
                               <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
                                 <ItemActions
                                   item={item}
@@ -665,37 +673,41 @@ export function ItemGroupSection({
                   <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center w-12">
                     Status
                   </TableHead>
-                  {visibleColumns.map((columnName) => (
-                    <TableHead
-                      key={columnName}
-                      className={cn(
-                        "border border-gray-200 dark:border-gray-600 p-2 text-center",
-                        columnName === ColumnTitles.Customer_Name ? "w-1/3" : ""
-                      )}
-                    >
-                      <Button
-                        className="h-8 flex items-center justify-between w-full"
-                        disabled={isDragging}
-                        variant="ghost"
-                        onClick={() => !isDragging && handleSort(columnName)}
+                  {visibleColumns
+                    .filter((columnName) => columnName !== "Shipping")
+                    .map((columnName) => (
+                      <TableHead
+                        key={columnName}
+                        className={cn(
+                          "border border-gray-200 dark:border-gray-600 p-2 text-center",
+                          columnName === ColumnTitles.Customer_Name
+                            ? "w-1/3"
+                            : ""
+                        )}
                       >
-                        {columnName}
-                        {settings.showSortingIcons ? (
-                          sortColumn === columnName ? (
-                            sortDirection === "asc" ? (
-                              <ArrowUp className="ml-2 h-4 w-4" />
-                            ) : sortDirection === "desc" ? (
-                              <ArrowDown className="ml-2 h-4 w-4" />
+                        <Button
+                          className="h-8 flex items-center justify-between w-full"
+                          disabled={isDragging}
+                          variant="ghost"
+                          onClick={() => !isDragging && handleSort(columnName)}
+                        >
+                          {columnName}
+                          {settings.showSortingIcons ? (
+                            sortColumn === columnName ? (
+                              sortDirection === "asc" ? (
+                                <ArrowUp className="ml-2 h-4 w-4" />
+                              ) : sortDirection === "desc" ? (
+                                <ArrowDown className="ml-2 h-4 w-4" />
+                              ) : (
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                              )
                             ) : (
                               <ArrowUpDown className="ml-2 h-4 w-4" />
                             )
-                          ) : (
-                            <ArrowUpDown className="ml-2 h-4 w-4" />
-                          )
-                        ) : null}
-                      </Button>
-                    </TableHead>
-                  ))}
+                          ) : null}
+                        </Button>
+                      </TableHead>
+                    ))}
                 </TableRow>
               </TableHeader>
               <TableBody key={`${group.title}-preview-body`}>
@@ -714,127 +726,69 @@ export function ItemGroupSection({
                     <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
                       <ShippingStatusIcon orderId={item.id} />
                     </TableCell>
-                    {visibleColumns.map((columnName, cellIndex) => {
-                      const columnValue = item.values.find(
-                        (value) => value.columnName === columnName
-                      ) || {
-                        columnName,
-                        type:
-                          boardConfig.columns[columnName]?.type ||
-                          ColumnTypes.Text,
-                        text: "\u00A0", // Unicode non-breaking space
-                      };
-                      const showPreviewTooltip =
-                        hoveredItemId === item.id &&
-                        hoveredColumn === columnName;
-                      return (
-                        <TableCell
-                          key={`${item.id}-${columnName}`}
-                          className={cn(
-                            "border border-gray-200 dark:border-gray-600 p-2 relative",
-                            cellIndex === 0 ? "w-1/3" : "",
-                            getStatusColor(columnValue)
-                          )}
-                          onMouseEnter={(e) => {
-                            if (
-                              columnName === ColumnTitles.Size ||
-                              columnName === ColumnTitles.Design
-                            ) {
-                              handlePreviewMouseEnter(
-                                item.id,
-                                columnName,
-                                e.currentTarget
-                              );
-                            } else if (columnName === ColumnTitles.Due) {
-                              handleMouseEnter(
-                                item.id,
-                                columnName,
-                                e.currentTarget
-                              );
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (
-                              columnName === ColumnTitles.Size ||
-                              columnName === ColumnTitles.Design
-                            ) {
-                              handlePreviewMouseLeave();
-                            } else if (columnName === ColumnTitles.Due) {
-                              handleMouseLeave();
-                            }
-                          }}
-                        >
-                          {columnName === ColumnTitles.Size ||
-                          columnName === ColumnTitles.Design ? (
-                            <>
-                              <CustomTableCell
-                                board={board}
-                                columnValue={columnValue}
-                                isNameColumn={cellIndex === 0}
-                                item={item}
-                                onUpdate={onUpdate}
-                              />
-                              {showPreviewTooltip && (
-                                <Portal>
-                                  <div
-                                    className="fixed pointer-events-none"
-                                    style={{
-                                      top:
-                                        hoveredElementRef.current?.getBoundingClientRect()
-                                          .top || 0,
-                                      left:
-                                        hoveredElementRef.current?.getBoundingClientRect()
-                                          .right || 0,
-                                      zIndex: 9999,
-                                    }}
-                                  >
-                                    <div className="pointer-events-auto">
-                                      <ItemPreviewTooltip
-                                        item={item}
-                                        onMouseEnter={() =>
-                                          setIsPreviewTooltipHovered(true)
-                                        }
-                                        onMouseLeave={() => {
-                                          setIsPreviewTooltipHovered(false);
-                                          setHoveredItemId(null);
-                                          setHoveredColumn(null);
-                                        }}
-                                      />
-                                    </div>
-                                  </div>
-                                </Portal>
-                              )}
-                            </>
-                          ) : columnValue.columnName === ColumnTitles.Due ? (
-                            <>
-                              <div
-                                onClick={handleDueDateClick}
-                                className="relative"
-                              >
-                                {item.isScheduled && (
-                                  <div
-                                    className="absolute -left-2 -top-[10px] w-3 h-3 bg-amber-400"
-                                    style={{
-                                      borderBottomRightRadius: "100%",
-                                      borderTopRightRadius: "0",
-                                      borderBottomLeftRadius: "0",
-                                      borderTopLeftRadius: "0",
-                                    }}
-                                  />
-                                )}
-                                <div className="relative">
-                                  <CustomTableCell
-                                    board={board}
-                                    columnValue={columnValue}
-                                    isNameColumn={cellIndex === 0}
-                                    item={item}
-                                    onUpdate={onUpdate}
-                                  />
-                                </div>
-                              </div>
-                              {showPreviewTooltip &&
-                                hoveredColumn === ColumnTitles.Due &&
-                                !ignoreHoverRef.current && (
+                    {visibleColumns
+                      .filter((columnName) => columnName !== "Shipping")
+                      .map((columnName, cellIndex) => {
+                        const columnValue = item.values.find(
+                          (value) => value.columnName === columnName
+                        ) || {
+                          columnName,
+                          type:
+                            boardConfig.columns[columnName]?.type ||
+                            ColumnTypes.Text,
+                          text: "\u00A0", // Unicode non-breaking space
+                        };
+                        const showPreviewTooltip =
+                          hoveredItemId === item.id &&
+                          hoveredColumn === columnName;
+                        return (
+                          <TableCell
+                            key={`${item.id}-${columnName}`}
+                            className={cn(
+                              "border border-gray-200 dark:border-gray-600 p-2 relative",
+                              cellIndex === 0 ? "w-1/3" : "",
+                              getStatusColor(columnValue)
+                            )}
+                            onMouseEnter={(e) => {
+                              if (
+                                columnName === ColumnTitles.Size ||
+                                columnName === ColumnTitles.Design
+                              ) {
+                                handlePreviewMouseEnter(
+                                  item.id,
+                                  columnName,
+                                  e.currentTarget
+                                );
+                              } else if (columnName === ColumnTitles.Due) {
+                                handleMouseEnter(
+                                  item.id,
+                                  columnName,
+                                  e.currentTarget
+                                );
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (
+                                columnName === ColumnTitles.Size ||
+                                columnName === ColumnTitles.Design
+                              ) {
+                                handlePreviewMouseLeave();
+                              } else if (columnName === ColumnTitles.Due) {
+                                handleMouseLeave();
+                              }
+                            }}
+                          >
+                            {columnName === ColumnTitles.Size ||
+                            columnName === ColumnTitles.Design ? (
+                              <>
+                                <CustomTableCell
+                                  board={board}
+                                  columnValue={columnValue}
+                                  isNameColumn={cellIndex === 0}
+                                  item={item}
+                                  onUpdate={onUpdate}
+                                />
+                                {showPreviewTooltip && (
                                   <Portal>
                                     <div
                                       className="fixed pointer-events-none"
@@ -849,42 +803,102 @@ export function ItemGroupSection({
                                       }}
                                     >
                                       <div className="pointer-events-auto">
-                                        <DueDateTooltip
-                                          onSelectDay={(date) =>
-                                            handleDaySelect(item.id, date)
-                                          }
+                                        <ItemPreviewTooltip
+                                          item={item}
                                           onMouseEnter={() =>
-                                            setIsDueDateTooltipHovered(true)
+                                            setIsPreviewTooltipHovered(true)
                                           }
                                           onMouseLeave={() => {
-                                            setIsDueDateTooltipHovered(false);
+                                            setIsPreviewTooltipHovered(false);
                                             setHoveredItemId(null);
                                             setHoveredColumn(null);
                                           }}
-                                          item={item}
-                                          weeklySchedules={weeklySchedules}
-                                          onAddToSchedule={addItemToDay}
-                                          onScheduleUpdate={
-                                            handleScheduleUpdate
-                                          }
                                         />
                                       </div>
                                     </div>
                                   </Portal>
                                 )}
-                            </>
-                          ) : (
-                            <CustomTableCell
-                              board={board}
-                              columnValue={columnValue}
-                              isNameColumn={cellIndex === 0}
-                              item={item}
-                              onUpdate={onUpdate}
-                            />
-                          )}
-                        </TableCell>
-                      );
-                    })}
+                              </>
+                            ) : columnValue.columnName === ColumnTitles.Due ? (
+                              <>
+                                <div
+                                  onClick={handleDueDateClick}
+                                  className="relative"
+                                >
+                                  {item.isScheduled && (
+                                    <div
+                                      className="absolute -left-2 -top-[10px] w-3 h-3 bg-amber-400"
+                                      style={{
+                                        borderBottomRightRadius: "100%",
+                                        borderTopRightRadius: "0",
+                                        borderBottomLeftRadius: "0",
+                                        borderTopLeftRadius: "0",
+                                      }}
+                                    />
+                                  )}
+                                  <div className="relative">
+                                    <CustomTableCell
+                                      board={board}
+                                      columnValue={columnValue}
+                                      isNameColumn={cellIndex === 0}
+                                      item={item}
+                                      onUpdate={onUpdate}
+                                    />
+                                  </div>
+                                </div>
+                                {showPreviewTooltip &&
+                                  hoveredColumn === ColumnTitles.Due &&
+                                  !ignoreHoverRef.current && (
+                                    <Portal>
+                                      <div
+                                        className="fixed pointer-events-none"
+                                        style={{
+                                          top:
+                                            hoveredElementRef.current?.getBoundingClientRect()
+                                              .top || 0,
+                                          left:
+                                            hoveredElementRef.current?.getBoundingClientRect()
+                                              .right || 0,
+                                          zIndex: 9999,
+                                        }}
+                                      >
+                                        <div className="pointer-events-auto">
+                                          <DueDateTooltip
+                                            onSelectDay={(date) =>
+                                              handleDaySelect(item.id, date)
+                                            }
+                                            onMouseEnter={() =>
+                                              setIsDueDateTooltipHovered(true)
+                                            }
+                                            onMouseLeave={() => {
+                                              setIsDueDateTooltipHovered(false);
+                                              setHoveredItemId(null);
+                                              setHoveredColumn(null);
+                                            }}
+                                            item={item}
+                                            weeklySchedules={weeklySchedules}
+                                            onAddToSchedule={addItemToDay}
+                                            onScheduleUpdate={
+                                              handleScheduleUpdate
+                                            }
+                                          />
+                                        </div>
+                                      </div>
+                                    </Portal>
+                                  )}
+                              </>
+                            ) : (
+                              <CustomTableCell
+                                board={board}
+                                columnValue={columnValue}
+                                isNameColumn={cellIndex === 0}
+                                item={item}
+                                onUpdate={onUpdate}
+                              />
+                            )}
+                          </TableCell>
+                        );
+                      })}
                   </TableRow>
                 ))}
               </TableBody>

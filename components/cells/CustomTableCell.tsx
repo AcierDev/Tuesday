@@ -40,7 +40,7 @@ export const CustomTableCell = ({
   useEffect(() => {
     const checkModification = () => {
       const isModified = isRecentlyModified(
-        columnValue.lastModifiedTimestamp,
+        columnValue.lastModifiedTimestamp ?? 0,
         settings.recentEditHours!
       );
       setShowNotification(isModified);
@@ -94,7 +94,7 @@ export const CustomTableCell = ({
         );
       case ColumnTypes.Text:
         if (columnValue.columnName === ColumnTitles.Labels) {
-          return <LabelCell item={item} columnValue={columnValue} />;
+          return <LabelCell item={item} />;
         }
         if (columnValue.columnName === "Notes") {
           return (

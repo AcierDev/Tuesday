@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/app/api/db/connect";
+import { getDb } from "@/app/api/db/connect";
 import { ColumnValue, Item } from "@/typings/types";
 
 export async function POST(request: Request) {
   try {
-    const db = await connectToDatabase();
+    const db = await getDb();
     const board = await db
       .collection(`${process.env.NEXT_PUBLIC_APP_URL}/board`)
       .findOne();

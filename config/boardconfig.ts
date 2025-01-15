@@ -88,7 +88,7 @@ export const boardConfig: BoardConfig = {
       id: ColumnTitles.Due,
       type: ColumnTypes.Date,
       requiredForNewItem: true,
-    }
+    },
   },
 
   // Map a group name to its overrides

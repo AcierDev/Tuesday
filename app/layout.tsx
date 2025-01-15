@@ -15,6 +15,7 @@ import { SettingsPanel } from "@/components/setttings/SettingsPanel";
 import { UserProvider } from "@/contexts/UserContext";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { UploadProgressToast } from "@/components/shipping/UploadProgress";
 
 // Load custom fonts
 const geistSans = localFont({
@@ -85,6 +86,7 @@ export default function RootLayout({
               <UserProvider>
                 <Toaster position="top-center" />
                 <LayoutContent>{children}</LayoutContent>
+                <UploadProgressToast />
               </UserProvider>
             </OrderSettingsProvider>
           </ThemeProvider>

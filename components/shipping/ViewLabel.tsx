@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,9 +17,17 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ColumnTitles, Item, Tracker } from "@/typings/types";
-import { useOrderStore } from "@/stores/useOrderStore";
+import { Tracker } from "@/typings/types";
 import { useTrackingStore } from "@/stores/useTrackingStore";
+import { useUploadProgressStore } from "@/stores/useUploadProgressStore";
+import { useShippingStore } from "@/stores/useShippingStore";
+
+export type UploadStep = {
+  id: "upload" | "extraction" | "tracking" | "database";
+  label: string;
+  status: "waiting" | "processing" | "complete" | "error";
+  message?: string;
+};
 
 type TrackingInfo = {
   trackingNumber: string;
@@ -28,18 +36,19 @@ type TrackingInfo = {
   receiver: string | null;
 };
 
-type UploadStep = {
-  id: "upload" | "extraction" | "tracking" | "database";
-  label: string;
-  status: "waiting" | "processing" | "complete" | "error";
-  message?: string;
+type ExtractedInfo = {
+  trackingNumber: string;
+  carrier: TrackingInfo["carrier"];
+  sender: string | null;
+  receiver: string | null;
 };
 
-type FileProgress = {
+export type FileProgress = {
   file: File;
   currentStep: UploadStep["id"];
-  steps: UploadStep[];
   progress: number;
+  steps: UploadStep[];
+  extractedInfo?: ExtractedInfo;
 };
 
 type ManualTrackingInput = {
@@ -48,7 +57,13 @@ type ManualTrackingInput = {
   show: boolean;
 };
 
-export function ViewLabel({ orderId }: { orderId: string }) {
+export function ViewLabel({
+  orderId,
+  onClose,
+}: {
+  orderId: string;
+  onClose?: () => void;
+}) {
   const [pdfExists, setPdfExists] = useState<boolean | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -56,7 +71,6 @@ export function ViewLabel({ orderId }: { orderId: string }) {
   const [dragActive, setDragActive] = useState(false);
   const [pdfUrls, setPdfUrls] = useState<string[]>([]);
   const [currentPdfIndex, setCurrentPdfIndex] = useState(0);
-  const [fileProgresses, setFileProgresses] = useState<FileProgress[]>([]);
   const [manualTracking, setManualTracking] = useState<ManualTrackingInput>({
     fileIndex: -1,
     fileName: "",
@@ -65,55 +79,51 @@ export function ViewLabel({ orderId }: { orderId: string }) {
   const [manualTrackingNumber, setManualTrackingNumber] = useState("");
   const [manualCarrier, setManualCarrier] =
     useState<TrackingInfo["carrier"]>("UPS");
-  const { board, updateItem } = useOrderStore();
   const { addTrackingInfo } = useTrackingStore();
+  const [pdfFilenames, setPdfFilenames] = useState<string[]>([]);
+  const { updateFileProgress, markFileComplete } = useUploadProgressStore();
 
   useEffect(() => {
-    async function checkLabels() {
-      const exists = await checkPdfExists(orderId);
-      setPdfExists(exists);
-      if (exists) {
-        fetchPdfs();
-      }
-    }
-    checkLabels();
-  }, [orderId]);
+    const checkPdfExists = async () => {
+      try {
+        const { labels, fetchAllLabels } = useShippingStore.getState();
+        fetchAllLabels();
 
-  const checkPdfExists = async (orderId: string) => {
-    try {
-      const response = await fetch(`/api/shipping/pdfs/${orderId}`);
-      if (response.ok) {
-        const pdfList = await response.json();
-        return pdfList.length > 0;
-      }
-      return false;
-    } catch (error) {
-      console.error("Error checking PDF existence:", error);
-      return false;
-    }
-  };
+        const orderLabels = labels[orderId] || [];
+        setPdfExists(orderLabels.length > 0);
 
-  const fetchPdfs = async () => {
-    try {
-      const response = await fetch(`/api/shipping/pdfs/${orderId}`);
-      if (response.ok) {
-        const pdfList = await response.json();
-        const urls = await Promise.all(
-          pdfList.map(async (pdfName: string) => {
-            const pdfResponse = await fetch(`/api/shipping/pdf/${pdfName}`);
-            const blob = await pdfResponse.blob();
-            return URL.createObjectURL(blob);
-          })
-        );
-        setPdfUrls(urls);
-      } else {
-        throw new Error("Failed to fetch PDFs");
+        if (orderLabels.length > 0) {
+          setPdfFilenames(orderLabels);
+          const urls = await Promise.all(
+            orderLabels.map(async (pdfName: string) => {
+              const pdfResponse = await fetch(`/api/shipping/pdf/${pdfName}`);
+              const blob = await pdfResponse.blob();
+              return URL.createObjectURL(blob);
+            })
+          );
+          setPdfUrls(urls);
+        }
+      } catch (error) {
+        console.error("Error checking PDF existence:", error);
+        setPdfExists(false);
       }
-    } catch (error) {
-      console.error("Error fetching PDFs:", error);
-      setError("Failed to load the PDFs. Please try again.");
-    }
-  };
+    };
+
+    checkPdfExists();
+
+    // Cleanup function to revoke object URLs
+    return () => {
+      pdfUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [orderId]); // Add pdfUrls to dependencies if you want to cleanup whenever they change
+
+  useEffect(() => {
+    // Cleanup function to revoke object URLs when component unmounts
+    // or when pdfUrls change
+    return () => {
+      pdfUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [pdfUrls]);
 
   const handleFiles = useCallback((newFiles: FileList) => {
     const pdfFiles = Array.from(newFiles).filter(
@@ -152,46 +162,12 @@ export function ViewLabel({ orderId }: { orderId: string }) {
     }
   };
 
-  const updateItemLabels = async (orderId: string, hasLabel: boolean) => {
-    if (!board) return;
-    const initialItem = board?.items_page.items.find(
-      (item) => item.id === orderId
-    );
-    if (!initialItem) return;
-
-    const updatedItem: Item = {
-      ...initialItem,
-      values: initialItem.values.map((value) =>
-        value.columnName === ColumnTitles.Labels
-          ? { ...value, text: hasLabel.toString() }
-          : value
-      ),
-    };
-    updateItem(updatedItem, ColumnTitles.Labels);
-  };
-
   const saveTrackingInfo = async (tracker: Tracker) => {
     try {
       await addTrackingInfo({
         orderId,
         trackers: [tracker],
       });
-
-      if (!board) return;
-      const initialItem = board?.items_page.items.find(
-        (item) => item.id === orderId
-      );
-      if (!initialItem) return;
-
-      const updatedItem: Item = {
-        ...initialItem,
-        values: initialItem.values.map((value) =>
-          value.columnName === ColumnTitles.Labels
-            ? { ...value, text: "true" }
-            : value
-        ),
-      };
-      updateItem(updatedItem, ColumnTitles.Labels);
     } catch (error) {
       console.error("Failed to save tracking info:", error);
       throw error;
@@ -208,28 +184,6 @@ export function ViewLabel({ orderId }: { orderId: string }) {
 
     try {
       setError(null);
-
-      setFileProgresses((prev) =>
-        prev.map((fp, idx) =>
-          idx === fileIndex
-            ? {
-                ...fp,
-                currentStep: "tracking",
-                steps: fp.steps.map((step) =>
-                  step.id === "extraction"
-                    ? {
-                        ...step,
-                        status: "complete",
-                        message: `${manualCarrier} - ${manualTrackingNumber} (manually entered)`,
-                      }
-                    : step.id === "tracking"
-                    ? { ...step, status: "processing" }
-                    : step
-                ),
-              }
-            : fp
-        )
-      );
 
       const trackerResponse = await fetch(
         `/api/shipping/tracker/${manualTrackingNumber}?carrier=${manualCarrier}`
@@ -253,25 +207,6 @@ export function ViewLabel({ orderId }: { orderId: string }) {
 
       await saveTrackingInfo(tracker);
 
-      setFileProgresses((prev) =>
-        prev.map((fp, idx) =>
-          idx === fileIndex
-            ? {
-                ...fp,
-                currentStep: "database",
-                steps: fp.steps.map((step) =>
-                  step.id === "tracking"
-                    ? { ...step, status: "complete" }
-                    : step.id === "database"
-                    ? { ...step, status: "complete" }
-                    : step
-                ),
-                progress: 100,
-              }
-            : fp
-        )
-      );
-
       // Close the modal only after successful submission
       setManualTracking({ fileIndex: -1, fileName: "", show: false });
       setManualTrackingNumber("");
@@ -286,27 +221,6 @@ export function ViewLabel({ orderId }: { orderId: string }) {
           ? error.message
           : "Failed to process tracking number"
       );
-
-      // Update progress to show error
-      setFileProgresses((prev) =>
-        prev.map((fp, idx) =>
-          idx === fileIndex
-            ? {
-                ...fp,
-                currentStep: "tracking",
-                steps: fp.steps.map((step) =>
-                  step.id === "tracking"
-                    ? {
-                        ...step,
-                        status: "error",
-                        message: "Invalid tracking number - please try again",
-                      }
-                    : step
-                ),
-              }
-            : fp
-        )
-      );
     }
   };
 
@@ -319,28 +233,8 @@ export function ViewLabel({ orderId }: { orderId: string }) {
     setUploading(true);
     setError(null);
 
-    // Initialize progress for each file
-    setFileProgresses(
-      files.map((file) => ({
-        file,
-        currentStep: "upload",
-        progress: 0,
-        steps: [
-          { id: "upload", label: "Uploading label", status: "waiting" },
-          {
-            id: "extraction",
-            label: "Extracting tracking info",
-            status: "waiting",
-          },
-          {
-            id: "tracking",
-            label: "Fetching tracking details",
-            status: "waiting",
-          },
-          { id: "database", label: "Updating database", status: "waiting" },
-        ],
-      }))
-    );
+    // Close the dialog if provided
+    onClose?.();
 
     try {
       const existingLabels = await fetch(`/api/shipping/pdfs/${orderId}`);
@@ -351,295 +245,286 @@ export function ViewLabel({ orderId }: { orderId: string }) {
         const file = files[i];
         if (!file) continue;
 
-        // Update step status
-        setFileProgresses((prev) =>
-          prev.map((fp) =>
-            fp.file === file
-              ? {
-                  ...fp,
-                  currentStep: "upload",
-                  steps: fp.steps.map((step) =>
-                    step.id === "upload"
-                      ? { ...step, status: "processing" }
-                      : step
-                  ),
-                }
-              : fp
-          )
-        );
+        // Initialize progress for this file
+        const initialProgress: FileProgress = {
+          file,
+          currentStep: "upload",
+          progress: 0,
+          steps: [
+            {
+              id: "upload",
+              label: "Uploading label",
+              status: "processing",
+            },
+            {
+              id: "extraction",
+              label: "Extracting tracking info",
+              status: "waiting",
+            },
+            {
+              id: "tracking",
+              label: "Fetching tracking details",
+              status: "waiting",
+            },
+            {
+              id: "database",
+              label: "Updating database",
+              status: "waiting",
+            },
+          ],
+        };
 
-        const formData = new FormData();
-        formData.append("label", file);
+        updateFileProgress(file.name, initialProgress);
 
-        let filename;
-        if (startIndex === 0 && i === 0) {
-          filename = `${orderId}.pdf`;
-        } else {
-          filename = `${orderId}-${startIndex + i}.pdf`;
-        }
+        try {
+          // Upload the file
+          const formData = new FormData();
+          formData.append("label", file);
 
-        // Upload label
-        const response = await fetch(
-          `/api/shipping/upload-label?filename=${filename}`,
-          {
-            method: "POST",
-            body: formData,
+          let filename =
+            startIndex === 0 && i === 0
+              ? `${orderId}.pdf`
+              : `${orderId}-${startIndex + i}.pdf`;
+
+          // Update progress for upload step
+          updateFileProgress(file.name, {
+            ...initialProgress,
+            progress: 25,
+            steps: initialProgress.steps.map((step) =>
+              step.id === "upload" ? { ...step, status: "processing" } : step
+            ),
+          });
+
+          const response = await fetch(
+            `/api/shipping/upload-label?filename=${filename}`,
+            {
+              method: "POST",
+              body: formData,
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`Upload failed for file ${i + 1}`);
           }
-        );
 
-        if (!response.ok) {
-          throw new Error(`Upload failed for file ${i + 1}`);
-        }
+          console.log("Uploaded file:", file.name);
 
-        // Update progress after upload
-        setFileProgresses((prev) =>
-          prev.map((fp) =>
-            fp.file === file
-              ? {
-                  ...fp,
-                  currentStep: "extraction",
-                  steps: fp.steps.map((step) =>
-                    step.id === "upload"
-                      ? { ...step, status: "complete" }
-                      : step.id === "extraction"
-                      ? { ...step, status: "processing" }
-                      : step
-                  ),
-                }
-              : fp
-          )
-        );
+          // Update progress for extraction step
+          updateFileProgress(file.name, {
+            ...initialProgress,
+            currentStep: "extraction",
+            progress: 50,
+            steps: initialProgress.steps.map((step) =>
+              step.id === "upload"
+                ? { ...step, status: "complete" }
+                : step.id === "extraction"
+                ? { ...step, status: "processing" }
+                : step
+            ),
+          });
 
-        // Extract tracking info
-        const trackingFormData = new FormData();
-        trackingFormData.append("label", file);
+          // Extract tracking info
+          const trackingFormData = new FormData();
+          trackingFormData.append("label", file);
 
-        const trackingResponse = await fetch("/api/shipping/extract-tracking", {
-          method: "POST",
-          body: trackingFormData,
-        });
+          const trackingResponse = await fetch(
+            "/api/shipping/extract-tracking",
+            {
+              method: "POST",
+              body: trackingFormData,
+            }
+          );
 
-        if (trackingResponse.ok) {
+          if (!trackingResponse.ok) {
+            throw new Error("Failed to extract tracking info");
+          }
+
+          console.log("Extracted tracking info for file:", file.name);
+
           const trackingInfo: TrackingInfo = await trackingResponse.json();
-          console.log("Extracted tracking info:", trackingInfo);
 
-          // Add validation for tracking number format
-          const isValidTrackingNumber = (tn: string) => {
-            if (!tn) return false;
-            const formats = {
-              UPS: /^1Z[A-Z0-9]{16}$/, // UPS format
-              FedEx: /^(\d{12}|\d{14,15})$/, // FedEx format
-              USPS: /^(\d{20}|\d{26}|\d{30}|9\d{15,21})$/, // USPS format
-              DHL: /^[0-9]{10,12}$/, // DHL format
-            };
-            const cleaned = tn.replace(/\s+/g, "");
-            const pattern = formats[trackingInfo.carrier];
-            const isValid = pattern?.test(cleaned) ?? false;
+          // Update progress with extracted info
+          updateFileProgress(file.name, {
+            ...initialProgress,
+            currentStep: "extraction",
+            progress: 50,
+            extractedInfo: trackingInfo,
+            steps: initialProgress.steps.map((step) =>
+              step.id === "upload"
+                ? { ...step, status: "complete" }
+                : step.id === "extraction"
+                ? { ...step, status: "complete" }
+                : step.id === "tracking"
+                ? { ...step, status: "processing" }
+                : step
+            ),
+          });
 
-            console.log("Tracking validation:", {
-              original: tn,
-              cleaned,
-              carrier: trackingInfo.carrier,
-              pattern: pattern?.toString(),
-              isValid,
-            });
+          // Show confirmation dialog with extracted info
+          const confirmTracking = window.confirm(
+            `Extracted tracking information:\n\n` +
+              `Tracking Number: ${trackingInfo.trackingNumber}\n` +
+              `Carrier: ${trackingInfo.carrier}\n` +
+              `Sender: ${trackingInfo.sender || "N/A"}\n` +
+              `Receiver: ${trackingInfo.receiver || "N/A"}\n\n` +
+              `Is this information correct?`
+          );
 
-            return isValid;
-          };
-
-          if (
-            !trackingInfo.trackingNumber ||
-            !isValidTrackingNumber(trackingInfo.trackingNumber)
-          ) {
-            console.log("Invalid tracking number detected:", {
-              number: trackingInfo.trackingNumber,
-              carrier: trackingInfo.carrier,
-            });
-            // Show manual entry dialog for this file
+          if (!confirmTracking) {
             setManualTracking({
               fileIndex: i,
               fileName: file.name,
               show: true,
             });
-
-            setFileProgresses((prev) =>
-              prev.map((fp, idx) =>
-                idx === i
-                  ? {
-                      ...fp,
-                      currentStep: "extraction",
-                      steps: fp.steps.map((step) =>
-                        step.id === "extraction"
-                          ? {
-                              ...step,
-                              status: "error",
-                              message: trackingInfo.trackingNumber
-                                ? "Invalid tracking number format - please enter manually"
-                                : "No tracking number found - please enter manually",
-                            }
-                          : step
-                      ),
-                    }
-                  : fp
-              )
-            );
-            continue; // Skip to next file
+            setManualTrackingNumber(trackingInfo.trackingNumber || "");
+            setManualCarrier(trackingInfo.carrier);
+            continue;
           }
 
-          // Update progress after extraction with more details
-          setFileProgresses((prev) =>
-            prev.map((fp) =>
-              fp.file === file
-                ? {
-                    ...fp,
-                    currentStep: "tracking",
-                    steps: fp.steps.map((step) =>
-                      step.id === "extraction"
-                        ? {
-                            ...step,
-                            status: "complete",
-                            message: `${trackingInfo.carrier} - ${
-                              trackingInfo.trackingNumber
-                            }${
-                              trackingInfo.sender
-                                ? ` | From: ${trackingInfo.sender}`
-                                : ""
-                            }${
-                              trackingInfo.receiver
-                                ? ` | To: ${trackingInfo.receiver}`
-                                : ""
-                            }`,
-                          }
-                        : step.id === "tracking"
-                        ? { ...step, status: "processing" }
-                        : step
-                    ),
-                  }
-                : fp
-            )
-          );
+          // Validate tracking number
+          const isValidTrackingNumber = validateTrackingNumber(trackingInfo);
 
-          // Add delay to keep progress visible
-          await new Promise((resolve) => setTimeout(resolve, 3000));
+          if (!isValidTrackingNumber) {
+            setManualTracking({
+              fileIndex: i,
+              fileName: file.name,
+              show: true,
+            });
+            continue;
+          }
 
-          // Before calling the tracker API
-          console.log("Calling tracker API with:", {
-            trackingNumber: trackingInfo.trackingNumber,
-            carrier: trackingInfo.carrier,
+          // Update progress for extraction step
+          updateFileProgress(file.name, {
+            ...initialProgress,
+            currentStep: "tracking",
+            progress: 75,
+            steps: initialProgress.steps.map((step) =>
+              step.id === "upload"
+                ? { ...step, status: "complete" }
+                : step.id === "extraction"
+                ? { ...step, status: "complete" }
+                : step.id === "tracking"
+                ? { ...step, status: "processing" }
+                : step
+            ),
           });
 
+          // Get tracker info
           const trackerResponse = await fetch(
             `/api/shipping/tracker/${trackingInfo.trackingNumber}?carrier=${trackingInfo.carrier}`
           );
 
           if (!trackerResponse.ok) {
-            const errorText = await trackerResponse.text();
-            console.log("Tracker API error:", {
-              status: trackerResponse.status,
-              statusText: trackerResponse.statusText,
-              response: errorText,
-            });
-            // Show manual entry dialog for this file
-            setManualTracking({
-              fileIndex: i,
-              fileName: file.name,
-              show: true,
-            });
-
-            setFileProgresses((prev) =>
-              prev.map((fp, idx) =>
-                idx === i
-                  ? {
-                      ...fp,
-                      currentStep: "tracking",
-                      steps: fp.steps.map((step) =>
-                        step.id === "tracking"
-                          ? {
-                              ...step,
-                              status: "error",
-                              message:
-                                "Invalid tracking number - please enter manually",
-                            }
-                          : step
-                      ),
-                    }
-                  : fp
-              )
-            );
-            continue; // Skip to next file
+            throw new Error("Failed to validate tracking number");
           }
 
           const tracker: Tracker = await trackerResponse.json();
-
-          // Update progress before database update
-          setFileProgresses((prev) =>
-            prev.map((fp) =>
-              fp.file === file
-                ? {
-                    ...fp,
-                    currentStep: "database",
-                    steps: fp.steps.map((step) =>
-                      step.id === "tracking"
-                        ? { ...step, status: "complete" }
-                        : step.id === "database"
-                        ? { ...step, status: "processing" }
-                        : step
-                    ),
-                  }
-                : fp
-            )
-          );
-
           await saveTrackingInfo(tracker);
 
-          // Update progress after database update
-          setFileProgresses((prev) =>
-            prev.map((fp) =>
-              fp.file === file
-                ? {
-                    ...fp,
-                    steps: fp.steps.map((step) =>
-                      step.id === "database"
-                        ? { ...step, status: "complete" }
-                        : step
-                    ),
-                    progress: 100,
-                  }
-                : fp
-            )
-          );
+          // Update progress for extraction step
+          updateFileProgress(file.name, {
+            ...initialProgress,
+            currentStep: "database",
+            progress: 100,
+            steps: initialProgress.steps.map((step) =>
+              step.id === "upload"
+                ? { ...step, status: "complete" }
+                : step.id === "extraction"
+                ? { ...step, status: "complete" }
+                : step.id === "tracking"
+                ? { ...step, status: "complete" }
+                : step.id === "database"
+                ? { ...step, status: "complete" }
+                : step
+            ),
+          });
+
+          // Mark file as complete when done
+          setTimeout(() => {
+            markFileComplete(file.name);
+          }, 1000);
+        } catch (error) {
+          console.error("Error processing file:", error);
+          // Update progress to show error
+          updateFileProgress(file.name, {
+            ...initialProgress,
+            progress: 100,
+            steps: initialProgress.steps.map((step) => ({
+              ...step,
+              status: "error",
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Unknown error occurred",
+            })),
+          });
         }
       }
 
       setPdfExists(true);
       await fetchPdfs();
-      await updateItemLabels(orderId, true);
       setFiles([]);
     } catch (error) {
       console.error("Upload error:", error);
       setError("Failed to upload one or more files. Please try again.");
-
-      // Update progress to show error
-      setFileProgresses((prev) =>
-        prev.map((fp) => ({
-          ...fp,
-          steps: fp.steps.map((step) =>
-            step.status === "processing" ? { ...step, status: "error" } : step
-          ),
-        }))
-      );
     } finally {
       setUploading(false);
     }
   };
 
+  // Add helper function for tracking number validation
+  const validateTrackingNumber = (trackingInfo: TrackingInfo) => {
+    if (!trackingInfo.trackingNumber) return false;
+
+    const formats = {
+      UPS: /^1Z[A-Z0-9]{16}$/,
+      FedEx: /^(\d{12}|\d{14,15})$/,
+      USPS: /^(\d{20}|\d{26}|\d{30}|9\d{15,21})$/,
+      DHL: /^[0-9]{10,12}$/,
+    };
+
+    const cleaned = trackingInfo.trackingNumber.replace(/\s+/g, "");
+    const pattern = formats[trackingInfo.carrier];
+    return pattern?.test(cleaned) ?? false;
+  };
+
+  const fetchPdfs = async () => {
+    try {
+      const response = await fetch(`/api/shipping/pdfs/${orderId}`);
+      if (response.ok) {
+        const pdfList = await response.json();
+        setPdfFilenames(pdfList);
+        if (pdfList.length > 0) {
+          setPdfExists(true);
+          const urls = await Promise.all(
+            pdfList.map(async (pdfName: string) => {
+              const pdfResponse = await fetch(`/api/shipping/pdf/${pdfName}`);
+              if (!pdfResponse.ok) {
+                throw new Error(`Failed to fetch PDF: ${pdfName}`);
+              }
+              const blob = await pdfResponse.blob();
+              return URL.createObjectURL(blob);
+            })
+          );
+          setPdfUrls(urls);
+        } else {
+          setPdfExists(false);
+        }
+      } else {
+        throw new Error("Failed to fetch PDFs list");
+      }
+    } catch (error) {
+      console.error("Error fetching PDFs:", error);
+      setError("Failed to load the PDFs. Please try again.");
+      setPdfExists(false);
+    }
+  };
+
   const handleDelete = async (index: number) => {
     try {
-      let filename;
-      if (index === 0 && pdfUrls.length === 1) {
-        filename = `${orderId}.pdf`;
-      } else {
-        filename = `${orderId}-${index}.pdf`;
+      const filename = pdfFilenames[index];
+      if (!filename) {
+        throw new Error("File not found");
       }
 
       const response = await fetch(`/api/shipping/pdf/${filename}`, {
@@ -650,7 +535,6 @@ export function ViewLabel({ orderId }: { orderId: string }) {
         await fetchPdfs();
         if (pdfUrls.length === 1) {
           setPdfExists(false);
-          await updateItemLabels(orderId, false);
         }
         if (currentPdfIndex >= pdfUrls.length - 1) {
           setCurrentPdfIndex(Math.max(0, pdfUrls.length - 2));
@@ -770,7 +654,9 @@ export function ViewLabel({ orderId }: { orderId: string }) {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDelete(index)}
+                            onClick={() => {
+                              handleDelete(index);
+                            }}
                           >
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </Button>
@@ -823,13 +709,6 @@ export function ViewLabel({ orderId }: { orderId: string }) {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              {true && (
-                <div className="space-y-2">
-                  {fileProgresses.map((progress, index) => (
-                    <UploadProgress key={index} progress={progress} />
-                  ))}
-                </div>
-              )}
               <Button
                 onClick={handleUpload}
                 disabled={files.length === 0 || uploading}
@@ -850,6 +729,7 @@ export function ViewLabel({ orderId }: { orderId: string }) {
           </TabsContent>
         </Tabs>
       </CardContent>
+
       {manualTracking.show && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-md">
@@ -913,82 +793,5 @@ export function ViewLabel({ orderId }: { orderId: string }) {
         </div>
       )}
     </Card>
-  );
-}
-
-function UploadProgress({ progress }: { progress: FileProgress }) {
-  return (
-    <div className="space-y-4 my-4 p-4 border rounded-lg dark:border-gray-700">
-      <div className="flex items-center justify-between">
-        <span className="font-medium text-sm text-foreground">
-          {progress.file.name}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {Math.round(progress.progress)}%
-        </span>
-      </div>
-      <div className="space-y-2">
-        {progress.steps.map((step) => (
-          <div key={step.id} className="flex items-center space-x-3">
-            {step.status === "waiting" && (
-              <div className="h-2 w-2 rounded-full bg-muted" />
-            )}
-            {step.status === "processing" && (
-              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            )}
-            {step.status === "complete" && (
-              <svg
-                className="h-4 w-4 text-green-500"
-                fill="none"
-                strokeWidth="2"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            )}
-            {step.status === "error" && (
-              <svg
-                className="h-4 w-4 text-destructive"
-                fill="none"
-                strokeWidth="2"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            )}
-            <div className="flex-1">
-              <span
-                className={`text-sm ${
-                  step.status === "processing"
-                    ? "text-primary font-medium"
-                    : step.status === "complete"
-                    ? "text-muted-foreground"
-                    : step.status === "error"
-                    ? "text-destructive"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {step.label}
-              </span>
-              {step.message && (
-                <p className="text-xs text-muted-foreground mt-1 break-all">
-                  {step.message}
-                </p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
