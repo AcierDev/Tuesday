@@ -57,16 +57,27 @@ export const ItemList: React.FC<ItemListProps> = ({
             isAdmin ? true : group.title !== ItemStatus.Hidden
           )
           .map((group) => (
-            <ItemGroupSection
-              key={group.id}
-              board={board}
-              group={group}
-              onDelete={onDelete}
-              onGetLabel={onGetLabel}
-              onMarkCompleted={onMarkCompleted}
-              onShip={onShip}
-              onUpdate={onUpdate}
-            />
+            <Droppable droppableId={group.title} key={`droppable-${group.id}`}>
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="min-h-[50px]"
+                >
+                  <ItemGroupSection
+                    key={group.id}
+                    board={board}
+                    group={group}
+                    onDelete={onDelete}
+                    onGetLabel={onGetLabel}
+                    onMarkCompleted={onMarkCompleted}
+                    onShip={onShip}
+                    onUpdate={onUpdate}
+                  />
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
           ))}
       </div>
     </DragDropContext>

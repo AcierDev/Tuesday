@@ -227,6 +227,51 @@
           "receipt": {}
         },
         {
+          "id": "41115661",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Ellen Woerner",
+              "type": "text"
+            },
+            {
+              "columnName": "Due Date",
+              "text": "1738137540000",
+              "type": "date"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "16 x 6"
+            }
+          ],
+          "createdAt": 1736297230540,
+          "status": "Hidden",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": false,
+          "shippingDetails": {
+            "name": "Ellen Woerner",
+            "company": null,
+            "street1": "256 DIETRICH RD",
+            "street2": "",
+            "street3": null,
+            "city": "BALLWIN",
+            "state": "MO",
+            "postalCode": "63021-8064",
+            "country": "US",
+            "phone": null,
+            "residential": true,
+            "addressVerified": "Address validated successfully"
+          }
+        },
+        {
           "id": "1727325087360",
           "values": [
             {
@@ -1405,7 +1450,9 @@
             {
               "columnName": "Backboard",
               "type": "dropdown",
-              "text": ""
+              "text": "",
+              "lastModifiedTimestamp": 1736550998884,
+              "credit": []
             },
             {
               "columnName": "Glued",
@@ -1519,77 +1566,6 @@
           "deleted": false,
           "isScheduled": true,
           "completedAt": 1727832612422
-        },
-        {
-          "id": "1734299537712",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Levi Hammon"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "28 x 16"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2025-01-02"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734299537712,
-          "status": "On Deck",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
         },
         {
           "id": "1727321706872",
@@ -1972,148 +1948,6 @@
           "isScheduled": true
         },
         {
-          "id": "1734299580339",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Mark Azar"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Timberline"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "28 x 16"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2025-01-02"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734299580339,
-          "status": "On Deck",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
-        },
-        {
-          "id": "1734299359561",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Jeffery Hnatiw (pls pack extra well)"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Forest"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "20 x 10"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2025-01-02"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734299359561,
-          "status": "On Deck",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
-        },
-        {
           "id": "34653714",
           "values": [
             {
@@ -2152,6 +1986,53 @@
             "city": "ATLANTA",
             "state": "GA",
             "postalCode": "30329-3847",
+            "country": "US",
+            "phone": null,
+            "residential": true,
+            "addressVerified": "Address validated successfully"
+          }
+        },
+        {
+          "id": "39360327",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Christopher Bower (can't arrive before the 22nd)",
+              "type": "text",
+              "lastModifiedTimestamp": 1736645597652
+            },
+            {
+              "columnName": "Due Date",
+              "text": "2025-01-20T08:00:00.000Z",
+              "type": "date",
+              "lastModifiedTimestamp": 1736645599787
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Tidal"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "20 x 10"
+            }
+          ],
+          "createdAt": 1735783236937,
+          "status": "New",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": false,
+          "shippingDetails": {
+            "name": "Christopher Bower",
+            "company": null,
+            "street1": "17 6TH ST SE APT 1/2",
+            "street2": "",
+            "street3": null,
+            "city": "WASHINGTON",
+            "state": "DC",
+            "postalCode": "20003-1295",
             "country": "US",
             "phone": null,
             "residential": true,
@@ -2304,194 +2185,6 @@
           "completedAt": 1727832558994
         },
         {
-          "id": "34634889",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "text": "Laura Spurlock (local!)",
-              "type": "text",
-              "lastModifiedTimestamp": 1736222743611
-            },
-            {
-              "columnName": "Due Date",
-              "text": "1736236740000",
-              "type": "date"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Mirage"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "24 x 10"
-            }
-          ],
-          "createdAt": 1734307531967,
-          "status": "On Deck",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true,
-          "shippingDetails": {
-            "name": "Laura Spurlock",
-            "company": null,
-            "street1": "32157",
-            "street2": "PRAIRIE CROSSING DRIVE",
-            "street3": null,
-            "city": "WINCHESTER",
-            "state": "CA",
-            "postalCode": "92596",
-            "country": "US",
-            "phone": null,
-            "residential": false,
-            "addressVerified": "Address validation warning"
-          }
-        },
-        {
-          "id": "1736291746724",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "April Reilly"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "20 x 10"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2025-01-13"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": ""
-            }
-          ],
-          "createdAt": 1736291746724,
-          "status": "On Deck",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": false
-        },
-        {
-          "id": "1734299775171",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Joshua Quandt"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Tidal"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "24 x 12"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2025-01-03"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734299775171,
-          "status": "On Deck",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
-        },
-        {
           "id": "1727319958501",
           "values": [
             {
@@ -2562,6 +2255,237 @@
           "visible": true,
           "deleted": false,
           "completedAt": 1727916949141
+        },
+        {
+          "id": "36415427",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Kea Dunn",
+              "type": "text"
+            },
+            {
+              "columnName": "Due Date",
+              "text": "2025-01-09T08:00:00.000Z",
+              "type": "date",
+              "lastModifiedTimestamp": 1736481791815
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Amber"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "24 x 10"
+            }
+          ],
+          "createdAt": 1734672195080,
+          "status": "On Deck",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "shippingDetails": {
+            "name": "Kea Dunn",
+            "company": null,
+            "street1": "962 ASHBY CIR NW",
+            "street2": "",
+            "street3": null,
+            "city": "ATLANTA",
+            "state": "GA",
+            "postalCode": "30314-2808",
+            "country": "US",
+            "phone": null,
+            "residential": true,
+            "addressVerified": "Address validated successfully"
+          }
+        },
+        {
+          "id": "35743974",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Penny Ropeter Webber",
+              "type": "text"
+            },
+            {
+              "columnName": "Due Date",
+              "text": "2025-01-08T08:00:00.000Z",
+              "type": "date",
+              "lastModifiedTimestamp": 1736396611309
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "16 x 6"
+            }
+          ],
+          "createdAt": 1734544997940,
+          "status": "On Deck",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "shippingDetails": {
+            "name": "Penny Ropeter Webber",
+            "company": null,
+            "street1": "465 N PERRY ST",
+            "street2": "",
+            "street3": null,
+            "city": "JOHNSTOWN",
+            "state": "NY",
+            "postalCode": "12095-1014",
+            "country": "US",
+            "phone": null,
+            "residential": false,
+            "addressVerified": "Address validated successfully"
+          }
+        },
+        {
+          "id": "36174370",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Protiviti - Cheronda Gibson",
+              "type": "text"
+            },
+            {
+              "columnName": "Due Date",
+              "text": "2025-01-09T08:00:00.000Z",
+              "type": "date",
+              "lastModifiedTimestamp": 1736481822769
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Striped Coastal Dream",
+              "lastModifiedTimestamp": 1736481492550
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "36 x 30\""
+            }
+          ],
+          "createdAt": 1734624948210,
+          "status": "On Deck",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "shippingDetails": {
+            "name": "Protiviti - Cheronda Gibson",
+            "company": null,
+            "street1": "1180 W PEACHTREE ST NW STE 400",
+            "street2": "",
+            "street3": null,
+            "city": "ATLANTA",
+            "state": "GA",
+            "postalCode": "30309-3478",
+            "country": "US",
+            "phone": null,
+            "residential": false,
+            "addressVerified": "Address validated successfully"
+          }
+        },
+        {
+          "id": "36736843",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Kim Schneider",
+              "type": "text"
+            },
+            {
+              "columnName": "Due Date",
+              "text": "2025-01-13T08:00:00.000Z",
+              "type": "date",
+              "lastModifiedTimestamp": 1736558574306
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Amber"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "14 x 7"
+            }
+          ],
+          "createdAt": 1734797706210,
+          "status": "On Deck",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "shippingDetails": {
+            "name": "Kim Schneider",
+            "company": null,
+            "street1": "10901 SW 140TH AVE",
+            "street2": "",
+            "street3": null,
+            "city": "MIAMI",
+            "state": "FL",
+            "postalCode": "33186-3256",
+            "country": "US",
+            "phone": null,
+            "residential": true,
+            "addressVerified": "Address validated successfully"
+          }
+        },
+        {
+          "id": "35781900",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Kelly Mangold",
+              "type": "text"
+            },
+            {
+              "columnName": "Due Date",
+              "text": "2025-01-08T08:00:00.000Z",
+              "type": "date",
+              "lastModifiedTimestamp": 1736396659645
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Timberline"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "14 x 7"
+            }
+          ],
+          "createdAt": 1734550705100,
+          "status": "On Deck",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "shippingDetails": {
+            "name": "Kelly Mangold",
+            "company": null,
+            "street1": "4800 HAMPDEN LN STE 710",
+            "street2": "",
+            "street3": null,
+            "city": "BETHESDA",
+            "state": "MD",
+            "postalCode": "20814-2930",
+            "country": "US",
+            "phone": null,
+            "residential": false,
+            "addressVerified": "Address validation warning"
+          }
         },
         {
           "id": "1727322045210",
@@ -2711,77 +2635,6 @@
           "visible": true,
           "deleted": false,
           "completedAt": 1727916922085
-        },
-        {
-          "id": "1736060238861",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Christine Stangl (wants by the 31st)"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "14 x 7"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2025-01-24"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": ""
-            }
-          ],
-          "createdAt": 1736060238861,
-          "status": "On Deck",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
         },
         {
           "id": "1727251902772",
@@ -2998,77 +2851,6 @@
           "completedAt": 1727812997132
         },
         {
-          "id": "1734299487433",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Allene Anne Christian"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "16 x 10"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2024-12-31"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734299487433,
-          "status": "On Deck",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
-        },
-        {
           "id": "1727251871723",
           "values": [
             {
@@ -3274,6 +3056,79 @@
           "isScheduled": false
         },
         {
+          "id": "1736291746724",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "April Reilly"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "20 x 10"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2025-01-13"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "",
+              "lastModifiedTimestamp": 1736475473141,
+              "credit": []
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": ""
+            }
+          ],
+          "createdAt": 1736291746724,
+          "status": "On Deck",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": false
+        },
+        {
           "id": "1727322298612",
           "values": [
             {
@@ -3337,154 +3192,6 @@
           "vertical": false,
           "visible": true,
           "deleted": false
-        },
-        {
-          "id": "1734299070449",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Jill James"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Abyss"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "24 x 10"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2024-12-27"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736102601580,
-              "credit": []
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734299070449,
-          "status": "On Deck",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
-        },
-        {
-          "id": "1734298722285",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Corinna Li (must arrive after Jan. 3rd)"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "24 x 12"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2024-12-31"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": "",
-              "lastModifiedTimestamp": 1736296463756,
-              "credit": []
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736102716434,
-              "credit": []
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734298722285,
-          "status": "On Deck",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
         },
         {
           "id": "1727291909672",
@@ -3630,27 +3337,27 @@
           "completedAt": 1729123435234
         },
         {
-          "id": "1734299216904",
+          "id": "1734299580339",
           "values": [
             {
               "columnName": "Customer Name",
               "type": "text",
-              "text": "David James"
+              "text": "Mark Azar"
             },
             {
               "columnName": "Design",
               "type": "dropdown",
-              "text": "Coastal Dream"
+              "text": "Timberline"
             },
             {
               "columnName": "Size",
               "type": "dropdown",
-              "text": "28 x 12"
+              "text": "28 x 16"
             },
             {
               "columnName": "Due Date",
               "type": "date",
-              "text": "2024-12-30"
+              "text": "2025-01-02"
             },
             {
               "columnName": "Painted",
@@ -3665,8 +3372,79 @@
             {
               "columnName": "Glued",
               "type": "dropdown",
-              "text": "Working on it",
-              "lastModifiedTimestamp": 1736370859245,
+              "text": ""
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734299580339,
+          "status": "Wip",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true
+        },
+        {
+          "id": "1734299487433",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Allene Anne Christian"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "16 x 10"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2024-12-31"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "",
+              "lastModifiedTimestamp": 1736384796519,
               "credit": []
             },
             {
@@ -3695,7 +3473,153 @@
               "text": "true"
             }
           ],
-          "createdAt": 1734299216904,
+          "createdAt": 1734299487433,
+          "status": "On Deck",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true
+        },
+        {
+          "id": "1736060238861",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Christine Stangl (wants by the 31st)"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "14 x 7"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2025-01-24"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Working on it",
+              "lastModifiedTimestamp": 1736731808071,
+              "credit": []
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": ""
+            }
+          ],
+          "createdAt": 1736060238861,
+          "status": "Wip",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true
+        },
+        {
+          "id": "1734299537712",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Levi Hammon"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "28 x 16"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2025-01-02"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "",
+              "lastModifiedTimestamp": 1736712157636,
+              "credit": []
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734299537712,
           "status": "Wip",
           "vertical": false,
           "visible": true,
@@ -3748,12 +3672,12 @@
           }
         },
         {
-          "id": "1734299180844",
+          "id": "1734299655407",
           "values": [
             {
               "columnName": "Customer Name",
               "type": "text",
-              "text": "Felicia L Moss"
+              "text": "Jill Abel-White"
             },
             {
               "columnName": "Design",
@@ -3763,80 +3687,7 @@
             {
               "columnName": "Size",
               "type": "dropdown",
-              "text": "14 x 7"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2024-12-30"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736370830250,
-              "credit": ["Alex Morrell"]
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734299180844,
-          "status": "Packaging",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
-        },
-        {
-          "id": "1734299613435",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Teri Lehmkuhl"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Oceanic Harmony"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "14 x 7"
+              "text": "16 x 6"
             },
             {
               "columnName": "Due Date",
@@ -3857,165 +3708,21 @@
               "columnName": "Glued",
               "type": "dropdown",
               "text": "Done",
-              "lastModifiedTimestamp": 1736377203551,
+              "lastModifiedTimestamp": 1736215048424,
               "credit": ["Ben Clark"]
             },
             {
               "columnName": "Packaging",
               "type": "dropdown",
-              "text": ""
+              "text": "Working on it",
+              "lastModifiedTimestamp": 1736721866248,
+              "credit": []
             },
             {
               "columnName": "Boxes",
               "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": ""
-            }
-          ],
-          "createdAt": 1734299613435,
-          "status": "Packaging",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
-        },
-        {
-          "id": "1734299427576",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Kevin Moss"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "14 x 7"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2024-12-31"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736369027089,
-              "credit": ["Ben Clark"]
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734299427576,
-          "status": "Packaging",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
-        },
-        {
-          "id": "1734299144810",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Lisa Landy"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Aloe"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "20 x 10"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2024-12-27"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736362159185,
-              "credit": ["Ben Clark"]
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736306509641,
+              "text": "Working on it",
+              "lastModifiedTimestamp": 1736721862355,
               "credit": []
             },
             {
@@ -4034,12 +3741,12 @@
               "text": "true"
             }
           ],
-          "createdAt": 1734299144810,
-          "status": "Packaging",
+          "createdAt": 1734299655407,
+          "status": "At The Door",
           "vertical": false,
           "visible": true,
           "deleted": false,
-          "isScheduled": true
+          "isScheduled": false
         },
         {
           "id": "1734298951361",
@@ -4117,27 +3824,27 @@
           "receipt": {}
         },
         {
-          "id": "1734298657370",
+          "id": "1734299427576",
           "values": [
             {
               "columnName": "Customer Name",
               "type": "text",
-              "text": "Teri Martine - 44x30\""
+              "text": "Kevin Moss"
             },
             {
               "columnName": "Design",
               "type": "dropdown",
-              "text": "Striped Coastal Dream"
+              "text": "Coastal Dream"
             },
             {
               "columnName": "Size",
               "type": "dropdown",
-              "text": "20 x 10"
+              "text": "14 x 7"
             },
             {
               "columnName": "Due Date",
               "type": "date",
-              "text": "2024-12-23"
+              "text": "2024-12-31"
             },
             {
               "columnName": "Painted",
@@ -4153,13 +3860,15 @@
               "columnName": "Glued",
               "type": "dropdown",
               "text": "Done",
-              "lastModifiedTimestamp": 1736295752922,
-              "credit": ["Alex Morrell"]
+              "lastModifiedTimestamp": 1736369027089,
+              "credit": ["Ben Clark"]
             },
             {
               "columnName": "Packaging",
               "type": "dropdown",
-              "text": ""
+              "text": "Done",
+              "lastModifiedTimestamp": 1736718105380,
+              "credit": []
             },
             {
               "columnName": "Boxes",
@@ -4182,21 +3891,20 @@
               "text": "true"
             }
           ],
-          "createdAt": 1734298657370,
-          "status": "Packaging",
+          "createdAt": 1734299427576,
+          "status": "At The Door",
           "vertical": false,
           "visible": true,
           "deleted": false,
-          "isScheduled": true,
-          "shippingDetails": {}
+          "isScheduled": true
         },
         {
-          "id": "1734298534566",
+          "id": "1734299775171",
           "values": [
             {
               "columnName": "Customer Name",
               "type": "text",
-              "text": "Fidias De Leon"
+              "text": "Joshua Quandt"
             },
             {
               "columnName": "Design",
@@ -4211,7 +3919,7 @@
             {
               "columnName": "Due Date",
               "type": "date",
-              "text": "2024-12-23"
+              "text": "2025-01-03"
             },
             {
               "columnName": "Painted",
@@ -4227,19 +3935,21 @@
               "columnName": "Glued",
               "type": "dropdown",
               "text": "Done",
-              "lastModifiedTimestamp": 1736295596093,
-              "credit": ["Ben Clark"]
+              "lastModifiedTimestamp": 1736473669302,
+              "credit": ["Alex Morrell"]
             },
             {
               "columnName": "Packaging",
               "type": "dropdown",
-              "text": ""
+              "text": "Done",
+              "lastModifiedTimestamp": 1736729776544,
+              "credit": []
             },
             {
               "columnName": "Boxes",
               "type": "dropdown",
               "text": "Done",
-              "lastModifiedTimestamp": 1736102785232,
+              "lastModifiedTimestamp": 1736729780269,
               "credit": []
             },
             {
@@ -4258,8 +3968,504 @@
               "text": "true"
             }
           ],
-          "createdAt": 1734298534566,
-          "status": "Packaging",
+          "createdAt": 1734299775171,
+          "status": "At The Door",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true
+        },
+        {
+          "id": "1734299104572",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Matt Augustine"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "16 x 10"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2024-12-27"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736278015659,
+              "credit": ["Ben Clark"]
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736706706759,
+              "credit": []
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736102514316,
+              "credit": []
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734299104572,
+          "status": "At The Door",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true
+        },
+        {
+          "id": "1734299359561",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Jeffery Hnatiw (pls pack extra well)"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Forest"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "20 x 10"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2025-01-02"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736388177946,
+              "credit": ["Ben Clark"]
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736721750437,
+              "credit": []
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734299359561,
+          "status": "At The Door",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true
+        },
+        {
+          "id": "1734299613435",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Teri Lehmkuhl"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Oceanic Harmony"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "14 x 7"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2025-01-03"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736377203551,
+              "credit": ["Ben Clark"]
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736716954812,
+              "credit": []
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734299613435,
+          "status": "At The Door",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true
+        },
+        {
+          "id": "1736482611677",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Jennie Bahr (touch up of #5)"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "1 x 1"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2025-01-06"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736714018928,
+              "credit": []
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": ""
+            }
+          ],
+          "createdAt": 1736482611677,
+          "status": "At The Door",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true
+        },
+        {
+          "id": "1734299216904",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "David James"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "28 x 12"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2024-12-30"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736384496817,
+              "credit": ["Alex Morrell"]
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736716927095,
+              "credit": []
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734299216904,
+          "status": "At The Door",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true
+        },
+        {
+          "id": "34634889",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Pls finish today or early Sunday- Laura Spurlock (local)",
+              "type": "text",
+              "lastModifiedTimestamp": 1736411456518
+            },
+            {
+              "columnName": "Due Date",
+              "text": "1736236740000",
+              "type": "date"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Mirage"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "24 x 10"
+            }
+          ],
+          "createdAt": 1734307531967,
+          "status": "At The Door",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "shippingDetails": {
+            "name": "Laura Spurlock",
+            "company": null,
+            "street1": "32157",
+            "street2": "PRAIRIE CROSSING DRIVE",
+            "street3": null,
+            "city": "WINCHESTER",
+            "state": "CA",
+            "postalCode": "92596",
+            "country": "US",
+            "phone": null,
+            "residential": false,
+            "addressVerified": "Address validation warning"
+          }
+        },
+        {
+          "id": "1734299180844",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Felicia L Moss"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "14 x 7"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2024-12-30"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736370830250,
+              "credit": ["Alex Morrell"]
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736710214130,
+              "credit": []
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734299180844,
+          "status": "At The Door",
           "vertical": false,
           "visible": true,
           "deleted": false,
@@ -4345,156 +4551,6 @@
           "completedAt": 1729123432029
         },
         {
-          "id": "1734299104572",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Matt Augustine"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "16 x 10"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2024-12-27"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736278015659,
-              "credit": ["Ben Clark"]
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736102514316,
-              "credit": []
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734299104572,
-          "status": "Packaging",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
-        },
-        {
-          "id": "1734299004224",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Element - Cartersville"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "20 x 12"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2024-12-26"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736216385244,
-              "credit": ["Alex Morrell"]
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736306963558,
-              "credit": []
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734299004224,
-          "status": "Packaging",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
-        },
-        {
           "id": "1727320604374",
           "values": [
             {
@@ -4560,95 +4616,23 @@
           "deleted": true
         },
         {
-          "id": "1734299655407",
+          "id": "1734298797174",
           "values": [
             {
               "columnName": "Customer Name",
               "type": "text",
-              "text": "Jill Abel-White"
+              "text": "*Sonia Gonzalez",
+              "lastModifiedTimestamp": 1736127759370
             },
             {
               "columnName": "Design",
               "type": "dropdown",
-              "text": "Coastal Dream"
+              "text": "Amber"
             },
             {
               "columnName": "Size",
               "type": "dropdown",
-              "text": "16 x 6"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2025-01-03"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736215048424,
-              "credit": ["Ben Clark"]
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734299655407,
-          "status": "Packaging",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": false
-        },
-        {
-          "id": "1734298874385",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Damali Taylor"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "16 x 6"
+              "text": "20 x 10"
             },
             {
               "columnName": "Due Date",
@@ -4669,19 +4653,21 @@
               "columnName": "Glued",
               "type": "dropdown",
               "text": "Done",
-              "lastModifiedTimestamp": 1736209714530,
+              "lastModifiedTimestamp": 1736199967450,
               "credit": ["Ben Clark"]
             },
             {
               "columnName": "Packaging",
               "type": "dropdown",
-              "text": ""
+              "text": "Done",
+              "lastModifiedTimestamp": 1736478999859,
+              "credit": []
             },
             {
               "columnName": "Boxes",
               "type": "dropdown",
               "text": "Done",
-              "lastModifiedTimestamp": 1736274260550,
+              "lastModifiedTimestamp": 1736101971744,
               "credit": []
             },
             {
@@ -4700,12 +4686,13 @@
               "text": "true"
             }
           ],
-          "createdAt": 1734298874385,
-          "status": "Packaging",
+          "createdAt": 1734298797174,
+          "status": "Done",
           "vertical": false,
           "visible": true,
           "deleted": false,
-          "isScheduled": true
+          "isScheduled": true,
+          "completedAt": 1736706724211
         },
         {
           "id": "1735008100744",
@@ -4750,7 +4737,9 @@
             {
               "columnName": "Packaging",
               "type": "dropdown",
-              "text": ""
+              "text": "Done",
+              "lastModifiedTimestamp": 1736535888265,
+              "credit": []
             },
             {
               "columnName": "Boxes",
@@ -4776,87 +4765,12 @@
             }
           ],
           "createdAt": 1735008100744,
-          "status": "Packaging",
+          "status": "Done",
           "vertical": false,
           "visible": true,
           "deleted": false,
-          "isScheduled": true
-        },
-        {
-          "id": "1734298797174",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "*Sonia Gonzalez",
-              "lastModifiedTimestamp": 1736127759370
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Amber"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "20 x 10"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2024-12-24"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736199967450,
-              "credit": ["Ben Clark"]
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736101971744,
-              "credit": []
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1734298797174,
-          "status": "Packaging",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
+          "isScheduled": true,
+          "completedAt": 1736706736976
         },
         {
           "id": "1734299039698",
@@ -4901,7 +4815,9 @@
             {
               "columnName": "Packaging",
               "type": "dropdown",
-              "text": ""
+              "text": "Done",
+              "lastModifiedTimestamp": 1736538217068,
+              "credit": []
             },
             {
               "columnName": "Boxes",
@@ -4927,11 +4843,702 @@
             }
           ],
           "createdAt": 1734299039698,
-          "status": "Packaging",
+          "status": "Done",
           "vertical": false,
           "visible": true,
           "deleted": false,
-          "isScheduled": true
+          "isScheduled": true,
+          "completedAt": 1736706716416
+        },
+        {
+          "id": "1734299144810",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Lisa Landy"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Aloe"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "20 x 10"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2024-12-27"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736362159185,
+              "credit": ["Ben Clark"]
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736306509641,
+              "credit": []
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734299144810,
+          "status": "Done",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "completedAt": 1736706699744
+        },
+        {
+          "id": "1734299070449",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Jill James"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Abyss"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "24 x 10"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2024-12-27"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736457804556,
+              "credit": ["Ben Clark"]
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736102601580,
+              "credit": []
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734299070449,
+          "status": "Done",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "completedAt": 1736706693620
+        },
+        {
+          "id": "1736224180714",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "*Steve Lasker new hangers"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "1 x 1"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2025-01-06"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736295786079,
+              "credit": []
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1736224180714,
+          "status": "Done",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": false,
+          "completedAt": 1736706265618
+        },
+        {
+          "id": "1734298534566",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Fidias De Leon"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Tidal"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "24 x 12"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2024-12-23"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736295596093,
+              "credit": ["Ben Clark"]
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736456687188,
+              "credit": []
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736102785232,
+              "credit": []
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734298534566,
+          "status": "Done",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "completedAt": 1736706271025
+        },
+        {
+          "id": "1734299004224",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Element - Cartersville"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "20 x 12"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2024-12-26"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736216385244,
+              "credit": ["Alex Morrell"]
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736474825830,
+              "credit": []
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736306963558,
+              "credit": []
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734299004224,
+          "status": "Done",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "completedAt": 1736706258353
+        },
+        {
+          "id": "1734298874385",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Damali Taylor"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "16 x 6"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2024-12-24"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736209714530,
+              "credit": ["Ben Clark"]
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736464620636,
+              "credit": []
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736274260550,
+              "credit": []
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734298874385,
+          "status": "Done",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "completedAt": 1736474706416
+        },
+        {
+          "id": "1734298722285",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Corinna Li (please ship out today)",
+              "lastModifiedTimestamp": 1736398477618
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "24 x 12"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2024-12-31"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736466727106,
+              "credit": ["Alex Morrell"]
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736469229121,
+              "credit": []
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736102716434,
+              "credit": []
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734298722285,
+          "status": "Done",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "completedAt": 1736474695978
+        },
+        {
+          "id": "1734298657370",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Teri Martine - 44x30\""
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Striped Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "20 x 10"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2024-12-23"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736295752922,
+              "credit": ["Alex Morrell"]
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": "Working on it",
+              "lastModifiedTimestamp": 1736456701644,
+              "credit": []
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1734298657370,
+          "status": "Done",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "shippingDetails": {},
+          "completedAt": 1736474712744
+        },
+        {
+          "id": "1736059854842",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Nicole McQueen touch ups #7 #8 #10"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "1 x 1"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": "2025-01-07"
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "Done",
+              "lastModifiedTimestamp": 1736295770825,
+              "credit": []
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1736059854842,
+          "status": "Done",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": true,
+          "completedAt": 1736453904017
         },
         {
           "id": "1734298758573",
@@ -5004,84 +5611,12 @@
             }
           ],
           "createdAt": 1734298758573,
-          "status": "At The Door",
+          "status": "Done",
           "vertical": false,
           "visible": true,
           "deleted": false,
-          "isScheduled": true
-        },
-        {
-          "id": "1736224180714",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "*Steve Lasker new hangers"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "1 x 1"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2025-01-06"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736295786079,
-              "credit": []
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": "true"
-            }
-          ],
-          "createdAt": 1736224180714,
-          "status": "At The Door",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": false
+          "isScheduled": true,
+          "completedAt": 1736453899150
         },
         {
           "id": "1734299895049",
@@ -5155,85 +5690,12 @@
             }
           ],
           "createdAt": 1734299895049,
-          "status": "At The Door",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": true
-        },
-        {
-          "id": "1736059854842",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "type": "text",
-              "text": "Nicole McQueen touch ups #7 #8 #10"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "1 x 1"
-            },
-            {
-              "columnName": "Due Date",
-              "type": "date",
-              "text": "2025-01-07"
-            },
-            {
-              "columnName": "Painted",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Backboard",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Glued",
-              "type": "dropdown",
-              "text": "Done",
-              "lastModifiedTimestamp": 1736295770825,
-              "credit": []
-            },
-            {
-              "columnName": "Packaging",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Boxes",
-              "type": "dropdown",
-              "text": ""
-            },
-            {
-              "columnName": "Notes",
-              "type": "text",
-              "text": ""
-            },
-            {
-              "columnName": "Rating",
-              "type": "number",
-              "text": ""
-            },
-            {
-              "columnName": "Labels",
-              "type": "text",
-              "text": ""
-            }
-          ],
-          "createdAt": 1736059854842,
           "status": "Done",
           "vertical": false,
           "visible": true,
           "deleted": false,
           "isScheduled": true,
-          "completedAt": 1736295780484
+          "completedAt": 1736453892874
         },
         {
           "id": "1734297485603",
@@ -5241,7 +5703,8 @@
             {
               "columnName": "Customer Name",
               "type": "text",
-              "text": "Jacob Owen Burger (ship after 25th pls)"
+              "text": "Jacob Owen Burger (door code is 658189#)",
+              "lastModifiedTimestamp": 1736722504560
             },
             {
               "columnName": "Design",
@@ -7787,7 +8250,7 @@
             {
               "columnName": "Labels",
               "type": "text",
-              "text": ""
+              "text": "true"
             }
           ],
           "createdAt": 1734298501468,
@@ -19786,186 +20249,6 @@
           "isScheduled": false
         },
         {
-          "id": "35743974",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "text": "Penny Ropeter Webber",
-              "type": "text"
-            },
-            {
-              "columnName": "Due Date",
-              "text": "1736409540000",
-              "type": "date"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "16 x 6"
-            }
-          ],
-          "createdAt": 1734544997940,
-          "status": "Hidden",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": false,
-          "shippingDetails": {
-            "name": "Penny Ropeter Webber",
-            "company": null,
-            "street1": "465 N PERRY ST",
-            "street2": "",
-            "street3": null,
-            "city": "JOHNSTOWN",
-            "state": "NY",
-            "postalCode": "12095-1014",
-            "country": "US",
-            "phone": null,
-            "residential": false,
-            "addressVerified": "Address validated successfully"
-          }
-        },
-        {
-          "id": "35781900",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "text": "Kelly Mangold",
-              "type": "text"
-            },
-            {
-              "columnName": "Due Date",
-              "text": "1736409540000",
-              "type": "date"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Timberline"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "14 x 7"
-            }
-          ],
-          "createdAt": 1734550705100,
-          "status": "Hidden",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": false,
-          "shippingDetails": {
-            "name": "Kelly Mangold",
-            "company": null,
-            "street1": "4800 HAMPDEN LN STE 710",
-            "street2": "",
-            "street3": null,
-            "city": "BETHESDA",
-            "state": "MD",
-            "postalCode": "20814-2930",
-            "country": "US",
-            "phone": null,
-            "residential": false,
-            "addressVerified": "Address validation warning"
-          }
-        },
-        {
-          "id": "36174370",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "text": "Protiviti - Cheronda Gibson",
-              "type": "text"
-            },
-            {
-              "columnName": "Due Date",
-              "text": "1736495940000",
-              "type": "date"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "16 x 10"
-            }
-          ],
-          "createdAt": 1734624948210,
-          "status": "Hidden",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": false,
-          "shippingDetails": {
-            "name": "Protiviti - Cheronda Gibson",
-            "company": null,
-            "street1": "1180 W PEACHTREE ST NW STE 400",
-            "street2": "",
-            "street3": null,
-            "city": "ATLANTA",
-            "state": "GA",
-            "postalCode": "30309-3478",
-            "country": "US",
-            "phone": null,
-            "residential": false,
-            "addressVerified": "Address validated successfully"
-          }
-        },
-        {
-          "id": "36415427",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "text": "Kea Dunn",
-              "type": "text"
-            },
-            {
-              "columnName": "Due Date",
-              "text": "1736495940000",
-              "type": "date"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Amber"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "24 x 10"
-            }
-          ],
-          "createdAt": 1734672195080,
-          "status": "Hidden",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": false,
-          "shippingDetails": {
-            "name": "Kea Dunn",
-            "company": null,
-            "street1": "962 ASHBY CIR NW",
-            "street2": "",
-            "street3": null,
-            "city": "ATLANTA",
-            "state": "GA",
-            "postalCode": "30314-2808",
-            "country": "US",
-            "phone": null,
-            "residential": true,
-            "addressVerified": "Address validated successfully"
-          }
-        },
-        {
           "id": "36426165",
           "values": [
             {
@@ -20004,51 +20287,6 @@
             "city": "SYRACUSE",
             "state": "NY",
             "postalCode": "13211-1245",
-            "country": "US",
-            "phone": null,
-            "residential": true,
-            "addressVerified": "Address validated successfully"
-          }
-        },
-        {
-          "id": "36736843",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "text": "Kim Schneider",
-              "type": "text"
-            },
-            {
-              "columnName": "Due Date",
-              "text": "1736582340000",
-              "type": "date"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Amber"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "14 x 7"
-            }
-          ],
-          "createdAt": 1734797706210,
-          "status": "Hidden",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": false,
-          "shippingDetails": {
-            "name": "Kim Schneider",
-            "company": null,
-            "street1": "10901 SW 140TH AVE",
-            "street2": "",
-            "street3": null,
-            "city": "MIAMI",
-            "state": "FL",
-            "postalCode": "33186-3256",
             "country": "US",
             "phone": null,
             "residential": true,
@@ -20502,51 +20740,6 @@
             "country": "US",
             "phone": null,
             "residential": false,
-            "addressVerified": "Address validated successfully"
-          }
-        },
-        {
-          "id": "39360327",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "text": "Christopher Bower",
-              "type": "text"
-            },
-            {
-              "columnName": "Due Date",
-              "text": "1737619140000",
-              "type": "date"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Tidal"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "20 x 10"
-            }
-          ],
-          "createdAt": 1735783236937,
-          "status": "Hidden",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": false,
-          "shippingDetails": {
-            "name": "Christopher Bower",
-            "company": null,
-            "street1": "17 6TH ST SE APT 1/2",
-            "street2": "",
-            "street3": null,
-            "city": "WASHINGTON",
-            "state": "DC",
-            "postalCode": "20003-1295",
-            "country": "US",
-            "phone": null,
-            "residential": true,
             "addressVerified": "Address validated successfully"
           }
         },
@@ -21182,51 +21375,6 @@
           }
         },
         {
-          "id": "41115661",
-          "values": [
-            {
-              "columnName": "Customer Name",
-              "text": "Ellen Woerner",
-              "type": "text"
-            },
-            {
-              "columnName": "Due Date",
-              "text": "1738137540000",
-              "type": "date"
-            },
-            {
-              "columnName": "Design",
-              "type": "dropdown",
-              "text": "Coastal Dream"
-            },
-            {
-              "columnName": "Size",
-              "type": "dropdown",
-              "text": "16 x 6"
-            }
-          ],
-          "createdAt": 1736297230540,
-          "status": "Hidden",
-          "vertical": false,
-          "visible": true,
-          "deleted": false,
-          "isScheduled": false,
-          "shippingDetails": {
-            "name": "Ellen Woerner",
-            "company": null,
-            "street1": "256 DIETRICH RD",
-            "street2": "",
-            "street3": null,
-            "city": "BALLWIN",
-            "state": "MO",
-            "postalCode": "63021-8064",
-            "country": "US",
-            "phone": null,
-            "residential": true,
-            "addressVerified": "Address validated successfully"
-          }
-        },
-        {
           "id": "41388385",
           "values": [
             {
@@ -21268,6 +21416,304 @@
             "country": "US",
             "phone": null,
             "residential": false,
+            "addressVerified": "Address validated successfully"
+          }
+        },
+        {
+          "id": "41712296",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Jill Abel-White",
+              "type": "text"
+            },
+            {
+              "columnName": "Due Date",
+              "text": "1738310340000",
+              "type": "date"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "20 x 10"
+            }
+          ],
+          "createdAt": 1736465653770,
+          "status": "Hidden",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": false,
+          "shippingDetails": {
+            "name": "Jill Abel-White",
+            "company": null,
+            "street1": "211 E 70TH ST",
+            "street2": "",
+            "street3": null,
+            "city": "NEW YORK",
+            "state": "NY",
+            "postalCode": "10021-5205",
+            "country": "US",
+            "phone": null,
+            "residential": false,
+            "addressVerified": "Address validation warning"
+          }
+        },
+        {
+          "id": "41912603",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Greg Erens",
+              "type": "text"
+            },
+            {
+              "columnName": "Due Date",
+              "text": "1738396740000",
+              "type": "date"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "20 x 10"
+            }
+          ],
+          "createdAt": 1736535768247,
+          "status": "Hidden",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": false,
+          "shippingDetails": {
+            "name": "Greg Erens",
+            "company": null,
+            "street1": "1591 RESERVE CIR",
+            "street2": "",
+            "street3": null,
+            "city": "DECATUR",
+            "state": "GA",
+            "postalCode": "30033-1538",
+            "country": "US",
+            "phone": null,
+            "residential": true,
+            "addressVerified": "Address validated successfully"
+          }
+        },
+        {
+          "id": "1736551244197",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "type": "text",
+              "text": "Test Mctestface"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Striped Coastal Dream"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "16 x 10"
+            },
+            {
+              "columnName": "Due Date",
+              "type": "date",
+              "text": ""
+            },
+            {
+              "columnName": "Painted",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Backboard",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Glued",
+              "type": "dropdown",
+              "text": "",
+              "lastModifiedTimestamp": 1736663332968,
+              "credit": []
+            },
+            {
+              "columnName": "Packaging",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Boxes",
+              "type": "dropdown",
+              "text": ""
+            },
+            {
+              "columnName": "Notes",
+              "type": "text",
+              "text": ""
+            },
+            {
+              "columnName": "Rating",
+              "type": "number",
+              "text": ""
+            },
+            {
+              "columnName": "Labels",
+              "type": "text",
+              "text": "true"
+            }
+          ],
+          "createdAt": 1736551244197,
+          "status": "New",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": false
+        },
+        {
+          "id": "42106270",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Eric Schlameuss",
+              "type": "text"
+            },
+            {
+              "columnName": "Due Date",
+              "text": "1738396740000",
+              "type": "date"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Mirage"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "20 x 10"
+            }
+          ],
+          "createdAt": 1736611853400,
+          "status": "Hidden",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": false,
+          "shippingDetails": {
+            "name": "Eric Schlameuss",
+            "company": null,
+            "street1": "596 GLENBROOK RD APT 14",
+            "street2": "",
+            "street3": null,
+            "city": "STAMFORD",
+            "state": "CT",
+            "postalCode": "06906-1423",
+            "country": "US",
+            "phone": null,
+            "residential": true,
+            "addressVerified": "Address validated successfully"
+          }
+        },
+        {
+          "id": "42298380",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Ron Christopher",
+              "type": "text"
+            },
+            {
+              "columnName": "Due Date",
+              "text": "1738655940000",
+              "type": "date"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Spectrum"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "16 x 10"
+            }
+          ],
+          "createdAt": 1736700233387,
+          "status": "Hidden",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": false,
+          "shippingDetails": {
+            "name": "Ron Christopher",
+            "company": null,
+            "street1": "1045 SW BERTHA BLVD APT 6",
+            "street2": "",
+            "street3": null,
+            "city": "PORTLAND",
+            "state": "OR",
+            "postalCode": "97219-2077",
+            "country": "US",
+            "phone": null,
+            "residential": true,
+            "addressVerified": "Address validated successfully"
+          }
+        },
+        {
+          "id": "42637700",
+          "values": [
+            {
+              "columnName": "Customer Name",
+              "text": "Gregory Van Gelderen",
+              "type": "text"
+            },
+            {
+              "columnName": "Due Date",
+              "text": "1738655940000",
+              "type": "date"
+            },
+            {
+              "columnName": "Design",
+              "type": "dropdown",
+              "text": "Tidal"
+            },
+            {
+              "columnName": "Size",
+              "type": "dropdown",
+              "text": "36 x 16"
+            }
+          ],
+          "createdAt": 1736788292430,
+          "status": "Hidden",
+          "vertical": false,
+          "visible": true,
+          "deleted": false,
+          "isScheduled": false,
+          "shippingDetails": {
+            "name": "Gregory Van Gelderen",
+            "company": null,
+            "street1": "5992 MAYFLOWER WAY",
+            "street2": "",
+            "street3": null,
+            "city": "AVE MARIA",
+            "state": "FL",
+            "postalCode": "34142-5136",
+            "country": "US",
+            "phone": null,
+            "residential": true,
             "addressVerified": "Address validated successfully"
           }
         }
@@ -21615,10 +22061,6 @@
         ],
         "Wednesday": [
           {
-            "id": "1734299487433",
-            "done": false
-          },
-          {
             "id": "1734299180844",
             "done": true
           },
@@ -21628,19 +22070,15 @@
           },
           {
             "id": "1734299359561",
-            "done": false
+            "done": true
           },
           {
             "id": "1734299427576",
             "done": true
           },
           {
-            "id": "1734299070449",
-            "done": false
-          },
-          {
             "id": "1734299216904",
-            "done": false
+            "done": true
           },
           {
             "id": "1734299895049",
@@ -21649,28 +22087,16 @@
         ],
         "Thursday": [
           {
-            "id": "1734899411760",
-            "done": false
-          },
-          {
-            "id": "1734299397370",
-            "done": false
-          },
-          {
-            "id": "1734299537712",
-            "done": false
-          },
-          {
-            "id": "1734297485603",
-            "done": false
-          },
-          {
             "id": "1734298722285",
             "done": false
           },
           {
-            "id": "1734298501468",
-            "done": false
+            "id": "1734299070449",
+            "done": true
+          },
+          {
+            "id": "1734299775171",
+            "done": true
           }
         ],
         "Friday": [],
@@ -21687,15 +22113,23 @@
             "done": false
           },
           {
-            "id": "1734299775171",
-            "done": false
-          },
-          {
             "id": "1736060238861",
             "done": false
           },
           {
             "id": "34860915",
+            "done": false
+          },
+          {
+            "id": "34634889",
+            "done": true
+          },
+          {
+            "id": "35743974",
+            "done": false
+          },
+          {
+            "id": "1736482611677",
             "done": false
           }
         ],
@@ -21705,17 +22139,56 @@
             "done": false
           },
           {
-            "id": "34634889",
+            "id": "34653714",
             "done": false
           },
           {
-            "id": "34653714",
+            "id": "1734899411760",
+            "done": false
+          },
+          {
+            "id": "1734299397370",
             "done": false
           }
         ],
-        "Tuesday": [],
-        "Wednesday": [],
-        "Thursday": [],
+        "Tuesday": [
+          {
+            "id": "1734299537712",
+            "done": false
+          },
+          {
+            "id": "1734297485603",
+            "done": false
+          },
+          {
+            "id": "35781900",
+            "done": false
+          }
+        ],
+        "Wednesday": [
+          {
+            "id": "1734298501468",
+            "done": false
+          },
+          {
+            "id": "1734299487433",
+            "done": false
+          },
+          {
+            "id": "36736843",
+            "done": false
+          }
+        ],
+        "Thursday": [
+          {
+            "id": "36415427",
+            "done": false
+          },
+          {
+            "id": "36174370",
+            "done": false
+          }
+        ],
         "Friday": [],
         "Saturday": []
       },

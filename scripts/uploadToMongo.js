@@ -4,9 +4,9 @@ const path = require("path");
 
 // MongoDB connection URI - replace with your actual connection string
 const uri =
-  "mongodb+srv://temp:P4vkfyZfAFR1baza@sharedcluster.ftf6xg6.mongodb.net/?retryWrites=true&w=majority&appName=SharedCluster";
+  "mongodb+srv://temp:gxFfQcLFBQY8nJmf@sharedcluster.ftf6xg6.mongodb.net/?retryWrites=true&w=majority&appName=SharedCluster";
 const dbName = "react-web-app";
-const collectionName = "development";
+const collectionName = "production";
 
 async function uploadToMongo() {
   try {

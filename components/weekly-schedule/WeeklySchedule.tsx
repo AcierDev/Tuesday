@@ -37,9 +37,7 @@ const EMPTY_WEEK_SCHEDULE = {
 
 export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   const [weeklySchedules, setWeeklySchedules] = useState<WeeklySchedules>({});
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() =>
-    startOfWeek(new Date())
-  );
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [currentDay, setCurrentDay] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,6 +49,10 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   const [localItems, setLocalItems] = useState<Item[]>(items);
   const { board, updateWeeklySchedules, updateItemScheduleStatus } =
     useOrderStore();
+
+  useEffect(() => {
+    setCurrentWeekStart(startOfWeek(new Date()));
+  }, []);
 
   useEffect(() => {
     setLocalItems(items);

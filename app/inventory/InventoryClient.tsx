@@ -95,7 +95,6 @@ export function InventoryClient({
 
   return (
     <div className="p-8 bg-background text-foreground dark:bg-gray-900">
-      <Toaster position="top-center" />
       <h1 className="text-3xl font-bold mb-6">Inventory Management</h1>
 
       <SummaryCards

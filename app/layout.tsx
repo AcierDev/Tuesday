@@ -83,6 +83,7 @@ export default function RootLayout({
           <ThemeProvider enableSystem attribute="class" defaultTheme="dark">
             <OrderSettingsProvider>
               <UserProvider>
+                <Toaster position="top-center" />
                 <LayoutContent>{children}</LayoutContent>
               </UserProvider>
             </OrderSettingsProvider>

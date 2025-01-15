@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Toaster } from "sonner";
 import { StatusCard } from "@/components/shared/StatusCard";
 
 export default function RouterPage() {
@@ -353,7 +352,6 @@ function MonitoringDashboard() {
           />
         </div>
       </motion.div>
-      <Toaster position="top-center" />
     </div>
   );
 }

@@ -12,8 +12,7 @@ import {
   getUserPermissions,
   hasPermission,
 } from "@/app/actions/auth";
-import { Button } from "@/components/ui/button";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
 import { UserIdentificationMenu } from "@/components/identification/identificationMenu";
 
 type Permission = "read" | "write" | "admin";

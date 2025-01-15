@@ -254,7 +254,16 @@ export default function OrderManagementPage() {
     async (result: DropResult, provided: ResponderProvided) => {
       const { source, destination, draggableId } = result;
 
-      if (!destination || !board) return;
+      if (!destination || !board || !draggableId) return;
+
+      const movedItem = board.items_page.items.find(
+        (item) => item.id && item.id.toString() === draggableId
+      );
+
+      if (!movedItem) {
+        console.error("Could not find item with id:", draggableId);
+        return;
+      }
 
       if (
         source.droppableId === destination.droppableId &&
@@ -273,15 +282,10 @@ export default function OrderManagementPage() {
       const statusChanged = sourceStatus !== newStatus;
 
       try {
-        const movedItem = board.items_page.items.find(
-          (item) => item.id === draggableId
-        );
-        if (!movedItem) return;
-
         const originalStatus = movedItem.status;
 
         await reorderItems(
-          draggableId,
+          movedItem.id,
           sourceStatus,
           newStatus,
           destination.index

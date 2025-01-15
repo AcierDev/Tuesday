@@ -2,6 +2,7 @@ import { addDays, format, startOfWeek } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/functions";
+import * as React from "react";
 
 interface WeekSelectorProps {
   currentWeekStart: Date;
@@ -20,8 +21,11 @@ export function WeekSelector({
   hasDataInNextWeek = false,
   bgColor = "bg-white dark:bg-gray-800",
 }: WeekSelectorProps) {
-  const currentDate = new Date();
-  const currentWeekStartDate = startOfWeek(currentDate, { weekStartsOn });
+  const currentWeekStartDate = React.useMemo(() => {
+    const currentDate = new Date();
+    return startOfWeek(currentDate, { weekStartsOn });
+  }, [weekStartsOn]);
+
   const isCurrentWeek =
     currentWeekStart.getTime() === currentWeekStartDate.getTime();
 

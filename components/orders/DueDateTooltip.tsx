@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Calendar, Info } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { addWeeks, format, startOfWeek } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { isSameDay, addDays } from "date-fns";
@@ -41,15 +41,24 @@ export function DueDateTooltip({
   onAddToSchedule,
   onScheduleUpdate,
 }: DueDateTooltipProps) {
-  const [selectedWeekStart, setSelectedWeekStart] = useState(() =>
-    startOfWeek(new Date())
-  );
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setSelectedWeekStart(startOfWeek(new Date()));
+  }, []);
 
   const handleWeekChange = (direction: "prev" | "next") => {
-    setSelectedWeekStart((current) =>
-      direction === "next" ? addWeeks(current, 1) : addWeeks(current, -1)
+    if (!selectedWeekStart) return;
+    setSelectedWeekStart(
+      direction === "next"
+        ? addWeeks(selectedWeekStart, 1)
+        : addWeeks(selectedWeekStart, -1)
     );
   };
+
+  if (!selectedWeekStart) {
+    return null;
+  }
 
   const isItemScheduledAnywhere = () => {
     return Object.values(weeklySchedules).some((weekSchedule) =>
