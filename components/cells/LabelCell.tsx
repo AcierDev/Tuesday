@@ -1,6 +1,6 @@
 // LabelCell.jsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,7 +17,9 @@ import { useShippingStore } from "@/stores/useShippingStore";
 export const LabelCell = ({ item }: { item: Item }) => {
   const [isLabelDialogOpen, setIsLabelDialogOpen] = useState(false);
   const isLoading = useShippingStore((state) => state.isLoading);
-  const hasLabel = useShippingStore((state) => state.hasLabel(item.id));
+  const hasLabel = useShippingStore((state) => {
+    return state.hasLabel(item.id);
+  });
 
   return (
     <Dialog open={isLabelDialogOpen} onOpenChange={setIsLabelDialogOpen}>

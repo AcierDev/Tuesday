@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { FileProgress } from "@/components/shipping/ViewLabel";
+import { FileProgress } from "@/types/shipping";
 
 interface UploadProgressState {
   files: { [key: string]: FileProgress };

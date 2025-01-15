@@ -1,15 +1,29 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadStep } from "./ViewLabel";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { useUploadProgressStore } from "@/stores/useUploadProgressStore";
+import { UploadStep, TrackingInfo } from "@/types/shipping";
+
+const formatTrackingInfo = (trackingInfo?: TrackingInfo) => {
+  if (!trackingInfo) return null;
+  return `${trackingInfo.carrier} - ${trackingInfo.trackingNumber}`;
+};
 
 export function UploadProgressToast() {
-  const { files, completedFiles } = useUploadProgressStore();
-  const activeFiles = Object.values(files);
+  const { files, completedFiles, removeFile } = useUploadProgressStore();
+  // Filter out completed files from display
+  const activeFiles = Object.values(files).filter(
+    (progress) => !completedFiles.has(progress.file.name)
+  );
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-96 space-y-2">
-      <AnimatePresence>
+      <AnimatePresence
+        mode="wait"
+        onExitComplete={() => {
+          // Clean up completed files from the store after animation
+          completedFiles.forEach((fileName) => removeFile(fileName));
+        }}
+      >
         {activeFiles.map((progress) => (
           <motion.div
             key={progress.file.name}
@@ -17,10 +31,7 @@ export function UploadProgressToast() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
             className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg border 
-              border-gray-200 dark:border-gray-700 overflow-hidden
-              ${
-                completedFiles.has(progress.file.name) ? "animate-fade-out" : ""
-              }`}
+              border-gray-200 dark:border-gray-700 overflow-hidden`}
           >
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">
@@ -38,20 +49,9 @@ export function UploadProgressToast() {
                       <Loader2 className="w-5 h-5 text-primary animate-spin" />
                     )}
                   </div>
-                  <div>
-                    <h4 className="font-medium text-sm text-foreground">
-                      {progress.file.name}
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      {progress.currentStep === "upload"
-                        ? "Uploading..."
-                        : progress.currentStep === "extraction"
-                        ? "Extracting tracking info..."
-                        : progress.currentStep === "tracking"
-                        ? "Validating tracking..."
-                        : "Updating database..."}
-                    </p>
-                  </div>
+                  <h4 className="font-medium text-sm text-foreground">
+                    {progress.file.name}
+                  </h4>
                 </div>
                 <span className="text-xs font-medium text-primary">
                   {Math.round(progress.progress)}%
@@ -115,56 +115,28 @@ export function UploadProgressToast() {
                           {step.message}
                         </motion.p>
                       )}
+                      {step.id === "extraction" && progress.trackingInfo && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className="mt-1 text-xs"
+                        >
+                          <div className="flex items-center space-x-1 text-primary">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary shrink-0"></span>
+                            <span className="text-[10px] truncate">
+                              {formatTrackingInfo(progress.trackingInfo)}
+                              {progress.trackingInfo.sender &&
+                                ` | From: ${progress.trackingInfo.sender}`}
+                              {progress.trackingInfo.receiver &&
+                                ` | To: ${progress.trackingInfo.receiver}`}
+                            </span>
+                          </div>
+                        </motion.div>
+                      )}
                     </div>
                   </motion.div>
                 ))}
               </div>
-
-              {progress.extractedInfo && progress.currentStep !== "upload" && (
-                <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-900 rounded-md">
-                  <h5 className="text-xs font-medium text-foreground mb-2">
-                    Extracted Information
-                  </h5>
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        Tracking Number:
-                      </span>
-                      <span className="text-xs font-medium">
-                        {progress.extractedInfo.trackingNumber}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        Carrier:
-                      </span>
-                      <span className="text-xs font-medium">
-                        {progress.extractedInfo.carrier}
-                      </span>
-                    </div>
-                    {progress.extractedInfo.sender && (
-                      <div className="flex justify-between">
-                        <span className="text-xs text-muted-foreground">
-                          Sender:
-                        </span>
-                        <span className="text-xs font-medium">
-                          {progress.extractedInfo.sender}
-                        </span>
-                      </div>
-                    )}
-                    {progress.extractedInfo.receiver && (
-                      <div className="flex justify-between">
-                        <span className="text-xs text-muted-foreground">
-                          Receiver:
-                        </span>
-                        <span className="text-xs font-medium">
-                          {progress.extractedInfo.receiver}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </motion.div>
         ))}

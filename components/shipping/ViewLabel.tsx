@@ -21,35 +21,7 @@ import { Tracker } from "@/typings/types";
 import { useTrackingStore } from "@/stores/useTrackingStore";
 import { useUploadProgressStore } from "@/stores/useUploadProgressStore";
 import { useShippingStore } from "@/stores/useShippingStore";
-
-export type UploadStep = {
-  id: "upload" | "extraction" | "tracking" | "database";
-  label: string;
-  status: "waiting" | "processing" | "complete" | "error";
-  message?: string;
-};
-
-type TrackingInfo = {
-  trackingNumber: string;
-  carrier: "FedEx" | "UPS" | "USPS" | "DHL";
-  sender: string | null;
-  receiver: string | null;
-};
-
-type ExtractedInfo = {
-  trackingNumber: string;
-  carrier: TrackingInfo["carrier"];
-  sender: string | null;
-  receiver: string | null;
-};
-
-export type FileProgress = {
-  file: File;
-  currentStep: UploadStep["id"];
-  progress: number;
-  steps: UploadStep[];
-  extractedInfo?: ExtractedInfo;
-};
+import { UploadStep, TrackingInfo, FileProgress } from "@/types/shipping";
 
 type ManualTrackingInput = {
   fileIndex: number;
@@ -82,6 +54,7 @@ export function ViewLabel({
   const { addTrackingInfo } = useTrackingStore();
   const [pdfFilenames, setPdfFilenames] = useState<string[]>([]);
   const { updateFileProgress, markFileComplete } = useUploadProgressStore();
+  const { removeLabel, addLabel } = useShippingStore();
 
   useEffect(() => {
     const checkPdfExists = async () => {
@@ -239,11 +212,40 @@ export function ViewLabel({
     try {
       const existingLabels = await fetch(`/api/shipping/pdfs/${orderId}`);
       const existingLabelsList = await existingLabels.json();
-      const startIndex = existingLabelsList.length;
+      console.log("Existing labels:", existingLabelsList);
+
+      // Modified logic for filename generation
+      const getNextFilename = (existingFiles: string[]) => {
+        // If no files exist yet, start with base filename
+        if (existingFiles.length === 0) {
+          return `${orderId}.pdf`;
+        }
+
+        // Find the highest number suffix
+        const suffixes = existingFiles.map((filename) => {
+          // Base filename without suffix should be considered as index 0
+          if (filename === `${orderId}.pdf`) {
+            return 0;
+          }
+          const match = filename.match(/-(\d+)\.pdf$/);
+          return match ? parseInt(match[1], 10) : -1;
+        });
+
+        const maxSuffix = Math.max(...suffixes);
+        // If maxSuffix is 0 (only base file exists), start with -1
+        // Otherwise increment the highest suffix
+        return maxSuffix === 0
+          ? `${orderId}-1.pdf`
+          : `${orderId}-${maxSuffix + 1}.pdf`;
+      };
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (!file) continue;
+
+        // Get the next available filename
+        const filename = getNextFilename(existingLabelsList);
+        existingLabelsList.push(filename); // Add to list for next iteration
 
         // Initialize progress for this file
         const initialProgress: FileProgress = {
@@ -281,11 +283,6 @@ export function ViewLabel({
           const formData = new FormData();
           formData.append("label", file);
 
-          let filename =
-            startIndex === 0 && i === 0
-              ? `${orderId}.pdf`
-              : `${orderId}-${startIndex + i}.pdf`;
-
           // Update progress for upload step
           updateFileProgress(file.name, {
             ...initialProgress,
@@ -308,6 +305,10 @@ export function ViewLabel({
           }
 
           console.log("Uploaded file:", file.name);
+
+          // Add this line after the successful upload:
+          addLabel(orderId, filename);
+          console.log("Added label to store:", filename);
 
           // Update progress for extraction step
           updateFileProgress(file.name, {
@@ -343,44 +344,6 @@ export function ViewLabel({
 
           const trackingInfo: TrackingInfo = await trackingResponse.json();
 
-          // Update progress with extracted info
-          updateFileProgress(file.name, {
-            ...initialProgress,
-            currentStep: "extraction",
-            progress: 50,
-            extractedInfo: trackingInfo,
-            steps: initialProgress.steps.map((step) =>
-              step.id === "upload"
-                ? { ...step, status: "complete" }
-                : step.id === "extraction"
-                ? { ...step, status: "complete" }
-                : step.id === "tracking"
-                ? { ...step, status: "processing" }
-                : step
-            ),
-          });
-
-          // Show confirmation dialog with extracted info
-          const confirmTracking = window.confirm(
-            `Extracted tracking information:\n\n` +
-              `Tracking Number: ${trackingInfo.trackingNumber}\n` +
-              `Carrier: ${trackingInfo.carrier}\n` +
-              `Sender: ${trackingInfo.sender || "N/A"}\n` +
-              `Receiver: ${trackingInfo.receiver || "N/A"}\n\n` +
-              `Is this information correct?`
-          );
-
-          if (!confirmTracking) {
-            setManualTracking({
-              fileIndex: i,
-              fileName: file.name,
-              show: true,
-            });
-            setManualTrackingNumber(trackingInfo.trackingNumber || "");
-            setManualCarrier(trackingInfo.carrier);
-            continue;
-          }
-
           // Validate tracking number
           const isValidTrackingNumber = validateTrackingNumber(trackingInfo);
 
@@ -398,6 +361,7 @@ export function ViewLabel({
             ...initialProgress,
             currentStep: "tracking",
             progress: 75,
+            trackingInfo,
             steps: initialProgress.steps.map((step) =>
               step.id === "upload"
                 ? { ...step, status: "complete" }
@@ -426,6 +390,7 @@ export function ViewLabel({
             ...initialProgress,
             currentStep: "database",
             progress: 100,
+            trackingInfo,
             steps: initialProgress.steps.map((step) =>
               step.id === "upload"
                 ? { ...step, status: "complete" }
@@ -523,22 +488,38 @@ export function ViewLabel({
   const handleDelete = async (index: number) => {
     try {
       const filename = pdfFilenames[index];
-      if (!filename) {
-        throw new Error("File not found");
-      }
+      console.log("Deleting file:", filename, "for order:", orderId);
 
       const response = await fetch(`/api/shipping/pdf/${filename}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
-        await fetchPdfs();
-        if (pdfUrls.length === 1) {
+        console.log("Delete successful, updating store and state");
+        removeLabel(orderId, filename);
+        console.log("Store updated:", useShippingStore.getState().labels);
+
+        // Update local state
+        const newUrls = [...pdfUrls];
+        newUrls.splice(index, 1);
+        setPdfUrls(newUrls);
+
+        const newFilenames = [...pdfFilenames];
+        newFilenames.splice(index, 1);
+        setPdfFilenames(newFilenames);
+
+        // Update PDF existence state
+        if (newUrls.length === 0) {
           setPdfExists(false);
         }
-        if (currentPdfIndex >= pdfUrls.length - 1) {
-          setCurrentPdfIndex(Math.max(0, pdfUrls.length - 2));
+
+        // Update current index if needed
+        if (currentPdfIndex >= newUrls.length) {
+          setCurrentPdfIndex(Math.max(0, newUrls.length - 1));
         }
+
+        // Revoke the old URL to free up memory
+        URL.revokeObjectURL(pdfUrls[index]);
       } else {
         throw new Error("Delete failed");
       }

@@ -29,11 +29,16 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
         const filenames: string[] = await response.json();
         const labelsByOrder: Record<string, string[]> = {};
 
-        // Group filenames by order ID (removing the .pdf extension)
+        // Group filenames by order ID (handling both base and numbered filenames)
         filenames.forEach((filename) => {
-          const orderId = filename.replace(".pdf", "");
-          labelsByOrder[orderId] = labelsByOrder[orderId] || [];
-          labelsByOrder[orderId]!.push(filename);
+          // Extract orderId from filename patterns like:
+          // "orderId.pdf" or "orderId-1.pdf" or "orderId-2.pdf"
+          const match = filename.match(/^(.+?)(?:-\d+)?\.pdf$/);
+          if (match) {
+            const orderId = match[1];
+            labelsByOrder[orderId] = labelsByOrder[orderId] || [];
+            labelsByOrder[orderId]!.push(filename);
+          }
         });
 
         set({ labels: labelsByOrder, isLoading: false });
@@ -72,14 +77,20 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
     },
 
     removeLabel: (orderId: string, filename: string) => {
-      set((state) => ({
-        labels: {
-          ...state.labels,
-          [orderId]: (state.labels[orderId] || []).filter(
-            (label) => label !== filename
-          ),
-        },
-      }));
+      set((state) => {
+        const updatedLabels =
+          state.labels[orderId]?.filter((label) => label !== filename) || [];
+
+        // If there are no more labels for this order, remove the order entry completely
+        const newLabels = { ...state.labels };
+        if (updatedLabels.length === 0) {
+          delete newLabels[orderId];
+        } else {
+          newLabels[orderId] = updatedLabels;
+        }
+
+        return { labels: newLabels };
+      });
     },
 
     hasLabel: (orderId: string) => {
