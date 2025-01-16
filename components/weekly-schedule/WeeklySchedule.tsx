@@ -39,7 +39,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   const [weeklySchedules, setWeeklySchedules] = useState<WeeklySchedules>({});
   const [currentWeekStart, setCurrentWeekStart] = useState<Date | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
-  const [currentDay, setCurrentDay] = useState("");
+  const [currentDay, setCurrentDay] = useState<DayName>("Monday");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDesign, setFilterDesign] = useState("all");
   const [filterSize, setFilterSize] = useState("all");
@@ -74,6 +74,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
 
   const loadData = useCallback(async () => {
     try {
+      if (!currentWeekStart) return;
       const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
 
       if (board?.weeklySchedules) {
@@ -105,13 +106,14 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
     };
   }, [loadData]);
 
-  const handleAddItem = useCallback((day: string) => {
+  const handleAddItem = useCallback((day: DayName) => {
     setCurrentDay(day);
     setIsAddingItem(true);
   }, []);
 
   const handleQuickAdd = useCallback(
     async (day: DayName, itemId: string) => {
+      if (!currentWeekStart) return;
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
       const currentWeekSchedule =
         weeklySchedules[weekKey] || ({} as DaySchedule);
@@ -152,6 +154,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
 
   const handleRemoveItem = useCallback(
     async (day: DayName, itemId: string) => {
+      if (!currentWeekStart) return;
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
       const currentWeekSchedule =
         weeklySchedules[weekKey] || ({} as DaySchedule);
@@ -184,8 +187,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
 
   const handleDragEnd = useCallback(
     async (result: DropResult) => {
-      if (!result.destination) return;
-
+      if (!result.destination || !currentWeekStart) return;
       const { source, destination } = result;
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
       const currentWeekSchedule =
@@ -222,6 +224,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
   const handleMarkAsCompleted = useCallback(
     async (item: Item) => {
       try {
+        if (!currentWeekStart) return;
         const weekKey = format(currentWeekStart, "yyyy-MM-dd");
         const currentWeekSchedule = weeklySchedules[weekKey] as DaySchedule;
         if (!currentWeekSchedule) return;
@@ -282,7 +285,9 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
     [items, getItemValue]
   );
 
-  const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+  const weekKey = currentWeekStart
+    ? format(currentWeekStart, "yyyy-MM-dd")
+    : "";
   const filteredItems = useMemo(
     () =>
       items.filter(
@@ -315,6 +320,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
 
   const changeWeek = useCallback(
     (direction: "prev" | "next") => {
+      if (!currentWeekStart) return;
       const newWeekStart =
         direction === "prev"
           ? subWeeks(currentWeekStart, 1)
@@ -333,7 +339,7 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
         <h2 className="text-2xl font-bold mb-2">Weekly Planner</h2>
         <WeekSelector
           bgColor="bg-white dark:bg-gray-700"
-          currentWeekStart={currentWeekStart}
+          currentWeekStart={currentWeekStart || new Date()}
           onChangeWeek={changeWeek}
         />
       </div>

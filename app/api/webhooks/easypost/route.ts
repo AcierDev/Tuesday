@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import clientPromise from "../../db/connect";
-import { OrderTrackingInfo } from "@/typings/types";
+import { OrderTrackingInfo, Tracker } from "@/typings/types";
 import crypto from "crypto";
+import { AlertManager } from "@/backend/src/AlertManager";
 
 // Webhook secret should be stored in environment variables
 const WEBHOOK_SECRET = process.env.EASYPOST_WEBHOOK_SECRET;
@@ -32,6 +33,7 @@ function validateWebhook(payload: string, signature: string): boolean {
 
 export async function POST(request: Request) {
   console.log("Received webhook request");
+  AlertManager.sendText("Ben", "New Message", "EasyPost webhook received");
 
   try {
     const payload = await request.text();
@@ -59,8 +61,14 @@ export async function POST(request: Request) {
     // Handle tracker updates
     if (event.description === "tracker.updated") {
       console.log("Processing tracker.updated event");
-      const tracker = event.result;
+      const tracker: Tracker = event.result;
       console.log("Tracker data:", tracker);
+
+      AlertManager.sendText(
+        "Ben",
+        "New Message",
+        `Tracker code: ${tracker.tracking_code} updated`
+      );
 
       const client = await clientPromise;
       console.log("MongoDB client connected");
@@ -90,12 +98,12 @@ export async function POST(request: Request) {
 
       // Return success
       console.log("Successfully processed webhook");
-      return NextResponse.json({ status: "success" });
+      return NextResponse.json({ status: "success" }, { status: 200 });
     }
 
     // Ignore other event types
     console.log("Ignoring non-tracker event:", event.description);
-    return NextResponse.json({ status: "ignored" });
+    return NextResponse.json({ status: "ignored" }, { status: 200 });
   } catch (error) {
     console.error("Webhook error:", error);
     console.error("Full error details:", {

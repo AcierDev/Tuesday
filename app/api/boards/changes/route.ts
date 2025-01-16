@@ -56,9 +56,6 @@ export async function GET() {
                   try {
                     controller.enqueue(`data: ${message}\n\n`);
                   } catch (enqueueError) {
-                    console.log(
-                      "Failed to send message, connection might be closed"
-                    );
                     await cleanup();
                     break;
                   }
@@ -74,9 +71,7 @@ export async function GET() {
           await cleanup();
         }
       },
-      cancel() {
-        console.log("Client disconnected");
-      },
+      cancel() {},
     }),
     {
       headers: {

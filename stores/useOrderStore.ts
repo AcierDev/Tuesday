@@ -131,7 +131,34 @@ export const useOrderStore = create<OrderState>()(
         if (!board) return;
 
         const currentTimestamp = Date.now();
-        const updatedValues = updatedItem.values.map((value) =>
+
+        // Get all possible column names from other items to ensure we have a complete list
+        const allColumnNames = new Set<string>();
+        board.items_page.items.forEach((item) => {
+          item.values.forEach((value) => {
+            allColumnNames.add(value.columnName);
+          });
+        });
+
+        // Ensure all columns exist in the item's values array
+        const existingColumns = new Set(
+          updatedItem.values.map((v) => v.columnName)
+        );
+        const updatedValues = [...updatedItem.values];
+
+        // Add missing columns with empty values
+        allColumnNames.forEach((columnName) => {
+          if (!existingColumns.has(columnName as ColumnTitles)) {
+            updatedValues.push({
+              columnName: columnName as ColumnTitles,
+              type: getColumnType(columnName), // Helper function to determine type
+              text: "",
+            });
+          }
+        });
+
+        // Update the timestamp for the changed field
+        const finalValues = updatedValues.map((value) =>
           value.columnName === changedField
             ? { ...value, lastModifiedTimestamp: currentTimestamp }
             : value
@@ -139,7 +166,7 @@ export const useOrderStore = create<OrderState>()(
 
         let itemToUpdate = {
           ...updatedItem,
-          values: updatedValues,
+          values: finalValues,
         };
 
         // Apply automatron rules if active
@@ -516,4 +543,24 @@ function applyAutomatronRules(
   }
 
   return updatedItem;
+}
+
+function getColumnType(columnName: string): string {
+  // Map column names to their types
+  const columnTypes: Record<string, string> = {
+    "Customer Name": "text",
+    "Due Date": "date",
+    Design: "dropdown",
+    Size: "dropdown",
+    Painted: "dropdown",
+    Backboard: "dropdown",
+    Glued: "dropdown",
+    Packaging: "dropdown",
+    Boxes: "dropdown",
+    Notes: "text",
+    Rating: "number",
+    // Add other columns as needed
+  };
+
+  return columnTypes[columnName] || "text"; // Default to "text" if type is unknown
 }

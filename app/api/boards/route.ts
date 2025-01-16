@@ -19,7 +19,10 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    console.debug("PATCH request received");
+
     const client = await clientPromise;
+
     const db = client.db("react-web-app");
     const collection = db.collection<Board>(`${process.env.NEXT_PUBLIC_MODE}`);
 
@@ -36,6 +39,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
+    console.error("Error updating board:", error);
     return NextResponse.json(
       { error: "Failed to update board" },
       { status: 500 }

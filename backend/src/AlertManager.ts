@@ -1,17 +1,12 @@
-import nodemailer from "nodemailer";
+import { SendMailClient } from "zeptomail";
 import dotenv from "dotenv";
 
 dotenv.config();
 
 export class AlertManager {
-  private static transporter = nodemailer.createTransport({
-    host: "smtp.zoho.com",
-    port: 465,
-    secure: true,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
+  private static client = new SendMailClient({
+    url: "api.zeptomail.com/",
+    token: process.env.ZEPTO_TOKEN || "",
   });
 
   private static carriers = {
@@ -29,21 +24,37 @@ export class AlertManager {
     const recipients = this.getRecipients(to);
     const RECIPIENT_CARRIER = "tmobile";
 
-    console.log("Sending error text to:", recipients);
+    console.log("Sending text to:", recipients);
 
     const sendPromises = recipients.map(async (recipient) => {
       const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: `${recipient}@${this.carriers[RECIPIENT_CARRIER]}`,
-        subject: "Everwood Backend Server " + type,
-        text: message,
+        from: {
+          address: process.env.EMAIL_USER || "",
+          name: "Everwood Alert",
+        },
+        to: [
+          {
+            email_address: {
+              address: `${recipient}@${this.carriers[RECIPIENT_CARRIER]}`,
+              name: recipient,
+            },
+          },
+        ],
+        subject: "⠀",
+        textbody: message,
       };
 
       try {
-        await this.transporter.sendMail(mailOptions);
+        await this.client.sendMail(mailOptions);
         console.log(`Text message sent to ${recipient}: ${message}`);
-      } catch (error) {
-        console.error(`Failed to send text to ${recipient}: ${error.message}`);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          console.error(
+            `Failed to send text to ${recipient}: ${error.message}`
+          );
+        } else {
+          console.error(`Failed to send text to ${recipient}: Unknown error`);
+        }
         throw error;
       }
     });
