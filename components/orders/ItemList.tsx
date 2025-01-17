@@ -73,6 +73,8 @@ export const ItemList: React.FC<ItemListProps> = ({
                     onMarkCompleted={onMarkCompleted}
                     onShip={onShip}
                     onUpdate={onUpdate}
+                    isCollapsible={true}
+                    defaultCollapsed={false}
                   />
                   {provided.placeholder}
                 </div>

@@ -32,6 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { parseDateSafely } from "@/utils/dateUtils";
 
 type TimeRange = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -79,36 +80,45 @@ export function OrderCompletionChart({
       );
 
       if (
-        dueColumn &&
-        "text" in dueColumn &&
-        designColumn &&
-        "text" in designColumn &&
-        sizeColumn &&
-        "text" in sizeColumn &&
-        customerNameColumn &&
-        "text" in customerNameColumn
+        dueColumn?.text &&
+        designColumn?.text &&
+        sizeColumn?.text &&
+        customerNameColumn?.text
       ) {
-        const date = new Date(dueColumn.text || "");
-        let key: string;
+        const parsedDate = parseDateSafely(dueColumn.text);
+        if (!parsedDate) {
+          return;
+        }
+
+        let key = "";
 
         switch (timeRange) {
           case "daily":
-            key = date.toISOString().split("T")[0];
+            key = parsedDate.toISOString().split("T")[0];
             break;
-          case "weekly":
-            const weekStart = new Date(
-              date.setDate(date.getDate() - date.getDay())
-            );
-            key = weekStart.toISOString().split("T")[0];
+          case "weekly": {
+            const weekStart = new Date(parsedDate);
+            const day = weekStart.getDay();
+            const diff = weekStart.getDate() - day;
+            weekStart.setDate(diff);
+
+            if (isValid(weekStart)) {
+              key = weekStart.toISOString().split("T")[0];
+            } else {
+              key = parsedDate.toISOString().split("T")[0];
+            }
             break;
+          }
           case "monthly":
-            key = `${date.getFullYear()}-${(date.getMonth() + 1)
+            key = `${parsedDate.getFullYear()}-${(parsedDate.getMonth() + 1)
               .toString()
               .padStart(2, "0")}`;
             break;
           case "yearly":
-            key = date.getFullYear().toString();
+            key = parsedDate.getFullYear().toString();
             break;
+          default:
+            key = parsedDate.toISOString().split("T")[0];
         }
 
         if (!groupedData[key]) {
@@ -117,10 +127,10 @@ export function OrderCompletionChart({
 
         groupedData[key].completions += 1;
         groupedData[key].items.push({
-          customerName: customerNameColumn.text!,
-          design: designColumn.text!,
-          size: sizeColumn.text!,
-          completedDate: date.toISOString().split("T")[0],
+          customerName: customerNameColumn.text,
+          design: designColumn.text,
+          size: sizeColumn.text,
+          completedDate: parsedDate.toISOString().split("T")[0],
         });
       }
     });

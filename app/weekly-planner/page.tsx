@@ -75,23 +75,6 @@ interface WeeklyScheduleHooks {
   changeWeek: (direction: "prev" | "next") => void;
 }
 
-interface AddItemDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  currentDay: DayName;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
-  filterDesign: string;
-  setFilterDesign: (design: string) => void;
-  filterSize: string;
-  setFilterSize: (size: string) => void;
-  designs: string[];
-  sizes: string[];
-  filteredItems: Item[];
-  handleQuickAdd: (day: DayName, item: Item) => Promise<void>;
-  getItemValue: (item: Item, columnName: ColumnTitles) => string;
-}
-
 interface DayScheduleItem {
   id: string;
   done: boolean;

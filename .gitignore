@@ -90,3 +90,8 @@ temp/
 
 # System files
 Thumbs.db
+
+app/testing/page.css
+
+# Data directory
+/data

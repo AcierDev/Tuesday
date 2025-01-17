@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/utils/functions";
 import { Calendar } from "lucide-react";
 import { useState } from "react";
+import { formatDateSafely } from "@/utils/dateUtils";
 
 interface TodaysScheduleProps {
   board: Board;
@@ -81,8 +82,7 @@ export function TodaysSchedule({
   // Add helper function for due date
   const getFormattedDueDate = (item: Item): string => {
     const dueDate = getItemValue(item, ColumnTitles.Due);
-    if (!dueDate) return "";
-    return format(new Date(dueDate), "MM/dd/yyyy");
+    return formatDateSafely(dueDate);
   };
 
   if (scheduledItems.length === 0) {
