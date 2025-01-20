@@ -120,7 +120,12 @@ export const CustomTableCell = ({
               onAddTag={() => {}}
               onRemoveTag={() => {}}
               initialTags={[]}
-              isDuplicate={checkDuplicate(item)}
+              tags={{
+                isDuplicate: checkDuplicate(item),
+                isDifficultCustomer: item.tags?.isDifficultCustomer || false,
+                isVertical: item.tags?.isVertical || false,
+                hasCustomerMessage: item.tags?.hasCustomerMessage || false,
+              }}
             />
           );
         }

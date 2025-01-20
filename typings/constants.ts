@@ -1,7 +1,9 @@
 import {
   ColumnTitles,
+  ColumnTypes,
   ColumnVisibility,
   EmployeeNames,
+  GenericColumnValue,
   ItemDesigns,
   ItemSizes,
   ItemStatus,
@@ -649,4 +651,67 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   [ColumnTitles.Design]: true,
   [ColumnTitles.Size]: true,
   [ColumnTitles.Due]: true,
+};
+
+export const ITEM_DEFAULT_VALUES: Record<ColumnTitles, GenericColumnValue> = {
+  [ColumnTitles.Customer_Name]: {
+    columnName: ColumnTitles.Customer_Name,
+    type: ColumnTypes.Text,
+    text: "",
+  },
+  [ColumnTitles.Design]: {
+    columnName: ColumnTitles.Design,
+    type: ColumnTypes.Dropdown,
+    text: "",
+  },
+  [ColumnTitles.Size]: {
+    columnName: ColumnTitles.Size,
+    type: ColumnTypes.Dropdown,
+    text: "",
+  },
+  [ColumnTitles.Due]: {
+    columnName: ColumnTitles.Due,
+    type: ColumnTypes.Date,
+    text: "",
+  },
+  [ColumnTitles.Painted]: {
+    columnName: ColumnTitles.Painted,
+    type: ColumnTypes.Dropdown,
+    text: "",
+  },
+  [ColumnTitles.Backboard]: {
+    columnName: ColumnTitles.Backboard,
+    type: ColumnTypes.Dropdown,
+    text: "",
+  },
+  [ColumnTitles.Glued]: {
+    columnName: ColumnTitles.Glued,
+    type: ColumnTypes.Dropdown,
+    text: "",
+  },
+  [ColumnTitles.Packaging]: {
+    columnName: ColumnTitles.Packaging,
+    type: ColumnTypes.Dropdown,
+    text: "",
+  },
+  [ColumnTitles.Boxes]: {
+    columnName: ColumnTitles.Boxes,
+    type: ColumnTypes.Dropdown,
+    text: "",
+  },
+  [ColumnTitles.Notes]: {
+    columnName: ColumnTitles.Notes,
+    type: ColumnTypes.Dropdown,
+    text: "",
+  },
+  [ColumnTitles.Rating]: {
+    columnName: ColumnTitles.Rating,
+    type: ColumnTypes.Dropdown,
+    text: "",
+  },
+  [ColumnTitles.Labels]: {
+    columnName: ColumnTitles.Labels,
+    type: ColumnTypes.Dropdown,
+    text: "",
+  },
 };

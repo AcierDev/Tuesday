@@ -49,11 +49,15 @@ export type Item = {
   createdAt: number;
   completedAt?: number;
   status: ItemStatus;
-  vertical?: boolean;
   visible: boolean;
   deleted: boolean;
   isScheduled?: boolean;
   shippingDetails?: ShippingDetails;
+  tags?: {
+    isDifficultCustomer: boolean;
+    isVertical: boolean;
+    hasCustomerMessage: boolean;
+  };
 };
 
 export type ShippingDetails = {
