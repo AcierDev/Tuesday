@@ -16,6 +16,8 @@ interface OrderState {
   isLoading: boolean;
   settings: Settings | null;
   eventSource: EventSource | null;
+  doneItemsLoaded: boolean;
+  hiddenItemsLoaded: boolean;
 
   // Actions
   loadBoard: () => Promise<void>;
@@ -43,6 +45,10 @@ interface OrderState {
   ) => Promise<void>;
   init: () => Promise<void>;
   checkDuplicate: (item: Item) => boolean;
+  loadDoneItems: () => Promise<void>;
+  removeDoneItems: () => void;
+  loadHiddenItems: () => Promise<void>;
+  removeHiddenItems: () => void;
 }
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -70,15 +76,23 @@ export const useOrderStore = create<OrderState>()(
       isLoading: false,
       settings: null,
       eventSource: null,
+      doneItemsLoaded: false,
+      hiddenItemsLoaded: false,
 
       loadBoard: async () => {
         try {
           set({ isLoading: true });
-          const response = await fetch("/api/boards");
+          const response = await fetch("/api/boards?includeDone=false");
           if (!response.ok) throw new Error("Failed to fetch board");
 
           const board = await response.json();
-          set({ board, lastFetched: Date.now(), isLoading: false });
+          set({
+            board,
+            lastFetched: Date.now(),
+            isLoading: false,
+            doneItemsLoaded: false,
+            hiddenItemsLoaded: false,
+          });
 
           // Start watching for changes after initial load
           get().startWatchingChanges();
@@ -98,10 +112,25 @@ export const useOrderStore = create<OrderState>()(
         eventSource.onmessage = (event) => {
           try {
             const change = JSON.parse(event.data);
-            const { board } = get();
+            const { board, doneItemsLoaded, hiddenItemsLoaded } = get();
 
             if (change.type === "update" && board?.id === change.boardId) {
-              set({ board: change.board });
+              // Filter items based on whether done/hidden items are loaded
+              const filteredItems = change.board.items_page.items.filter(
+                (item) =>
+                  (doneItemsLoaded ? true : item.status !== ItemStatus.Done) &&
+                  (hiddenItemsLoaded ? true : item.visible)
+              );
+
+              set({
+                board: {
+                  ...change.board,
+                  items_page: {
+                    ...change.board.items_page,
+                    items: filteredItems,
+                  },
+                },
+              });
             }
           } catch (error) {
             console.error("Failed to process change:", error);
@@ -148,7 +177,7 @@ export const useOrderStore = create<OrderState>()(
 
         const currentTimestamp = Date.now();
 
-        // Get all possible column names from other items to ensure we have a complete list
+        // Get all possible column names from other items
         const allColumnNames = new Set<string>();
         board.items_page.items.forEach((item) => {
           item.values.forEach((value) => {
@@ -167,7 +196,7 @@ export const useOrderStore = create<OrderState>()(
           if (!existingColumns.has(columnName as ColumnTitles)) {
             updatedValues.push({
               columnName: columnName as ColumnTitles,
-              type: getColumnType(columnName), // Helper function to determine type
+              type: getColumnType(columnName),
               text: "",
             });
           }
@@ -195,27 +224,26 @@ export const useOrderStore = create<OrderState>()(
         }
 
         try {
-          const updatedItems = board.items_page.items.map((item) =>
-            item.id === updatedItem.id ? itemToUpdate : item
-          );
-
-          const updates = {
-            items_page: {
-              ...board.items_page,
-              items: updatedItems,
-            },
-          };
-
+          // Update only the specific item in the database
           const response = await fetch("/api/boards", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               id: board.id,
-              updates,
+              updateType: "item",
+              updates: {
+                "items_page.items.$[elem]": itemToUpdate,
+              },
+              arrayFilters: [{ "elem.id": updatedItem.id }],
             }),
           });
 
           if (!response.ok) throw new Error("Failed to update item");
+
+          // Update local state
+          const updatedItems = board.items_page.items.map((item) =>
+            item.id === updatedItem.id ? itemToUpdate : item
+          );
 
           set({
             board: {
@@ -259,10 +287,14 @@ export const useOrderStore = create<OrderState>()(
           values: newItem.values || [],
           createdAt: Date.now(),
           status: ItemStatus.New,
-          vertical: newItem.vertical,
           visible: true,
           deleted: false,
           isScheduled: false,
+          tags: {
+            isVertical: newItem.tags?.isVertical,
+            hasCustomerMessage: newItem.tags?.hasCustomerMessage,
+            isDifficultCustomer: newItem.tags?.isDifficultCustomer,
+          },
         };
 
         try {
@@ -308,27 +340,25 @@ export const useOrderStore = create<OrderState>()(
         if (!board) return;
 
         try {
-          const updatedItems = board.items_page.items.map((item) =>
-            item.id === itemId ? { ...item, deleted: true } : item
-          );
-
-          const updates = {
-            items_page: {
-              ...board.items_page,
-              items: updatedItems,
-            },
-          };
-
           const response = await fetch("/api/boards", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               id: board.id,
-              updates,
+              updateType: "item",
+              updates: {
+                "items_page.items.$[elem].deleted": true,
+              },
+              arrayFilters: [{ "elem.id": itemId }],
             }),
           });
 
           if (!response.ok) throw new Error("Failed to delete item");
+
+          // Update local state
+          const updatedItems = board.items_page.items.map((item) =>
+            item.id === itemId ? { ...item, deleted: true } : item
+          );
 
           set({
             board: {
@@ -484,6 +514,7 @@ export const useOrderStore = create<OrderState>()(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               id: boardId,
+              updateType: "item",
               updates: {
                 "items_page.items.$[elem].isScheduled": isScheduled,
               },
@@ -494,6 +525,7 @@ export const useOrderStore = create<OrderState>()(
           if (!response.ok)
             throw new Error("Failed to update item schedule status");
 
+          // Update local state
           const updatedItems = board.items_page.items.map((item) =>
             item.id === itemId ? { ...item, isScheduled } : item
           );
@@ -527,6 +559,114 @@ export const useOrderStore = create<OrderState>()(
         if (!board) return false;
 
         return hasDuplicateFirstValue(item, board.items_page.items);
+      },
+
+      loadDoneItems: async () => {
+        const { board } = get();
+        if (!board) return;
+
+        try {
+          set({ isLoading: true });
+          const response = await fetch("/api/boards?includeDone=true");
+          if (!response.ok) throw new Error("Failed to fetch done items");
+
+          const doneBoard = await response.json();
+
+          // Merge done items with existing items
+          set({
+            board: {
+              ...board,
+              items_page: {
+                ...board.items_page,
+                items: [
+                  ...board.items_page.items,
+                  ...doneBoard.items_page.items,
+                ],
+              },
+            },
+            doneItemsLoaded: true,
+            isLoading: false,
+          });
+        } catch (err) {
+          console.error("Failed to load done items", err);
+          toast.error("Failed to load done items. Please try again.");
+          set({ isLoading: false });
+        }
+      },
+
+      removeDoneItems: () => {
+        const { board } = get();
+        if (!board) return;
+
+        // Filter out done items
+        const activeItems = board.items_page.items.filter(
+          (item) => item.status !== ItemStatus.Done
+        );
+
+        set({
+          board: {
+            ...board,
+            items_page: {
+              ...board.items_page,
+              items: activeItems,
+            },
+          },
+          doneItemsLoaded: false,
+        });
+      },
+
+      loadHiddenItems: async () => {
+        const { board } = get();
+        if (!board) return;
+
+        try {
+          set({ isLoading: true });
+          const response = await fetch("/api/boards?includeHidden=true");
+          if (!response.ok) throw new Error("Failed to fetch hidden items");
+
+          const hiddenBoard = await response.json();
+
+          // Merge hidden items with existing items
+          set({
+            board: {
+              ...board,
+              items_page: {
+                ...board.items_page,
+                items: [
+                  ...board.items_page.items,
+                  ...hiddenBoard.items_page.items,
+                ],
+              },
+            },
+            hiddenItemsLoaded: true,
+            isLoading: false,
+          });
+        } catch (err) {
+          console.error("Failed to load hidden items", err);
+          toast.error("Failed to load hidden items. Please try again.");
+          set({ isLoading: false });
+        }
+      },
+
+      removeHiddenItems: () => {
+        const { board } = get();
+        if (!board) return;
+
+        // Filter out hidden items
+        const visibleItems = board.items_page.items.filter(
+          (item) => item.visible
+        );
+
+        set({
+          board: {
+            ...board,
+            items_page: {
+              ...board.items_page,
+              items: visibleItems,
+            },
+          },
+          hiddenItemsLoaded: false,
+        });
       },
     };
   }),

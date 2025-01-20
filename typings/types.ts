@@ -54,9 +54,9 @@ export type Item = {
   isScheduled?: boolean;
   shippingDetails?: ShippingDetails;
   tags?: {
-    isDifficultCustomer: boolean;
-    isVertical: boolean;
-    hasCustomerMessage: boolean;
+    isDifficultCustomer?: boolean;
+    isVertical?: boolean;
+    hasCustomerMessage?: boolean;
   };
 };
 

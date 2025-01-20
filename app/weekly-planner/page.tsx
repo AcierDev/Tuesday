@@ -260,7 +260,7 @@ const DayCard = ({
   return (
     <div className="relative group h-full">
       {isCurrentDay && (
-        <div className="absolute inset-0 rounded-xl border-2 border-blue-400 dark:border-blue-500 bg-blue-50/20 dark:bg-blue-500/10 pointer-events-none z-10 animate-pulse" />
+        <div className="absolute inset-0 rounded-xl border-2 border-blue-400 dark:border-blue-500 bg-blue-50/20 dark:bg-blue-900/5 pointer-events-none z-10" />
       )}
 
       <Card

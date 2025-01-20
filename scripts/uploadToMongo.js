@@ -6,7 +6,7 @@ const path = require("path");
 const uri =
   "mongodb+srv://temp:gxFfQcLFBQY8nJmf@sharedcluster.ftf6xg6.mongodb.net/?retryWrites=true&w=majority&appName=SharedCluster";
 const dbName = "react-web-app";
-const collectionName = "development";
+const collectionName = "production";
 
 async function uploadToMongo() {
   try {

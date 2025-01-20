@@ -74,7 +74,10 @@ export const ItemList: React.FC<ItemListProps> = ({
                     onShip={onShip}
                     onUpdate={onUpdate}
                     isCollapsible={true}
-                    defaultCollapsed={false}
+                    defaultCollapsed={
+                      group.title === ItemStatus.Done ||
+                      group.title === ItemStatus.Hidden
+                    }
                   />
                   {provided.placeholder}
                 </div>
