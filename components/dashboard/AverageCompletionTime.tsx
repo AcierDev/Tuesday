@@ -46,7 +46,7 @@ export function AverageCompletionTimeChart({
         item.createdAt
       ) {
         const completionTime =
-          (item.completedAt - item.createdAt) / (1000 * 60 * 60); // Convert to hours
+          (item.completedAt - item.createdAt) / (1000 * 60 * 60 * 24); // Convert to days
         const date = new Date(item.completedAt);
         let key: string;
 
@@ -111,7 +111,7 @@ export function AverageCompletionTimeChart({
             borderRadius: "4px",
             color: colors.text,
           }}
-          formatter={(value: number) => `${value.toFixed(2)} hours`}
+          formatter={(value: number) => `${value.toFixed(2)} days`} // Changed to days
         />
         <Line
           type="monotone"

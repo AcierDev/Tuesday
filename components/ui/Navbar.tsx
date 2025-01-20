@@ -51,7 +51,7 @@ type NavItem = NavLinkItem | DividerItem;
 const mainNavItems: NavItem[] = [
   { href: "/orders", icon: Logs, label: "Orders", hotkey: "1" },
   { href: "/weekly-planner", icon: ClipboardList, label: "Weekly Planner" },
-  { href: "/shipping", icon: Truck, label: "Shipping", hotkey: "2" },
+  // { href: "/shipping", icon: Truck, label: "Shipping", hotkey: "2" },
   { type: "divider" },
   { href: "/paint", icon: PaintbrushVertical, label: "Paint", hotkey: "3" },
   { href: "/packaging", icon: PackageOpen, label: "Packaging", hotkey: "4" },

@@ -19,6 +19,7 @@ import {
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import React, { useEffect } from "react";
 import { ShippingCell } from "./ShippingCell";
+import { useOrderStore } from "@/stores/useOrderStore";
 
 export const CustomTableCell = ({
   item,
@@ -37,6 +38,8 @@ export const CustomTableCell = ({
   const [showNotification, setShowNotification] = React.useState<
     boolean | null
   >(null);
+
+  const checkDuplicate = useOrderStore((state) => state.checkDuplicate);
 
   useEffect(() => {
     const checkModification = () => {
@@ -117,6 +120,7 @@ export const CustomTableCell = ({
               onAddTag={() => {}}
               onRemoveTag={() => {}}
               initialTags={[]}
+              isDuplicate={checkDuplicate(item)}
             />
           );
         }

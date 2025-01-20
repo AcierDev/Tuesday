@@ -22,11 +22,11 @@ export async function POST(request: Request) {
       const tracker: Tracker = event.result;
       console.log("Tracker data:", tracker);
 
-      AlertManager.sendText(
-        "Ben",
-        "New Message",
-        `Tracker code: ${tracker.tracking_code} updated`
-      );
+      // AlertManager.sendText(
+      //   "Ben",
+      //   "New Message",
+      //   `Tracker code: ${tracker.tracking_code} updated`
+      // );
 
       const client = await clientPromise;
       console.log("MongoDB client connected");

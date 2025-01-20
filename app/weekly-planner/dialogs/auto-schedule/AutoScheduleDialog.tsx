@@ -24,13 +24,6 @@ import { BaseConfirmDialog } from "../BaseConfirmDialog";
 import { sortItems } from "../../AutoScheduling";
 import { toast } from "sonner";
 
-interface AutoSchedulePreview {
-  [key: string]: {
-    day: DayName;
-    item: Item;
-  }[];
-}
-
 interface AutoScheduleDialogProps {
   isOpen: boolean;
   onClose: () => void;

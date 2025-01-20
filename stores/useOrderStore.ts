@@ -42,9 +42,25 @@ interface OrderState {
     isScheduled: boolean
   ) => Promise<void>;
   init: () => Promise<void>;
+  checkDuplicate: (item: Item) => boolean;
 }
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Add this helper function before the store creation
+function hasDuplicateFirstValue(item: Item, items: Item[]): boolean {
+  // Get the first value's text from the current item
+  const firstValue = item.values[0]?.text;
+  if (!firstValue) return false;
+
+  // Check if any other item has the same first value
+  return items.some(
+    (otherItem) =>
+      otherItem.id !== item.id && // Don't compare with self
+      otherItem.values[0]?.text?.includes(firstValue) && // Compare first values
+      !otherItem.deleted // Don't compare with deleted items
+  );
+}
 
 export const useOrderStore = create<OrderState>()(
   devtools((set, get) => {
@@ -504,6 +520,13 @@ export const useOrderStore = create<OrderState>()(
         const store = get();
         await store.loadBoard();
         await store.loadSettings();
+      },
+
+      checkDuplicate: (item: Item): boolean => {
+        const { board } = get();
+        if (!board) return false;
+
+        return hasDuplicateFirstValue(item, board.items_page.items);
       },
     };
   }),

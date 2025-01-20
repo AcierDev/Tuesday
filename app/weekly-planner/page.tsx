@@ -544,6 +544,8 @@ const WeeklyPlanner = () => {
   const [showHighBlockWarning, setShowHighBlockWarning] = useState(false);
 
   const { board, updateWeeklySchedules } = useOrderStore();
+  const { proposedSchedule, setProposedSchedule, excludedDays } =
+    useAutoScheduleStore();
 
   React.useEffect(() => {
     const weekKey = format(currentWeekStart, "yyyy-MM-dd");
