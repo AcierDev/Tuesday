@@ -16,10 +16,33 @@ import {
   FileWarning,
   MessageCircleWarning,
   MoveVertical,
+  TriangleAlert,
 } from "lucide-react";
 import { cn } from "@/utils/functions";
 import React from "react";
 import { Item, ColumnValue } from "@/typings/types";
+
+// Add this style block right after imports
+const pulseKeyframes = `
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.5);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+`;
+
+// Add the style element to inject the keyframes
+const styleElement = document.createElement("style");
+styleElement.textContent = pulseKeyframes;
+if (typeof document !== "undefined") {
+  document.head.appendChild(styleElement);
+}
 
 interface NameCellProps {
   item: Item;
@@ -142,7 +165,13 @@ export const NameCell: React.FC<NameCellProps> = ({
         {tags?.isDifficultCustomer && (
           <Tooltip>
             <TooltipTrigger>
-              <Angry className="h-4 w-4 text-red-500" />
+              <Angry
+                className="h-4 w-4 text-red-500 animate-[pulse_3s_ease-in-out_infinite]"
+                style={{
+                  animation: "pulse 3s ease-in-out infinite",
+                  transformOrigin: "center",
+                }}
+              />
             </TooltipTrigger>
             <TooltipContent>
               <p>Difficult customer</p>

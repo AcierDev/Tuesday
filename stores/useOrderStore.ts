@@ -420,7 +420,7 @@ export const useOrderStore = create<OrderState>()(
         if (currentStatusCount < destinationIndex) {
           while (
             insertAt < updatedItems.length &&
-            updatedItems[insertAt].status === destinationStatus
+            updatedItems[insertAt]?.status === destinationStatus
           ) {
             insertAt++;
           }
@@ -441,11 +441,11 @@ export const useOrderStore = create<OrderState>()(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               id: board.id,
+              updateType: "reorder",
               updates: {
-                items_page: {
-                  ...board.items_page,
-                  items: updatedItems,
-                },
+                itemIds: [itemId],
+                items: [updatedItem],
+                position: insertAt,
               },
             }),
           });

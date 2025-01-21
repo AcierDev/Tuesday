@@ -92,8 +92,31 @@ export async function PATCH(request: Request) {
         { arrayFilters }
       );
       return NextResponse.json(result);
+    } else if (updateType === "reorder") {
+      // For reordering, only update the specified items
+      const result = await collection.updateOne(
+        { id },
+        {
+          $pull: { "items_page.items": { id: { $in: updates.itemIds } } },
+        }
+      );
+
+      // Then push the items back at the specified position
+      const pushResult = await collection.updateOne(
+        { id },
+        {
+          $push: {
+            "items_page.items": {
+              $each: updates.items,
+              $position: updates.position,
+            },
+          },
+        }
+      );
+
+      return NextResponse.json({ pull: result, push: pushResult });
     } else {
-      // Handle bulk updates (like reordering) using the existing approach
+      // Handle other updates
       const result = await collection.updateOne(
         { id },
         { $set: updates },
