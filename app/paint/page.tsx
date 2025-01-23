@@ -26,7 +26,7 @@ export default function PaintSchedulePage() {
   const [activeTab, setActiveTab] = useState<string>("overview");
 
   const isMobile = useIsMobile();
-  const { board, updateItem } = useOrderStore();
+  const { items } = useOrderStore();
 
   const {
     weeklySchedules,
@@ -49,7 +49,7 @@ export default function PaintSchedulePage() {
   };
 
   const itemsNeedingPaint = useMemo(() => {
-    if (!board) return [];
+    if (!items) return [];
     const selectedDateStrings = selectedDates.map((date) =>
       format(date, "yyyy-MM-dd")
     );
@@ -70,8 +70,8 @@ export default function PaintSchedulePage() {
       }
     });
 
-    return board.items_page.items.filter((item) => scheduledItems.has(item.id));
-  }, [board, selectedDates, weeklySchedules, currentWeekStart]);
+    return items.filter((item) => scheduledItems.has(item.id));
+  }, [items, selectedDates, weeklySchedules, currentWeekStart]);
 
   const filteredItemsNeedingPaint = useMemo(() => {
     return itemsNeedingPaint.filter((item) => {

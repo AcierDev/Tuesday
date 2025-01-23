@@ -9,7 +9,7 @@ import {
   isSameWeek,
 } from "date-fns";
 import { toast } from "sonner";
-import { WeeklySchedules, DayName, DaySchedule } from "@/typings/types";
+import { WeeklySchedules, DayName, WeekSchedule } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 import debounce from "lodash/debounce";
 

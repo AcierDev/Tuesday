@@ -17,6 +17,7 @@ import { XCircleIcon } from "lucide-react";
 import { boardConfig } from "../../config/boardconfig";
 import { DesignBlends, ItemDesignImages } from "@/typings/constants";
 import { toast } from "sonner";
+import { ColumnTitles, ColumnValue, Item } from "@/typings/types";
 
 const createBackground = (option: string) => {
   const colors = DesignBlends[option as keyof typeof DesignBlends];
@@ -27,7 +28,15 @@ const createBackground = (option: string) => {
   return "#000000";
 };
 
-export const DesignDropdownCell = ({ item, columnValue, onUpdate, board }) => {
+export const DesignDropdownCell = ({
+  item,
+  columnValue,
+  onUpdate,
+}: {
+  item: Item;
+  columnValue: ColumnValue;
+  onUpdate: (item: Item, columnName: ColumnTitles) => void;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredDesign, setHoveredDesign] = useState(null);
   const [showPopover, setShowPopover] = useState(false);

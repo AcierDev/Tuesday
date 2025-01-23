@@ -76,7 +76,12 @@ const mainNavItems: NavItem[] = [
   { href: "/calculator", icon: Calculator, label: "Calculator", hotkey: "6" },
 ];
 
-const EASTER_EGG_SEQUENCE = ["/orders", "/shipping", "/orders", "/shipping"];
+const EASTER_EGG_SEQUENCE = [
+  "/orders",
+  "/weekly-planner",
+  "/orders",
+  "/weekly-planner",
+];
 
 interface NavbarProps {
   onOpenSettings: () => void;

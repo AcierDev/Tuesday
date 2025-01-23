@@ -1,12 +1,15 @@
 import { MongoClient } from "mongodb";
-import { Board } from "../typings/types.ts";
+import { Board, WeeklyScheduleData, Item } from "../typings/types.ts";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
+const uri =
+  process.env.MONGODB_URI ||
+  "mongodb+srv://Backend:2nywFe9Nh76OsynP@sharedcluster.ftf6xg6.mongodb.net/?retryWrites=true&w=majority&appName=SharedCluster";
+console.log(uri);
 const sourceDbName = "react-web-app";
-const sourceCollection = "development";
+const sourceCollection = "production";
 
 async function splitCollections() {
   try {
@@ -26,8 +29,10 @@ async function splitCollections() {
     }
 
     // Create new collections
-    const itemsCollection = db.collection("items-development");
-    const schedulesCollection = db.collection("weeklySchedules-development");
+    const itemsCollection = db.collection<Item>("items-production");
+    const schedulesCollection = db.collection<WeeklyScheduleData>(
+      "weeklySchedules-production"
+    );
 
     // Insert all items with additional metadata
     if (board.items_page?.items) {
@@ -46,15 +51,20 @@ async function splitCollections() {
 
     // Insert weekly schedules with metadata
     if (board.weeklySchedules) {
-      const schedulesWithMetadata = {
-        ...board.weeklySchedules,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const schedules: WeeklyScheduleData[] = Object.entries(
+        board.weeklySchedules
+      )
+        .filter(([key]) => key !== "createdAt" && key !== "updatedAt")
+        .map(([weekKey, schedule]) => ({
+          weekKey,
+          schedule: schedule as WeeklyScheduleData,
+        }));
 
       await schedulesCollection.deleteMany({});
-      await schedulesCollection.insertOne(schedulesWithMetadata);
-      console.log("Inserted weekly schedules into weeklySchedules-development");
+      await schedulesCollection.insertMany(schedules);
+      console.log(
+        `Inserted ${schedules.length} weekly schedules into weeklySchedules-development`
+      );
     }
 
     console.log("Migration completed successfully");

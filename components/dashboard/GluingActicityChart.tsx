@@ -10,7 +10,12 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Board, Item, ColumnValue, ColumnTitles } from "@/typings/types";
+import {
+  Item,
+  ColumnValue,
+  ColumnTitles,
+  EmployeeNames,
+} from "@/typings/types";
 import { useTheme } from "next-themes";
 import {
   Dialog,
@@ -27,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getEmployeeInfo } from "@/utils/functions";
+import { useOrderStore } from "@/stores/useOrderStore";
 
 type TimeRange = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -43,11 +49,9 @@ interface GluingActivityData {
 }
 
 export function GluingActivityChart({
-  board,
   timeRange,
   selectedEmployee,
 }: {
-  board: Board;
   timeRange: TimeRange;
   selectedEmployee: string | null;
 }) {
@@ -55,11 +59,14 @@ export function GluingActivityChart({
   const [selectedDay, setSelectedDay] = useState<GluingActivityData | null>(
     null
   );
+  const { items } = useOrderStore();
 
   const data = useMemo(() => {
+    if (!items) return [];
+
     const groupedData: { [key: string]: GluingActivityData } = {};
 
-    board.items_page.items.forEach((item: Item) => {
+    items.forEach((item: Item) => {
       const gluedColumn = item.values.find(
         (value: ColumnValue) => value.columnName === ColumnTitles.Glued
       );
@@ -107,13 +114,13 @@ export function GluingActivityChart({
 
           switch (timeRange) {
             case "daily":
-              key = date.toISOString().split("T")[0];
+              key = date.toISOString().split("T")[0] || "";
               break;
             case "weekly":
               const weekStart = new Date(
                 date.setDate(date.getDate() - date.getDay())
               );
-              key = weekStart.toISOString().split("T")[0];
+              key = weekStart.toISOString().split("T")[0] || "";
               break;
             case "monthly":
               key = `${date.getFullYear()}-${(date.getMonth() + 1)
@@ -129,12 +136,12 @@ export function GluingActivityChart({
             groupedData[key] = { date: key, squares: 0, items: [] };
           }
 
-          groupedData[key].squares += squaresPerPerson;
-          groupedData[key].items.push({
+          groupedData[key]!.squares += squaresPerPerson;
+          groupedData[key]!.items.push({
             customerName: customerNameColumn.text!,
             design: designColumn.text!,
             size: sizeColumn.text!,
-            completedDate: date.toISOString().split("T")[0],
+            completedDate: date.toISOString().split("T")[0] || "",
             gluedBy: gluedColumn.credit!,
           });
         });
@@ -144,7 +151,7 @@ export function GluingActivityChart({
     return Object.values(groupedData).sort((a, b) =>
       a.date.localeCompare(b.date)
     );
-  }, [board.items_page.items, timeRange, selectedEmployee]);
+  }, [items, timeRange, selectedEmployee]);
 
   const chartColors = {
     light: {
@@ -241,7 +248,9 @@ export function GluingActivityChart({
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {item.gluedBy.map((employee, empIndex) => {
-                          const employeeInfo = getEmployeeInfo(employee);
+                          const employeeInfo = getEmployeeInfo(
+                            employee as EmployeeNames
+                          );
                           return (
                             <span
                               key={empIndex}

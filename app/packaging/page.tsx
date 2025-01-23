@@ -16,7 +16,7 @@ import { DAYS_OF_WEEK } from "@/typings/constants";
 import { useOrderStore } from "@/stores/useOrderStore";
 
 export default function BoxSchedulePage() {
-  const { board } = useOrderStore();
+  const { items } = useOrderStore();
   const [boxRequirements, setBoxRequirements] = useState<
     Record<string, BoxRequirement>
   >({});
@@ -66,10 +66,8 @@ export default function BoxSchedulePage() {
       }
     });
 
-    return board?.items_page.items.filter((item) =>
-      scheduledItems.has(item.id)
-    );
-  }, [board, selectedDates, weeklySchedules, currentWeekStart]);
+    return items?.filter((item) => scheduledItems.has(item.id));
+  }, [items, selectedDates, weeklySchedules, currentWeekStart]);
 
   const filteredItemsNeedingBoxes = useMemo(() => {
     return itemsNeedingBoxes?.filter((item) => {

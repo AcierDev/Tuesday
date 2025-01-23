@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -16,8 +16,6 @@ import {
 } from "lucide-react";
 import { OrderCompletionChart } from "@/components/dashboard/OrderCompletionChart";
 import { RecentActivityFeed } from "@/components/dashboard/RecentActivityFeed";
-import { Board } from "@/typings/types";
-import { toast } from "sonner";
 import {
   DragDropContext,
   Droppable,
@@ -38,7 +36,6 @@ interface DashboardCard {
   title: string;
   icon: React.ReactNode;
   content: (
-    board: Board,
     timeRange: TimeRange,
     selectedEmployee: string | null
   ) => React.ReactNode;
@@ -49,7 +46,7 @@ export default function Dashboard() {
   const [timeRange, setTimeRange] = useState<TimeRange>("daily");
   const [cards, setCards] = useState<DashboardCard[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
-  const { board, isLoading } = useOrderStore();
+  const { isLoading } = useOrderStore();
 
   useEffect(() => {
     const defaultCards: DashboardCard[] = [
@@ -59,9 +56,8 @@ export default function Dashboard() {
         icon: (
           <CalendarDays className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
         ),
-        content: (board, timeRange, selectedEmployee) => (
+        content: (timeRange, selectedEmployee) => (
           <OrderCompletionChart
-            board={board}
             timeRange={timeRange}
             selectedEmployee={selectedEmployee}
           />
@@ -74,9 +70,8 @@ export default function Dashboard() {
         icon: (
           <TrendingUp className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
         ),
-        content: (board, timeRange, selectedEmployee) => (
+        content: (timeRange, selectedEmployee) => (
           <GluingActivityChart
-            board={board}
             timeRange={timeRange}
             selectedEmployee={selectedEmployee}
           />
@@ -89,9 +84,8 @@ export default function Dashboard() {
         icon: (
           <Users className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
         ),
-        content: (board, timeRange, selectedEmployee) => (
+        content: (timeRange, selectedEmployee) => (
           <TopPerformers
-            board={board}
             timeRange={timeRange}
             selectedEmployee={selectedEmployee}
             onEmployeeClick={(employee: string) => {
@@ -109,8 +103,11 @@ export default function Dashboard() {
         icon: (
           <Activity className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
         ),
-        content: (_, __, selectedEmployee) => (
-          <RecentActivityFeed selectedEmployee={selectedEmployee} />
+        content: (timeRange, selectedEmployee) => (
+          <RecentActivityFeed
+            timeRange={timeRange}
+            selectedEmployee={selectedEmployee}
+          />
         ),
         visible: true,
       },
@@ -120,9 +117,8 @@ export default function Dashboard() {
         icon: (
           <Clock className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
         ),
-        content: (board, timeRange, selectedEmployee) => (
+        content: (timeRange, selectedEmployee) => (
           <AverageCompletionTimeChart
-            board={board}
             timeRange={timeRange}
             selectedEmployee={selectedEmployee}
           />
@@ -135,8 +131,8 @@ export default function Dashboard() {
         icon: (
           <Calendar className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
         ),
-        content: (board, timeRange, selectedEmployee) => (
-          <TodaysSchedule board={board} selectedEmployee={selectedEmployee} />
+        content: (timeRange, selectedEmployee) => (
+          <TodaysSchedule selectedEmployee={selectedEmployee} />
         ),
         visible: true,
       },
@@ -182,7 +178,7 @@ export default function Dashboard() {
     );
   };
 
-  if (isLoading || !board) {
+  if (isLoading) {
     return (
       <div className="p-8 bg-gray-100 dark:bg-gray-900 min-h-screen">
         <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-gray-100">
@@ -297,7 +293,7 @@ export default function Dashboard() {
                           </CardHeader>
                           {card.visible && (
                             <CardContent className="flex-grow overflow-auto">
-                              {card.content(board, timeRange, selectedEmployee)}
+                              {card.content(timeRange, selectedEmployee)}
                             </CardContent>
                           )}
                         </Card>

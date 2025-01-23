@@ -30,7 +30,7 @@ interface AddItemDialogProps {
   designs: string[];
   sizes: string[];
   filteredItems: Item[];
-  handleQuickAdd: (day: string, itemId: string) => void;
+  handleQuickAdd: (item: Item, day: DayName) => void;
   getItemValue: (item: Item, columnName: ColumnTitles) => string;
 }
 
@@ -129,7 +129,7 @@ export function AddItemDialog({
                     variant="ghost"
                     className="hover:bg-gray-200 dark:hover:bg-gray-600"
                     onClick={() => {
-                      handleQuickAdd(currentDay, item.id);
+                      handleQuickAdd(item, currentDay);
                       onClose();
                     }}
                   >

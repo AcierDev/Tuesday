@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { parseMinecraftColors } from "../../parseMinecraftColors";
@@ -16,11 +14,10 @@ import {
   FileWarning,
   MessageCircleWarning,
   MoveVertical,
-  TriangleAlert,
 } from "lucide-react";
 import { cn } from "@/utils/functions";
 import React from "react";
-import { Item, ColumnValue } from "@/typings/types";
+import { Item, ColumnValue, ColumnTitles } from "@/typings/types";
 
 // Add this style block right after imports
 const pulseKeyframes = `
@@ -50,7 +47,7 @@ interface NameCellProps {
     text: string;
     columnName: string;
   };
-  onUpdate: (updatedItem: any, columnName: string) => Promise<void>;
+  onUpdate: (updatedItem: Item, changedField?: ColumnTitles) => Promise<Item>;
   tags?: {
     isDuplicate: boolean;
     isDifficultCustomer: boolean;
@@ -95,7 +92,7 @@ export const NameCell: React.FC<NameCellProps> = ({
             : value
         ),
       };
-      await onUpdate(updatedItem, columnValue.columnName);
+      await onUpdate(updatedItem, columnValue.columnName as ColumnTitles);
       toast.success("Name updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);

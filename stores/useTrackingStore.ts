@@ -27,13 +27,27 @@ export const useTrackingStore = create<TrackingState>()(
       eventSource: null,
 
       startWatchingChanges: () => {
-        const eventSource = new EventSource("/api/boards/changes");
+        const eventSource = new EventSource("/api/webhooks/easypost");
 
         eventSource.onmessage = (event) => {
           const data = JSON.parse(event.data);
           if (data.type === "tracker.updated") {
-            const store = get();
-            store.fetchTrackingInfo();
+            set((state) => ({
+              trackingInfo: state.trackingInfo.map((info) => {
+                const updatedTracker = info.trackers.find(
+                  (t) => t.id === data.data.id
+                );
+                if (updatedTracker) {
+                  return {
+                    ...info,
+                    trackers: info.trackers.map((t) =>
+                      t.id === data.data.id ? data.data : t
+                    ),
+                  };
+                }
+                return info;
+              }),
+            }));
           }
         };
 

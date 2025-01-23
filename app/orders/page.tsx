@@ -41,7 +41,7 @@ export default function OrderManagementPage() {
   const settings = orderSettingsContext.settings || {};
   const updateSettings = orderSettingsContext.updateSettings || (() => {});
 
-  const { board, updateItem, addNewItem, deleteItem, reorderItems } =
+  const { items, updateItem, addNewItem, deleteItem, reorderItems } =
     useOrderStore();
 
   const { logActivity } = useActivities();
@@ -72,7 +72,7 @@ export default function OrderManagementPage() {
   );
 
   const dueCounts = useMemo(() => {
-    if (!board) return {};
+    if (!items) return {};
 
     const counts: Record<string, number> = {
       all: 0,
@@ -83,9 +83,9 @@ export default function OrderManagementPage() {
       custom: 0,
     };
 
-    board.items_page.items.forEach((item) => {
+    items.forEach((item) => {
       if (isItemDue(item)) {
-        counts.all++;
+        counts.all = (counts.all || 0) + 1;
 
         const design =
           item.values.find((v) => v.columnName === "Design")?.text || "";
@@ -94,23 +94,25 @@ export default function OrderManagementPage() {
 
         const isMini = size === ItemSizes.Fourteen_By_Seven;
 
-        if (design.startsWith("Striped") && !isMini) counts.striped++;
-        else if (design.startsWith("Tiled") && !isMini) counts.tiled++;
+        if (design.startsWith("Striped") && !isMini)
+          counts.striped = (counts.striped || 0) + 1;
+        else if (design.startsWith("Tiled") && !isMini)
+          counts.tiled = (counts.tiled || 0) + 1;
         else if (
           !design.startsWith("Striped") &&
           !isMini &&
           !design.startsWith("Tiled")
         )
-          counts.geometric++;
+          counts.geometric = (counts.geometric || 0) + 1;
 
-        if (isMini) counts.mini++;
+        if (isMini) counts.mini = (counts.mini || 0) + 1;
         if (!Object.values(ItemDesigns).includes(design as ItemDesigns))
-          counts.custom++;
+          counts.custom = (counts.custom || 0) + 1;
       }
     });
 
     return counts;
-  }, [board, isItemDue]);
+  }, [items, isItemDue]);
 
   const shipItem = useCallback(async (itemId: string) => {
     toast.success("Item marked as shipped", {
@@ -127,9 +129,7 @@ export default function OrderManagementPage() {
     if (!itemToComplete) return;
 
     try {
-      const itemToUpdate = board?.items_page.items.find(
-        (item) => item.id === itemToComplete
-      );
+      const itemToUpdate = items.find((item) => item.id === itemToComplete);
       if (!itemToUpdate) {
         throw new Error("Item not found");
       }
@@ -141,7 +141,7 @@ export default function OrderManagementPage() {
         completedAt: Date.now(),
       };
 
-      await updateItem(updatedItem, "status", true);
+      await updateItem(updatedItem);
 
       await logActivity(
         itemToUpdate.id!,
@@ -177,7 +177,7 @@ export default function OrderManagementPage() {
       setIsConfirmationOpen(false);
       setItemToComplete(null);
     }
-  }, [board, updateItem, itemToComplete]);
+  }, [items, updateItem, itemToComplete]);
 
   const onGetLabel = useCallback((item: Item) => {
     setSelectedItem(item);
@@ -254,9 +254,23 @@ export default function OrderManagementPage() {
     async (result: DropResult, provided: ResponderProvided) => {
       const { source, destination, draggableId } = result;
 
-      if (!destination || !board || !draggableId) return;
+      // Add more detailed logging
+      console.log("Drag operation started with:", {
+        source,
+        destination,
+        draggableId,
+        itemsLength: items?.length,
+      });
 
-      const movedItem = board.items_page.items.find(
+      if (!destination || !items || !draggableId) {
+        console.warn(
+          "Drag ended without valid destination/items/draggableId:",
+          { destination, itemsLength: items?.length, draggableId }
+        );
+        return;
+      }
+
+      const movedItem = items.find(
         (item) => item.id && item.id.toString() === draggableId
       );
 
@@ -265,25 +279,31 @@ export default function OrderManagementPage() {
         return;
       }
 
+      // Skip if dropped in same location
       if (
         source.droppableId === destination.droppableId &&
         source.index === destination.index
       ) {
+        console.debug("Item dropped in same location, skipping update");
         return;
       }
 
-      const newStatus = Object.values(ItemStatus).find(
-        (status) => status === destination.droppableId
-      );
-
-      if (!newStatus) return;
-
       const sourceStatus = source.droppableId as ItemStatus;
+      const newStatus = destination.droppableId as ItemStatus;
       const statusChanged = sourceStatus !== newStatus;
+
+      console.log("Processing drag with:", {
+        sourceStatus,
+        newStatus,
+        statusChanged,
+        destinationIndex: destination.index,
+        itemId: movedItem.id,
+      });
 
       try {
         const originalStatus = movedItem.status;
 
+        // This will handle both reordering and status changes
         await reorderItems(
           movedItem.id,
           sourceStatus,
@@ -291,15 +311,11 @@ export default function OrderManagementPage() {
           destination.index
         );
 
-        if (statusChanged) {
-          const updatedItem = {
-            ...movedItem,
-            previousStatus: originalStatus,
-            status: newStatus,
-          };
+        console.log("Successfully reordered items");
 
+        if (statusChanged) {
           await logActivity(
-            updatedItem.id!,
+            movedItem.id!,
             "status_change",
             [
               {
@@ -309,23 +325,25 @@ export default function OrderManagementPage() {
               },
             ],
             {
-              customerName: updatedItem.values?.find(
+              customerName: movedItem.values?.find(
                 (v) => v.columnName === ColumnTitles.Customer_Name
               )?.text,
-              design: updatedItem.values?.find(
+              design: movedItem.values?.find(
                 (v) => v.columnName === ColumnTitles.Design
               )?.text,
-              size: updatedItem.values?.find(
+              size: movedItem.values?.find(
                 (v) => v.columnName === ColumnTitles.Size
               )?.text,
             }
           );
 
+          console.debug("Logged status change activity.");
+
           toast.success(getStatusChangeMessage(newStatus), {
             style: { background: "#10B981", color: "white" },
             action: {
               label: "Undo",
-              onClick: () => undoStatusChange(updatedItem, originalStatus),
+              onClick: () => undoStatusChange(movedItem, originalStatus),
             },
           });
         }
@@ -336,31 +354,13 @@ export default function OrderManagementPage() {
         });
       }
     },
-    [board, reorderItems, undoStatusChange, logActivity]
+    [items, reorderItems, undoStatusChange, logActivity]
   );
 
-  const getUniqueGroupValues = useCallback((items: Item[], field: string) => {
-    const uniqueValues = new Set<string>();
-    items.forEach((item) => {
-      const value =
-        item.values.find((v) => v.columnName === field)?.text || "Other";
-      uniqueValues.add(value);
-    });
-    return Array.from(uniqueValues);
-  }, []);
-
   const filteredGroups = useMemo(() => {
-    if (!board) return [];
+    if (!items) return [];
 
-    let groupValues: string[];
-    if (settings.groupingField === "Status") {
-      groupValues = Object.values(ItemStatus);
-    } else {
-      groupValues = getUniqueGroupValues(
-        board.items_page.items,
-        settings.groupingField
-      );
-    }
+    let groupValues: string[] = Object.values(ItemStatus);
 
     const groups = groupValues.map((value) => ({
       id: value,
@@ -368,77 +368,62 @@ export default function OrderManagementPage() {
       items: [] as Item[],
     }));
 
-    board.items_page.items
-      .filter((item) => !item.deleted && item.visible)
-      .forEach((item) => {
-        if (
-          item.values.some((value) =>
-            String(value.text || "")
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase())
-          )
-        ) {
-          const groupField =
-            settings.groupingField === "Status"
-              ? item.status
-              : item.values.find((v) => v.columnName === settings.groupingField)
-                  ?.text || "Other";
+    const matchedSearch = items.filter((item) =>
+      item.values.some((value) =>
+        String(value.text || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())
+      )
+    );
 
-          const group = groups.find((g) => g.title === groupField);
-          if (
-            group &&
-            (settings.groupingField !== "Status" ||
-              settings.showCompletedOrders ||
-              item.status !== ItemStatus.Done)
-          ) {
-            const design =
-              item.values.find((v) => v.columnName === "Design")?.text || "";
-            const size =
-              item.values.find((v) => v.columnName === "Size")?.text || "";
+    matchedSearch.forEach((item) => {
+      const group = groups.find((g) => g.title === item.status);
+      if (group) {
+        const design =
+          item.values.find((v) => v.columnName === "Design")?.text || "";
+        const size =
+          item.values.find((v) => v.columnName === "Size")?.text || "";
 
-            const isMini = size === ItemSizes.Fourteen_By_Seven;
+        const isMini = size === ItemSizes.Fourteen_By_Seven;
 
-            const shouldInclude = (() => {
-              switch (currentMode) {
-                case "all":
-                  return true;
-                case "striped":
-                  return design.startsWith("Striped") && !isMini;
-                case "tiled":
-                  return design.startsWith("Tiled") && !isMini;
-                case "geometric":
-                  return (
-                    !design.startsWith("Striped") &&
-                    !design.startsWith("Tiled") &&
-                    !isMini
-                  );
-                case "mini":
-                  return isMini;
-                case "custom":
-                  return (
-                    !Object.values(ItemDesigns).includes(
-                      design as ItemDesigns
-                    ) && !isMini
-                  );
-                default:
-                  return false;
-              }
-            })();
-
-            if (shouldInclude) {
-              group.items.push(item);
-            }
+        const shouldInclude = (() => {
+          switch (currentMode) {
+            case "all":
+              return true;
+            case "striped":
+              return design.startsWith("Striped") && !isMini;
+            case "tiled":
+              return design.startsWith("Tiled") && !isMini;
+            case "geometric":
+              return (
+                !design.startsWith("Striped") &&
+                !design.startsWith("Tiled") &&
+                !isMini
+              );
+            case "mini":
+              return isMini;
+            case "custom":
+              return (
+                !Object.values(ItemDesigns).includes(design as ItemDesigns) &&
+                !isMini
+              );
+            default:
+              return false;
           }
+        })();
+
+        if (shouldInclude) {
+          group.items.push(item);
         }
-      });
+      }
+    });
 
     return groups;
   }, [
-    board,
+    items,
     settings.groupingField,
     settings.showCompletedOrders,
     searchTerm,
-    getUniqueGroupValues,
     currentMode,
   ]);
 
@@ -502,9 +487,7 @@ export default function OrderManagementPage() {
   const handleDeleteItem = useCallback(
     async (itemId: string) => {
       try {
-        const itemToDelete = board?.items_page.items.find(
-          (item) => item.id === itemId
-        );
+        const itemToDelete = items.find((item) => item.id === itemId);
         if (!itemToDelete) {
           return;
         }
@@ -548,7 +531,7 @@ export default function OrderManagementPage() {
         });
       }
     },
-    [board, deleteItem, undoItemDeletion]
+    [items, deleteItem, undoItemDeletion]
   );
 
   useEffect(() => {
@@ -557,53 +540,6 @@ export default function OrderManagementPage() {
       window.dispatchEvent(event);
     }
   }, [isWeeklyPlannerOpen]);
-
-  const handleUpdateItem = async (item: Item, changedField?: ColumnTitles) => {
-    try {
-      // Find the old item to compare values
-      const oldItem = board?.items_page.items.find((i) => i.id === item.id);
-
-      await updateItem(item, changedField);
-
-      // Only log if we have a changed field and can find the old value
-      if (changedField && oldItem) {
-        const oldValue =
-          oldItem.values.find((v) => v.columnName === changedField)?.text || "";
-        const newValue =
-          item.values.find((v) => v.columnName === changedField)?.text || "";
-
-        // Only log if the value actually changed
-        if (oldValue !== newValue) {
-          await logActivity(
-            item.id!,
-            "update",
-            [
-              {
-                field: changedField,
-                oldValue,
-                newValue,
-              },
-            ],
-            {
-              customerName: item.values?.find(
-                (v) => v.columnName === ColumnTitles.Customer_Name
-              )?.text,
-              design: item.values?.find(
-                (v) => v.columnName === ColumnTitles.Design
-              )?.text,
-              size: item.values?.find((v) => v.columnName === ColumnTitles.Size)
-                ?.text,
-            }
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Failed to update item:", error);
-      toast.error("Failed to update item", {
-        style: { background: "#EF4444", color: "white" },
-      });
-    }
-  };
 
   const handleAddNewItem = async (newItem: Partial<Item>) => {
     try {
@@ -670,14 +606,12 @@ export default function OrderManagementPage() {
               style={{ contain: "paint" }}
             >
               <ItemList
-                board={board!}
                 groups={sortedGroups}
                 onDelete={handleDeleteItem}
                 onDragEnd={onDragEnd}
                 onGetLabel={onGetLabel}
                 onMarkCompleted={markItemCompleted}
                 onShip={shipItem}
-                onUpdate={handleUpdateItem}
               />
             </div>
             <div
@@ -688,15 +622,9 @@ export default function OrderManagementPage() {
                   : "w-0 translate-x-full"
               )}
             >
-              {board && isWeeklyPlannerOpen && (
+              {items && isWeeklyPlannerOpen && (
                 <div className="h-full bg-white dark:bg-transparent shadow-lg rounded-l-lg">
-                  <WeeklySchedule
-                    key={isWeeklyPlannerOpen ? "open" : "closed"}
-                    boardId={board.id}
-                    items={board.items_page.items.filter(
-                      (item) => !item.deleted && item.visible
-                    )}
-                  />
+                  <WeeklySchedule />
                 </div>
               )}
             </div>
@@ -725,7 +653,6 @@ export default function OrderManagementPage() {
         />
       )}
       <NewItemModal
-        board={board}
         isOpen={isNewItemModalOpen}
         onClose={() => setIsNewItemModalOpen(false)}
         onSubmit={handleAddNewItem}

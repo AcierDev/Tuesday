@@ -7,12 +7,18 @@ export type DayName =
   | "Friday"
   | "Saturday";
 
-export type DaySchedule = {
-  [day in DayName]: { id: string; done: boolean }[];
+export type DailyTask = {
+  id: string;
+  done: boolean;
 };
 
-export type WeeklySchedules = {
-  [weekKey: string]: DaySchedule;
+export type WeeklyTaskSchedule = {
+  [day in DayName]: DailyTask[];
+};
+
+export type WeeklyScheduleData = {
+  weekKey: string;
+  schedule: WeeklyTaskSchedule;
 };
 
 export type Maybe<T> = T | null | undefined;
@@ -22,7 +28,7 @@ export type Board = {
   name: string;
   items_page: ItemsResponse;
   settings: Settings;
-  weeklySchedules: WeeklySchedules;
+  weeklySchedules: any;
 };
 
 export type Group = {
@@ -51,6 +57,7 @@ export type Item = {
   status: ItemStatus;
   visible: boolean;
   deleted: boolean;
+  index: number;
   isScheduled?: boolean;
   shippingDetails?: ShippingDetails;
   tags?: {

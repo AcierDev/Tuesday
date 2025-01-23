@@ -13,13 +13,11 @@ interface DayColumnProps {
   day: DayName;
   dayItemIds: { id: string; done: boolean }[];
   items: Item[];
-  calculateTotalSquares: (
-    dayItemIds: { id: string; done: boolean }[]
-  ) => number;
-  handleAddItem: (day: string) => void;
-  handleRemoveItem: (day: string, itemId: string) => void;
+  calculateTotalSquares: (dayItems: { id: string; done: boolean }[]) => number;
+  handleAddItem: (day: DayName) => void;
+  handleRemoveItem: (day: DayName, itemId: string) => void;
   setConfirmCompleteItem: (item: Item | null) => void;
-  getItemValue: (item: NewType, columnName: ColumnTitles) => string;
+  getItemValue: (item: Item, columnName: ColumnTitles) => string;
 }
 
 export function DayColumn({

@@ -10,12 +10,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Board,
   Item,
   ColumnValue,
   ColumnTitles,
   EmployeeNames,
 } from "@/typings/types";
+import { useOrderStore } from "@/stores/useOrderStore";
 
 type TimeRange = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -41,16 +41,16 @@ const RANK_STYLES = {
 } as const;
 
 export default function TopPerformers({
-  board,
   timeRange,
   selectedEmployee,
   onEmployeeClick,
 }: {
-  board: Board;
   timeRange: TimeRange;
   selectedEmployee: string | null;
   onEmployeeClick: (employee: string) => void;
 }) {
+  const { items } = useOrderStore();
+
   const data = useMemo(() => {
     const performerData: { [key: string]: number } = {};
 
@@ -67,7 +67,7 @@ export default function TopPerformers({
       performerData[employee] = 0;
     });
 
-    board.items_page.items.forEach((item: Item) => {
+    items.forEach((item: Item) => {
       const gluedColumn = item.values.find(
         (value: ColumnValue) => value.columnName === ColumnTitles.Glued
       );
@@ -89,7 +89,7 @@ export default function TopPerformers({
 
         if (dimensions && dimensions.length === 2) {
           const [width, height] = dimensions;
-          const totalSquares = width * height;
+          const totalSquares = (width || 0) * (height || 0);
 
           const date = new Date(gluedColumn.lastModifiedTimestamp || "");
           const isInRange = (date: Date) => {
@@ -130,9 +130,9 @@ export default function TopPerformers({
         // If squares are equal, sort by default order
         return squaresDiff !== 0
           ? squaresDiff
-          : orderMap[a.name] - orderMap[b.name];
+          : (orderMap[a.name] || 0) - (orderMap[b.name] || 0);
       });
-  }, [board.items_page.items, timeRange]);
+  }, [items, timeRange]);
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg shadow-md">

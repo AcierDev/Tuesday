@@ -9,13 +9,7 @@ import { LabelCell } from "./LabelCell";
 import { NotesCell } from "./NotesCell";
 import { NameCell } from "./NameCell";
 import { TextCell } from "./TextCell";
-import {
-  Board,
-  ColumnTitles,
-  ColumnTypes,
-  ColumnValue,
-  Item,
-} from "@/typings/types";
+import { ColumnTitles, ColumnTypes, ColumnValue, Item } from "@/typings/types";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import React, { useEffect } from "react";
 import { ShippingCell } from "./ShippingCell";
@@ -24,14 +18,10 @@ import { useOrderStore } from "@/stores/useOrderStore";
 export const CustomTableCell = ({
   item,
   columnValue,
-  board,
-  onUpdate,
   isNameColumn = false,
 }: {
   item: Item;
   columnValue: ColumnValue;
-  board: Board;
-  onUpdate: (updatedItem: Item, changedField: ColumnTitles) => Promise<void>;
   isNameColumn?: boolean;
 }) => {
   const { settings } = useOrderSettings();
@@ -39,7 +29,7 @@ export const CustomTableCell = ({
     boolean | null
   >(null);
 
-  const checkDuplicate = useOrderStore((state) => state.checkDuplicate);
+  const { updateItem, checkDuplicate } = useOrderStore();
 
   useEffect(() => {
     const checkModification = () => {
@@ -73,8 +63,7 @@ export const CustomTableCell = ({
             <DesignDropdownCell
               item={item}
               columnValue={columnValue}
-              onUpdate={onUpdate}
-              board={board}
+              onUpdate={updateItem}
             />
           );
         }
@@ -82,20 +71,23 @@ export const CustomTableCell = ({
           <DropdownCell
             item={item}
             columnValue={columnValue}
-            onUpdate={onUpdate}
-            board={board}
+            onUpdate={updateItem}
           />
         );
       case ColumnTypes.Date:
         return (
-          <DateCell item={item} columnValue={columnValue} onUpdate={onUpdate} />
+          <DateCell
+            item={item}
+            columnValue={columnValue}
+            onUpdate={updateItem}
+          />
         );
       case ColumnTypes.Number:
         return (
           <NumberCell
             item={item}
             columnValue={columnValue}
-            onUpdate={onUpdate}
+            onUpdate={updateItem}
           />
         );
       case ColumnTypes.Text:
@@ -107,7 +99,7 @@ export const CustomTableCell = ({
             <NotesCell
               item={item}
               columnValue={columnValue}
-              onUpdate={onUpdate}
+              onUpdate={updateItem}
             />
           );
         }
@@ -116,7 +108,7 @@ export const CustomTableCell = ({
             <NameCell
               item={item}
               columnValue={columnValue}
-              onUpdate={onUpdate}
+              onUpdate={updateItem}
               onAddTag={() => {}}
               onRemoveTag={() => {}}
               initialTags={[]}
@@ -130,11 +122,19 @@ export const CustomTableCell = ({
           );
         }
         return (
-          <TextCell item={item} columnValue={columnValue} onUpdate={onUpdate} />
+          <TextCell
+            item={item}
+            columnValue={columnValue}
+            onUpdate={updateItem}
+          />
         );
       default:
         return (
-          <TextCell item={item} columnValue={columnValue} onUpdate={onUpdate} />
+          <TextCell
+            item={item}
+            columnValue={columnValue}
+            onUpdate={updateItem}
+          />
         );
     }
   };

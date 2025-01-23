@@ -13,8 +13,9 @@ interface ConfirmCompletionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   item: Item | null;
-  handleMarkAsCompleted: (item: Item) => void;
+  handleMarkAsCompleted: (item: Item, weekKey: string) => Promise<void>;
   getItemValue: (item: Item, columnName: ColumnTitles) => string;
+  weekKey: string;
 }
 
 export function ConfirmCompletionDialog({
@@ -23,6 +24,7 @@ export function ConfirmCompletionDialog({
   item,
   handleMarkAsCompleted,
   getItemValue,
+  weekKey,
 }: ConfirmCompletionDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -50,7 +52,14 @@ export function ConfirmCompletionDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={() => item && handleMarkAsCompleted(item)}>
+          <Button
+            onClick={async () => {
+              if (item) {
+                await handleMarkAsCompleted(item, weekKey);
+                onClose();
+              }
+            }}
+          >
             Confirm
           </Button>
         </DialogFooter>

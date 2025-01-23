@@ -1,31 +1,21 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { toast } from "sonner";
-import {
-  Board,
-  Item,
-  ColumnTitles,
-  ItemStatus,
-  Settings,
-  WeeklySchedules,
-} from "@/typings/types";
+import { Item, ColumnTitles, ItemStatus, Settings } from "@/typings/types";
+import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 
 interface OrderState {
-  board: Board | null;
   lastFetched: number | null;
   isLoading: boolean;
-  settings: Settings | null;
   eventSource: EventSource | null;
   doneItemsLoaded: boolean;
   hiddenItemsLoaded: boolean;
-
+  items: Item[];
   // Actions
-  loadBoard: () => Promise<void>;
-  loadSettings: () => Promise<void>;
-  updateItem: (updatedItem: Item, changedField?: ColumnTitles) => Promise<void>;
-  addNewItem: (newItem: Partial<Item>) => Promise<void>;
-  deleteItem: (itemId: string) => Promise<void>;
-  updateSettings: (settings: Settings) => Promise<void>;
+  loadItems: () => Promise<void>;
+  updateItem: (updatedItem: Item, changedField?: ColumnTitles) => Promise<Item>;
+  addNewItem: (newItem: Partial<Item>) => Promise<Item>;
+  deleteItem: (itemId: string) => Promise<Item>;
   startWatchingChanges: () => void;
   stopWatchingChanges: () => void;
   reorderItems: (
@@ -33,10 +23,6 @@ interface OrderState {
     sourceStatus: ItemStatus,
     destinationStatus: ItemStatus,
     destinationIndex: number
-  ) => Promise<void>;
-  updateWeeklySchedules: (
-    boardId: string,
-    newSchedules: WeeklySchedules
   ) => Promise<void>;
   updateItemScheduleStatus: (
     boardId: string,
@@ -49,6 +35,7 @@ interface OrderState {
   removeDoneItems: () => void;
   loadHiddenItems: () => Promise<void>;
   removeHiddenItems: () => void;
+  markCompleted: (item: Item) => Promise<void>;
 }
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -71,7 +58,7 @@ function hasDuplicateFirstValue(item: Item, items: Item[]): boolean {
 export const useOrderStore = create<OrderState>()(
   devtools((set, get) => {
     return {
-      board: null,
+      items: [],
       lastFetched: null,
       isLoading: false,
       settings: null,
@@ -79,15 +66,17 @@ export const useOrderStore = create<OrderState>()(
       doneItemsLoaded: false,
       hiddenItemsLoaded: false,
 
-      loadBoard: async () => {
+      loadItems: async () => {
         try {
           set({ isLoading: true });
-          const response = await fetch("/api/boards?includeDone=false");
-          if (!response.ok) throw new Error("Failed to fetch board");
+          const response = await fetch(
+            "/api/items?includeDone=false&includeHidden=false"
+          );
+          if (!response.ok) throw new Error("Failed to fetch orders");
 
-          const board = await response.json();
+          const items = await response.json();
           set({
-            board,
+            items,
             lastFetched: Date.now(),
             isLoading: false,
             doneItemsLoaded: false,
@@ -97,8 +86,8 @@ export const useOrderStore = create<OrderState>()(
           // Start watching for changes after initial load
           get().startWatchingChanges();
         } catch (err) {
-          console.error("Failed to load board", err);
-          toast.error("Failed to load board. Please try again.");
+          console.error("Failed to load orders", err);
+          toast.error("Failed to load orders. Please try again.");
           set({ isLoading: false });
         }
       },
@@ -107,30 +96,19 @@ export const useOrderStore = create<OrderState>()(
         // Clean up existing connection if any
         get().stopWatchingChanges();
 
-        const eventSource = new EventSource("/api/boards/changes");
+        const eventSource = new EventSource("/api/items/changes");
 
         eventSource.onmessage = (event) => {
           try {
             const change = JSON.parse(event.data);
-            const { board, doneItemsLoaded, hiddenItemsLoaded } = get();
+            const { items, doneItemsLoaded, hiddenItemsLoaded } = get();
 
-            if (change.type === "update" && board?.id === change.boardId) {
-              // Filter items based on whether done/hidden items are loaded
-              const filteredItems = change.board.items_page.items.filter(
-                (item) =>
-                  (doneItemsLoaded ? true : item.status !== ItemStatus.Done) &&
-                  (hiddenItemsLoaded ? true : item.visible)
+            if (change.type === "update") {
+              const updatedItem = change.item;
+              const updatedItems = items.map((item) =>
+                item.id === updatedItem.id ? updatedItem : item
               );
-
-              set({
-                board: {
-                  ...change.board,
-                  items_page: {
-                    ...change.board.items_page,
-                    items: filteredItems,
-                  },
-                },
-              });
+              set({ items: updatedItems });
             }
           } catch (error) {
             console.error("Failed to process change:", error);
@@ -158,52 +136,14 @@ export const useOrderStore = create<OrderState>()(
         }
       },
 
-      loadSettings: async () => {
-        try {
-          const response = await fetch("/api/settings");
-          if (!response.ok) throw new Error("Failed to fetch settings");
-
-          const settings = await response.json();
-          set({ settings });
-        } catch (err) {
-          console.error("Failed to load settings", err);
-          toast.error("Failed to load settings");
-        }
-      },
-
       updateItem: async (updatedItem, changedField) => {
-        const { board, settings } = get();
-        if (!board) return;
+        const { items } = get();
+        if (!items) return;
 
         const currentTimestamp = Date.now();
 
-        // Get all possible column names from other items
-        const allColumnNames = new Set<string>();
-        board.items_page.items.forEach((item) => {
-          item.values.forEach((value) => {
-            allColumnNames.add(value.columnName);
-          });
-        });
-
-        // Ensure all columns exist in the item's values array
-        const existingColumns = new Set(
-          updatedItem.values.map((v) => v.columnName)
-        );
-        const updatedValues = [...updatedItem.values];
-
-        // Add missing columns with empty values
-        allColumnNames.forEach((columnName) => {
-          if (!existingColumns.has(columnName as ColumnTitles)) {
-            updatedValues.push({
-              columnName: columnName as ColumnTitles,
-              type: getColumnType(columnName),
-              text: "",
-            });
-          }
-        });
-
         // Update the timestamp for the changed field
-        const finalValues = updatedValues.map((value) =>
+        const finalValues = updatedItem.values.map((value) =>
           value.columnName === changedField
             ? { ...value, lastModifiedTimestamp: currentTimestamp }
             : value
@@ -213,6 +153,8 @@ export const useOrderStore = create<OrderState>()(
           ...updatedItem,
           values: finalValues,
         };
+
+        const { settings } = useOrderSettings();
 
         // Apply automatron rules if active
         if (settings?.isAutomatronActive) {
@@ -224,36 +166,23 @@ export const useOrderStore = create<OrderState>()(
         }
 
         try {
-          // Update only the specific item in the database
-          const response = await fetch("/api/boards", {
+          const response = await fetch("/api/items", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              id: board.id,
-              updateType: "item",
-              updates: {
-                "items_page.items.$[elem]": itemToUpdate,
-              },
-              arrayFilters: [{ "elem.id": updatedItem.id }],
+              id: updatedItem.id,
+              updates: itemToUpdate,
             }),
           });
 
           if (!response.ok) throw new Error("Failed to update item");
 
           // Update local state
-          const updatedItems = board.items_page.items.map((item) =>
+          const updatedItems = items.map((item) =>
             item.id === updatedItem.id ? itemToUpdate : item
           );
 
-          set({
-            board: {
-              ...board,
-              items_page: {
-                ...board.items_page,
-                items: updatedItems,
-              },
-            },
-          });
+          set({ items: updatedItems });
         } catch (err) {
           console.error("Failed to update item", err);
           toast.error("Failed to update item. Please try again.");
@@ -261,29 +190,13 @@ export const useOrderStore = create<OrderState>()(
         }
       },
 
-      updateSettings: async (newSettings) => {
-        try {
-          const response = await fetch("/api/settings", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(newSettings),
-          });
-
-          if (!response.ok) throw new Error("Failed to update settings");
-          set({ settings: newSettings });
-          toast.success("Settings updated successfully");
-        } catch (err) {
-          console.error("Failed to update settings", err);
-          toast.error("Failed to update settings");
-        }
-      },
-
       addNewItem: async (newItem) => {
-        const { board } = get();
-        if (!board) return;
+        const { items } = get();
+        if (!items) return;
 
         const fullNewItem: Item = {
           id: Date.now().toString(),
+          index: items.filter((item) => item.status === ItemStatus.New).length,
           values: newItem.values || [],
           createdAt: Date.now(),
           status: ItemStatus.New,
@@ -298,33 +211,18 @@ export const useOrderStore = create<OrderState>()(
         };
 
         try {
-          const updates = {
-            items_page: {
-              ...board.items_page,
-              items: [...board.items_page.items, fullNewItem],
-            },
-          };
-
-          const response = await fetch("/api/boards", {
+          const response = await fetch("/api/items", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              id: board.id,
-              updates,
+              id: fullNewItem.id,
+              updates: fullNewItem,
             }),
           });
 
           if (!response.ok) throw new Error("Failed to add item");
 
-          set({
-            board: {
-              ...board,
-              items_page: {
-                ...board.items_page,
-                items: [...board.items_page.items, fullNewItem],
-              },
-            },
-          });
+          set({ items: [...items, fullNewItem] });
 
           toast.success("New item added successfully");
           return fullNewItem;
@@ -336,39 +234,27 @@ export const useOrderStore = create<OrderState>()(
       },
 
       deleteItem: async (itemId) => {
-        const { board } = get();
-        if (!board) return;
+        const { items } = get();
+        if (!items) return;
 
         try {
-          const response = await fetch("/api/boards", {
+          const response = await fetch("/api/items", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              id: board.id,
-              updateType: "item",
-              updates: {
-                "items_page.items.$[elem].deleted": true,
-              },
-              arrayFilters: [{ "elem.id": itemId }],
+              id: itemId,
+              updates: { deleted: true },
             }),
           });
 
           if (!response.ok) throw new Error("Failed to delete item");
 
           // Update local state
-          const updatedItems = board.items_page.items.map((item) =>
+          const updatedItems = items.map((item) =>
             item.id === itemId ? { ...item, deleted: true } : item
           );
 
-          set({
-            board: {
-              ...board,
-              items_page: {
-                ...board.items_page,
-                items: updatedItems,
-              },
-            },
-          });
+          set({ items: updatedItems });
 
           toast.success("Item marked as deleted successfully");
         } catch (err) {
@@ -383,22 +269,23 @@ export const useOrderStore = create<OrderState>()(
         destinationStatus,
         destinationIndex
       ) => {
-        const { board } = get();
-        if (!board) return;
+        const { items } = get();
+        if (!items) {
+          console.warn("No items found in the store.");
+          return;
+        }
 
         // Find the item to move
-        const movedItem = board.items_page.items.find(
-          (item) => item.id === itemId
-        );
-        if (!movedItem) return;
-
-        // Create a copy of all items
-        const updatedItems = [...board.items_page.items];
+        const movedItem = items.find((item) => item.id === itemId);
+        if (!movedItem) {
+          console.error(`Item with id ${itemId} not found.`);
+          return;
+        }
 
         // Remove the item from its current position
-        const currentIndex = updatedItems.findIndex(
-          (item) => item.id === itemId
-        );
+        const currentIndex = items.findIndex((item) => item.id === itemId);
+        console.log(`Current index of moved item: ${currentIndex}`);
+        const updatedItems = [...items];
         updatedItems.splice(currentIndex, 1);
 
         // Calculate the new position
@@ -409,7 +296,11 @@ export const useOrderStore = create<OrderState>()(
         for (const item of updatedItems) {
           if (item.status === destinationStatus) {
             currentStatusCount++;
+            console.log(
+              `Found item with status ${destinationStatus}: count = ${currentStatusCount}`
+            );
             if (currentStatusCount === destinationIndex) {
+              console.log(`Target index for insertion reached: ${insertAt}`);
               break;
             }
           }
@@ -426,6 +317,8 @@ export const useOrderStore = create<OrderState>()(
           }
         }
 
+        console.log(`Inserting item at index: ${insertAt}`);
+
         // Insert the item at the new position
         const updatedItem = {
           ...movedItem,
@@ -436,31 +329,25 @@ export const useOrderStore = create<OrderState>()(
         updatedItems.splice(insertAt, 0, updatedItem);
 
         try {
-          const response = await fetch("/api/boards", {
+          const response = await fetch("/api/items", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              id: board.id,
-              updateType: "reorder",
+              id: itemId,
               updates: {
-                itemIds: [itemId],
-                items: [updatedItem],
-                position: insertAt,
+                status: destinationStatus,
+                completedAt:
+                  destinationStatus === ItemStatus.Done
+                    ? Date.now()
+                    : undefined,
               },
             }),
           });
 
           if (!response.ok) throw new Error("Failed to reorder items");
 
-          set({
-            board: {
-              ...board,
-              items_page: {
-                ...board.items_page,
-                items: updatedItems,
-              },
-            },
-          });
+          set({ items: updatedItems });
+          console.log("Items reordered successfully.");
         } catch (err) {
           console.error("Failed to reorder items:", err);
           toast.error("Failed to reorder items. Please try again.");
@@ -468,122 +355,34 @@ export const useOrderStore = create<OrderState>()(
         }
       },
 
-      updateWeeklySchedules: async (
-        boardId: string,
-        newSchedules: WeeklySchedules
-      ) => {
-        const { board } = get();
-        if (!board) return;
-
-        try {
-          const response = await fetch("/api/boards", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: boardId,
-              updates: { weeklySchedules: newSchedules },
-            }),
-          });
-
-          if (!response.ok) throw new Error("Failed to update schedules");
-
-          set({
-            board: {
-              ...board,
-              weeklySchedules: newSchedules,
-            },
-          });
-        } catch (err) {
-          console.error("Failed to save weekly schedules", err);
-          toast.error("Failed to save weekly schedules. Please try again.");
-          throw err;
-        }
-      },
-
-      updateItemScheduleStatus: async (
-        boardId: string,
-        itemId: string,
-        isScheduled: boolean
-      ) => {
-        const { board } = get();
-        if (!board) return;
-
-        try {
-          const response = await fetch("/api/boards", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: boardId,
-              updateType: "item",
-              updates: {
-                "items_page.items.$[elem].isScheduled": isScheduled,
-              },
-              arrayFilters: [{ "elem.id": itemId }],
-            }),
-          });
-
-          if (!response.ok)
-            throw new Error("Failed to update item schedule status");
-
-          // Update local state
-          const updatedItems = board.items_page.items.map((item) =>
-            item.id === itemId ? { ...item, isScheduled } : item
-          );
-
-          set({
-            board: {
-              ...board,
-              items_page: {
-                ...board.items_page,
-                items: updatedItems,
-              },
-            },
-          });
-        } catch (err) {
-          console.error("Failed to update item schedule status", err);
-          toast.error(
-            "Failed to update item schedule status. Please try again."
-          );
-          throw err;
-        }
-      },
-
       init: async () => {
         const store = get();
-        await store.loadBoard();
-        await store.loadSettings();
+        await store.loadItems();
       },
 
       checkDuplicate: (item: Item): boolean => {
-        const { board } = get();
-        if (!board) return false;
+        const { items } = get();
+        if (!items) return false;
 
-        return hasDuplicateFirstValue(item, board.items_page.items);
+        return hasDuplicateFirstValue(item, items);
       },
 
       loadDoneItems: async () => {
-        const { board } = get();
-        if (!board) return;
+        const { items } = get();
 
         try {
           set({ isLoading: true });
-          const response = await fetch("/api/boards?includeDone=true");
+          const response = await fetch(
+            "/api/items?status=Done&includeHidden=false&includeDone=true"
+          );
           if (!response.ok) throw new Error("Failed to fetch done items");
 
-          const doneBoard = await response.json();
+          const doneItems: Item[] = await response.json();
+          console.log("Done items:", items.length, doneItems.length);
 
-          // Merge done items with existing items
+          // Remove board structure assumption
           set({
-            board: {
-              ...board,
-              items_page: {
-                ...board.items_page,
-                items: [
-                  ...board.items_page.items,
-                  ...doneBoard.items_page.items,
-                ],
-              },
-            },
+            items: items.concat(doneItems),
             doneItemsLoaded: true,
             isLoading: false,
           });
@@ -595,49 +394,31 @@ export const useOrderStore = create<OrderState>()(
       },
 
       removeDoneItems: () => {
-        const { board } = get();
-        if (!board) return;
+        const { items } = get();
+        if (!items) return;
 
         // Filter out done items
-        const activeItems = board.items_page.items.filter(
+        const activeItems = items.filter(
           (item) => item.status !== ItemStatus.Done
         );
 
-        set({
-          board: {
-            ...board,
-            items_page: {
-              ...board.items_page,
-              items: activeItems,
-            },
-          },
-          doneItemsLoaded: false,
-        });
+        set({ items: activeItems, doneItemsLoaded: false });
       },
 
       loadHiddenItems: async () => {
-        const { board } = get();
-        if (!board) return;
+        const { items } = get();
+        if (!items) return;
 
         try {
           set({ isLoading: true });
-          const response = await fetch("/api/boards?includeHidden=true");
+          const response = await fetch("/api/items?status=Hidden");
           if (!response.ok) throw new Error("Failed to fetch hidden items");
 
-          const hiddenBoard = await response.json();
+          const hiddenItems = await response.json();
 
-          // Merge hidden items with existing items
+          // Remove board structure assumption
           set({
-            board: {
-              ...board,
-              items_page: {
-                ...board.items_page,
-                items: [
-                  ...board.items_page.items,
-                  ...hiddenBoard.items_page.items,
-                ],
-              },
-            },
+            items: [...items, ...hiddenItems],
             hiddenItemsLoaded: true,
             isLoading: false,
           });
@@ -649,28 +430,18 @@ export const useOrderStore = create<OrderState>()(
       },
 
       removeHiddenItems: () => {
-        const { board } = get();
-        if (!board) return;
+        const { items } = get();
+        if (!items) return;
 
         // Filter out hidden items
-        const visibleItems = board.items_page.items.filter(
-          (item) => item.visible
+        const visibleItems = items.filter(
+          (item) => item.status !== ItemStatus.Hidden
         );
 
-        set({
-          board: {
-            ...board,
-            items_page: {
-              ...board.items_page,
-              items: visibleItems,
-            },
-          },
-          hiddenItemsLoaded: false,
-        });
+        set({ items: visibleItems, hiddenItemsLoaded: false });
       },
     };
-  }),
-  { name: "order-store" }
+  })
 );
 
 // Initialize the store after creation

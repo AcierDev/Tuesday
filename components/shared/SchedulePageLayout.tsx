@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { ItemGroupSection } from "../orders/ItemGroup";
 import { WeekView } from "@/components/shared/WeekView";
 import { CalendarView } from "@/components/shared/CalendarView";
-import { Board, ColumnTitles, DayName, Group, Item } from "@/typings/types";
+import { DayName, Group } from "@/typings/types";
 import { cn } from "@/utils/functions";
 import { useOrderStore } from "@/stores/useOrderStore";
 
@@ -66,7 +66,7 @@ export function SchedulePageLayout({
   const calendarRef = useRef<HTMLDivElement>(null);
   const tabsCardRef = useRef<HTMLDivElement>(null);
   const fullscreenRef = useRef<HTMLDivElement>(null);
-  const { board, updateItem } = useOrderStore();
+  const { updateItem } = useOrderStore();
 
   useEffect(() => {
     const adjustTabsCardHeight = () => {
@@ -108,19 +108,15 @@ export function SchedulePageLayout({
     };
   }, []);
 
-  const renderWeekView = () =>
-    board && (
-      <WeekView
-        currentWeekStart={currentWeekStart}
-        selectedDates={selectedDates}
-        schedule={schedule}
-        toggleDateSelection={toggleDateSelection}
-        isMobile={isMobile}
-        items={board.items_page.items.filter(
-          (item) => !item.deleted && item.visible
-        )}
-      />
-    );
+  const renderWeekView = () => (
+    <WeekView
+      currentWeekStart={currentWeekStart}
+      selectedDates={selectedDates}
+      schedule={schedule}
+      toggleDateSelection={toggleDateSelection}
+      isMobile={isMobile}
+    />
+  );
 
   const renderCalendarView = () => (
     <div ref={calendarRef}>
@@ -291,14 +287,11 @@ export function SchedulePageLayout({
             {renderWeekView()}
             <ItemGroupSection
               group={group}
-              board={board}
-              updateItem={updateItem}
               onDelete={() => Promise.resolve()}
               onShip={() => Promise.resolve()}
               onMarkCompleted={() => Promise.resolve()}
               onGetLabel={() => {}}
               onReorder={() => {}}
-              onDragToWeeklySchedule={() => {}}
               isPreview={true}
               isCollapsible={true}
               defaultCollapsed={true}
@@ -323,8 +316,6 @@ export function SchedulePageLayout({
             </div>
             <ItemGroupSection
               group={group}
-              board={board}
-              updateItem={updateItem}
               onDelete={() => Promise.resolve()}
               onShip={() => Promise.resolve()}
               onMarkCompleted={() => Promise.resolve()}

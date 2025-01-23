@@ -10,14 +10,9 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import {
-  Board,
-  Item,
-  ColumnValue,
-  ColumnTitles,
-  ItemStatus,
-} from "@/typings/types";
+import { Item, ItemStatus } from "@/typings/types";
 import { useTheme } from "next-themes";
+import { useOrderStore } from "@/stores/useOrderStore";
 
 type TimeRange = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -27,18 +22,17 @@ interface CompletionTimeData {
 }
 
 export function AverageCompletionTimeChart({
-  board,
   timeRange,
 }: {
-  board: Board;
   timeRange: TimeRange;
 }) {
   const { theme } = useTheme();
+  const { items } = useOrderStore();
 
   const data = useMemo(() => {
     const groupedData: { [key: string]: { total: number; count: number } } = {};
 
-    board.items_page.items.forEach((item: Item) => {
+    items.forEach((item: Item) => {
       if (
         item.status === ItemStatus.Done &&
         !item.deleted &&
@@ -52,13 +46,13 @@ export function AverageCompletionTimeChart({
 
         switch (timeRange) {
           case "daily":
-            key = date.toISOString().split("T")[0];
+            key = date.toISOString().split("T")[0]!;
             break;
           case "weekly":
             const weekStart = new Date(
               date.setDate(date.getDate() - date.getDay())
             );
-            key = weekStart.toISOString().split("T")[0];
+            key = weekStart.toISOString().split("T")[0]!;
             break;
           case "monthly":
             key = `${date.getFullYear()}-${(date.getMonth() + 1)
@@ -73,15 +67,15 @@ export function AverageCompletionTimeChart({
         if (!groupedData[key]) {
           groupedData[key] = { total: 0, count: 0 };
         }
-        groupedData[key].total += completionTime;
-        groupedData[key].count++;
+        groupedData[key]!.total += completionTime;
+        groupedData[key]!.count++;
       }
     });
 
     return Object.entries(groupedData)
       .map(([date, { total, count }]) => ({ date, averageTime: total / count }))
       .sort((a, b) => a.date.localeCompare(b.date));
-  }, [board.items_page.items, timeRange]);
+  }, [items, timeRange]);
 
   const chartColors = {
     light: {

@@ -11,6 +11,8 @@
     "@types/node": "^18.0.0"
   },
   "scripts": {
-    "split": "tsx splitCollections.ts"
+    "split": "tsx splitCollections.ts",
+    "compare": "tsx compareQueries.ts",
+    "init-indexes": "tsx initializeIndexes.ts"
   }
 }

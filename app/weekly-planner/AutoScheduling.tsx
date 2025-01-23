@@ -1,7 +1,7 @@
 import {
   Item,
   DayName,
-  DaySchedule,
+  WeekSchedule,
   ColumnTitles,
   ColumnValue,
   WeeklySchedules,
@@ -26,7 +26,7 @@ interface SortedItems {
 
 interface SortItemsProps {
   items: Item[];
-  currentSchedule: DaySchedule;
+  currentSchedule: WeekSchedule;
   targetWeek?: Date;
   weeklySchedules?: WeeklySchedules;
   blockLimits: Record<string, Record<DayName, number>>;
@@ -173,7 +173,7 @@ export const sortItems = ({
   const scheduleItemsForWeek = (
     itemsToSchedule: Item[],
     weekStart: Date,
-    existingSchedule: DaySchedule
+    existingSchedule: WeekSchedule
   ): {
     scheduledItems: Item[];
     unscheduledItems: Item[];

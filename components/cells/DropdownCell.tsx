@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { XCircle, UserX, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { boardConfig } from "@/config/boardconfig";
-import { Board, ColumnTitles, GenericColumnValue, Item } from "@/typings/types";
+import { ColumnTitles, GenericColumnValue, Item } from "@/typings/types";
 import {
   CREDIT_COLORS,
   CREDIT_OPTIONS,
@@ -33,14 +33,12 @@ interface DropdownCellProps {
   item: Item;
   columnValue: GenericColumnValue;
   onUpdate: (updatedItem: Item, changedField: ColumnTitles) => void;
-  board: Board;
 }
 
 export function DropdownCell({
   item,
   columnValue,
   onUpdate,
-  board,
 }: DropdownCellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCreditDialogOpen, setIsCreditDialogOpen] = useState(false);
@@ -63,8 +61,8 @@ export function DropdownCell({
     const generateCombinedImage = async () => {
       if (selectedCredits.length === 2) {
         try {
-          const image1 = getEmployeeInfoFromInitials(selectedCredits[0]).image;
-          const image2 = getEmployeeInfoFromInitials(selectedCredits[1]).image;
+          const image1 = getEmployeeInfoFromInitials(selectedCredits[0]!).image;
+          const image2 = getEmployeeInfoFromInitials(selectedCredits[1]!).image;
           if (image1 && image2) {
             const combined = await combineImages(image1, image2);
             setCombinedImageUrl(combined);
@@ -75,7 +73,7 @@ export function DropdownCell({
         }
       } else if (selectedCredits.length === 1) {
         setCombinedImageUrl(
-          getEmployeeInfoFromInitials(selectedCredits[0]).image || null
+          getEmployeeInfoFromInitials(selectedCredits[0]!).image || null
         );
       } else {
         setCombinedImageUrl(null);
@@ -179,7 +177,7 @@ export function DropdownCell({
               <>
                 <span
                   className={`absolute top-0 left-0 ${
-                    CREDIT_COLORS[selectedCredits[0]]
+                    CREDIT_COLORS[selectedCredits[0]!]
                   } text-white text-[10px] font-bold px-1 rounded-tl`}
                 >
                   {selectedCredits[0]}

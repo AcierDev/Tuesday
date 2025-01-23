@@ -3,6 +3,32 @@ import clientPromise from "../../db/connect";
 import { OrderTrackingInfo, Tracker } from "@/typings/types";
 import { AlertManager } from "@/backend/src/AlertManager";
 
+// Change the controller type to use string
+type ReadableStreamController = ReadableStreamDefaultController<string>;
+
+// Add a Set to store SSE clients
+const clients = new Set<ReadableStreamController>();
+
+// Add an endpoint for SSE connections
+export async function GET() {
+  const stream = new ReadableStream({
+    start(controller) {
+      clients.add(controller);
+
+      // Remove client when connection closes
+      return () => clients.delete(controller);
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
+
 export async function POST(request: Request) {
   console.log("Received webhook request");
 
@@ -52,8 +78,16 @@ export async function POST(request: Request) {
 
       console.log("Database update result:", updateResult);
 
-      // Return success
-      console.log("Successfully processed webhook");
+      // Notify all connected clients
+      const message = JSON.stringify({
+        type: "tracker.updated",
+        data: tracker,
+      });
+
+      clients.forEach((client) => {
+        client.enqueue(`data: ${message}\n\n`);
+      });
+
       return NextResponse.json({ status: "success" }, { status: 200 });
     }
 

@@ -10,13 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import {
-  Board,
-  Item,
-  ColumnValue,
-  ColumnTitles,
-  ItemStatus,
-} from "@/typings/types";
+import { Item, ColumnValue, ColumnTitles, ItemStatus } from "@/typings/types";
 import { useTheme } from "next-themes";
 import {
   Dialog,
@@ -33,6 +27,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { parseDateSafely } from "@/utils/dateUtils";
+import { useOrderStore } from "@/stores/useOrderStore";
+import { isValid } from "date-fns";
 
 type TimeRange = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -47,21 +43,16 @@ interface OrderCompletionData {
   }>;
 }
 
-export function OrderCompletionChart({
-  board,
-  timeRange,
-}: {
-  board: Board;
-  timeRange: TimeRange;
-}) {
+export function OrderCompletionChart({ timeRange }: { timeRange: TimeRange }) {
   const { theme } = useTheme();
   const [selectedDay, setSelectedDay] = useState<OrderCompletionData | null>(
     null
   );
+  const { items } = useOrderStore();
 
   const data = useMemo(() => {
-    const completedItems = board.items_page.items.filter(
-      (item) => item.status === ItemStatus.Done && !item.deleted
+    const completedItems = items.filter(
+      (item) => item.status === ItemStatus.Done
     );
     const groupedData: { [key: string]: OrderCompletionData } = {};
 
@@ -94,7 +85,7 @@ export function OrderCompletionChart({
 
         switch (timeRange) {
           case "daily":
-            key = parsedDate.toISOString().split("T")[0];
+            key = parsedDate.toISOString().split("T")[0]!;
             break;
           case "weekly": {
             const weekStart = new Date(parsedDate);
@@ -103,9 +94,9 @@ export function OrderCompletionChart({
             weekStart.setDate(diff);
 
             if (isValid(weekStart)) {
-              key = weekStart.toISOString().split("T")[0];
+              key = weekStart.toISOString().split("T")[0]!;
             } else {
-              key = parsedDate.toISOString().split("T")[0];
+              key = parsedDate.toISOString().split("T")[0]!;
             }
             break;
           }
@@ -118,19 +109,19 @@ export function OrderCompletionChart({
             key = parsedDate.getFullYear().toString();
             break;
           default:
-            key = parsedDate.toISOString().split("T")[0];
+            key = parsedDate.toISOString().split("T")[0]!;
         }
 
         if (!groupedData[key]) {
           groupedData[key] = { date: key, completions: 0, items: [] };
         }
 
-        groupedData[key].completions += 1;
-        groupedData[key].items.push({
+        groupedData[key]!.completions += 1;
+        groupedData[key]!.items.push({
           customerName: customerNameColumn.text,
           design: designColumn.text,
           size: sizeColumn.text,
-          completedDate: parsedDate.toISOString().split("T")[0],
+          completedDate: parsedDate.toISOString().split("T")[0]!,
         });
       }
     });
@@ -138,7 +129,7 @@ export function OrderCompletionChart({
     return Object.values(groupedData).sort((a, b) =>
       a.date.localeCompare(b.date)
     );
-  }, [board.items_page.items, timeRange]);
+  }, [items, timeRange]);
 
   const chartColors = {
     light: {

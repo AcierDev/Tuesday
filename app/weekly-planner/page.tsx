@@ -7,7 +7,7 @@ import {
   ColumnTitles,
   Item,
   DayName,
-  DaySchedule,
+  WeekSchedule,
   ItemStatus,
 } from "@/typings/types";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,7 @@ interface DayItemToRemove {
 }
 
 interface WeeklyScheduleHooks {
-  weeklySchedules: Record<string, DaySchedule>;
+  weeklySchedules: Record<string, WeekSchedule>;
   currentWeekStart: Date;
   addItemToDay: (
     day: DayName,
@@ -495,7 +495,6 @@ const DayCard = ({
 };
 
 const WeeklyPlanner = () => {
-  const [items, setItems] = React.useState<Item[]>([]);
   const { weeklySchedules, currentWeekStart, addItemToDay, changeWeek } =
     useWeeklySchedule({
       weekStartsOn: 0,
@@ -543,7 +542,7 @@ const WeeklyPlanner = () => {
   const [highBlockItems, setHighBlockItems] = useState<HighBlockItem[]>([]);
   const [showHighBlockWarning, setShowHighBlockWarning] = useState(false);
 
-  const { board, updateWeeklySchedules } = useOrderStore();
+  const { items } = useOrderStore();
   const { proposedSchedule, setProposedSchedule, excludedDays } =
     useAutoScheduleStore();
 
@@ -571,14 +570,6 @@ const WeeklyPlanner = () => {
     });
   }, [currentWeekStart]);
 
-  React.useEffect(() => {
-    setItems(
-      board?.items_page?.items.filter(
-        (item) => !item.deleted && item.visible
-      ) || []
-    );
-  }, [board]);
-
   const getItemValue = (item: Item, columnName: ColumnTitles): string => {
     return item.values.find((v) => v.columnName === columnName)?.text || "";
   };
@@ -591,7 +582,7 @@ const WeeklyPlanner = () => {
     "Thursday",
   ] as DayName[];
   const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-  const currentSchedule = (weeklySchedules[weekKey] || {}) as DaySchedule;
+  const currentSchedule = (weeklySchedules[weekKey] || {}) as WeekSchedule;
 
   const designs = React.useMemo(
     () => [
@@ -692,7 +683,6 @@ const WeeklyPlanner = () => {
           !item.isScheduled &&
           item.status !== ItemStatus.Done &&
           item.status !== ItemStatus.Hidden &&
-          item.visible &&
           getItemValue(item, ColumnTitles.Customer_Name)
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) &&
@@ -952,12 +942,12 @@ const WeeklyPlanner = () => {
 
       // Apply proposed schedule changes
       Object.entries(proposedSchedule).forEach(([weekKey, weekSchedule]) => {
-        const daySchedule = weekSchedule.reduce<DaySchedule>(
+        const daySchedule = weekSchedule.reduce<WeekSchedule>(
           (acc, { day, item }) => ({
             ...acc,
             [day]: [...(acc[day] || []), { id: item.id, done: false }],
           }),
-          {} as DaySchedule
+          {} as WeekSchedule
         );
 
         newSchedules[weekKey] = {

@@ -12,7 +12,7 @@ import {
   DayName,
   ColumnTitles,
   WeeklySchedules,
-  DaySchedule,
+  WeekSchedule,
 } from "@/typings/types";
 import { useAutoScheduleStore } from "../../stores/useAutoScheduleStore";
 import { DialogWeekSelector } from "./DialogWeekSelector";
@@ -30,7 +30,7 @@ interface AutoScheduleDialogProps {
   onConfirm: () => Promise<void>;
   getItemValue: (item: Item, columnName: ColumnTitles) => string;
   plannerCurrentWeek: Date;
-  currentSchedule: DaySchedule;
+  currentSchedule: WeekSchedule;
   weeklySchedules: WeeklySchedules;
   onUpdateCheckStatus: (status: Record<string, WeekCheckStatus>) => void;
   mode: "single" | "multi";
@@ -288,7 +288,7 @@ export function AutoScheduleDialog({
 
   // Function to check if an item is new (not in original schedule)
   const isNewItem = (day: DayName, itemId: string) => {
-    const weekExistingSchedule: DaySchedule =
+    const weekExistingSchedule: WeekSchedule =
       weekKey === format(plannerCurrentWeek, "yyyy-MM-dd")
         ? currentSchedule
         : weeklySchedules[weekKey] || {

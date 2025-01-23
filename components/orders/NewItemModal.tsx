@@ -44,7 +44,6 @@ import {
   ItemDesigns,
   ItemSizes,
   ItemStatus,
-  Board,
   Item,
 } from "../../typings/types";
 
@@ -57,7 +56,6 @@ type CustomInputs = {
 };
 
 interface NewItemModalProps {
-  board: Board | null;
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (newItem: Partial<Item>) => Promise<void>;
@@ -86,7 +84,6 @@ const SuccessAnimation = () => (
 );
 
 export const NewItemModal: React.FC<NewItemModalProps> = ({
-  board,
   isOpen,
   onClose,
   onSubmit,
