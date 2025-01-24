@@ -98,8 +98,7 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
           set({ schedules, isLoading: false });
 
           // Notify OrderStore to update `isScheduled`
-          const orderStore = useOrderStore.getState();
-          orderStore.updateIsScheduled();
+          useOrderStore.getState().updateIsScheduled();
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : "An error occurred";
@@ -123,6 +122,9 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
               s.weekKey === weekKey ? schedule : s
             ),
           }));
+
+          // Notify OrderStore to update `isScheduled`
+          useOrderStore.getState().updateIsScheduled();
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : "An error occurred";
@@ -144,6 +146,9 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
               [day]: [...schedule.schedule[day], { id: itemId, done: false }],
             },
           };
+
+          // Notify OrderStore to update `isScheduled`
+          useOrderStore.getState().updateIsScheduled();
 
           await get().updateSchedule(weekKey, updatedSchedule);
           toast.success("Item added to schedule");
@@ -173,6 +178,10 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
           };
 
           await get().updateSchedule(weekKey, updatedSchedule);
+
+          // Notify OrderStore to update `isScheduled`
+          useOrderStore.getState().updateIsScheduled();
+
           toast.success("Item removed from schedule");
         } catch (error) {
           toast.error("Failed to remove item from schedule");
