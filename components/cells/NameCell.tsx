@@ -19,27 +19,27 @@ import { cn } from "@/utils/functions";
 import React from "react";
 import { Item, ColumnValue, ColumnTitles } from "@/typings/types";
 
-// Add this style block right after imports
-const pulseKeyframes = `
-  @keyframes pulse {
-    0% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.5);
-    }
-    100% {
-      transform: scale(1);
-    }
-  }
-`;
+// // Add this style block right after imports
+// const pulseKeyframes = `
+//   @keyframes pulse {
+//     0% {
+//       transform: scale(1);
+//     }
+//     50% {
+//       transform: scale(1.5);
+//     }
+//     100% {
+//       transform: scale(1);
+//     }
+//   }
+// `;
 
-// Add the style element to inject the keyframes
-const styleElement = document.createElement("style");
-styleElement.textContent = pulseKeyframes;
-if (typeof document !== "undefined") {
-  document.head.appendChild(styleElement);
-}
+// // Add the style element to inject the keyframes
+// const styleElement = document.createElement("style");
+// styleElement.textContent = pulseKeyframes;
+// if (typeof document !== "undefined") {
+//   document.head.appendChild(styleElement);
+// }
 
 interface NameCellProps {
   item: Item;
@@ -191,7 +191,7 @@ export const NameCell: React.FC<NameCellProps> = ({
               <MessageCircleWarning className="h-4 w-4 text-blue-500" />
             </TooltipTrigger>
             <TooltipContent>
-              <p>Customer message</p>
+              <p>Customer messaged</p>
             </TooltipContent>
           </Tooltip>
         )}

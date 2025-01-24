@@ -46,11 +46,11 @@ import { boardConfig } from "@/config/boardconfig";
 import { ItemPreviewTooltip } from "./ItemPreviewTooltip";
 import { Portal } from "@/components/ui/portal";
 import { DueDateTooltip } from "./DueDateTooltip";
-import { useWeeklySchedule } from "../weekly-schedule/UseWeeklySchedule";
 import { ShippingStatusIcon } from "./ShippingStatusIcon";
 import { ShippingCell } from "../cells/ShippingCell";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
 
@@ -107,9 +107,7 @@ export function ItemGroupSection({
   const ignoreHoverRef = useRef(false);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
-  const { weeklySchedules, addItemToDay } = useWeeklySchedule({
-    weekStartsOn: 0,
-  });
+  const { schedules, addItemToDay } = useWeeklyScheduleStore();
 
   const {
     loadDoneItems,
@@ -730,8 +728,8 @@ export function ItemGroupSection({
                                                               );
                                                             }}
                                                             item={item}
-                                                            weeklySchedules={
-                                                              weeklySchedules
+                                                            schedules={
+                                                              schedules
                                                             }
                                                             onAddToSchedule={
                                                               addItemToDay
@@ -986,7 +984,7 @@ export function ItemGroupSection({
                                                 setHoveredColumn(null);
                                               }}
                                               item={item}
-                                              weeklySchedules={weeklySchedules}
+                                              schedules={schedules}
                                               onAddToSchedule={addItemToDay}
                                               onScheduleUpdate={
                                                 handleScheduleUpdate

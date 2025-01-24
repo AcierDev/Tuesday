@@ -23,6 +23,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const client = await clientPromise;
+
     const db = client.db("react-web-app");
     const collection = db.collection<WeeklyScheduleData>(
       `weeklySchedules-${process.env.NEXT_PUBLIC_MODE}`

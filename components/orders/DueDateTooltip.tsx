@@ -8,18 +8,19 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { isSameDay, addDays } from "date-fns";
 import { cn } from "@/utils/functions";
 import { toast } from "sonner";
-import { DayName, Item } from "@/typings/types";
+import { DayName, ExtendedItem, WeeklyScheduleData } from "@/typings/types";
 
 interface DueDateTooltipProps {
   onSelectDay: (date: Date) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
-  item: Item;
-  weeklySchedules: Record<
-    string,
-    Record<DayName, Array<{ id: string; done: boolean }>>
-  >;
-  onAddToSchedule?: (day: DayName, itemId: string) => Promise<void>;
+  item: ExtendedItem;
+  schedules: WeeklyScheduleData[];
+  onAddToSchedule?: (
+    weekKey: string,
+    day: DayName,
+    itemId: string
+  ) => Promise<void>;
   onScheduleUpdate?: () => void;
 }
 
@@ -33,11 +34,10 @@ const DAYS = [
 ] as const;
 
 export function DueDateTooltip({
-  onSelectDay,
   onMouseEnter,
   onMouseLeave,
   item,
-  weeklySchedules,
+  schedules,
   onAddToSchedule,
   onScheduleUpdate,
 }: DueDateTooltipProps) {
@@ -60,23 +60,15 @@ export function DueDateTooltip({
     return null;
   }
 
-  const isItemScheduledAnywhere = () => {
-    return Object.values(weeklySchedules).some((weekSchedule) =>
-      Object.values(weekSchedule).some((daySchedule) =>
-        daySchedule?.some((scheduledItem) => scheduledItem.id === item.id)
-      )
-    );
-  };
-
   const getScheduledDayAndWeek = () => {
-    for (const [weekKey, weekSchedule] of Object.entries(weeklySchedules)) {
-      for (const [day, daySchedule] of Object.entries(weekSchedule)) {
+    for (const schedule of schedules) {
+      for (const [day, daySchedule] of Object.entries(schedule.schedule)) {
         if (
           daySchedule?.some((scheduledItem) => scheduledItem.id === item.id)
         ) {
           return {
             day,
-            week: format(new Date(weekKey), "MMM d"),
+            week: format(new Date(schedule.weekKey), "MMM d"),
           };
         }
       }
@@ -88,7 +80,11 @@ export function DueDateTooltip({
     if (!onAddToSchedule) return;
 
     try {
-      await onAddToSchedule(day as DayName, item.id);
+      await onAddToSchedule(
+        format(selectedWeekStart, "YYYY-MM-DD"),
+        day as DayName,
+        item.id
+      );
 
       if (onScheduleUpdate) {
         onScheduleUpdate();
@@ -105,7 +101,6 @@ export function DueDateTooltip({
   };
 
   const scheduledInfo = getScheduledDayAndWeek();
-  const isScheduled = isItemScheduledAnywhere();
 
   return (
     <motion.div
@@ -128,7 +123,7 @@ export function DueDateTooltip({
           </span>
         </div>
 
-        {isScheduled ? (
+        {item.isScheduled ? (
           <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
             <div className="flex items-start gap-3">
               <Info className="h-5 w-5 text-blue-500 mt-0.5" />

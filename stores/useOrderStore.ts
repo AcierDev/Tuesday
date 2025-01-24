@@ -3,6 +3,7 @@ import { devtools } from "zustand/middleware";
 import { toast } from "sonner";
 import { Item, ColumnTitles, ItemStatus, Settings } from "@/typings/types";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
+import { useWeeklyScheduleStore } from "./useWeeklyScheduleStore";
 
 interface OrderState {
   lastFetched: number | null;
@@ -36,6 +37,7 @@ interface OrderState {
   loadHiddenItems: () => Promise<void>;
   removeHiddenItems: () => void;
   markCompleted: (item: Item) => Promise<void>;
+  updateIsScheduled: () => void;
 }
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -85,11 +87,31 @@ export const useOrderStore = create<OrderState>()(
 
           // Start watching for changes after initial load
           get().startWatchingChanges();
+
+          // Recalculate `isScheduled` if schedules are loaded
+          const { schedules } = useWeeklyScheduleStore.getState();
+          if (schedules.length > 0) get().updateIsScheduled();
         } catch (err) {
           console.error("Failed to load orders", err);
           toast.error("Failed to load orders. Please try again.");
           set({ isLoading: false });
         }
+      },
+
+      updateIsScheduled: () => {
+        const { items } = get();
+        const { schedules } = useWeeklyScheduleStore.getState();
+
+        const updatedItems = items.map((item) => ({
+          ...item,
+          isScheduled: schedules.some((schedule) =>
+            Object.values(schedule.schedule).some((day) =>
+              day.some((dayItem) => dayItem.id === item.id)
+            )
+          ),
+        }));
+
+        set({ items: updatedItems });
       },
 
       startWatchingChanges: () => {
@@ -154,16 +176,15 @@ export const useOrderStore = create<OrderState>()(
           values: finalValues,
         };
 
-        const { settings } = useOrderSettings();
-
+        //! TODO: Add back in
         // Apply automatron rules if active
-        if (settings?.isAutomatronActive) {
-          itemToUpdate = applyAutomatronRules(
-            itemToUpdate,
-            settings,
-            changedField
-          );
-        }
+        // if (settings?.isAutomatronActive) {
+        //   itemToUpdate = applyAutomatronRules(
+        //     itemToUpdate,
+        //     settings,
+        //     changedField
+        //   );
+        // }
 
         try {
           const response = await fetch("/api/items", {
@@ -202,7 +223,6 @@ export const useOrderStore = create<OrderState>()(
           status: ItemStatus.New,
           visible: true,
           deleted: false,
-          isScheduled: false,
           tags: {
             isVertical: newItem.tags?.isVertical,
             hasCustomerMessage: newItem.tags?.hasCustomerMessage,

@@ -56,10 +56,12 @@ export async function PATCH(request: Request) {
 
     const { id, updates } = await request.json();
 
+    const { _id, ...updatesWithoutId } = updates;
+
     // Update the item with the given id
     const result = await collection.updateOne(
       { id },
-      { $set: updates },
+      { $set: updatesWithoutId },
       { upsert: true }
     );
 

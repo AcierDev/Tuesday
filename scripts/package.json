@@ -13,6 +13,7 @@
   "scripts": {
     "split": "tsx splitCollections.ts",
     "compare": "tsx compareQueries.ts",
-    "init-indexes": "tsx initializeIndexes.ts"
+    "init-indexes": "tsx initializeIndexes.ts",
+    "reupload-completed": "tsx reuploadCompletedOrders.ts"
   }
 }

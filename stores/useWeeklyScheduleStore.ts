@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { DayName, Item, WeeklyScheduleData } from "@/typings/types";
 import { toast } from "sonner";
+import { useOrderStore } from "./useOrderStore";
 
 interface WeeklyScheduleState {
   schedules: WeeklyScheduleData[];
@@ -95,6 +96,10 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
 
           const schedules = await response.json();
           set({ schedules, isLoading: false });
+
+          // Notify OrderStore to update `isScheduled`
+          const orderStore = useOrderStore.getState();
+          orderStore.updateIsScheduled();
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : "An error occurred";
@@ -198,33 +203,28 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
       },
 
       startWatchingChanges: () => {
-        // Clean up existing connection if any
-        get().stopWatchingChanges();
-
-        const eventSource = new EventSource("/api/weekly-schedules/changes");
-
-        eventSource.onmessage = (event) => {
-          try {
-            const change = JSON.parse(event.data);
-            if (change.type === "update") {
-              get().fetchSchedules();
-            }
-          } catch (error) {
-            console.error("Failed to process change:", error);
-          }
-        };
-
-        eventSource.onerror = (error) => {
-          console.error("EventSource failed:", error);
-          get().stopWatchingChanges();
-
-          // Try to reconnect after a delay
-          setTimeout(() => {
-            get().startWatchingChanges();
-          }, 5000);
-        };
-
-        set({ eventSource });
+        // // Clean up existing connection if any
+        // get().stopWatchingChanges();
+        // const eventSource = new EventSource("/api/weekly-schedules/changes");
+        // eventSource.onmessage = (event) => {
+        //   try {
+        //     const change = JSON.parse(event.data);
+        //     if (change.type === "update") {
+        //       get().fetchSchedules();
+        //     }
+        //   } catch (error) {
+        //     console.error("Failed to process change:", error);
+        //   }
+        // };
+        // eventSource.onerror = (error) => {
+        //   console.error("EventSource failed:", error);
+        //   get().stopWatchingChanges();
+        //   // Try to reconnect after a delay
+        //   setTimeout(() => {
+        //     get().startWatchingChanges();
+        //   }, 5000);
+        // };
+        // set({ eventSource });
       },
 
       stopWatchingChanges: () => {
@@ -253,9 +253,12 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
       markDone: async (item: Item, weekKey: string) => {
         const week = get().schedules.find((s) => s.weekKey === weekKey);
         if (!week) throw new Error("Schedule not found");
-        const day: DayName = Object.entries(week?.schedule).find((pair) =>
-          pair[1].some((item) => item.id === item.id)
-        )?.[0]! as any as DayName;
+
+        // Find the day containing the item
+        const day: DayName = Object.entries(week.schedule).find((pair) =>
+          // Fix: Compare using the passed item's id
+          pair[1].some((scheduleItem) => scheduleItem.id === item.id)
+        )?.[0] as DayName;
 
         if (!day) throw new Error("Day not found");
 
@@ -263,8 +266,11 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
           ...week,
           schedule: {
             ...week.schedule,
-            [day]: week.schedule[day].map((item) =>
-              item.id === item.id ? { ...item, done: true } : item
+            [day]: week.schedule[day].map((scheduleItem) =>
+              // Fix: Compare using the passed item's id
+              scheduleItem.id === item.id
+                ? { ...scheduleItem, done: true }
+                : scheduleItem
             ),
           },
         };

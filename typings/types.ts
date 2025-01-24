@@ -16,10 +16,16 @@ export type WeeklyTaskSchedule = {
   [day in DayName]: DailyTask[];
 };
 
-export type WeeklyScheduleData = {
+export interface WeeklyScheduleData {
+  _id?: string;
   weekKey: string;
-  schedule: WeeklyTaskSchedule;
-};
+  schedule: {
+    [key in DayName]: Array<{
+      id: string;
+      done: boolean;
+    }>;
+  };
+}
 
 export type Maybe<T> = T | null | undefined;
 
@@ -34,7 +40,7 @@ export type Board = {
 export type Group = {
   id: string;
   title: string;
-  items: Item[];
+  items: ExtendedItem[];
 };
 
 export type Column = {
@@ -58,13 +64,16 @@ export type Item = {
   visible: boolean;
   deleted: boolean;
   index: number;
-  isScheduled?: boolean;
   shippingDetails?: ShippingDetails;
   tags?: {
     isDifficultCustomer?: boolean;
     isVertical?: boolean;
     hasCustomerMessage?: boolean;
   };
+};
+
+export type ExtendedItem = Item & {
+  isScheduled?: boolean;
 };
 
 export type ShippingDetails = {
