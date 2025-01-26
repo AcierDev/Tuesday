@@ -1,7 +1,13 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { toast } from "sonner";
-import { Item, ColumnTitles, ItemStatus, Settings } from "@/typings/types";
+import {
+  Item,
+  ColumnTitles,
+  ItemStatus,
+  Settings,
+  ExtendedItem,
+} from "@/typings/types";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { useWeeklyScheduleStore } from "./useWeeklyScheduleStore";
 
@@ -11,7 +17,8 @@ interface OrderState {
   eventSource: EventSource | null;
   doneItemsLoaded: boolean;
   hiddenItemsLoaded: boolean;
-  items: Item[];
+  items: ExtendedItem[];
+  allItems: ExtendedItem[];
   // Actions
   loadItems: () => Promise<void>;
   updateItem: (updatedItem: Item, changedField?: ColumnTitles) => Promise<Item>;
@@ -60,6 +67,7 @@ function hasDuplicateFirstValue(item: Item, items: Item[]): boolean {
 export const useOrderStore = create<OrderState>()(
   devtools((set, get) => {
     return {
+      allItems: [],
       items: [],
       lastFetched: null,
       isLoading: false,
@@ -72,13 +80,18 @@ export const useOrderStore = create<OrderState>()(
         try {
           set({ isLoading: true });
           const response = await fetch(
-            "/api/items?includeDone=false&includeHidden=false"
+            "/api/items?includeDone=true&includeHidden=true"
           );
           if (!response.ok) throw new Error("Failed to fetch orders");
 
-          const items = await response.json();
+          const allItems = await response.json();
           set({
-            items,
+            allItems,
+            items: allItems.filter(
+              (item: ExtendedItem) =>
+                item.status !== ItemStatus.Done &&
+                item.status !== ItemStatus.Hidden
+            ),
             lastFetched: Date.now(),
             isLoading: false,
             doneItemsLoaded: false,
@@ -387,30 +400,12 @@ export const useOrderStore = create<OrderState>()(
         return hasDuplicateFirstValue(item, items);
       },
 
-      loadDoneItems: async () => {
-        const { items } = get();
-
-        try {
-          set({ isLoading: true });
-          const response = await fetch(
-            "/api/items?status=Done&includeHidden=false&includeDone=true"
-          );
-          if (!response.ok) throw new Error("Failed to fetch done items");
-
-          const doneItems: Item[] = await response.json();
-          console.log("Done items:", items.length, doneItems.length);
-
-          // Remove board structure assumption
-          set({
-            items: items.concat(doneItems),
-            doneItemsLoaded: true,
-            isLoading: false,
-          });
-        } catch (err) {
-          console.error("Failed to load done items", err);
-          toast.error("Failed to load done items. Please try again.");
-          set({ isLoading: false });
-        }
+      loadDoneItems: () => {
+        const { allItems, items } = get();
+        const doneItems = allItems.filter(
+          (item) => item.status === ItemStatus.Done
+        );
+        set({ items: [...items, ...doneItems], doneItemsLoaded: true });
       },
 
       removeDoneItems: () => {
@@ -425,40 +420,20 @@ export const useOrderStore = create<OrderState>()(
         set({ items: activeItems, doneItemsLoaded: false });
       },
 
-      loadHiddenItems: async () => {
-        const { items } = get();
-        if (!items) return;
-
-        try {
-          set({ isLoading: true });
-          const response = await fetch("/api/items?status=Hidden");
-          if (!response.ok) throw new Error("Failed to fetch hidden items");
-
-          const hiddenItems = await response.json();
-
-          // Remove board structure assumption
-          set({
-            items: [...items, ...hiddenItems],
-            hiddenItemsLoaded: true,
-            isLoading: false,
-          });
-        } catch (err) {
-          console.error("Failed to load hidden items", err);
-          toast.error("Failed to load hidden items. Please try again.");
-          set({ isLoading: false });
-        }
+      loadHiddenItems: () => {
+        const { allItems, items } = get();
+        const hiddenItems = allItems.filter(
+          (item) => item.status === ItemStatus.Hidden
+        );
+        set({ items: [...items, ...hiddenItems], hiddenItemsLoaded: true });
       },
 
       removeHiddenItems: () => {
-        const { items } = get();
-        if (!items) return;
-
-        // Filter out hidden items
-        const visibleItems = items.filter(
+        const { allItems } = get();
+        const activeItems = allItems.filter(
           (item) => item.status !== ItemStatus.Hidden
         );
-
-        set({ items: visibleItems, hiddenItemsLoaded: false });
+        set({ items: activeItems, hiddenItemsLoaded: false });
       },
     };
   })

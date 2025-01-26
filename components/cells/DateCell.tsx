@@ -10,13 +10,19 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
-import { getDueBadge } from "../../utils/functions";
+import { cn, getDueBadge } from "../../utils/functions";
 import { useOrderSettings } from "../../contexts/OrderSettingsContext";
 import { toast } from "sonner";
-import { ColumnTitles, ColumnValue, Item, ItemStatus } from "@/typings/types";
+import {
+  ColumnTitles,
+  ColumnValue,
+  ExtendedItem,
+  Item,
+  ItemStatus,
+} from "@/typings/types";
 
 interface DateCellProps {
-  item: Item;
+  item: ExtendedItem;
   columnValue: ColumnValue;
   onUpdate: (item: Item, columnName: ColumnTitles) => void;
 }
@@ -64,14 +70,19 @@ export const DateCell = ({ item, columnValue, onUpdate }: DateCellProps) => {
   const formattedDate = date && isValid(date) ? format(date, "MM/dd/yyyy") : "";
 
   return (
-    <div className="flex items-center justify-center space-x-2 h-full">
+    <div className={"flex items-center justify-center space-x-2 h-full"}>
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            className="w-full h-full justify-center p-2 text-gray-900 dark:text-gray-100"
+            className="w-full h-full justify-center p-2 dark:text-white"
             variant="ghost"
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon
+              className={cn(
+                "mr-2 h-4 w-4",
+                item.isScheduled && "text-yellow-500"
+              )}
+            />
             {formattedDate || ""}
           </Button>
         </PopoverTrigger>

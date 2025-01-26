@@ -659,21 +659,6 @@ export function ItemGroupSection({
                                                   onClick={handleDueDateClick}
                                                   className="relative"
                                                 >
-                                                  {item.isScheduled && (
-                                                    <div
-                                                      className="absolute -left-2 -top-[10px] w-3 h-3 bg-amber-400"
-                                                      style={{
-                                                        borderBottomRightRadius:
-                                                          "100%",
-                                                        borderTopRightRadius:
-                                                          "0",
-                                                        borderBottomLeftRadius:
-                                                          "0",
-                                                        borderTopLeftRadius:
-                                                          "0",
-                                                      }}
-                                                    />
-                                                  )}
                                                   <div className="relative">
                                                     <CustomTableCell
                                                       columnValue={columnValue}

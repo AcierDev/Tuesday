@@ -6,8 +6,8 @@ import { ItemStatus } from "@/typings/types";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const includeDone = searchParams.get("includeDone") === "true";
-    const includeHidden = searchParams.get("includeHidden") === "true";
+    const includeDone = searchParams.get("includeDone") === "true" || false;
+    const includeHidden = searchParams.get("includeHidden") === "true" || false;
     const status = searchParams.get("status") || "";
 
     const client = await clientPromise;
