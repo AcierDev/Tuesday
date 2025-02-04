@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Info, Mail, ShoppingCart } from "lucide-react";
+import { ExternalLink, Mail, ShoppingCart } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -15,11 +15,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -70,12 +65,40 @@ const interpolatePrice = (
 ): number => {
   console.log(`Interpolating price for ${squares} squares`);
 
+  // First, check for exact match
   const exactMatch = points.find((point) => point.squares === squares);
   if (exactMatch) {
     console.log(`Found exact match: $${exactMatch.price}`);
     return exactMatch.price;
   }
 
+  // If below the smallest size, use the smallest price
+  if (squares < points[0].squares) {
+    return points[0].price;
+  }
+
+  // If above the largest size, calculate based on the last two points
+  if (squares > points[points.length - 1].squares) {
+    const lastPoint = points[points.length - 1];
+    const secondLastPoint = points[points.length - 2];
+
+    // Calculate the price per square for the last two points
+    const lastPricePerSquare = lastPoint.price / lastPoint.squares;
+    const secondLastPricePerSquare =
+      secondLastPoint.price / secondLastPoint.squares;
+
+    // Use the average price per square of the last two points
+    const averagePricePerSquare =
+      (lastPricePerSquare + secondLastPricePerSquare) / 2;
+
+    // Calculate the final price
+    const finalPrice = squares * averagePricePerSquare;
+
+    console.log(`Extrapolated price: $${finalPrice}`);
+    return finalPrice;
+  }
+
+  // For sizes between data points, use linear interpolation
   for (let i = 1; i < points.length; i++) {
     const lower = points[i - 1];
     const upper = points[i];
@@ -96,6 +119,7 @@ const interpolatePrice = (
     }
   }
 
+  // Fallback to last price if all else fails
   const fallbackPrice = points[points.length - 1]?.price ?? 0;
   console.log(`Using fallback price: $${fallbackPrice}`);
   return fallbackPrice;

@@ -78,3 +78,28 @@ export async function PATCH(request: Request) {
     );
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const client = await clientPromise;
+    const db = client.db("react-web-app");
+    const collection = db.collection<Item>(
+      `items-${process.env.NEXT_PUBLIC_MODE}`
+    );
+
+    const newItem = await request.json();
+    const result = await collection.insertOne(newItem);
+
+    if (!result.acknowledged) {
+      return NextResponse.json(
+        { error: "Failed to add item" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(newItem);
+  } catch (error) {
+    console.error("Error adding item:", error);
+    return NextResponse.json({ error: "Failed to add item" }, { status: 500 });
+  }
+}

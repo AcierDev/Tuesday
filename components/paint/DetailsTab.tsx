@@ -4,6 +4,7 @@ import { cn } from "@/utils/functions";
 import { ItemDesigns } from "@/typings/types";
 import { PaintRequirement } from "./PaintCalculations";
 import { renderColorBox } from "./RenderColorBox";
+import { ItemUtil } from "@/utils/ItemUtil";
 
 type DetailsTabProps = {
   isMobile: boolean;
@@ -36,7 +37,9 @@ export function DetailsTab({
                     : "grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10"
                 )}
               >
-                {Object.entries(colorRequirements).map(([color, pieces]) =>
+                {Object.entries(
+                  ItemUtil.getPaintRequirements(design as ItemDesigns)
+                ).map(([color, pieces]) =>
                   renderColorBox(design as ItemDesigns, color, pieces, isMobile)
                 )}
               </div>

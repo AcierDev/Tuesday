@@ -6,15 +6,12 @@ import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedul
 import { useIsMobile } from "@/components/shared/UseIsMobile";
 import { SchedulePageLayout } from "@/components/shared/SchedulePageLayout";
 import { Filters } from "@/components/shared/Filters";
-import {
-  PaintRequirement,
-  calculatePaintRequirements,
-} from "@/components/paint/PaintCalculations";
 import { OverviewTab } from "@/components/paint/OverviewTab";
 import { DetailsTab } from "@/components/paint/DetailsTab";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { Group } from "@/typings/types";
 import { DAYS_OF_WEEK } from "@/typings/constants";
+import { ItemUtil } from "@/components/paint/ItemUtil";
 
 export default function PaintSchedulePage() {
   const [paintRequirements, setPaintRequirements] = useState<
@@ -98,8 +95,9 @@ export default function PaintSchedulePage() {
   );
 
   useEffect(() => {
-    const requirements = calculatePaintRequirements(filteredPaintGroup);
-    setPaintRequirements(requirements);
+    const paintRequirements =
+      ItemUtil.getTotalPaintRequirements(filteredPaintGroup);
+    setPaintRequirements(paintRequirements);
   }, [filteredPaintGroup]);
 
   const filteredRequirements = Object.entries(paintRequirements);

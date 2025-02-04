@@ -8,16 +8,13 @@ import { cn } from "@/utils/functions";
 import { Calendar } from "lucide-react";
 import { useState } from "react";
 import { formatDateSafely } from "@/utils/dateUtils";
+import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 
 interface TodaysScheduleProps {
-  board: Board;
   selectedEmployee: string | null;
 }
 
-export function TodaysSchedule({
-  board,
-  selectedEmployee,
-}: TodaysScheduleProps) {
+export function TodaysSchedule({ selectedEmployee }: TodaysScheduleProps) {
   const [showDone, setShowDone] = useState(true);
 
   // Get today's date and determine the day name
@@ -36,11 +33,11 @@ export function TodaysSchedule({
   const currentWeekStart = startOfWeek(today, { weekStartsOn: 0 });
   const weekKey = format(currentWeekStart, "yyyy-MM-dd");
 
+  const { schedules } = useWeeklyScheduleStore();
+
   // Get today's schedule from the weekly schedules
   const todaysSchedule: { id: string; done: boolean }[] =
-    board.weeklySchedules?.[weekKey]?.[
-      todayName as keyof (typeof board.weeklySchedules)[string]
-    ] || [];
+    schedules?.[weekKey]?.[todayName as keyof (typeof schedules)[string]] || [];
 
   // Helper function to get item value
   const getItemValue = (item: Item, columnName: ColumnTitles): string => {

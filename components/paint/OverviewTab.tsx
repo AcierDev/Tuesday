@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { cn } from "@/utils/functions";
 import { PaintRequirement } from "./PaintCalculations";
+import { ItemUtil } from "@/utils/ItemUtil";
 
 type OverviewTabProps = {
   isMobile: boolean;
@@ -16,6 +17,10 @@ export function OverviewTab({
   filteredRequirements,
   selectedDates,
 }: OverviewTabProps) {
+  const totalPieces = Object.values(
+    ItemUtil.getTotalPaintRequirements(group)
+  ).reduce((sum, pieces) => sum + pieces, 0);
+
   return (
     <ScrollArea className="h-full">
       <div className={cn("space-y-6", isMobile ? "p-4" : "p-6")}>

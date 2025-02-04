@@ -245,12 +245,9 @@ export const useOrderStore = create<OrderState>()(
 
         try {
           const response = await fetch("/api/items", {
-            method: "PATCH",
+            method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: fullNewItem.id,
-              updates: fullNewItem,
-            }),
+            body: JSON.stringify(fullNewItem),
           });
 
           if (!response.ok) throw new Error("Failed to add item");

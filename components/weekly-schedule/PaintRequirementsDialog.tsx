@@ -1,10 +1,9 @@
 import { Item, ColumnTitles, ItemDesigns } from "@/typings/types";
-import { calculatePaintRequirements } from "../paint/PaintCalculations";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { renderColorBox } from "../paint/RenderColorBox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-
+import { ItemUtil } from "@/utils/ItemUtil";
 interface PaintRequirementsDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -20,7 +19,7 @@ export function PaintRequirementsDialog({
   dayTitle,
   getItemValue,
 }: PaintRequirementsDialogProps) {
-  const requirements = calculatePaintRequirements({
+  const requirements = ItemUtil.getTotalPaintRequirements({
     id: dayTitle,
     title: dayTitle,
     items,

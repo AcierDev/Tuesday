@@ -12,13 +12,13 @@ const SurprisePage = () => {
         <br />
         Orders → Shipping → Orders → Shipping.
       </p>
-      <Image
+      {/* <Image
         src="/images/surprise.gif"
         alt="Surprise gif"
         width={500}
         height={500}
         priority
-      />
+      /> */}
     </div>
   );
 };

@@ -133,7 +133,9 @@ export function ColumnVisibilitySettings({
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 {[
                                   "Shipping",
-                                  ...Object.values(ColumnTitles),
+                                  ...Object.values(ColumnTitles).filter(
+                                    (field) => field !== "Shipping"
+                                  ),
                                 ].map((field) => (
                                   <div
                                     key={field}

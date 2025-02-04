@@ -497,7 +497,6 @@ export function ViewLabel({
       if (response.ok) {
         console.log("Delete successful, updating store and state");
         removeLabel(orderId, filename);
-        console.log("Store updated:", useShippingStore.getState().labels);
 
         // Update local state
         const newUrls = [...pdfUrls];

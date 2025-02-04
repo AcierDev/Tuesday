@@ -259,6 +259,7 @@ export enum ColumnTitles {
   Notes = "Notes",
   Rating = "Rating",
   Labels = "Labels",
+  Shipping = "Shipping",
 }
 
 export enum ColumnTypes {

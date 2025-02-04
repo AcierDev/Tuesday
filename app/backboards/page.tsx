@@ -18,6 +18,7 @@ import {
   ItemSizes,
 } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { ItemUtil } from "@/utils/ItemUtil";
 
 export default function BackboardSchedulePage() {
   return <div>Backboard Schedule Page</div>;
@@ -96,15 +97,7 @@ export default function BackboardSchedulePage() {
   //   [filteredItemsNeedingBackboards]
   // );
 
-  // const backboardRequirements: BackboardRequirement = useMemo(
-  //   () =>
-  //     BackboardCalculations({
-  //       schedule: weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {},
-  //       items: itemsNeedingBackboards || [],
-  //       selectedDates,
-  //     }),
-  //   [weeklySchedules, currentWeekStart, itemsNeedingBackboards, selectedDates]
-  // );
+  // const backboardRequirements = ItemUtil.getTotalBackboardRequirements(filteredBackboardGroup);
 
   // const filteredRequirements = Object.entries(backboardRequirements).filter(
   //   ([size, count]) => {

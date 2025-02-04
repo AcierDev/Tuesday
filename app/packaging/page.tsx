@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { format, addDays } from "date-fns";
 
-import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
 import { useIsMobile } from "@/components/shared/UseIsMobile";
 import { SchedulePageLayout } from "@/components/shared/SchedulePageLayout";
 import { Filters } from "@/components/shared/Filters";
@@ -14,6 +13,8 @@ import { DayName, Group } from "@/typings/types";
 import { BoxRequirement } from "@/typings/interfaces";
 import { DAYS_OF_WEEK } from "@/typings/constants";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { ItemUtil } from "@/utils/ItemUtil";
+import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 
 export default function BoxSchedulePage() {
   const { items } = useOrderStore();
@@ -25,15 +26,8 @@ export default function BoxSchedulePage() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("overview");
   const isMobile = useIsMobile();
-  const {
-    weeklySchedules,
-    currentWeekStart,
-    hasDataInPreviousWeek,
-    hasDataInNextWeek,
-    changeWeek,
-    resetToCurrentWeek,
-    isCurrentWeek,
-  } = useWeeklySchedule({ weekStartsOn: 0 });
+
+  const { schedules, currentWeek } = useWeeklyScheduleStore();
 
   const toggleDateSelection = (date: Date) => {
     setSelectedDates((prev) => {
@@ -49,13 +43,13 @@ export default function BoxSchedulePage() {
     const selectedDateStrings = selectedDates.map((date) =>
       format(date, "yyyy-MM-dd")
     );
-    const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-    const currentWeekSchedule = weeklySchedules[weekKey] || {};
+    const weekKey = format(currentWeek, "yyyy-MM-dd");
+    const currentWeekSchedule = schedules[weekKey] || {};
 
     const scheduledItems = new Set<string>();
 
     DAYS_OF_WEEK.forEach((dayName, index) => {
-      const dayDate = format(addDays(currentWeekStart, index), "yyyy-MM-dd");
+      const dayDate = format(addDays(currentWeek, index), "yyyy-MM-dd");
       if (
         selectedDateStrings.includes(dayDate) &&
         currentWeekSchedule[dayName as DayName]
@@ -67,7 +61,7 @@ export default function BoxSchedulePage() {
     });
 
     return items?.filter((item) => scheduledItems.has(item.id));
-  }, [items, selectedDates, weeklySchedules, currentWeekStart]);
+  }, [items, selectedDates, schedules, currentWeek]);
 
   const filteredItemsNeedingBoxes = useMemo(() => {
     return itemsNeedingBoxes?.filter((item) => {
@@ -93,8 +87,8 @@ export default function BoxSchedulePage() {
   );
 
   useEffect(() => {
-    const requirements = calculateBoxRequirements(filteredBoxGroup);
-    setBoxRequirements(requirements);
+    const boxRequirements = ItemUtil.getTotalBoxRequirements(filteredBoxGroup);
+    setBoxRequirements(boxRequirements);
   }, [filteredBoxGroup]);
 
   const filteredRequirements = Object.entries(boxRequirements);
@@ -110,7 +104,7 @@ export default function BoxSchedulePage() {
       <SchedulePageLayout
         title="Box Schedule"
         isMobile={isMobile}
-        currentWeekStart={currentWeekStart}
+        currentWeekStart={currentWeek}
         changeWeek={changeWeek}
         resetToCurrentWeek={resetToCurrentWeek}
         renderFilters={() => (
@@ -155,7 +149,7 @@ export default function BoxSchedulePage() {
         isCurrentWeek={isCurrentWeek()}
         group={filteredBoxGroup}
         selectedDates={selectedDates}
-        schedule={weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {}}
+        schedule={schedules[currentWeek]}
         toggleDateSelection={toggleDateSelection}
       />
     </div>
