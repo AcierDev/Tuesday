@@ -1,18 +1,24 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, Scissors, Box, Dribbble, BadgeMinus } from "lucide-react";
-import { ItemSizes } from "@/typings/types";
+import { Package, Box, Dribbble, BadgeMinus } from "lucide-react";
+import { Item, ItemDesigns, ItemSizes } from "@/typings/types";
 import { ItemUtil } from "@/utils/ItemUtil";
 
 interface PackagingDetailsProps {
   selectedSize: ItemSizes | "custom";
+  selectedDesign?: ItemDesigns;
+  selectedOrder?: Item;
 }
 
-export function PackagingDetails({ selectedSize }: PackagingDetailsProps) {
+export function PackagingDetails({
+  selectedSize,
+  selectedDesign,
+  selectedOrder,
+}: PackagingDetailsProps) {
   if (selectedSize === "custom") {
     return (
-      <Card className="bg-white dark:bg-gray-800">
+      <Card className="bg-white dark:bg-gray-800 transition-all duration-200 hover:shadow-md">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <Package className="h-5 w-5" />
@@ -30,32 +36,21 @@ export function PackagingDetails({ selectedSize }: PackagingDetailsProps) {
   }
 
   return (
-    <Card className="bg-white dark:bg-gray-800">
-      <CardHeader>
-        <CardTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <Package className="h-5 w-5" />
+    <Card className="bg-white dark:bg-gray-800 transition-all duration-200 hover:shadow-md">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-3">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+            <Package className="h-5 w-5 text-blue-800 dark:text-blue-300" />
+          </div>
           Packaging Details
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-4">
+      <CardContent className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-6">
             <DetailSection
               icon={
-                <Scissors className="h-5 w-5 text-blue-800 dark:text-blue-300" />
-              }
-              title="Cutting & Assembly"
-              details={[
-                {
-                  label: "Panels",
-                  value: ItemUtil.getPanels(selectedSize),
-                },
-              ]}
-            />
-
-            <DetailSection
-              icon={
-                <Box className="h-5 w-5 text-blue-800 dark:text-blue-300" />
+                <Box className="h-6 w-6 text-blue-800 dark:text-blue-300" />
               }
               title="Box Configuration"
               details={[
@@ -75,10 +70,10 @@ export function PackagingDetails({ selectedSize }: PackagingDetailsProps) {
             />
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-6 md:border-l md:pl-6">
             <DetailSection
               icon={
-                <Dribbble className="h-5 w-5 text-blue-800 dark:text-blue-300" />
+                <Dribbble className="h-6 w-6 text-blue-800 dark:text-blue-300" />
               }
               title="Protection"
               details={[
@@ -90,7 +85,7 @@ export function PackagingDetails({ selectedSize }: PackagingDetailsProps) {
 
             <DetailSection
               icon={
-                <BadgeMinus className="h-5 w-5 text-blue-800 dark:text-blue-300" />
+                <BadgeMinus className="h-6 w-6 text-blue-800 dark:text-blue-300" />
               }
               title="Hardware Kit"
               details={[
@@ -121,17 +116,21 @@ interface DetailSectionProps {
 
 function DetailSection({ icon, title, details }: DetailSectionProps) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+    <div className="flex items-start gap-4 p-3 rounded-lg transition-colors duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+      <div className="p-2.5 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
         {icon}
       </div>
       <div>
-        <h4 className="font-semibold mb-1 text-sm">{title}</h4>
-        <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
+        <h4 className="font-semibold mb-2 text-sm text-gray-900 dark:text-gray-100">
+          {title}
+        </h4>
+        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
           {details.map((detail, index) => (
-            <p key={index}>
+            <p key={index} className="flex items-center gap-1">
               {detail.label && (
-                <span className="font-medium">{detail.label}:</span>
+                <span className="font-medium text-gray-700 dark:text-gray-200">
+                  {detail.label}:
+                </span>
               )}{" "}
               {detail.value}
             </p>

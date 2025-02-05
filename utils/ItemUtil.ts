@@ -182,32 +182,32 @@ export class ItemUtil {
     return requirements;
   }
 
-  static getPanels(size: ItemSizes): string {
+  static getPanels(size: ItemSizes): string[] {
     switch (size) {
       case ItemSizes.Fourteen_By_Seven:
-        return "14 x 7";
+        return ["14 x 7"];
       case ItemSizes.Sixteen_By_Six:
-        return "16 x 6";
+        return ["16 x 6"];
       case ItemSizes.Sixteen_By_Ten:
-        return "(2x) 8x10";
+        return ["8x10", "8x10"];
       case ItemSizes.Twenty_By_Ten:
-        return "(2x) 10x10";
+        return ["10x10", "10x10"];
       case ItemSizes.TwentyFour_By_Ten:
-        return "(2x) 12x10";
+        return ["12x10", "12x10"];
       case ItemSizes.Twenty_By_Twelve:
-        return "(2x) 12x10";
+        return ["10x12", "10x12"];
       case ItemSizes.TwentyFour_By_Twelve:
-        return "(1x) 10x12 (2x) 7x12";
+        return ["10x12", "7x12", "7x12"];
       case ItemSizes.TwentyEight_By_Twelve:
-        return "(4x) 7x12";
+        return ["7x12", "7x12", "7x12", "7x12"];
       case ItemSizes.TwentyEight_By_Sixteen:
-        return "(4x) 7x16";
+        return ["7x16", "7x16", "7x16", "7x16"];
       case ItemSizes.ThirtyTwo_By_Sixteen:
-        return "DATA NOT ENTERED IN WEBSITE";
+        return ["DATA NOT ENTERED IN WEBSITE"];
       case ItemSizes.ThirtySix_By_Sixteen:
-        return "(4x) 7x16 (1x) 8x16";
+        return ["7x16", "7x16", "7x16", "7x16", "8x16"];
       default:
-        return "DATA NOT ENTERED IN WEBSITE";
+        return ["DATA NOT ENTERED IN WEBSITE"];
     }
   }
 
@@ -393,5 +393,37 @@ export class ItemUtil {
       hardwareBagContents: this.getHardwareBagContents(size),
       hangingRail: this.getHangingRail(size),
     };
+  }
+
+  static getBackboardSizes(size: ItemSizes): string[] {
+    const panelSizes = this.getPanels(size);
+
+    return panelSizes.map((size) => {
+      const [width, height] = size.split("x").map(Number);
+      const actualWidth = width * 3 - 3 / 16;
+      const actualHeight = height * 3 - 3 / 16;
+
+      const formatFraction = (num: number) => {
+        const whole = Math.floor(num);
+        const fraction = num - whole;
+        const sixteenths = Math.round(fraction * 16);
+
+        if (sixteenths === 0) return `${whole}"`;
+        if (sixteenths === 8) return `${whole}½"`;
+        if (sixteenths === 4) return `${whole}¼"`;
+        if (sixteenths === 12) return `${whole}¾"`;
+        if (sixteenths === 2) return `${whole}⅛"`;
+        if (sixteenths === 6) return `${whole}⅜"`;
+        if (sixteenths === 10) return `${whole}⅝"`;
+        if (sixteenths === 14) return `${whole}⅞"`;
+
+        // For fractions without Unicode equivalents, use superscript/subscript
+        return `${whole}<sup>${sixteenths}</sup>⁄<sub>16</sub>"`;
+      };
+
+      return `${size} panel → ${formatFraction(actualWidth)} x ${formatFraction(
+        actualHeight
+      )}`;
+    });
   }
 }

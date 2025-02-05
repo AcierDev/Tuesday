@@ -10,8 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ItemSizes } from "@/typings/types";
+import { ColumnTitles, ItemSizes } from "@/typings/types";
 import { Design, ColorDistribution } from "../types";
+import { useOrderStore } from "@/stores/useOrderStore";
+import { useEffect, useState } from "react";
 
 interface CalculatorProps {
   selectedDesign: Design;
@@ -21,17 +23,21 @@ interface CalculatorProps {
   colorDistribution: ColorDistribution | null;
   onSizeChange: (value: string) => void;
   onDimensionChange: (dimension: "width" | "height", value: string) => void;
+  onOrderSelect: (order: any) => void;
 }
 
 export function Calculator({
-  selectedDesign,
   selectedSize,
   width,
   height,
   colorDistribution,
   onSizeChange,
   onDimensionChange,
+  onOrderSelect,
 }: CalculatorProps) {
+  const { searchQuery, setSearchQuery, searchResults } = useOrderStore();
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
   return (
     <Card className="bg-white dark:bg-gray-800">
       <CardHeader>
@@ -40,6 +46,52 @@ export function Calculator({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="relative space-y-2">
+          <Label
+            htmlFor="order-search"
+            className="text-gray-900 dark:text-gray-100"
+          >
+            Search Orders:
+          </Label>
+          <Input
+            id="order-search"
+            type="search"
+            placeholder="Search customer names..."
+            value={searchQuery}
+            onChange={(e) =>
+              setSearchQuery(e.target.value, [
+                ColumnTitles.Customer_Name,
+                ColumnTitles.Design,
+              ])
+            }
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setTimeout(() => setIsSearchFocused(false), 100)}
+            className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          />
+
+          {isSearchFocused && searchResults.length > 0 && (
+            <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg">
+              {searchResults.map((order) => (
+                <div
+                  key={order.id}
+                  onMouseDown={() => onOrderSelect(order)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors"
+                >
+                  <p className="text-gray-900 dark:text-gray-100 font-medium">
+                    {order.values.find((v) => v.columnName === "Customer Name")
+                      ?.text || "Unnamed Order"}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    {order.values.find((v) => v.columnName === "Design")?.text +
+                      " - " +
+                      order.values.find((v) => v.columnName === "Size")?.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="space-y-2">
           <Label
             htmlFor="size-select"

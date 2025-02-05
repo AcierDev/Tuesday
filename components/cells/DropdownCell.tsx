@@ -26,6 +26,7 @@ import {
   CreditOption,
   EMPLOYEE_MAP,
   INITIALS_MAP,
+  ITEM_DEFAULT_VALUES,
 } from "@/typings/constants";
 import { combineImages, getEmployeeInfoFromInitials } from "@/utils/functions";
 
@@ -86,9 +87,19 @@ export function DropdownCell({
   const handleUpdate = useCallback(
     async (newValue: string, credits: CreditOption[] | null) => {
       try {
+        // Ensure all default values are present by spreading ITEM_DEFAULT_VALUES
+        const completeValues = Object.values(ColumnTitles).map(
+          (columnTitle) => {
+            const existingValue = item.values.find(
+              (v) => v.columnName === columnTitle
+            );
+            return existingValue || ITEM_DEFAULT_VALUES[columnTitle];
+          }
+        );
+
         const updatedItem = {
           ...item,
-          values: item.values.map((value) =>
+          values: completeValues.map((value) =>
             value.columnName === columnValue.columnName
               ? {
                   ...value,

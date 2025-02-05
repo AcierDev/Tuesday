@@ -10,6 +10,7 @@ import {
 } from "@/typings/types";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { useWeeklyScheduleStore } from "./useWeeklyScheduleStore";
+import { ITEM_DEFAULT_VALUES } from "@/typings/constants";
 
 interface OrderState {
   lastFetched: number | null;
@@ -19,6 +20,8 @@ interface OrderState {
   hiddenItemsLoaded: boolean;
   items: ExtendedItem[];
   allItems: ExtendedItem[];
+  searchQuery: string;
+  searchResults: ExtendedItem[];
   // Actions
   loadItems: () => Promise<void>;
   updateItem: (updatedItem: Item, changedField?: ColumnTitles) => Promise<Item>;
@@ -45,6 +48,16 @@ interface OrderState {
   removeHiddenItems: () => void;
   markCompleted: (item: Item) => Promise<void>;
   updateIsScheduled: () => void;
+  setSearchQuery: (
+    query: string,
+    columns?: ColumnTitles[] | ColumnTitles,
+    searchAllItems?: boolean
+  ) => void;
+  searchItems: (
+    query: string,
+    columns?: ColumnTitles[] | ColumnTitles,
+    searchAllItems?: boolean
+  ) => void;
 }
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -75,6 +88,8 @@ export const useOrderStore = create<OrderState>()(
       eventSource: null,
       doneItemsLoaded: false,
       hiddenItemsLoaded: false,
+      searchQuery: "",
+      searchResults: [],
 
       loadItems: async () => {
         try {
@@ -177,8 +192,18 @@ export const useOrderStore = create<OrderState>()(
 
         const currentTimestamp = Date.now();
 
+        // Ensure all default values are present by spreading ITEM_DEFAULT_VALUES
+        const completeValues = Object.values(ColumnTitles).map(
+          (columnTitle) => {
+            const existingValue = updatedItem.values.find(
+              (v) => v.columnName === columnTitle
+            );
+            return existingValue || ITEM_DEFAULT_VALUES[columnTitle];
+          }
+        );
+
         // Update the timestamp for the changed field
-        const finalValues = updatedItem.values.map((value) =>
+        const finalValues = completeValues.map((value) =>
           value.columnName === changedField
             ? { ...value, lastModifiedTimestamp: currentTimestamp }
             : value
@@ -431,6 +456,63 @@ export const useOrderStore = create<OrderState>()(
           (item) => item.status !== ItemStatus.Hidden
         );
         set({ items: activeItems, hiddenItemsLoaded: false });
+      },
+
+      setSearchQuery: (
+        query: string,
+        columns?: ColumnTitles[] | ColumnTitles,
+        searchAllItems?: boolean
+      ) => {
+        set({ searchQuery: query });
+        get().searchItems(query, columns, searchAllItems);
+      },
+
+      searchItems: (
+        query: string,
+        columns?: ColumnTitles[] | ColumnTitles,
+        searchAllItems: boolean = false
+      ) => {
+        const { items, allItems } = get();
+        if (!query.trim()) {
+          set({ searchResults: [] });
+          return;
+        }
+
+        const itemsToSearch = searchAllItems ? allItems : items;
+        const normalizedQuery = query.toLowerCase().trim();
+
+        // Convert single column to array for consistent handling
+        const searchColumns = columns
+          ? Array.isArray(columns)
+            ? columns
+            : [columns]
+          : Object.values(ColumnTitles);
+
+        const results = itemsToSearch.filter((item) => {
+          // If searching specific columns
+          if (searchColumns.length > 0) {
+            return item.values.some(
+              (value) =>
+                // Only search in specified columns
+                searchColumns.includes(value.columnName) &&
+                value.text?.toLowerCase().includes(normalizedQuery)
+            );
+          }
+
+          // If no columns specified, search all values and tags
+          return (
+            item.values.some((value) =>
+              value.text?.toLowerCase().includes(normalizedQuery)
+            ) ||
+            // Search through tags
+            Object.entries(item.tags || {}).some(([key, value]) => {
+              const tagString = `${key}:${value}`.toLowerCase();
+              return tagString.includes(normalizedQuery);
+            })
+          );
+        });
+
+        set({ searchResults: results });
       },
     };
   })

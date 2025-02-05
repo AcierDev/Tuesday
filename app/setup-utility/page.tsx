@@ -3,16 +3,16 @@
 import { Suspense, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { ReadonlyURLSearchParams, useSearchParams } from "next/navigation";
 import { DESIGN_COLORS, ItemDesignImages } from "@/typings/constants";
-import { ItemDesigns, ItemSizes } from "@/typings/types";
+import { ColumnTitles, Item, ItemDesigns, ItemSizes } from "@/typings/types";
 import { renderToString } from "react-dom/server";
 import { Design, ColorDistribution } from "./types";
 import { DesignSelector } from "./components/DesignSelector";
 import { DesignDetails } from "./components/DesignDetails";
 import { Calculator } from "./components/Calculator";
 import { PackagingDetails } from "./components/PackagingDetails";
-import { PrintableContent } from "./components/PrintableContent";
+import { BackboardDetails } from "./components/BackboardDetails";
 
 const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
   const category = design.toLowerCase().includes("stripe")
@@ -30,7 +30,11 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
   };
 });
 
-function UtilitiesContent() {
+function UtilitiesContent({
+  UrlParams,
+}: {
+  UrlParams: ReadonlyURLSearchParams;
+}) {
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(
     designs[0]!
   );
@@ -41,6 +45,7 @@ function UtilitiesContent() {
   const [height, setHeight] = useState<string>("7");
   const [isDesignSectionExpanded, setIsDesignSectionExpanded] = useState(false);
   const [showAdditionalSections, setShowAdditionalSections] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Item | null>(null);
 
   const calculateColorCount = (): ColorDistribution | null => {
     if (!selectedDesign || !width || !height) return null;
@@ -70,7 +75,7 @@ function UtilitiesContent() {
 
     for (let i = 0; i < adjustmentCount; i++) {
       const index = Math.floor(i * (colorCount / adjustmentCount));
-      distribution[index].count += useMethod1 ? 1 : -1;
+      distribution[index]!.count += useMethod1 ? 1 : -1;
     }
 
     return {
@@ -83,8 +88,27 @@ function UtilitiesContent() {
   };
 
   useEffect(() => {
+    const designId = UrlParams.get("design");
+    const size = UrlParams.get("size");
+
+    if (designId) {
+      const design = designs.find((d) => d.name === designId);
+      if (design) setSelectedDesign(design);
+    }
+
+    if (size) {
+      if (Object.values(ItemSizes).includes(size as ItemSizes)) {
+        setSelectedSize(size as ItemSizes);
+        const [w = "", h = ""] = size.split("x").map((dim) => dim.trim());
+        setWidth(w);
+        setHeight(h);
+      }
+    }
+  }, [UrlParams]);
+
+  useEffect(() => {
     if (selectedSize !== "custom") {
-      const [w, h] = selectedSize.split("x").map((dim) => dim.trim());
+      const [w = "", h = ""] = selectedSize.split("x").map((dim) => dim.trim());
       setWidth(w);
       setHeight(h);
     }
@@ -122,76 +146,26 @@ function UtilitiesContent() {
     };
   };
 
-  const handlePrint = () => {
-    if (!selectedDesign || !colorDistribution) return;
-
-    const printWindow = window.open("", "PRINT", "height=800,width=1200");
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>${selectedDesign.name} Design Summary</title>
-            <style>
-              body { 
-                font-family: Arial, sans-serif; 
-                margin: 0;
-                padding: 0;
-              }
-              .printable-content { 
-                width: 4in;
-                height: 6in;
-                padding: 0.25in;
-                box-sizing: border-box;
-              }
-              @media print {
-                body { 
-                  -webkit-print-color-adjust: exact;
-                  size: 4in 6in;
-                  margin: 0;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            ${
-              printWindow.document
-                .createElement("div")
-                .appendChild(
-                  printWindow.document.importNode(
-                    new DOMParser().parseFromString(
-                      `<div>${renderToString(
-                        <PrintableContent
-                          design={selectedDesign}
-                          size={selectedSize}
-                          colorDistribution={colorDistribution}
-                        />
-                      )}</div>`,
-                      "text/html"
-                    ).body.firstChild!,
-                    true
-                  )
-                ).outerHTML
-            }
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
-    }
+  const handleOrderSelect = (order: Item) => {
+    setSelectedDesign(
+      designs.find(
+        (d) =>
+          d.name ===
+          order.values.find((v) => v.columnName === ColumnTitles.Design)?.text
+      ) ?? null
+    );
+    setSelectedSize(
+      order.values.find((v) => v.columnName === ColumnTitles.Size)?.text as
+        | ItemSizes
+        | "custom"
+    );
+    setSelectedOrder(order);
   };
 
   return (
     <div className="container mx-auto p-4 space-y-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <h1 className="text-3xl font-bold flex items-center justify-between">
         Setup Utility
-        {selectedDesign && colorDistribution && (
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer className="mr-2 h-4 w-4" />
-            Print Summary
-          </Button>
-        )}
       </h1>
 
       <DesignSelector
@@ -219,11 +193,15 @@ function UtilitiesContent() {
             colorDistribution={colorDistribution}
             onSizeChange={handleSizeChange}
             onDimensionChange={handleDimensionChange}
+            onOrderSelect={handleOrderSelect}
           />
         </div>
       )}
 
-      <PackagingDetails selectedSize={selectedSize} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <PackagingDetails selectedSize={selectedSize} />
+        <BackboardDetails selectedSize={selectedSize} />
+      </div>
     </div>
   );
 }
@@ -231,14 +209,20 @@ function UtilitiesContent() {
 export default function UtilitiesPage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <SearchParamsWrapper>
-        {(searchParams) => <UtilitiesContent searchParams={searchParams} />}
-      </SearchParamsWrapper>
+      <UrlParamsWrapper>
+        {(UrlParams: ReadonlyURLSearchParams) => (
+          <UtilitiesContent UrlParams={UrlParams} />
+        )}
+      </UrlParamsWrapper>
     </Suspense>
   );
 }
 
-function SearchParamsWrapper({ children }) {
-  const searchParams = useSearchParams();
-  return children(searchParams);
+function UrlParamsWrapper({
+  children,
+}: {
+  children: (UrlParams: ReadonlyURLSearchParams) => React.ReactNode;
+}) {
+  const UrlParams = useSearchParams();
+  return children(UrlParams);
 }

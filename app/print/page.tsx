@@ -145,6 +145,20 @@ const TEMPLATES = [
     orientation: "portrait",
     type: "image",
   },
+  {
+    id: 21,
+    name: "",
+    src: "/pdf/i-dont-do-anything.pdf",
+    orientation: "portrait",
+    type: "pdf",
+  },
+  {
+    id: 20,
+    name: "5 Panels",
+    src: "/pdf/5-panels.pdf",
+    orientation: "portrait",
+    type: "pdf",
+  },
 ];
 
 export default function LabelPrinter() {
