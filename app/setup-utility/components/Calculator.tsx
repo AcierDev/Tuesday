@@ -13,7 +13,8 @@ import {
 import { ColumnTitles, ItemSizes } from "@/typings/types";
 import { Design, ColorDistribution } from "../types";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { PrintLabel, printStyles } from "./PrintLabel";
 
 interface CalculatorProps {
   selectedDesign: Design;
@@ -28,6 +29,7 @@ interface CalculatorProps {
 
 export function Calculator({
   selectedSize,
+  selectedDesign,
   width,
   height,
   colorDistribution,
@@ -37,13 +39,135 @@ export function Calculator({
 }: CalculatorProps) {
   const { searchQuery, setSearchQuery, searchResults } = useOrderStore();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
+  const handleOrderSelect = (order: any) => {
+    setSelectedOrder(order);
+    onOrderSelect(order);
+  };
 
   return (
-    <Card className="bg-white dark:bg-gray-800">
+    <Card className="bg-white dark:bg-gray-800 ">
       <CardHeader>
-        <CardTitle className="text-gray-900 dark:text-gray-100">
-          Calculator
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-gray-900 dark:text-gray-100">
+            Calculator
+          </CardTitle>
+          <PrintLabel
+            labelContent={
+              <div style={printStyles.container}>
+                {selectedOrder && (
+                  <div style={printStyles.customerName}>
+                    Customer:{" "}
+                    {
+                      selectedOrder.values.find(
+                        (v) => v.columnName === "Customer Name"
+                      )?.text
+                    }
+                  </div>
+                )}
+                <h2 style={printStyles.header}>Calculator Details</h2>
+
+                <div style={printStyles.section}>
+                  <h3 style={printStyles.sectionTitle as React.CSSProperties}>
+                    Dimensions
+                  </h3>
+                  <div style={printStyles.grid}>
+                    <div>
+                      <span style={printStyles.label}>Size:</span>
+                      <div style={printStyles.value}>{selectedSize}</div>
+                    </div>
+                    <div>
+                      <span style={printStyles.label}>Design: </span>
+                      <div style={printStyles.value}>{selectedDesign.name}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {colorDistribution && (
+                  <>
+                    <div style={printStyles.divider} />
+
+                    <div style={printStyles.section}>
+                      <h3
+                        style={printStyles.sectionTitle as React.CSSProperties}
+                      >
+                        Color Distribution
+                      </h3>
+                      <div style={printStyles.content}>
+                        <div style={{ marginBottom: "12px" }}>
+                          <span style={printStyles.label}>Total Pieces:</span>{" "}
+                          <span style={printStyles.value}>
+                            {colorDistribution.totalPieces}
+                          </span>
+                        </div>
+
+                        <div style={{ marginBottom: "12px" }}>
+                          <span style={printStyles.label}>Adjustment:</span>{" "}
+                          <span style={printStyles.value}>
+                            {colorDistribution.adjustmentCount} pieces{" "}
+                            {colorDistribution.adjustmentType === "add"
+                              ? "added to"
+                              : "subtracted from"}{" "}
+                            colors
+                          </span>
+                        </div>
+
+                        <div>
+                          <div
+                            style={{
+                              ...printStyles.label,
+                              marginBottom: "8px",
+                            }}
+                          >
+                            Distribution:
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              width: "100%",
+                              height: "40px",
+                              borderRadius: "4px",
+                              overflow: "hidden",
+                            }}
+                          >
+                            {colorDistribution.distribution.map(
+                              ({ color, count }, index) => (
+                                <div
+                                  key={index}
+                                  style={{
+                                    width: `${
+                                      (count / colorDistribution.totalPieces) *
+                                      100
+                                    }%`,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    color: "black",
+                                    fontSize: "11px",
+                                    fontWeight: "200",
+                                    border: "1px solid black",
+                                  }}
+                                >
+                                  {count}
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div style={printStyles.signatureSection}>
+                  <div style={printStyles.signatureLine} />
+                  <div style={printStyles.signatureLabel}>Verified By</div>
+                </div>
+              </div>
+            }
+          />
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="relative space-y-2">
@@ -59,10 +183,7 @@ export function Calculator({
             placeholder="Search customer names..."
             value={searchQuery}
             onChange={(e) =>
-              setSearchQuery(e.target.value, [
-                ColumnTitles.Customer_Name,
-                ColumnTitles.Design,
-              ])
+              setSearchQuery(e.target.value, [ColumnTitles.Customer_Name])
             }
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setTimeout(() => setIsSearchFocused(false), 100)}
@@ -74,7 +195,7 @@ export function Calculator({
               {searchResults.map((order) => (
                 <div
                   key={order.id}
-                  onMouseDown={() => onOrderSelect(order)}
+                  onMouseDown={() => handleOrderSelect(order)}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors"
                 >
                   <p className="text-gray-900 dark:text-gray-100 font-medium">

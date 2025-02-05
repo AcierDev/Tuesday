@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, Box, Dribbble, BadgeMinus } from "lucide-react";
 import { Item, ItemDesigns, ItemSizes } from "@/typings/types";
 import { ItemUtil } from "@/utils/ItemUtil";
+import { PrintLabel, printStyles } from "./PrintLabel";
 
 interface PackagingDetailsProps {
   selectedSize: ItemSizes | "custom";
@@ -38,12 +39,84 @@ export function PackagingDetails({
   return (
     <Card className="bg-white dark:bg-gray-800 transition-all duration-200 hover:shadow-md">
       <CardHeader className="pb-2">
-        <CardTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-            <Package className="h-5 w-5 text-blue-800 dark:text-blue-300" />
-          </div>
-          Packaging Details
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <Package className="h-5 w-5 text-blue-800 dark:text-blue-300" />
+            </div>
+            Packaging Details
+          </CardTitle>
+          <PrintLabel
+            labelContent={
+              <div style={printStyles.container}>
+                {selectedOrder && (
+                  <div style={printStyles.customerName}>
+                    Customer:{" "}
+                    {
+                      selectedOrder.values.find(
+                        (v) => v.columnName === "Customer Name"
+                      )?.text
+                    }
+                  </div>
+                )}
+                <h2 style={printStyles.header}>Packaging Details</h2>
+
+                <div style={printStyles.section}>
+                  <h3 style={printStyles.sectionTitle}>Box Configuration</h3>
+                  <div style={printStyles.grid}>
+                    <div>
+                      <span style={printStyles.label}>Quantity:</span>
+                      <div style={printStyles.value}>
+                        {ItemUtil.getBoxQuantity(selectedSize)}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={printStyles.label}>Score:</span>
+                      <div style={printStyles.value}>
+                        {ItemUtil.getScore(selectedSize)}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={printStyles.label}>Fold:</span>
+                      <div style={printStyles.value}>
+                        {ItemUtil.getFold(selectedSize)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={printStyles.divider} />
+
+                <div style={printStyles.section}>
+                  <h3 style={printStyles.sectionTitle}>Protection</h3>
+                  <div style={printStyles.content}>
+                    {ItemUtil.getBubbleFoam(selectedSize)}
+                  </div>
+                </div>
+
+                <div style={printStyles.divider} />
+
+                <div style={printStyles.section}>
+                  <h3 style={printStyles.sectionTitle}>Hardware Kit</h3>
+                  <div style={printStyles.content}>
+                    <div style={{ marginBottom: "8px" }}>
+                      {ItemUtil.getHardwareBagContents(selectedSize)}
+                    </div>
+                    <div>
+                      <span style={printStyles.label}>Rail:</span>{" "}
+                      <span>{ItemUtil.getHangingRail(selectedSize)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={printStyles.signatureSection}>
+                  <div style={printStyles.signatureLine} />
+                  <div style={printStyles.signatureLabel}>Verified By</div>
+                </div>
+              </div>
+            }
+          />
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">

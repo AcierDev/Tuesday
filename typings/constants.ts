@@ -711,7 +711,7 @@ export const ITEM_DEFAULT_VALUES: Record<ColumnTitles, GenericColumnValue> = {
   },
   [ColumnTitles.Labels]: {
     columnName: ColumnTitles.Labels,
-    type: ColumnTypes.Dropdown,
+    type: ColumnTypes.Text,
     text: "",
   },
   [ColumnTitles.Shipping]: {

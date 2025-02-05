@@ -199,8 +199,14 @@ function UtilitiesContent({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <PackagingDetails selectedSize={selectedSize} />
-        <BackboardDetails selectedSize={selectedSize} />
+        <PackagingDetails
+          selectedSize={selectedSize}
+          selectedOrder={selectedOrder}
+        />
+        <BackboardDetails
+          selectedSize={selectedSize}
+          selectedOrder={selectedOrder}
+        />
       </div>
     </div>
   );
