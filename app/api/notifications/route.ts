@@ -7,7 +7,7 @@ export async function POST(request: Request) {
 
     const message = `New Order Submitted:\nCustomer: ${customerName}\nSize: ${size}\nDesign: ${design}`;
 
-    await AlertManager.sendText("Ben & Akiva", "New Message", message);
+    await AlertManager.sendText("Ben & Akiva & Alex", "New Message", message);
 
     return NextResponse.json({ success: true });
   } catch (error) {

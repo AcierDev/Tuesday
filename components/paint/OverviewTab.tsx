@@ -1,21 +1,18 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { cn } from "@/utils/functions";
-import { PaintRequirement } from "./PaintCalculations";
 import { ItemUtil } from "@/utils/ItemUtil";
 
 type OverviewTabProps = {
   isMobile: boolean;
   totalPieces: number;
-  filteredRequirements: [string, PaintRequirement][];
+  filteredRequirements: [string][];
   selectedDates: Date[];
 };
 
 export function OverviewTab({
   isMobile,
-  totalPieces,
   filteredRequirements,
-  selectedDates,
 }: OverviewTabProps) {
   const totalPieces = Object.values(
     ItemUtil.getTotalPaintRequirements(group)

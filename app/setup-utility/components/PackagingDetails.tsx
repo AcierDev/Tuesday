@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, Box, Dribbble, BadgeMinus } from "lucide-react";
+import { Package, Box, Hammer, HardHat } from "lucide-react";
 import { Item, ItemDesigns, ItemSizes } from "@/typings/types";
 import { ItemUtil } from "@/utils/ItemUtil";
 import { PrintLabel, printStyles } from "./PrintLabel";
@@ -14,7 +14,6 @@ interface PackagingDetailsProps {
 
 export function PackagingDetails({
   selectedSize,
-  selectedDesign,
   selectedOrder,
 }: PackagingDetailsProps) {
   if (selectedSize === "custom") {
@@ -146,7 +145,7 @@ export function PackagingDetails({
           <div className="space-y-6 md:border-l md:pl-6">
             <DetailSection
               icon={
-                <Dribbble className="h-6 w-6 text-blue-800 dark:text-blue-300" />
+                <HardHat className="h-6 w-6 text-blue-800 dark:text-blue-300" />
               }
               title="Protection"
               details={[
@@ -158,7 +157,7 @@ export function PackagingDetails({
 
             <DetailSection
               icon={
-                <BadgeMinus className="h-6 w-6 text-blue-800 dark:text-blue-300" />
+                <Hammer className="h-6 w-6 text-blue-800 dark:text-blue-300" />
               }
               title="Hardware Kit"
               details={[

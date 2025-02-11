@@ -1,12 +1,9 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Printer } from "lucide-react";
 import { ReadonlyURLSearchParams, useSearchParams } from "next/navigation";
 import { DESIGN_COLORS, ItemDesignImages } from "@/typings/constants";
 import { ColumnTitles, Item, ItemDesigns, ItemSizes } from "@/typings/types";
-import { renderToString } from "react-dom/server";
 import { Design, ColorDistribution } from "./types";
 import { DesignSelector } from "./components/DesignSelector";
 import { DesignDetails } from "./components/DesignDetails";

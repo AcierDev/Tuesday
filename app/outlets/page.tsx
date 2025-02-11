@@ -6,22 +6,11 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  AlertCircle,
-  Power,
-  RefreshCw,
-  LayoutGrid,
-  List,
-  Info,
-} from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Power, RefreshCw, LayoutGrid, List } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -29,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import {
   Tooltip,
@@ -161,7 +149,7 @@ export default function OutletControl() {
     setRefreshing((prev) => [...prev, index]);
     try {
       const success = await controlOutlet(
-        devices[index].ip,
+        devices[index]!.ip,
         action,
         autoOffMinutes
       );
@@ -180,7 +168,7 @@ export default function OutletControl() {
         throw new Error("Failed to control device");
       }
     } catch (err) {
-      setError(`Failed to ${action} ${devices[index].name}`);
+      setError(`Failed to ${action} ${devices[index]!.name}`);
     } finally {
       setRefreshing((prev) => prev.filter((i) => i !== index));
     }
@@ -231,7 +219,7 @@ export default function OutletControl() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ip: devices[index].ip }),
+        body: JSON.stringify({ ip: devices[index]!.ip }),
       });
 
       if (!response.ok) {
@@ -251,7 +239,7 @@ export default function OutletControl() {
         }));
       }
     } catch (err) {
-      console.error(`Failed to get status for ${devices[index].name}:`, err);
+      console.error(`Failed to get status for ${devices[index]!.name}:`, err);
       if (mountedRef.current) {
         setDeviceStatuses((prev) => ({
           ...prev,

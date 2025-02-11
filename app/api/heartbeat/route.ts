@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { saveWarehouseIP, getWarehouseIP } from "../lib/warehouseStorage";
 
-export async function POST(request: Request) {
+export async function POST() {
   const headersList = await headers();
   const ip = headersList.get("x-forwarded-for") || "Unknown IP";
 
