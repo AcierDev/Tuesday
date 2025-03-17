@@ -161,7 +161,7 @@ export default function OutletControl() {
     setRefreshing((prev) => [...prev, index]);
     try {
       const success = await controlOutlet(
-        devices[index].ip,
+        devices[index]!.ip,
         action,
         autoOffMinutes
       );
@@ -180,7 +180,7 @@ export default function OutletControl() {
         throw new Error("Failed to control device");
       }
     } catch (err) {
-      setError(`Failed to ${action} ${devices[index].name}`);
+      setError(`Failed to ${action} ${devices[index]!.name}`);
     } finally {
       setRefreshing((prev) => prev.filter((i) => i !== index));
     }
@@ -231,7 +231,7 @@ export default function OutletControl() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ip: devices[index].ip }),
+        body: JSON.stringify({ ip: devices[index]!.ip }),
       });
 
       if (!response.ok) {
@@ -251,7 +251,7 @@ export default function OutletControl() {
         }));
       }
     } catch (err) {
-      console.error(`Failed to get status for ${devices[index].name}:`, err);
+      console.error(`Failed to get status for ${devices[index]!.name}:`, err);
       if (mountedRef.current) {
         setDeviceStatuses((prev) => ({
           ...prev,
@@ -497,7 +497,7 @@ export default function OutletControl() {
               const isRefreshing = refreshing.includes(index);
 
               return (
-                <Card key={index} className="overflow-hidden">
+                <Card key={index} className="overflow-hidden dark:bg-red-700">
                   <CardHeader className="bg-secondary bg-white dark:bg-gray-800">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">

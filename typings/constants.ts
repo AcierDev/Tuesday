@@ -98,20 +98,20 @@ export const AMBER_COLORS: Record<number, { hex: string; name: string }> = {
 };
 
 export const FOREST_COLORS: Record<number, { hex: string; name: string }> = {
-  1: { hex: "#000000", name: "Black" },
-  2: { hex: "#1A110D", name: "Crowshead" },
-  3: { hex: "#281A13", name: "Oil" },
-  4: { hex: "#342D24", name: "Birch" },
-  5: { hex: "#414035", name: "Armadillo" },
-  6: { hex: "#4D5346", name: "Gray Asparagus" },
-  7: { hex: "#7B8476", name: "Friar Gray" },
-  8: { hex: "#A9B4A5", name: "Bud" },
-  9: { hex: "#A5ADA6", name: "Edward" },
-  10: { hex: "#A0A5A7", name: "Edward" },
-  11: { hex: "#B3B8B9", name: "Bombay" },
-  12: { hex: "#C6CACA", name: "Pumice" },
-  13: { hex: "#E3E5E5", name: "Mercury" },
   14: { hex: "#FFFFFF", name: "White" },
+  13: { hex: "#E3E5E5", name: "Mercury" },
+  12: { hex: "#C6CACA", name: "Pumice" },
+  11: { hex: "#B3B8B9", name: "Bombay" },
+  10: { hex: "#A0A5A7", name: "Edward" },
+  9: { hex: "#A5ADA6", name: "Edward" },
+  8: { hex: "#A9B4A5", name: "Bud" },
+  7: { hex: "#7B8476", name: "Friar Gray" },
+  6: { hex: "#4D5346", name: "Gray Asparagus" },
+  5: { hex: "#414035", name: "Armadillo" },
+  4: { hex: "#342D24", name: "Birch" },
+  3: { hex: "#281A13", name: "Oil" },
+  2: { hex: "#1A110D", name: "Crowshead" },
+  1: { hex: "#000000", name: "Black" },
 };
 
 export const ELEMENTAL_COLORS: Record<number, { hex: string; name: string }> = {
@@ -153,15 +153,14 @@ export const AUTUMN_COLORS: Record<number, { hex: string; name: string }> = {
 
 export const SAPHIRE_COLORS: Record<number, { hex: string; name: string }> = {
   1: { hex: "#D9ED92", name: "Mindaro" },
-  2: { hex: "#B5E48C", name: "Feijoa" },
-  3: { hex: "#99D98C", name: "Feijoa" },
-  4: { hex: "#76C893", name: "De York" },
-  5: { hex: "#52B69A", name: "Tradewind" },
-  6: { hex: "#34A0A4", name: "Keppel" },
-  7: { hex: "#168AAD", name: "Eastern Blue" },
-  8: { hex: "#1A759F", name: "Matisse" },
-  9: { hex: "#1E6091", name: "Matisse" },
-  10: { hex: "#184E77", name: "Chathams Blue" },
+  2: { hex: "#99D98C", name: "Feijoa" },
+  3: { hex: "#76C893", name: "De York" },
+  4: { hex: "#52B69A", name: "Tradewind" },
+  5: { hex: "#34A0A4", name: "Keppel" },
+  6: { hex: "#168AAD", name: "Eastern Blue" },
+  7: { hex: "#1A759F", name: "Matisse" },
+  8: { hex: "#1E6091", name: "Matisse" },
+  9: { hex: "#184E77", name: "Chathams Blue" },
 };
 
 export const SPECTRUM_COLORS: Record<number, { hex: string; name: string }> = {
@@ -241,6 +240,17 @@ export const ALOE_COLORS: Record<number, { hex: string; name: string }> = {
   7: { hex: "#3D5541", name: "Tom Thumb" },
 };
 
+export const AMETHYST_COLORS: Record<number, { hex: string; name: string }> = {
+  1: { hex: "#b0d9e8", name: "Ocean Breeze" },
+  2: { hex: "#80bfd7", name: "Aquarium Blue" },
+  3: { hex: "#419ab7", name: "Cool Blue" },
+  4: { hex: "#006985", name: "Deep Ocean" },
+  5: { hex: "#6289c6", name: "Blue Lapis" },
+  6: { hex: "#365496", name: "Twighlight Blue" },
+  7: { hex: "#4e4e8c", name: "Scandenavian Blue" },
+  8: { hex: "#413d6d", name: "Grape Gum" },
+};
+
 export const DESIGN_COLORS: Record<
   ItemDesigns,
   Record<number, { hex: string; name: string }>
@@ -265,6 +275,7 @@ export const DESIGN_COLORS: Record<
   [ItemDesigns.Mirage]: MIRAGE_COLORS,
   [ItemDesigns.Spectrum]: SPECTRUM_COLORS,
   [ItemDesigns.Abyss]: ABYSS_COLORS,
+  [ItemDesigns.Amethyst]: AMETHYST_COLORS,
 };
 
 export const DESIGN_COLOR_NAMES: Record<ItemDesigns, (number | string)[]> = {
@@ -294,6 +305,7 @@ export const DESIGN_COLOR_NAMES: Record<ItemDesigns, (number | string)[]> = {
   [ItemDesigns.Elemental]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   [ItemDesigns.Spectrum]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
   [ItemDesigns.Mirage]: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [ItemDesigns.Amethyst]: [1, 2, 3, 4, 5, 6, 7, 8],
 };
 
 export const SIZE_MULTIPLIERS: Record<ItemSizes, number> = {
@@ -500,6 +512,7 @@ export const ItemDesignImages: Record<ItemDesigns, string> = {
     "/images/designs/striped-timberline.webp?height=300&width=400",
   [ItemDesigns.Tiled_Timberline]:
     "/images/designs/tiled-timberline.webp?height=300&width=400",
+  [ItemDesigns.Amethyst]: "/images/designs/amethyst.webp?height=300&width=400",
 };
 
 export const DesignBlends: Record<ItemDesigns, string[]> = {
@@ -547,6 +560,9 @@ export const DesignBlends: Record<ItemDesigns, string[]> = {
   ),
   [ItemDesigns.Aloe]: Object.values(ALOE_COLORS).map((color) => color.hex),
   [ItemDesigns.Mirage]: Object.values(MIRAGE_COLORS).map((color) => color.hex),
+  [ItemDesigns.Amethyst]: Object.values(AMETHYST_COLORS).map(
+    (color) => color.hex
+  ),
 };
 
 export const EMPLOYEE_INITIALS = ["AM", "BC", "AW", "BS", "TB"] as const;

@@ -290,6 +290,7 @@ export enum ItemDesigns {
   Spectrum = "Spectrum",
   Aloe = "Aloe",
   Mirage = "Mirage",
+  Amethyst = "Amethyst",
 }
 
 export enum ItemSizes {
