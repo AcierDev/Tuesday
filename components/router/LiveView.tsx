@@ -7,7 +7,7 @@ import { EmptyLogs } from "@/utils/functions";
 import { MessageSquare } from "lucide-react";
 import { ImageMetadata } from "@/typings/types";
 import { StatusCard } from "@/components/shared/StatusCard";
-import { Circle, Power } from "lucide-react";
+import { Circle, Power, RotateCw } from "lucide-react";
 
 interface RouterState {
   currentImageUrl: string | null;
@@ -18,13 +18,14 @@ interface RouterState {
   ejectionDecision: boolean | null;
   sensor1: string;
   push_cylinder: string;
-  riser_cylinder: string;
+  flipper: string;
   ejection_cylinder: string;
   settings?: {
     slave: {
       pushTime: number;
-      riserTime: number;
+      flipperDuration: number;
       ejectionTime: number;
+      flipperDelay: number;
     };
   };
 }
@@ -43,9 +44,21 @@ interface LiveViewProps {
   };
   state: RouterState;
   logs: Log[];
+  historicalImages?: {
+    url: string;
+    metadata: ImageMetadata;
+    timestamp: Date;
+    analysis?: any;
+    ejectionDecision?: boolean | null;
+  }[];
 }
 
-const LiveView: React.FC<LiveViewProps> = ({ currentImage, state, logs }) => {
+const LiveView: React.FC<LiveViewProps> = ({
+  currentImage,
+  state,
+  logs,
+  historicalImages = [],
+}) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Left Column - Image Analysis */}
@@ -57,6 +70,7 @@ const LiveView: React.FC<LiveViewProps> = ({ currentImage, state, logs }) => {
           isCapturing={state.isCapturing}
           isAnalyzing={state.isAnalyzing}
           ejectionDecision={state.ejectionDecision}
+          historicalImages={historicalImages}
         />
       </div>
 
@@ -91,14 +105,12 @@ const LiveView: React.FC<LiveViewProps> = ({ currentImage, state, logs }) => {
                 isActive={state.push_cylinder === "ON"}
               />
               <StatusCard
-                title="Riser Cylinder"
-                status={state.riser_cylinder === "ON"}
-                icon={Power}
-                description={
-                  state.riser_cylinder === "ON" ? "Engaged" : "Disengaged"
-                }
-                duration={state.settings?.slave.riserTime}
-                isActive={state.riser_cylinder === "ON"}
+                title="Flipper"
+                status={state.flipper === "ON"}
+                icon={RotateCw}
+                description={state.flipper === "ON" ? "Engaged" : "Disengaged"}
+                duration={state.settings?.slave.flipperDuration}
+                isActive={state.flipper === "ON"}
               />
               <StatusCard
                 title="Ejection Cylinder"

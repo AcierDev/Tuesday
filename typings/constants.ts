@@ -620,6 +620,9 @@ export const DEFAULT_ROUTER_SETTINGS: RouterSettings = {
     ejectionTime: 1000,
     sensorDelayTime: 1000,
     analysisMode: false,
+    flipperDelay: 300,
+    flipperDuration: 500,
+    flipperEnabled: true,
   },
   ejection: {
     globalSettings: {

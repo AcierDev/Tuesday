@@ -278,14 +278,79 @@ const GlobalSettings = ({
                 2
               )}
               {renderTimeControl(
-                "sensorDelay",
-                "Sensor Delay",
-                "Delay of the push mechanism activation",
+                "sensorDelayTime",
+                "Sensor Delay Time",
+                "Delay after detecting a block before starting ejection",
                 config.slave.sensorDelayTime,
-                <PauseCircle className="h-4 w-4 text-yellow-400" />,
+                <PauseCircle className="h-4 w-4 text-blue-400" />,
                 (value) => updateConfig("slave.sensorDelayTime", value),
                 validationErrors.sensorDelayTime,
+                1
+              )}
+            </div>
+          </div>
+
+          <Separator className="bg-gray-800" />
+
+          {/* Flipper Controls Section */}
+          <div className="space-y-4 mt-8">
+            <motion.h3
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-sm font-medium text-gray-400 flex items-center gap-2"
+            >
+              <Settings2 className="h-4 w-4" />
+              Flipper Controls
+            </motion.h3>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="flex items-center justify-between p-4 rounded-lg"
+            >
+              <div className="flex items-center gap-3">
+                <Settings2 className="h-4 w-4 text-blue-400" />
+                <div>
+                  <Label htmlFor="flipperEnabled" className="font-medium">
+                    Enable Flipper
+                  </Label>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Enable the automatic board flipping mechanism
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="flipperEnabled"
+                checked={config.slave.flipperEnabled}
+                onCheckedChange={(checked) =>
+                  updateConfig("slave.flipperEnabled", checked)
+                }
+                className="data-[state=checked]:bg-blue-500"
+              />
+            </motion.div>
+
+            <div className="space-y-6 pl-4">
+              {renderTimeControl(
+                "flipperDelay",
+                "Flipper Delay",
+                "Delay before the flipper activates",
+                config.slave.flipperDelay,
+                <PauseCircle className="h-4 w-4 text-blue-400" />,
+                (value) => updateConfig("slave.flipperDelay", value),
+                validationErrors.flipperDelay,
                 0
+              )}
+
+              {renderTimeControl(
+                "flipperDuration",
+                "Flipper Duration",
+                "How long the flipper remains active",
+                config.slave.flipperDuration,
+                <Clock className="h-4 w-4 text-blue-400" />,
+                (value) => updateConfig("slave.flipperDuration", value),
+                validationErrors.flipperDuration,
+                1
               )}
             </div>
           </div>

@@ -514,6 +514,9 @@ export interface SlaveSettings {
   ejectionTime: number;
   sensorDelayTime: number;
   analysisMode: boolean;
+  flipperDelay: number;
+  flipperDuration: number;
+  flipperEnabled: boolean;
 }
 
 export interface GlobalSettings {
@@ -580,11 +583,20 @@ export interface AnalysisImage {
   path: string;
 }
 
+export interface HistoricalImage {
+  id: string;
+  url: string;
+  metadata: ImageMetadata;
+  timestamp: Date;
+  analysis: any | null;
+  ejectionDecision: boolean | null;
+}
+
 export interface SlaveState {
   status: string;
   router_state: string;
   push_cylinder: "ON" | "OFF";
-  riser_cylinder: "ON" | "OFF";
+  flipper: "ON" | "OFF";
   ejection_cylinder: "ON" | "OFF";
   sensor1: "ON" | "OFF";
   analysisMode: boolean;

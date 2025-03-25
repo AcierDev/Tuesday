@@ -159,7 +159,7 @@ const LiveCameraFeed: React.FC<LiveCameraFeedProps> = ({
             computers={[
               { name: "RoboTyler Raspi", ip: "192.168.1.197:3090" },
               { name: "Dev Testing Raspi", ip: "192.168.1.216:3090" },
-              { name: "Bentzi's Laptop", ip: "192.168.1.222:3090" },
+              { name: "Bentzi's Laptop", ip: "192.168.1.229:3090" },
               { name: "localhost", ip: "localhost:3090" },
             ]}
             initialIp={lastSuccessfulConnection || initialWsIp}

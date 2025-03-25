@@ -55,6 +55,7 @@
     "ffplay": "^1.1.0",
     "framer-motion": "^11.5.4",
     "hexoid": "^1.0.0",
+    "jszip": "^3.10.1",
     "lodash": "^4.17.21",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.439.0",
