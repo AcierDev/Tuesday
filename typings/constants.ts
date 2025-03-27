@@ -629,6 +629,7 @@ export const DEFAULT_ROUTER_SETTINGS: RouterSettings = {
       requireMultipleDefects: false,
       minTotalArea: 100,
       maxDefectsBeforeEject: 5,
+      globalConfidenceThreshold: 0.5,
     },
     perClassSettings: {
       corner: { enabled: true, minConfidence: 0.5, minArea: 100, maxCount: 3 },

@@ -4,6 +4,7 @@ import LiveView from "@/components/router/LiveView";
 import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionControls";
 import StatsOverview from "@/components/router/stats/StatsOverview";
 import HistoryView from "@/components/router/HistoryView";
+import EjectionInsights from "@/components/router/insights/EjectionInsights";
 import ComputerSelector from "@/components/robotyler/ComputerSelector";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
@@ -19,6 +20,7 @@ import {
   BarChart2,
   History,
   RotateCw,
+  Shield,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +50,9 @@ function MonitoringDashboard() {
   } = useRouter();
   const [activeTab, setActiveTab] = useState("live");
 
+  // Create a stable, memoized reference for the LiveView component
+  const [tabsInitialized, setTabsInitialized] = useState(false);
+
   // Add state for image processing
   const [currentImage, setCurrentImage] = useState<{
     url: string | null;
@@ -67,25 +72,17 @@ function MonitoringDashboard() {
     }
   }, [state.currentImageUrl, state.currentImageMetadata]);
 
+  // Mark tabs as initialized after the first render
+  useEffect(() => {
+    setTabsInitialized(true);
+  }, []);
+
   const handleComputerSelect = (ip: string) => {
     updateWebSocketUrl(ip);
   };
 
   const handleReconnect = () => {
     updateWebSocketUrl(wsUrl);
-  };
-
-  const handleAnalysisModeToggle = (enabled: boolean) => {
-    if (state.settings) {
-      const newSettings = {
-        ...state.settings,
-        slave: {
-          ...state.settings.slave,
-          analysisMode: enabled,
-        },
-      };
-      updateEjectionSettings(newSettings);
-    }
   };
 
   const renderConnectionAlert = () => {
@@ -245,6 +242,13 @@ function MonitoringDashboard() {
               description: "Monitor real-time system status and operations",
             },
             {
+              id: "insights",
+              label: "Ejection Insights",
+              icon: Shield,
+              description:
+                "Understand ejection decisions and defect analysis in detail",
+            },
+            {
               id: "history",
               label: "History",
               icon: History,
@@ -272,24 +276,36 @@ function MonitoringDashboard() {
           contentClassName="p-6 bg-white dark:bg-gray-800 rounded-b-lg"
           tabListClassName="bg-gray-50 dark:bg-gray-800 p-2 rounded-t-lg gap-2"
         >
-          <div key="live">
-            <LiveView
-              currentImage={currentImage}
+          {/* Use a stable key for each tab content to ensure they're preserved */}
+          <div key="live-tab-content">
+            {tabsInitialized && (
+              <LiveView
+                key="live-view-component"
+                currentImage={currentImage}
+                state={state}
+                logs={logs}
+                historicalImages={historicalImages}
+              />
+            )}
+          </div>
+
+          <div key="insights-tab-content">
+            <EjectionInsights
               state={state}
-              logs={logs}
+              currentImage={currentImage}
               historicalImages={historicalImages}
             />
           </div>
 
-          <div key="history">
+          <div key="history-tab-content">
             <HistoryView historicalImages={historicalImages} />
           </div>
 
-          <div key="settings">
+          <div key="settings-tab-content">
             <ImprovedEjectionControlGUI />
           </div>
 
-          <div key="stats">
+          <div key="stats-tab-content">
             <StatsOverview
               dailyStats={state.dailyStats}
               currentCycleStats={state.currentCycleStats}

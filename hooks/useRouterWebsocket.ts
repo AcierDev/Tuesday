@@ -377,6 +377,7 @@ export const useWebSocketManager = () => {
                   },
                   success: eventData.data.success,
                   timestamp: eventData.data.timestamp,
+                  shouldEjectResult: eventData.data.shouldEjectResult || null,
                 },
                 isAnalyzing: false,
                 lastUpdate: new Date(),
@@ -386,11 +387,36 @@ export const useWebSocketManager = () => {
             case "ejection_decision": {
               // Make sure we're getting a boolean value
               const shouldEject = Boolean(eventData.data.decision);
-              setState((prev) => ({
-                ...prev,
-                ejectionDecision: shouldEject,
-                lastUpdate: new Date(),
-              }));
+              const reasons = eventData.data.reasons || [];
+
+              setState((prev) => {
+                // Update historical image if available
+                if (prev.currentImageUrl && prev.currentImageMetadata) {
+                  addImageToHistory(
+                    prev.currentImageUrl,
+                    prev.currentImageMetadata,
+                    prev.currentAnalysis,
+                    shouldEject
+                  );
+                }
+
+                return {
+                  ...prev,
+                  ejectionDecision: shouldEject,
+                  // Update the currentAnalysis with ejection reasons if available
+                  currentAnalysis: prev.currentAnalysis
+                    ? {
+                        ...prev.currentAnalysis,
+                        shouldEjectResult: {
+                          decision: shouldEject,
+                          reasons: reasons,
+                        },
+                      }
+                    : prev.currentAnalysis,
+                  lastUpdate: new Date(),
+                };
+              });
+
               break;
             }
             case "alert": {

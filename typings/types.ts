@@ -523,6 +523,8 @@ export interface GlobalSettings {
   requireMultipleDefects: boolean;
   minTotalArea: number;
   maxDefectsBeforeEject: number;
+  globalConfidenceThreshold: number;
+  ejectionEnabled: boolean;
 }
 
 export type PerClassSettings = {

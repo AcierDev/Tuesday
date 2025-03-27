@@ -21,6 +21,7 @@ import {
   FileImage,
   Calendar as CalendarIcon2,
   Tag,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import ImageAnalysisCard from "@/components/router/ImageAnalysisCard";
@@ -49,6 +50,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({
   const [filterMode, setFilterMode] = useState<"all" | "ejected" | "passed">(
     "all"
   );
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Filter images by date and search term
   const filteredImages = historicalImages
@@ -101,17 +103,88 @@ const HistoryView: React.FC<HistoryViewProps> = ({
     (img) => img.ejectionDecision === false
   ).length;
 
+  // Function to download all filtered images
+  const downloadAllImages = async () => {
+    if (filteredImages.length === 0) return;
+
+    setIsDownloading(true);
+
+    try {
+      // Create a zip file using JSZip
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      const folder = zip.folder("router-images");
+
+      // Add each image to the zip
+      const downloadPromises = filteredImages.map(async (image, index) => {
+        try {
+          const response = await fetch(image.url);
+          const blob = await response.blob();
+
+          // Generate filename with timestamp and decision
+          const decision = image.ejectionDecision ? "ejected" : "passed";
+          const timestamp = format(
+            new Date(image.timestamp),
+            "yyyyMMdd-HHmmss"
+          );
+          const filename = `image-${timestamp}-${decision}.jpg`;
+
+          folder?.file(filename, blob);
+        } catch (error) {
+          console.error(`Failed to download image ${index}:`, error);
+        }
+      });
+
+      await Promise.all(downloadPromises);
+
+      // Generate and download the zip file
+      const content = await zip.generateAsync({ type: "blob" });
+      const zipUrl = URL.createObjectURL(content);
+
+      // Create a download link and trigger download
+      const link = document.createElement("a");
+      link.href = zipUrl;
+      link.download = `router-images-${format(
+        new Date(),
+        "yyyyMMdd-HHmmss"
+      )}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      URL.revokeObjectURL(zipUrl);
+    } catch (error) {
+      console.error("Failed to download images:", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Filters and controls */}
       <Card className="bg-white dark:bg-gray-800 dark:border-gray-700 shadow-sm overflow-hidden">
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <FileImage className="h-5 w-5 text-blue-500" />
-            <span>Image History</span>
-            <Badge variant="outline" className="ml-2 text-xs font-normal">
-              {historicalImages.length} total
-            </Badge>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-lg">
+              <FileImage className="h-5 w-5 text-blue-500" />
+              <span>Image History</span>
+              <Badge variant="outline" className="ml-2 text-xs font-normal">
+                {historicalImages.length} total
+              </Badge>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadAllImages}
+              disabled={filteredImages.length === 0 || isDownloading}
+              className="flex items-center gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-900/20"
+            >
+              <Download className="h-4 w-4" />
+              {isDownloading
+                ? "Downloading..."
+                : `Download All (${filteredImages.length})`}
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>

@@ -1,5 +1,3 @@
-import React, { useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -369,6 +367,98 @@ const GlobalSettings = ({
               Defect Detection Parameters
             </motion.h3>
             <div className="space-y-6 pl-4">
+              {/* Ejection Enabled Switch */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center justify-between p-4 rounded-lg border border-gray-800 dark:border-gray-700 bg-gray-950 dark:bg-gray-800/50"
+              >
+                <div className="flex items-center gap-3">
+                  <Shield className="h-5 w-5 text-red-400" />
+                  <div>
+                    <Label
+                      htmlFor="ejectionEnabled"
+                      className="font-medium text-base"
+                    >
+                      Enable Ejection System
+                    </Label>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Master switch for the entire ejection system
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="ejectionEnabled"
+                  checked={config.ejection.globalSettings.ejectionEnabled}
+                  onCheckedChange={(checked) =>
+                    updateConfig(
+                      "ejection.globalSettings.ejectionEnabled",
+                      checked
+                    )
+                  }
+                  className="data-[state=checked]:bg-red-500"
+                />
+              </motion.div>
+
+              {/* Global Confidence Threshold */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="pb-5"
+              >
+                <Label
+                  htmlFor="globalConfidenceThreshold"
+                  className="flex items-center mb-2 text-sm font-medium"
+                >
+                  Global Confidence Threshold
+                  {renderTooltip(
+                    "Minimum confidence score required for any detection to be considered"
+                  )}
+                </Label>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-4">
+                    <Slider
+                      id="globalConfidenceThreshold"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={[
+                        config.ejection.globalSettings
+                          .globalConfidenceThreshold,
+                      ]}
+                      onValueChange={(value) =>
+                        updateConfig(
+                          "ejection.globalSettings.globalConfidenceThreshold",
+                          value[0]
+                        )
+                      }
+                      className="flex-1 dark:data-[state=active]:bg-gray-400 dark:data-[state=inactive]:bg-gray-600"
+                    />
+                    <motion.span
+                      className="w-16 text-right font-mono"
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {config.ejection.globalSettings.globalConfidenceThreshold?.toFixed(
+                        2
+                      )}
+                    </motion.span>
+                  </div>
+                  {validationErrors.globalConfidenceThreshold && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="text-red-500 text-sm mt-1"
+                    >
+                      {validationErrors.globalConfidenceThreshold}
+                    </motion.p>
+                  )}
+                </div>
+              </motion.div>
+
               {/* Multiple Defects Switch */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
