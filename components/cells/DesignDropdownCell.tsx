@@ -32,10 +32,12 @@ export const DesignDropdownCell = ({
   item,
   columnValue,
   onUpdate,
+  disabled = false,
 }: {
   item: Item;
   columnValue: ColumnValue;
   onUpdate: (item: Item, columnName: ColumnTitles) => void;
+  disabled?: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredDesign, setHoveredDesign] = useState(null);
@@ -75,7 +77,7 @@ export const DesignDropdownCell = ({
             : value
         ),
       };
-      await onUpdate(updatedItem, columnValue.columnName);
+      onUpdate(updatedItem, columnValue.columnName);
       toast.success("Design updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
@@ -90,7 +92,11 @@ export const DesignDropdownCell = ({
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger
         asChild
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen(true);
+          }
+        }}
         onPointerDown={(e) => e.preventDefault()}
       >
         <Button

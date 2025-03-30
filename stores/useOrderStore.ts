@@ -422,12 +422,31 @@ export const useOrderStore = create<OrderState>()(
         return hasDuplicateFirstValue(item, items);
       },
 
-      loadDoneItems: () => {
-        const { allItems, items } = get();
-        const doneItems = allItems.filter(
-          (item) => item.status === ItemStatus.Done
-        );
-        set({ items: [...items, ...doneItems], doneItemsLoaded: true });
+      loadDoneItems: async () => {
+        const { items } = get();
+
+        try {
+          set({ isLoading: true });
+          const response = await fetch(
+            "/api/items?status=Done&includeHidden=false&includeDone=true"
+          );
+          if (!response.ok) throw new Error("Failed to fetch done items");
+
+          const doneItems: Item[] = await response.json();
+          console.log("Done items:", items.length, doneItems.length);
+
+          // Remove board structure assumption
+          set({
+            items: items.concat(doneItems),
+            doneItemsLoaded: true,
+            isLoading: false,
+          });
+          return items.concat(doneItems);
+        } catch (err) {
+          console.error("Failed to load done items", err);
+          toast.error("Failed to load done items. Please try again.");
+          set({ isLoading: false });
+        }
       },
 
       removeDoneItems: () => {

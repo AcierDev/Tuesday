@@ -618,6 +618,7 @@ export function ItemGroupSection({
                                                   columnValue={columnValue}
                                                   isNameColumn={cellIndex === 0}
                                                   item={item}
+                                                  disableCredit={true}
                                                 />
                                                 {showPreviewTooltip && (
                                                   <Portal>

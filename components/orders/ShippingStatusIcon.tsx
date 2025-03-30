@@ -2,7 +2,6 @@ import {
   Package,
   Truck,
   CheckCircle2,
-  HelpCircle,
   AlertCircle,
   ArrowLeftRight,
 } from "lucide-react";
@@ -12,6 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTrackingStore } from "@/stores/useTrackingStore";
+import { useMemo } from "react";
 
 interface ShippingStatusIconProps {
   orderId: string;
@@ -19,25 +19,26 @@ interface ShippingStatusIconProps {
 
 export function ShippingStatusIcon({ orderId }: ShippingStatusIconProps) {
   const { trackingInfo } = useTrackingStore();
-  const orderTracking = trackingInfo.find((t) => t.orderId === orderId);
 
-  if (!orderTracking || orderTracking.trackers.length === 0) {
-    return (
-      <Tooltip>
-        <TooltipTrigger>
-          <HelpCircle className="h-4 w-4 text-gray-400" />
-        </TooltipTrigger>
-        <TooltipContent>No tracking information</TooltipContent>
-      </Tooltip>
-    );
-  }
+  // Memoize the tracking info lookup
+  const orderTracking = useMemo(() => {
+    return trackingInfo.find((t) => t.orderId === orderId);
+  }, [trackingInfo, orderId]);
 
-  // Use the most recent tracker
-  const latestTracker =
-    orderTracking.trackers[orderTracking.trackers.length - 1];
+  // Memoize the status icon calculation which is an expensive operation
+  const { icon, text } = useMemo(() => {
+    if (!orderTracking || orderTracking.trackers.length === 0) {
+      return {
+        icon: <Package className="h-4 w-4 text-gray-400" />,
+        text: "No tracking information",
+      };
+    }
 
-  const getStatusIcon = () => {
-    switch (latestTracker.status.toLowerCase()) {
+    // Use the most recent tracker
+    const latestTracker =
+      orderTracking.trackers[orderTracking.trackers.length - 1];
+
+    switch (latestTracker?.status?.toLowerCase()) {
       case "delivered":
         return {
           icon: <CheckCircle2 className="h-4 w-4 text-green-500" />,
@@ -72,21 +73,21 @@ export function ShippingStatusIcon({ orderId }: ShippingStatusIconProps) {
         };
       default:
         return {
-          icon: <HelpCircle className="h-4 w-4 text-gray-400" />,
-          text: latestTracker.status,
+          icon: <Package className="h-4 w-4 text-gray-400" />,
+          text: latestTracker?.status || "Unknown",
         };
     }
-  };
-
-  const { icon, text } = getStatusIcon();
+  }, [orderTracking]);
 
   return (
     <Tooltip>
       <TooltipTrigger>{icon}</TooltipTrigger>
       <TooltipContent>
         <p>{text}</p>
-        {latestTracker.carrier && (
-          <p className="text-xs text-gray-500">{latestTracker.carrier}</p>
+        {orderTracking?.trackers?.[0]?.carrier && (
+          <p className="text-xs text-gray-500">
+            {orderTracking.trackers[0].carrier}
+          </p>
         )}
       </TooltipContent>
     </Tooltip>

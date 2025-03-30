@@ -1,492 +1,162 @@
-import React from "react";
-import "./page.css"; // Import the CSS file for styling
+"use client";
 
-const Table = () => {
-  const tableData = [
-    {
-      id: 1,
-      name: "Alice",
-      age: 28,
-      city: "New York",
-      country: "USA",
-      job: "Engineer",
-      salary: 120000,
-      email: "alice@example.com",
-      phone: "+1-555-123-4567",
-      department: "Engineering",
-      hireDate: "2015-06-01",
-    },
-    {
-      id: 2,
-      name: "Bob",
-      age: 35,
-      city: "London",
-      country: "UK",
-      job: "Designer",
-      salary: 90000,
-      email: "bob@example.com",
-      phone: "+44-20-7123-4567",
-      department: "Design",
-      hireDate: "2016-07-15",
-    },
-    {
-      id: 3,
-      name: "Charlie",
-      age: 42,
-      city: "Paris",
-      country: "France",
-      job: "Manager",
-      salary: 150000,
-      email: "charlie@example.com",
-      phone: "+33-1-2345-6789",
-      department: "Management",
-      hireDate: "2014-03-20",
-    },
-    {
-      id: 4,
-      name: "David",
-      age: 25,
-      city: "Tokyo",
-      country: "Japan",
-      job: "Analyst",
-      salary: 80000,
-      email: "david@example.com",
-      phone: "+81-3-1234-5678",
-      department: "Analysis",
-      hireDate: "2019-11-30",
-    },
-    {
-      id: 5,
-      name: "Emily",
-      age: 31,
-      city: "Sydney",
-      country: "Australia",
-      job: "Developer",
-      salary: 110000,
-      email: "emily@example.com",
-      phone: "+61-2-1234-5678",
-      department: "Development",
-      hireDate: "2018-01-10",
-    },
-    {
-      id: 6,
-      name: "Frank",
-      age: 29,
-      city: "Berlin",
-      country: "Germany",
-      job: "Sales",
-      salary: 95000,
-      email: "frank@example.com",
-      phone: "+49-30-12345678",
-      department: "Sales",
-      hireDate: "2017-05-25",
-    },
-    {
-      id: 7,
-      name: "Grace",
-      age: 38,
-      city: "Toronto",
-      country: "Canada",
-      job: "HR",
-      salary: 85000,
-      email: "grace@example.com",
-      phone: "+1-416-123-4567",
-      department: "Human Resources",
-      hireDate: "2016-09-12",
-    },
-    {
-      id: 8,
-      name: "Hank",
-      age: 45,
-      city: "Madrid",
-      country: "Spain",
-      job: "Marketing",
-      salary: 130000,
-      email: "hank@example.com",
-      phone: "+34-91-123-4567",
-      department: "Marketing",
-      hireDate: "2013-04-18",
-    },
-    {
-      id: 9,
-      name: "Ivy",
-      age: 27,
-      city: "Rome",
-      country: "Italy",
-      job: "Support",
-      salary: 70000,
-      email: "ivy@example.com",
-      phone: "+39-06-12345678",
-      department: "Support",
-      hireDate: "2020-02-22",
-    },
-    {
-      id: 10,
-      name: "Jack",
-      age: 33,
-      city: "Amsterdam",
-      country: "Netherlands",
-      job: "Consultant",
-      salary: 115000,
-      email: "jack@example.com",
-      phone: "+31-20-1234567",
-      department: "Consulting",
-      hireDate: "2015-08-30",
-    },
-    {
-      id: 11,
-      name: "Liam",
-      age: 30,
-      city: "Dublin",
-      country: "Ireland",
-      job: "Developer",
-      salary: 105000,
-      email: "liam@example.com",
-      phone: "+353-1-234-5678",
-      department: "Development",
-      hireDate: "2017-03-15",
-    },
-    {
-      id: 12,
-      name: "Mia",
-      age: 26,
-      city: "Lisbon",
-      country: "Portugal",
-      job: "Designer",
-      salary: 92000,
-      email: "mia@example.com",
-      phone: "+351-21-123-4567",
-      department: "Design",
-      hireDate: "2018-05-20",
-    },
-    {
-      id: 13,
-      name: "Noah",
-      age: 40,
-      city: "Berlin",
-      country: "Germany",
-      job: "Product Manager",
-      salary: 140000,
-      email: "noah@example.com",
-      phone: "+49-30-234-5678",
-      department: "Product",
-      hireDate: "2016-01-10",
-    },
-    {
-      id: 14,
-      name: "Olivia",
-      age: 32,
-      city: "Madrid",
-      country: "Spain",
-      job: "Marketing Specialist",
-      salary: 95000,
-      email: "olivia@example.com",
-      phone: "+34-91-234-5678",
-      department: "Marketing",
-      hireDate: "2019-02-15",
-    },
-    {
-      id: 15,
-      name: "Ethan",
-      age: 29,
-      city: "Toronto",
-      country: "Canada",
-      job: "Sales Executive",
-      salary: 88000,
-      email: "ethan@example.com",
-      phone: "+1-416-234-5678",
-      department: "Sales",
-      hireDate: "2018-11-01",
-    },
-    {
-      id: 16,
-      name: "Sophia",
-      age: 34,
-      city: "Paris",
-      country: "France",
-      job: "HR Manager",
-      salary: 115000,
-      email: "sophia@example.com",
-      phone: "+33-1-3456-7890",
-      department: "Human Resources",
-      hireDate: "2015-07-20",
-    },
-    {
-      id: 17,
-      name: "James",
-      age: 37,
-      city: "London",
-      country: "UK",
-      job: "Business Analyst",
-      salary: 98000,
-      email: "james@example.com",
-      phone: "+44-20-3456-7890",
-      department: "Analysis",
-      hireDate: "2014-09-10",
-    },
-    {
-      id: 18,
-      name: "Ava",
-      age: 24,
-      city: "Sydney",
-      country: "Australia",
-      job: "Intern",
-      salary: 60000,
-      email: "ava@example.com",
-      phone: "+61-2-3456-7890",
-      department: "Development",
-      hireDate: "2021-01-15",
-    },
-    {
-      id: 19,
-      name: "Lucas",
-      age: 41,
-      city: "Rome",
-      country: "Italy",
-      job: "Consultant",
-      salary: 130000,
-      email: "lucas@example.com",
-      phone: "+39-06-2345-6789",
-      department: "Consulting",
-      hireDate: "2013-12-01",
-    },
-    {
-      id: 20,
-      name: "Zoe",
-      age: 36,
-      city: "Amsterdam",
-      country: "Netherlands",
-      job: "Project Manager",
-      salary: 125000,
-      email: "zoe@example.com",
-      phone: "+31-20-2345-6789",
-      department: "Management",
-      hireDate: "2014-05-10",
-    },
-    {
-      id: 21,
-      name: "Mason",
-      age: 28,
-      city: "New York",
-      country: "USA",
-      job: "Software Engineer",
-      salary: 110000,
-      email: "mason@example.com",
-      phone: "+1-555-234-5678",
-      department: "Engineering",
-      hireDate: "2016-08-01",
-    },
-    {
-      id: 22,
-      name: "Ella",
-      age: 30,
-      city: "London",
-      country: "UK",
-      job: "Graphic Designer",
-      salary: 85000,
-      email: "ella@example.com",
-      phone: "+44-20-4567-8901",
-      department: "Design",
-      hireDate: "2017-04-12",
-    },
-    {
-      id: 23,
-      name: "Liam",
-      age: 33,
-      city: "Paris",
-      country: "France",
-      job: "Marketing Manager",
-      salary: 120000,
-      email: "liam@example.com",
-      phone: "+33-1-4567-8901",
-      department: "Marketing",
-      hireDate: "2015-11-20",
-    },
-    {
-      id: 24,
-      name: "Chloe",
-      age: 26,
-      city: "Berlin",
-      country: "Germany",
-      job: "Sales Manager",
-      salary: 95000,
-      email: "chloe@example.com",
-      phone: "+49-30-4567-8901",
-      department: "Sales",
-      hireDate: "2018-03-15",
-    },
-    {
-      id: 25,
-      name: "Benjamin",
-      age: 39,
-      city: "Toronto",
-      country: "Canada",
-      job: "HR Specialist",
-      salary: 90000,
-      email: "benjamin@example.com",
-      phone: "+1-416-4567-8901",
-      department: "Human Resources",
-      hireDate: "2016-06-30",
-    },
-    {
-      id: 26,
-      name: "Sophia",
-      age: 31,
-      city: "Madrid",
-      country: "Spain",
-      job: "Data Analyst",
-      salary: 85000,
-      email: "sophia@example.com",
-      phone: "+34-91-234-5678",
-      department: "Analytics",
-      hireDate: "2019-01-20",
-    },
-    {
-      id: 27,
-      name: "Jackson",
-      age: 29,
-      city: "Sydney",
-      country: "Australia",
-      job: "Web Developer",
-      salary: 95000,
-      email: "jackson@example.com",
-      phone: "+61-2-9876-5432",
-      department: "Development",
-      hireDate: "2017-11-05",
-    },
-    {
-      id: 28,
-      name: "Ava",
-      age: 27,
-      city: "Dublin",
-      country: "Ireland",
-      job: "Content Writer",
-      salary: 70000,
-      email: "ava@example.com",
-      phone: "+353-1-234-5678",
-      department: "Marketing",
-      hireDate: "2020-03-12",
-    },
-    {
-      id: 29,
-      name: "Ethan",
-      age: 34,
-      city: "San Francisco",
-      country: "USA",
-      job: "Product Manager",
-      salary: 130000,
-      email: "ethan@example.com",
-      phone: "+1-415-123-4567",
-      department: "Product",
-      hireDate: "2015-09-30",
-    },
-    {
-      id: 30,
-      name: "Mia",
-      age: 32,
-      city: "Amsterdam",
-      country: "Netherlands",
-      job: "UX Designer",
-      salary: 95000,
-      email: "mia@example.com",
-      phone: "+31-20-123-4567",
-      department: "Design",
-      hireDate: "2018-07-22",
-    },
-    {
-      id: 31,
-      name: "Oliver",
-      age: 36,
-      city: "Berlin",
-      country: "Germany",
-      job: "Software Architect",
-      salary: 140000,
-      email: "oliver@example.com",
-      phone: "+49-30-123-4567",
-      department: "Engineering",
-      hireDate: "2014-02-14",
-    },
-    {
-      id: 32,
-      name: "Isabella",
-      age: 29,
-      city: "Toronto",
-      country: "Canada",
-      job: "Marketing Specialist",
-      salary: 80000,
-      email: "isabella@example.com",
-      phone: "+1-416-234-5678",
-      department: "Marketing",
-      hireDate: "2019-05-18",
-    },
-    {
-      id: 33,
-      name: "Lucas",
-      age: 38,
-      city: "London",
-      country: "UK",
-      job: "Financial Analyst",
-      salary: 110000,
-      email: "lucas@example.com",
-      phone: "+44-20-1234-5678",
-      department: "Finance",
-      hireDate: "2016-10-10",
-    },
-    {
-      id: 34,
-      name: "Avery",
-      age: 30,
-      city: "Paris",
-      country: "France",
-      job: "Operations Manager",
-      salary: 115000,
-      email: "avery@example.com",
-      phone: "+33-1-2345-6789",
-      department: "Operations",
-      hireDate: "2017-08-25",
-    },
-  ];
+import { useOrderStore } from "@/stores/useOrderStore";
+import { ItemSizes, Item, ItemStatus, ColumnTitles } from "@/typings/types";
 
+export default function TestingPage() {
+  // SIZE_MULTIPLIERS from constants.ts - Maps each size to its block count
+  const SIZE_MULTIPLIERS: Record<ItemSizes, number> = {
+    "14 x 7": 14 * 7,
+    "16 x 6": 16 * 6,
+    "16 x 10": 16 * 10,
+    "20 x 10": 20 * 10,
+    "24 x 10": 24 * 10,
+    "20 x 12": 20 * 12,
+    "24 x 12": 24 * 12,
+    "28 x 12": 28 * 12,
+    "28 x 16": 28 * 16,
+    "32 x 16": 32 * 16,
+    "36 x 16": 36 * 16,
+    "19 x 10": 19 * 10,
+    "22 x 10": 22 * 10,
+    "36 x 15": 36 * 15,
+    "19 x 11": 19 * 11,
+    "22 x 11": 22 * 11,
+    "27 x 11": 27 * 11,
+    "27 x 15": 27 * 15,
+    "13 x 10": 13 * 10,
+    "23 x 12": 23 * 12,
+    "20 x 8": 20 * 8,
+    "14 x 27": 14 * 27,
+    "28 x 6": 28 * 6,
+    "14x27": 14 * 27,
+    "30 x 12": 30 * 12,
+    "42 x 15": 42 * 15,
+    "28x16": 28 * 16,
+  };
+
+  /**
+   * Parses an item size string and returns the block count
+   * If the size matches a standard size, returns the multiplier
+   * Otherwise returns null
+   */
+  function getBlocksFromSize(sizeStr: string | undefined): number | null {
+    if (!sizeStr) return null;
+
+    // Check if it's a standard size
+    if (sizeStr in SIZE_MULTIPLIERS) {
+      return SIZE_MULTIPLIERS[sizeStr as ItemSizes];
+    }
+
+    // All non-standard sizes should be manually reviewed
+    // Including custom dimensions like "44 x 30"
+    return null;
+
+    /* Previous custom size parsing logic removed:
+    // Try to parse dimensions from a custom size (e.g., "20 x 15")
+    const match = sizeStr.match(/(\d+)\s*x\s*(\d+)/i);
+    if (match && match.length >= 3) {
+      const width = parseInt(match[1], 10);
+      const height = parseInt(match[2], 10);
+      if (!isNaN(width) && !isNaN(height)) {
+        return width * height;
+      }
+    }
+    */
+  }
+
+  /**
+   * Checks if a date is in Q4 2024 (October-December)
+   */
+  function isInQ4_2024(timestamp: number): boolean {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = date.getMonth(); // 0-indexed, so 9 = October, 10 = November, 11 = December
+
+    return year === 2024 && month >= 9 && month <= 11;
+  }
+
+  /**
+   * Generate a report of blocks shipped in Q4 2024
+   */
+  async function generateQ4BlocksReport() {
+    console.log("Generating Q4 2024 Blocks Report...");
+    console.log("Fetching completed orders...");
+
+    // Load all orders, including done items
+    const orderStore = useOrderStore.getState();
+    await orderStore.loadItems();
+    const items = await orderStore.loadDoneItems();
+
+    console.log("Items:", items.length);
+
+    // Filter for completed items in Q4 2024
+    const q4CompletedItems = items.filter(
+      (item) =>
+        item.status === ItemStatus.Done &&
+        item.completedAt &&
+        isInQ4_2024(item.completedAt)
+    );
+
+    console.log(`Found ${q4CompletedItems.length} orders completed in Q4 2024`);
+
+    let totalBlocksShipped = 0;
+    const nonStandardSizes: Array<{ order: string; size: string }> = [];
+
+    // Process each completed item
+    q4CompletedItems.forEach((item) => {
+      // Find the size value from the item
+      const sizeValue = item.values.find(
+        (v) => v.columnName === ColumnTitles.Size
+      )?.text;
+
+      // Get customer name for reference
+      const customerName =
+        item.values.find((v) => v.columnName === ColumnTitles.Customer_Name)
+          ?.text || "Unknown";
+
+      // Get order date for logging
+      const orderDate = item.completedAt
+        ? new Date(item.completedAt).toLocaleDateString()
+        : "Unknown date";
+
+      const blocks = getBlocksFromSize(sizeValue);
+
+      if (blocks !== null) {
+        // Standard size or parseable custom size
+        totalBlocksShipped += blocks;
+        console.log(
+          `Order for ${customerName} on ${orderDate}: ${sizeValue} = ${blocks} blocks`
+        );
+      } else if (sizeValue) {
+        // Non-standard size that couldn't be parsed
+        nonStandardSizes.push({
+          order: customerName,
+          size: sizeValue,
+        });
+        console.log(
+          `Order for ${customerName} on ${orderDate}: ${sizeValue} - NON-STANDARD SIZE`
+        );
+      }
+    });
+
+    // Print the report
+    console.log("\n\n========== Q4 2024 BLOCKS REPORT ==========");
+    console.log(`Total Orders Completed: ${q4CompletedItems.length}`);
+    console.log(`Total Blocks Shipped: ${totalBlocksShipped}`);
+
+    if (nonStandardSizes.length > 0) {
+      console.log("\nNon-Standard Sizes (need manual calculation):");
+      nonStandardSizes.forEach((item) => {
+        console.log(`- ${item.order}: ${item.size}`);
+      });
+    }
+  }
   return (
-    <div className="page-container">
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Age</th>
-              <th>City</th>
-              <th>Country</th>
-              <th>Job</th>
-              <th>Salary</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Department</th>
-              <th>Hire Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tableData.map((row) => (
-              <tr key={row.id}>
-                <td>{row.id}</td>
-                <td>{row.name}</td>
-                <td>{row.age}</td>
-                <td>{row.city}</td>
-                <td>{row.country}</td>
-                <td>{row.job}</td>
-                <td>{row.salary}</td>
-                <td>{row.email}</td>
-                <td>{row.phone}</td>
-                <td>{row.department}</td>
-                <td>{row.hireDate}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div>
+      <button onClick={generateQ4BlocksReport}>
+        Generate Q4 Blocks Report
+      </button>
     </div>
   );
-};
-
-export default Table;
+}

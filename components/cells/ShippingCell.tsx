@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTrackingStore } from "@/stores/useTrackingStore";
 import { ShippingStatusIcon } from "../orders/ShippingStatusIcon";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,42 @@ export function ShippingCell({ item }: ShippingCellProps) {
   const { trackingInfo } = useTrackingStore();
   const orderTracking = trackingInfo.find((t) => t.orderId === item.id);
   const carrier = orderTracking?.trackers[0]?.carrier;
+
+  // Memoize the tracking lookup
+  const { orderTracking, carrier } = useMemo(() => {
+    const tracking = trackingInfo.find((t) => t.orderId === item.id);
+    return {
+      orderTracking: tracking,
+      carrier: tracking?.trackers[0]?.carrier,
+    };
+  }, [trackingInfo, item.id]);
+
+  // Memoize the carrier icon component
+  const carrierIcon = useMemo(() => {
+    if (carrier === "UPS") {
+      return (
+        <Image
+          src="/icons/ups.png"
+          alt="UPS"
+          width={24}
+          height={24}
+          className="w-4 h-4"
+        />
+      );
+    }
+    if (carrier === "FedExDefault") {
+      return (
+        <Image
+          src="/icons/fedex.webp"
+          alt="FedEx"
+          width={32}
+          height={32}
+          className="w-4 h-4"
+        />
+      );
+    }
+    return null;
+  }, [carrier]);
 
   return (
     <>

@@ -79,6 +79,18 @@ const ComputerSelector: React.FC<ComputerSelectorProps> = ({
   const [selectedComputer, setSelectedComputer] = useState(
     initialIp || computers[0]?.ip
   );
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     if (selectedComputer) {
@@ -91,6 +103,47 @@ const ComputerSelector: React.FC<ComputerSelectorProps> = ({
 
   const isConnected = connectionStatus === "connected";
 
+  // Define mobile and desktop styles
+  const getMobileStyles = () => {
+    return {
+      triggerClass: cn(
+        "w-auto h-9 rounded-full border transition-all shadow-sm",
+        "flex items-center justify-between gap-1 px-2.5 py-1",
+        isConnected
+          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
+          : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800",
+        "hover:shadow-md focus:ring-2",
+        isConnected
+          ? "hover:bg-green-50 dark:hover:bg-green-900/40 focus:ring-green-500/30 dark:focus:ring-green-500/40"
+          : "hover:bg-red-50 dark:hover:bg-red-900/40 focus:ring-red-500/30 dark:focus:ring-red-500/40"
+      ),
+      contentClass:
+        "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg rounded-lg p-1 overflow-hidden w-[280px]",
+      labelSize: "text-xs",
+    };
+  };
+
+  const getDesktopStyles = () => {
+    return {
+      triggerClass: cn(
+        "w-[280px] h-10 rounded-full border transition-all shadow-sm",
+        "flex items-center justify-between gap-2 px-4 py-2",
+        isConnected
+          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
+          : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800",
+        "hover:shadow-md focus:ring-2",
+        isConnected
+          ? "hover:bg-green-50 dark:hover:bg-green-900/40 focus:ring-green-500/30 dark:focus:ring-green-500/40"
+          : "hover:bg-red-50 dark:hover:bg-red-900/40 focus:ring-red-500/30 dark:focus:ring-red-500/40"
+      ),
+      contentClass:
+        "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg rounded-lg p-1 overflow-hidden w-[280px]",
+      labelSize: "text-xs",
+    };
+  };
+
+  const styles = isMobile ? getMobileStyles() : getDesktopStyles();
+
   return (
     <div className="flex items-center gap-3">
       <div className="relative">
@@ -98,51 +151,53 @@ const ComputerSelector: React.FC<ComputerSelectorProps> = ({
           onValueChange={setSelectedComputer}
           defaultValue={selectedComputer}
         >
-          <SelectTrigger
-            id="computer-select"
-            className={cn(
-              "w-[280px] h-10 rounded-full border transition-all shadow-sm",
-              "flex items-center justify-between gap-2 px-4 py-2",
-              isConnected
-                ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
-                : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800",
-              "hover:shadow-md focus:ring-2",
-              isConnected
-                ? "hover:bg-green-50 dark:hover:bg-green-900/40 focus:ring-green-500/30 dark:focus:ring-green-500/40"
-                : "hover:bg-red-50 dark:hover:bg-red-900/40 focus:ring-red-500/30 dark:focus:ring-red-500/40"
-            )}
-          >
-            <div className="flex items-center gap-2 overflow-hidden flex-1">
+          <SelectTrigger id="computer-select" className={styles.triggerClass}>
+            <div className="flex items-center gap-1 overflow-hidden flex-1">
               {isConnected ? (
-                <Wifi className="h-4 w-4 flex-shrink-0" />
+                <Wifi
+                  className={`h-4 w-4 flex-shrink-0 ${isMobile ? "mr-0" : ""}`}
+                />
               ) : (
-                <WifiOff className="h-4 w-4 flex-shrink-0" />
+                <WifiOff
+                  className={`h-4 w-4 flex-shrink-0 ${isMobile ? "mr-0" : ""}`}
+                />
               )}
-              <span className="font-medium text-sm whitespace-nowrap">
-                {isConnected ? "Connected" : "Disconnected"}
-              </span>
+              {!isMobile && (
+                <span className="font-medium text-sm whitespace-nowrap">
+                  {isConnected ? "Connected" : "Disconnected"}
+                </span>
+              )}
               <Badge
                 variant="outline"
                 className={cn(
                   "px-2 py-0.5 text-xs ml-1 font-medium",
                   "flex items-center gap-1 whitespace-nowrap",
-                  "max-w-[120px] overflow-hidden",
+                  isMobile ? "max-w-[80px]" : "max-w-[120px]",
+                  "overflow-hidden",
                   isConnected
                     ? "bg-green-50/50 dark:bg-green-900/20 border-green-200 dark:border-green-800/70"
                     : "bg-red-50/50 dark:bg-red-900/20 border-red-200 dark:border-red-800/70"
                 )}
               >
-                {getComputerIcon(selectedName)}
-                <span className="truncate">{selectedName}</span>
+                {!isMobile && getComputerIcon(selectedName)}
+                <span className="truncate">
+                  {isMobile ? selectedName.split(" ")[0] : selectedName}
+                </span>
               </Badge>
             </div>
           </SelectTrigger>
           <SelectContent
             align="start"
-            className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg rounded-lg p-1 overflow-hidden w-[280px]"
+            className={styles.contentClass}
+            position={isMobile ? "popper" : "item-aligned"}
+            side={isMobile ? "bottom" : "bottom"}
+            sideOffset={isMobile ? 8 : 4}
+            alignOffset={isMobile ? -10 : 0}
           >
             <SelectGroup>
-              <SelectLabel className="px-2 py-1.5 text-xs text-gray-500 dark:text-gray-400 font-medium">
+              <SelectLabel
+                className={`px-2 py-1.5 ${styles.labelSize} text-gray-500 dark:text-gray-400 font-medium`}
+              >
                 Available Devices
               </SelectLabel>
               {computers.map((computer) => (
@@ -154,7 +209,9 @@ const ComputerSelector: React.FC<ComputerSelectorProps> = ({
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center">
                       {getComputerIcon(computer.name)}
-                      {computer.name}
+                      {isMobile && computer.name.length > 10
+                        ? `${computer.name.substring(0, 10)}...`
+                        : computer.name}
                     </div>
                     <Badge
                       variant="outline"
@@ -191,6 +248,27 @@ const ComputerSelector: React.FC<ComputerSelectorProps> = ({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Mobile quick reconnect button */}
+      {isMobile && onReconnect && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onReconnect}
+          disabled={isConnecting}
+          className={`h-9 w-9 rounded-full ${
+            isConnecting
+              ? "opacity-70"
+              : isConnected
+              ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
+              : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800"
+          }`}
+        >
+          <RefreshCw
+            className={`h-4 w-4 ${isConnecting ? "animate-spin" : ""}`}
+          />
+        </Button>
+      )}
     </div>
   );
 };

@@ -6,7 +6,6 @@ import { DropResult, ResponderProvided } from "@hello-pangea/dnd";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Header } from "@/components/orders/Header";
-import { ItemList } from "@/components/orders/ItemList";
 import { NewItemModal } from "@/components/orders/NewItemModal";
 import { WeeklySchedule } from "@/components/weekly-schedule/WeeklySchedule";
 import { SettingsPanel } from "@/components/setttings/SettingsPanel";
@@ -24,6 +23,7 @@ import { useOrderStore } from "@/stores/useOrderStore";
 import { ShippingDashboard } from "@/components/shipping/ShippingDashboard";
 import { cn } from "@/utils/functions";
 import { useActivities } from "@/hooks/useActivities";
+import { ResponsiveOrdersView } from "@/components/orders/ResponsiveOrdersView";
 
 export default function OrderManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -586,17 +586,23 @@ export default function OrderManagementPage() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-white dark:bg-gray-900 text-black dark:text-white">
       <Toaster position="top-center" />
-      <Header
-        isMobile={isMobile}
-        searchTerm={searchTerm}
-        onNewOrder={() => setIsNewItemModalOpen(true)}
-        onSearchChange={setSearchTerm}
-        currentMode={currentMode}
-        onModeChange={setCurrentMode}
-        dueCounts={dueCounts}
-      />
+      {!isMobile && (
+        <Header
+          isMobile={isMobile}
+          searchTerm={searchTerm}
+          onNewOrder={() => setIsNewItemModalOpen(true)}
+          onSearchChange={setSearchTerm}
+          currentMode={currentMode}
+          onModeChange={setCurrentMode}
+          dueCounts={dueCounts}
+        />
+      )}
       <div className="flex-grow">
-        <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div
+          className={`h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 ${
+            isMobile ? "pt-1" : "py-8"
+          }`}
+        >
           <div className="flex h-full relative">
             <div
               className={cn(
@@ -605,7 +611,7 @@ export default function OrderManagementPage() {
               )}
               style={{ contain: "paint" }}
             >
-              <ItemList
+              <ResponsiveOrdersView
                 groups={sortedGroups}
                 onDelete={handleDeleteItem}
                 onDragEnd={onDragEnd}

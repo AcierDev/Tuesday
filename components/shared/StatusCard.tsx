@@ -12,6 +12,7 @@ interface StatusCardProps {
   duration?: number;
   isActive?: boolean;
   activeColor?: string;
+  className?: string;
 }
 
 export const StatusCard = ({
@@ -22,6 +23,7 @@ export const StatusCard = ({
   duration,
   isActive = false,
   activeColor = "blue",
+  className = "",
 }: StatusCardProps) => {
   const controls = useAnimation();
 
@@ -55,7 +57,7 @@ export const StatusCard = ({
         isActive
           ? `bg-${activeColor}-500/10 dark:bg-${activeColor}-900/20 border-${activeColor}-500/50 dark:border-${activeColor}-400/30`
           : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-      }`}
+      } ${className}`}
     >
       {/* Background progress bar */}
       <motion.div

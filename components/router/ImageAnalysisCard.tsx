@@ -58,6 +58,7 @@ interface ImageAnalysisCardProps {
     analysis?: any;
     ejectionDecision?: boolean | null;
   }[];
+  isMobileView?: boolean;
 }
 
 const PassAnimation = () => (
@@ -225,14 +226,23 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = memo(
     onShare,
     state,
     historicalImages = [],
+    isMobileView = false,
   }) => {
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [annotationsVisible, setAnnotationsVisible] = useState(true);
+    const [selectedPrediction, setSelectedPrediction] =
+      useState<Prediction | null>(null);
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [containerHeight, setContainerHeight] = useState(300);
+    const [containerWidth, setContainerWidth] = useState(400);
     const [hoverEffect, setHoverEffect] = useState(false);
     const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-    const containerRef = useRef<HTMLDivElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
     const downloadCanvasRef = useRef<HTMLCanvasElement>(null);
+    const [captureProgress, setCaptureProgress] = useState(0);
+    const [analyzeProgress, setAnalyzeProgress] = useState(0);
 
     // Maintain a stable reference to the last valid image URL
     const lastValidImageUrlRef = useRef<string | null>(null);
@@ -248,6 +258,30 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = memo(
     const displayImageUrl = imageUrl || lastValidImageUrlRef.current;
 
     // console.log("Analysis:", analysis);
+
+    // Animate progress bars for UI feedback
+    useEffect(() => {
+      let interval: NodeJS.Timeout;
+
+      if (isCapturing) {
+        setCaptureProgress(0);
+        interval = setInterval(() => {
+          setCaptureProgress((prev) => Math.min(prev + 5, 90));
+        }, 150);
+      } else if (isAnalyzing) {
+        setAnalyzeProgress(0);
+        interval = setInterval(() => {
+          setAnalyzeProgress((prev) => Math.min(prev + 8, 90));
+        }, 150);
+      } else {
+        setCaptureProgress(100);
+        setAnalyzeProgress(100);
+      }
+
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    }, [isCapturing, isAnalyzing]);
 
     const handleDownload = useCallback(
       async (type: "original" | "annotated" | "both" = "original") => {
@@ -603,12 +637,153 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = memo(
     // Listen for window resize and update sizes
     useEffect(() => {
       const handleResize = () => {
-        requestAnimationFrame(updateSizes);
+        if (containerRef.current) {
+          // For mobile, use a more efficient approach and fixed sizes
+          if (isMobileView) {
+            setContainerHeight(300);
+            setContainerWidth(containerRef.current.clientWidth);
+            return;
+          }
+
+          // Original desktop sizing
+          setContainerHeight(containerRef.current.clientHeight);
+          setContainerWidth(containerRef.current.clientWidth);
+        }
       };
 
+      handleResize();
       window.addEventListener("resize", handleResize);
       return () => window.removeEventListener("resize", handleResize);
-    }, [updateSizes]);
+    }, [isMobileView]);
+
+    // Optimize image parameters for mobile to reduce load time
+    const getImageUrl = () => {
+      if (!imageUrl) return null;
+
+      // Add a quality/size parameter for mobile to optimize loading
+      if (isMobileView && imageUrl.startsWith("http")) {
+        // Add quality parameter if it doesn't exist
+        return imageUrl.includes("?")
+          ? `${imageUrl}&quality=80&size=medium`
+          : `${imageUrl}?quality=80&size=medium`;
+      }
+
+      return imageUrl;
+    };
+
+    // Adjust UI elements and layouts based on mobile view
+    const getCardStyles = () => {
+      if (isMobileView) {
+        return {
+          maxHeight: "300px",
+          overflow: "hidden",
+        };
+      }
+      return {};
+    };
+
+    // Render different controls for mobile/desktop
+    const renderControls = () => {
+      if (isMobileView) {
+        // Simplified mobile controls
+        return (
+          <div className="absolute bottom-2 right-2 flex gap-1 z-10">
+            <Button
+              variant="secondary"
+              size="icon"
+              className="bg-gray-800/70 hover:bg-gray-800/90 h-8 w-8 rounded-full"
+              onClick={() => setDialogOpen(true)}
+            >
+              <ZoomIn className="h-4 w-4 text-white" />
+            </Button>
+          </div>
+        );
+      }
+
+      // Desktop controls (original)
+      return (
+        <div className="absolute bottom-3 right-3 flex gap-2 z-10">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="bg-gray-800/70 hover:bg-gray-800/90 rounded-full"
+                  onClick={() => setDialogOpen(true)}
+                >
+                  <ZoomIn className="h-4 w-4 text-white" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Zoom Image</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <DropdownMenu>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="bg-gray-800/70 hover:bg-gray-800/90 rounded-full"
+                    >
+                      <CircleEllipsis className="h-4 w-4 text-white" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>More Options</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  if (imageUrl) {
+                    const link = document.createElement("a");
+                    link.href = imageUrl;
+                    link.download = "router-image.jpg";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Image
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setAnnotationsVisible(!annotationsVisible);
+                }}
+              >
+                {annotationsVisible ? (
+                  <>
+                    <CircleX className="h-4 w-4 mr-2" />
+                    Hide Annotations
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Show Annotations
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onShare}>
+                <Share className="h-4 w-4 mr-2" />
+                Share Analysis
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      );
+    };
 
     return (
       <Card
@@ -616,187 +791,148 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = memo(
         onMouseEnter={() => setHoverEffect(true)}
         onMouseLeave={() => setHoverEffect(false)}
       >
-        <CardHeader className="p-4 pb-2">
+        <CardHeader
+          className={`px-4 py-3 md:px-6 md:py-4 ${isMobileView ? "pb-2" : ""}`}
+        >
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base font-medium mb-1 flex items-center gap-2">
-                <span>{getCardTitle()}</span>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${getBadgeClass()}`}
-                >
+              <CardTitle
+                className={`${
+                  isMobileView ? "text-base" : "text-base md:text-lg"
+                }`}
+              >
+                {getCardTitle()}
+              </CardTitle>
+              {!isMobileView && (
+                <CardDescription className={getStatusColor()}>
                   {isCapturing
-                    ? "Capturing"
+                    ? "Capturing image..."
                     : isAnalyzing
-                    ? "Analyzing"
+                    ? "Analyzing image..."
                     : ejectionDecision === true
-                    ? "Ejected"
+                    ? "Defect detected"
+                    : ejectionDecision === false
+                    ? "No defects detected"
+                    : "Waiting for analysis..."}
+                </CardDescription>
+              )}
+            </div>
+            <div
+              className={`flex items-center ${isMobileView ? "scale-90" : ""}`}
+            >
+              {!isMobileView && (
+                <div
+                  className={`px-2 py-1 rounded-full text-xs font-medium mr-2 ${getBadgeClass()}`}
+                >
+                  {ejectionDecision === true
+                    ? "Failed"
                     : ejectionDecision === false
                     ? "Passed"
-                    : "Unknown"}
-                </span>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                {imageMetadata?.timestamp
-                  ? new Date(imageMetadata.timestamp).toLocaleString("en-US", {
-                      dateStyle: "medium",
-                      timeStyle: "medium",
-                    })
-                  : "No timestamp available"}
-              </CardDescription>
-            </div>
-            <div className="flex items-center space-x-1">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-                      onClick={() => setDialogOpen(true)}
-                      disabled={!imageSrc}
-                    >
-                      <ZoomIn className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>View full size</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-                      onClick={() => handleDownload("original")}
-                      disabled={!imageSrc}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Download image</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              {onShare && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-                        onClick={onShare}
-                      >
-                        <Share className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Share image</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                    : "Pending"}
+                </div>
+              )}
+              {isCapturing && (
+                <Progress className="w-20 h-2" value={captureProgress} />
+              )}
+              {isAnalyzing && (
+                <Progress className="w-20 h-2" value={analyzeProgress} />
               )}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0 relative">
-          <div
-            ref={containerRef}
-            className="relative min-h-[300px] w-full aspect-video bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden"
-          >
-            {displayImageUrl ? (
-              <React.Fragment>
-                {/* Use key to ensure proper image refresh */}
-                <motion.img
-                  key={`img-${displayImageUrl}`}
-                  ref={imageRef}
-                  src={displayImageUrl}
-                  alt="Captured block"
-                  className="w-full h-full object-contain"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                  onLoad={(e) => {
-                    updateSizes();
-                  }}
-                />
+        <CardContent
+          ref={containerRef}
+          className={`p-0 relative bg-gray-100 dark:bg-gray-900 ${
+            isMobileView ? "h-[220px]" : "h-[400px]"
+          } overflow-hidden`}
+        >
+          {displayImageUrl ? (
+            <React.Fragment>
+              {/* Use key to ensure proper image refresh */}
+              <motion.img
+                key={`img-${displayImageUrl}`}
+                ref={imageRef}
+                src={displayImageUrl}
+                alt="Captured block"
+                className="w-full h-full object-contain"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                onLoad={(e) => {
+                  updateSizes();
+                }}
+              />
 
-                {/* Decision animation overlay */}
-                <AnimatePresence>
-                  {ejectionDecision === false && <PassAnimation />}
-                  {ejectionDecision === true && <FailAnimation />}
-                </AnimatePresence>
+              {/* Decision animation overlay */}
+              <AnimatePresence>
+                {ejectionDecision === false && <PassAnimation />}
+                {ejectionDecision === true && <FailAnimation />}
+              </AnimatePresence>
 
-                {/* Loading overlays */}
-                {isCapturing && renderLoadingOverlay("capturing")}
-                {isAnalyzing && renderLoadingOverlay("analyzing")}
+              {/* Loading overlays */}
+              {isCapturing && renderLoadingOverlay("capturing")}
+              {isAnalyzing && renderLoadingOverlay("analyzing")}
 
-                {/* Prediction Bounding Boxes */}
-                {shouldShowPredictions &&
-                  analysis.data.predictions
-                    .filter((prediction: Prediction) => {
-                      // Get global confidence threshold from settings or use default
-                      const globalConfidenceThreshold =
-                        state?.settings?.ejection?.globalSettings
-                          ?.globalConfidenceThreshold || 0.5;
+              {/* Prediction Bounding Boxes */}
+              {shouldShowPredictions &&
+                analysis.data.predictions
+                  .filter((prediction: Prediction) => {
+                    // Get global confidence threshold from settings or use default
+                    const globalConfidenceThreshold =
+                      state?.settings?.ejection?.globalSettings
+                        ?.globalConfidenceThreshold || 0.5;
 
-                      // Only show predictions above threshold
-                      return prediction.confidence >= globalConfidenceThreshold;
-                    })
-                    .map((prediction: Prediction) => {
-                      // Fix for the linter error - access array items individually instead of destructuring
-                      const x1 = prediction.bbox[0];
-                      const y1 = prediction.bbox[1];
-                      const x2 = prediction.bbox[2];
-                      const y2 = prediction.bbox[3];
+                    // Only show predictions above threshold
+                    return prediction.confidence >= globalConfidenceThreshold;
+                  })
+                  .map((prediction: Prediction) => {
+                    // Fix for the linter error - access array items individually instead of destructuring
+                    const x1 = prediction.bbox[0];
+                    const y1 = prediction.bbox[1];
+                    const x2 = prediction.bbox[2];
+                    const y2 = prediction.bbox[3];
 
-                      // Use the calculated position based on actual image display size
-                      const position = calculateOverlayPosition([
-                        x1,
-                        y1,
-                        x2,
-                        y2,
-                      ]);
+                    // Use the calculated position based on actual image display size
+                    const position = calculateOverlayPosition([x1, y1, x2, y2]);
 
-                      // Determine color based on class
-                      const colorMap: Record<string, string> = {
-                        crack: "border-red-500 bg-red-500/20",
-                        damage: "border-orange-500 bg-orange-500/20",
-                        edge: "border-blue-500 bg-blue-500/20",
-                        corner: "border-green-500 bg-green-500/20",
-                        knot: "border-yellow-500 bg-yellow-500/20",
-                        router: "border-purple-500 bg-purple-500/20",
-                        side: "border-indigo-500 bg-indigo-500/20",
-                        tearout: "border-pink-500 bg-pink-500/20",
-                      };
-                      const colorClass =
-                        colorMap[prediction.class_name] ||
-                        "border-gray-500 bg-gray-500/20";
+                    // Determine color based on class
+                    const colorMap: Record<string, string> = {
+                      crack: "border-red-500 bg-red-500/20",
+                      damage: "border-orange-500 bg-orange-500/20",
+                      edge: "border-blue-500 bg-blue-500/20",
+                      corner: "border-green-500 bg-green-500/20",
+                      knot: "border-yellow-500 bg-yellow-500/20",
+                      router: "border-purple-500 bg-purple-500/20",
+                      side: "border-indigo-500 bg-indigo-500/20",
+                      tearout: "border-pink-500 bg-pink-500/20",
+                    };
+                    const colorClass =
+                      colorMap[prediction.class_name] ||
+                      "border-gray-500 bg-gray-500/20";
 
-                      return (
-                        <div
-                          key={prediction.detection_id}
-                          className={`absolute border-2 ${colorClass} rounded-sm flex items-start justify-start`}
-                          style={{
-                            ...position,
-                            transition: "all 0.2s ease-in-out",
-                          }}
-                        >
-                          <span className="text-xs font-bold bg-black/80 text-white px-1 py-0.5 rounded-sm m-1 whitespace-nowrap">
-                            {prediction.class_name}{" "}
-                            {Math.round(prediction.confidence * 100)}%
-                          </span>
-                        </div>
-                      );
-                    })}
-              </React.Fragment>
-            ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
-                <Camera className="h-16 w-16 mb-4 opacity-30" />
-                <p className="text-sm">No image available</p>
-              </div>
-            )}
-          </div>
+                    return (
+                      <div
+                        key={prediction.detection_id}
+                        className={`absolute border-2 ${colorClass} rounded-sm flex items-start justify-start`}
+                        style={{
+                          ...position,
+                          transition: "all 0.2s ease-in-out",
+                        }}
+                      >
+                        <span className="text-xs font-bold bg-black/80 text-white px-1 py-0.5 rounded-sm m-1 whitespace-nowrap">
+                          {prediction.class_name}{" "}
+                          {Math.round(prediction.confidence * 100)}%
+                        </span>
+                      </div>
+                    );
+                  })}
+            </React.Fragment>
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
+              <Camera className="h-16 w-16 mb-4 opacity-30" />
+              <p className="text-sm">No image available</p>
+            </div>
+          )}
 
           {/* Analysis summary (only show if we have results and not loading) */}
           {!isCapturing && !isAnalyzing && analysis?.data?.predictions && (
@@ -906,57 +1042,8 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = memo(
           {/* Add a hidden canvas for image download processing */}
           <canvas ref={downloadCanvasRef} style={{ display: "none" }} />
 
-          {/* Bottom action bar */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex justify-end gap-2 rounded-b-lg">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDialogOpen(true)}
-                    className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/40 text-white"
-                    disabled={!displayImageUrl}
-                  >
-                    <ZoomIn className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>View Full Size</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDownload("original")}
-                    className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/40 text-white"
-                    disabled={!displayImageUrl}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Download Image</TooltipContent>
-              </Tooltip>
-
-              {onShare && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={onShare}
-                      className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/40 text-white"
-                      disabled={!displayImageUrl}
-                    >
-                      <Share className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Share</TooltipContent>
-                </Tooltip>
-              )}
-            </TooltipProvider>
-          </div>
+          {/* Add mobile-specific rendering of controls */}
+          {renderControls()}
         </CardContent>
 
         {/* Full-size image dialog */}

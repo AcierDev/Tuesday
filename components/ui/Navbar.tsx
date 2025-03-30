@@ -30,6 +30,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { motion } from "framer-motion";
 
 type NavItemBase = {
   hotkey?: string;
@@ -94,6 +95,26 @@ interface NavLinkProps {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
 }
+
+// Simple hook for responsive design
+const useMediaQuery = (query: string) => {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const media = window.matchMedia(query);
+      const updateMatch = () => setMatches(media.matches);
+
+      updateMatch(); // Initial check
+      media.addEventListener("change", updateMatch);
+
+      return () => media.removeEventListener("change", updateMatch);
+    }
+    return undefined;
+  }, [query]);
+
+  return matches;
+};
 
 export function Navbar({
   onOpenSettings,
@@ -177,20 +198,35 @@ export function Navbar({
       }
     };
 
+    const isMobile = useMediaQuery("(max-width: 1023px)");
+    const isActive = activeTab === href;
+
     return (
       <Link
         href={href}
-        className={`flex items-center rounded-lg px-3 py-4 text-sm font-medium ${
-          activeTab === href
-            ? "bg-secondary text-secondary-foreground"
-            : "text-muted-foreground hover:bg-muted hover:text-primary"
-        } ${!sidebarOpen ? "justify-center" : ""}`}
+        className={`flex items-center rounded-lg text-sm font-medium 
+          ${
+            isMobile
+              ? "px-4 py-4"
+              : `px-3 py-4 ${!sidebarOpen ? "justify-center" : ""}`
+          }
+          ${
+            isActive
+              ? "bg-secondary text-secondary-foreground dark:bg-blue-900/30 dark:text-blue-200"
+              : "text-muted-foreground hover:bg-muted hover:text-primary dark:hover:bg-gray-800/50"
+          }
+          transition-all duration-200 relative`}
         onClick={handleClick}
       >
         <Icon
-          className={`h-5 w-5 flex-shrink-0 ${!sidebarOpen ? "mr-0" : "mr-3"}`}
+          className={`${isMobile ? "h-5 w-5" : "h-5 w-5 flex-shrink-0"} ${
+            !sidebarOpen && !isMobile ? "mr-0" : "mr-3"
+          }`}
         />
-        {sidebarOpen && <span>{label}</span>}
+        {(sidebarOpen || isMobile) && <span>{label}</span>}
+        {isActive && (
+          <span className="absolute inset-y-0 left-0 w-1 bg-blue-500 rounded-r-full" />
+        )}
       </Link>
     );
   };
@@ -286,67 +322,113 @@ export function Navbar({
 
       {/* Mobile Navbar */}
       <nav className="lg:hidden fixed top-0 left-0 right-0 z-40 border-b bg-gray-950 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="w-full flex h-14 items-center px-4">
+        <div className="w-full flex h-14 items-center justify-between px-4">
           <Sheet>
             <SheetTrigger asChild>
-              <Button size="icon" variant="ghost">
-                <Menu className="h-5 w-5" />
+              <Button
+                size="icon"
+                variant="ghost"
+                className="w-10 h-10 flex items-center justify-center"
+              >
+                <Menu className="h-6 w-6" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
             <span
-              className="text-xl font-bold mr-auto cursor-pointer text-foreground hover:text-primary transition-colors"
+              className="text-xl font-bold cursor-pointer text-foreground hover:text-primary transition-colors"
               onClick={() => router.push("/dashboard")}
             >
               Tuesday
             </span>
 
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="w-10 h-10 flex items-center justify-center"
+            >
+              {theme === "dark" ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+              <span className="sr-only">
+                {theme === "dark"
+                  ? "Switch to light theme"
+                  : "Switch to dark theme"}
+              </span>
+            </Button>
+
             <SheetContent
               side="left"
-              className="w-64 p-0 bg-gradient-to-b from-gray-800 to-gray-600"
+              className="w-[85%] max-w-[320px] p-0 bg-gradient-to-b from-gray-800 to-gray-600"
             >
               <div className="flex flex-col h-[100dvh] bg-gradient-to-b from-gray-950/90 to-gray-950/70">
-                <div className="flex-1 flex flex-col space-y-1 py-2 overflow-y-auto no-scrollbar">
+                <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                  <span className="text-xl font-bold cursor-pointer text-foreground">
+                    Tuesday
+                  </span>
+                </div>
+                <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar">
                   {mainNavItems.map((item, index) =>
                     item.type === "divider" ? (
-                      <Separator key={index} className="my-2" />
-                    ) : (
-                      <NavLink
-                        key={"href" in item ? item.href : index}
-                        href={"href" in item ? item.href : ""}
-                        icon={"icon" in item ? item.icon : Menu}
-                        label={"label" in item ? item.label : ""}
+                      <Separator
+                        key={index}
+                        className="my-2 dark:bg-gray-600/50"
                       />
+                    ) : (
+                      <div
+                        key={"href" in item ? item.href : index}
+                        className="px-2 py-1"
+                      >
+                        {"href" in item && (
+                          <motion.div
+                            initial={false}
+                            animate={
+                              activeTab === item.href ? "active" : "inactive"
+                            }
+                            variants={{
+                              active: {
+                                backgroundColor: "rgba(59, 130, 246, 0.15)",
+                                borderRadius: "0.5rem",
+                              },
+                              inactive: {
+                                backgroundColor: "rgba(0, 0, 0, 0)",
+                                borderRadius: "0.5rem",
+                              },
+                            }}
+                            transition={{ duration: 0.2 }}
+                            className="relative"
+                          >
+                            {activeTab === item.href && (
+                              <motion.div
+                                layoutId="activeNavItem"
+                                className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r-full"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                              />
+                            )}
+                            <NavLink
+                              href={"href" in item ? item.href : ""}
+                              icon={"icon" in item ? item.icon : Menu}
+                              label={"label" in item ? item.label : ""}
+                            />
+                          </motion.div>
+                        )}
+                      </div>
                     )
                   )}
                 </div>
-                <div className="p-4 border-t">
+                <div className="p-4 border-t border-gray-700">
                   <div className="flex gap-2">
                     <Button
-                      className="flex-1 flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90"
+                      className="flex-1 flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-base"
                       onClick={onOpenSettings}
                     >
                       <Settings className="mr-2 h-5 w-5" />
                       Settings
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        setTheme(theme === "dark" ? "light" : "dark")
-                      }
-                      className="flex-shrink-0"
-                    >
-                      {theme === "dark" ? (
-                        <Sun className="h-5 w-5" />
-                      ) : (
-                        <Moon className="h-5 w-5" />
-                      )}
-                      <span className="sr-only">
-                        {theme === "dark"
-                          ? "Switch to light theme"
-                          : "Switch to dark theme"}
-                      </span>
                     </Button>
                   </div>
                 </div>

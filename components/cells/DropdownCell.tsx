@@ -34,12 +34,16 @@ interface DropdownCellProps {
   item: Item;
   columnValue: GenericColumnValue;
   onUpdate: (updatedItem: Item, changedField: ColumnTitles) => void;
+  disableCredit?: boolean;
+  disabled?: boolean;
 }
 
 export function DropdownCell({
   item,
   columnValue,
   onUpdate,
+  disableCredit = false,
+  disabled = false,
 }: DropdownCellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCreditDialogOpen, setIsCreditDialogOpen] = useState(false);
@@ -184,7 +188,7 @@ export function DropdownCell({
             >
               {columnValue.text || "⠀"}
             </span>
-            {selectedCredits.length > 0 && (
+            {!disableCredit && selectedCredits.length > 0 && (
               <>
                 <span
                   className={`absolute top-0 left-0 ${
@@ -206,86 +210,94 @@ export function DropdownCell({
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {boardConfig.columns[columnValue.columnName].options?.map(
-            (option) => (
-              <DropdownMenuItem
-                key={option}
-                onSelect={() =>
-                  handleUpdate(
-                    option,
-                    selectedCredits.length > 0 ? selectedCredits : null
-                  )
-                }
-              >
-                {option}
-              </DropdownMenuItem>
-            )
-          )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setIsCreditDialogOpen(true)}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Assign Credit
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => handleUpdate(columnValue.text || "", [])}
-          >
-            <UserX className="mr-2 h-4 w-4" />
-            Reset Credit
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => handleUpdate("", null)}>
-            <XCircle className="mr-2 h-4 w-4" />
-            Reset Value
-          </DropdownMenuItem>
-        </DropdownMenuContent>
+        {!disabled && (
+          <DropdownMenuContent>
+            {boardConfig.columns[columnValue.columnName].options?.map(
+              (option) => (
+                <DropdownMenuItem
+                  key={option}
+                  onSelect={() =>
+                    handleUpdate(
+                      option,
+                      selectedCredits.length > 0 ? selectedCredits : null
+                    )
+                  }
+                >
+                  {option}
+                </DropdownMenuItem>
+              )
+            )}
+            {!disableCredit && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setIsCreditDialogOpen(true)}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Assign Credit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => handleUpdate(columnValue.text || "", [])}
+                >
+                  <UserX className="mr-2 h-4 w-4" />
+                  Reset Credit
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleUpdate("", null)}>
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Reset Value
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        )}
       </DropdownMenu>
 
-      <Dialog open={isCreditDialogOpen} onOpenChange={setIsCreditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Assign Credit</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {CREDIT_OPTIONS.map((credit) => {
-              const isSelected = selectedCredits.includes(credit);
-              const employeeInfo = getEmployeeInfoFromInitials(credit);
-              return (
-                <Button
-                  key={credit}
-                  onClick={() => toggleCredit(credit)}
-                  variant={isSelected ? "default" : "secondary"}
-                  className={`justify-start ${
-                    isSelected ? employeeInfo.color : ""
-                  }`}
-                >
-                  <div
-                    className="w-8 h-8 rounded-full bg-cover bg-center mr-2"
-                    style={{ backgroundImage: `url(${employeeInfo.image})` }}
-                  />
-                  <span
-                    className={`text-base font-medium ${
-                      isSelected ? "text-white" : ""
+      {!disableCredit && (
+        <Dialog open={isCreditDialogOpen} onOpenChange={setIsCreditDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Assign Credit</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {CREDIT_OPTIONS.map((credit) => {
+                const isSelected = selectedCredits.includes(credit);
+                const employeeInfo = getEmployeeInfoFromInitials(credit);
+                return (
+                  <Button
+                    key={credit}
+                    onClick={() => toggleCredit(credit)}
+                    variant={isSelected ? "default" : "secondary"}
+                    className={`justify-start ${
+                      isSelected ? employeeInfo.color : ""
                     }`}
                   >
-                    {employeeInfo.name}
-                  </span>
-                </Button>
-              );
-            })}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCancelCredits}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveCredits}
-              disabled={selectedCredits.length === 0}
-            >
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                    <div
+                      className="w-8 h-8 rounded-full bg-cover bg-center mr-2"
+                      style={{ backgroundImage: `url(${employeeInfo.image})` }}
+                    />
+                    <span
+                      className={`text-base font-medium ${
+                        isSelected ? "text-white" : ""
+                      }`}
+                    >
+                      {employeeInfo.name}
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCancelCredits}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveCredits}
+                disabled={selectedCredits.length === 0}
+              >
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }

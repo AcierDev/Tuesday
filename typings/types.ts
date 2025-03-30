@@ -234,7 +234,6 @@ export enum ItemStatus {
   OnDeck = "On Deck",
   Wip = "Wip",
   Packaging = "Packaging",
-  Shipping = "Shipping",
   At_The_Door = "At The Door",
   Done = "Done",
 }

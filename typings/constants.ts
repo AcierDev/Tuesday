@@ -605,12 +605,21 @@ export const CREDIT_COLORS: Record<EmployeeOption, string> = {
 export const STATUS_COLORS: Record<ItemStatus, string> = {
   [ItemStatus.New]: "gray-400", // Placeholder
   [ItemStatus.OnDeck]: "yellow-500",
-  [ItemStatus.Wip]: "green-600",
-  [ItemStatus.Packaging]: "lime-300",
-  [ItemStatus.At_The_Door]: "yellow-900",
-  [ItemStatus.Done]: "orange-600",
+  [ItemStatus.Wip]: "orange-600",
+  [ItemStatus.Packaging]: "red-500",
+  [ItemStatus.At_The_Door]: "lime-300",
+  [ItemStatus.Done]: "green-600",
   [ItemStatus.Hidden]: "white/10",
-  [ItemStatus.Shipping]: "red-500",
+};
+
+export const STATUS_BORDER_COLORS: Record<ItemStatus, string> = {
+  [ItemStatus.New]: "border-l-gray-400 dark:border-l-gray-500",
+  [ItemStatus.OnDeck]: "border-l-yellow-500 dark:border-l-yellow-400",
+  [ItemStatus.Wip]: "border-l-orange-600 dark:border-l-orange-600",
+  [ItemStatus.Packaging]: "border-l-red-500 dark:border-l-red-500",
+  [ItemStatus.At_The_Door]: "border-l-lime-300 dark:border-l-lime-500",
+  [ItemStatus.Done]: "border-l-green-600 dark:border-l-green-500",
+  [ItemStatus.Hidden]: "border-l-transparent dark:border-l-transparent",
 };
 
 export const DEFAULT_ROUTER_SETTINGS: RouterSettings = {
@@ -626,6 +635,7 @@ export const DEFAULT_ROUTER_SETTINGS: RouterSettings = {
   },
   ejection: {
     globalSettings: {
+      ejectionEnabled: false,
       requireMultipleDefects: false,
       minTotalArea: 100,
       maxDefectsBeforeEject: 5,
