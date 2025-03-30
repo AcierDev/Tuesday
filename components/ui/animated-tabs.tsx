@@ -65,6 +65,23 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
   const [showUnsavedChanges, setShowUnsavedChanges] = React.useState(false);
   const tabContent = React.Children.toArray(children);
 
+  // Track which tabs have been initialized
+  const [initializedTabs, setInitializedTabs] = React.useState<
+    Record<string, boolean>
+  >({
+    [activeTab]: true,
+  });
+
+  // Mark the current tab as initialized when it changes
+  React.useEffect(() => {
+    if (!initializedTabs[activeTab]) {
+      setInitializedTabs((prev) => ({
+        ...prev,
+        [activeTab]: true,
+      }));
+    }
+  }, [activeTab, initializedTabs]);
+
   const renderControls = () => {
     if (!onReset && !onSave) return null;
 
@@ -226,15 +243,21 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
           {renderTabBar()}
         </CardHeader>
         <CardContent className={cn("pt-4", contentClassName)}>
-          <div className="relative">
-            <AnimatePresence mode="wait">
+          <div className="relative overflow-hidden">
+            {/* Use sync mode instead of wait to preserve tab contents */}
+            <AnimatePresence mode="sync" initial={false}>
               <motion.div
                 key={activeTab}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
+                initial={{
+                  opacity: 0,
+                  x: 20,
+                  position: "absolute",
+                  width: "100%",
+                }}
+                animate={{ opacity: 1, x: 0, position: "relative" }}
+                exit={{ opacity: 0, x: -20, position: "absolute" }}
                 transition={{
-                  duration: 0.2,
+                  duration: 0.15,
                   ease: "easeInOut",
                 }}
                 className="min-h-[200px]"
@@ -248,20 +271,26 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
     );
   }
 
+  // Default variant rendering
   return (
-    <div className={className}>
+    <div className={cn("space-y-4", className)}>
       {renderTabBar()}
-      <div className={cn("relative mt-4", contentClassName)}>
-        <AnimatePresence mode="wait">
+      {renderControls() && (
+        <div className="flex items-center justify-end">{renderControls()}</div>
+      )}
+      {renderAlerts()}
+      <div className="relative overflow-hidden">
+        <AnimatePresence mode="sync" initial={false}>
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20, position: "absolute" }}
             transition={{
-              duration: 0.2,
+              duration: 0.15,
               ease: "easeInOut",
             }}
+            className={cn("min-h-[200px]", contentClassName)}
           >
             {tabContent[tabs.findIndex((t) => t.id === activeTab)]}
           </motion.div>

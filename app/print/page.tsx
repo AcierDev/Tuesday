@@ -27,6 +27,13 @@ const TEMPLATES = [
     type: "image",
   },
   {
+    id: 10,
+    name: "Hanging Examples OLD",
+    src: "/images/hanging-examples-old.png",
+    orientation: "portrait",
+    type: "image",
+  },
+  {
     id: 9,
     name: "Fragile Stickers",
     src: "/images/fragile-stickers.jpg",

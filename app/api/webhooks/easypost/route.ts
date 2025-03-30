@@ -30,23 +30,23 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  console.log("Received webhook request");
+  // console.log("Received webhook request");
 
   try {
     const payload = await request.text();
-    console.log("Raw payload:", payload);
+    // console.log("Raw payload:", payload);
 
     // Log all headers for debugging
-    console.log("All request headers:", Object.fromEntries(request.headers));
+    // console.log("All request headers:", Object.fromEntries(request.headers));
 
     const event = JSON.parse(payload);
-    console.log("Parsed event:", event);
+    // console.log("Parsed event:", event);
 
     // Handle tracker updates
     if (event.description === "tracker.updated") {
-      console.log("Processing tracker.updated event");
+      // console.log("Processing tracker.updated event");
       const tracker: Tracker = event.result;
-      console.log("Tracker data:", tracker);
+      // console.log("Tracker data:", tracker);
 
       // AlertManager.sendText(
       //   "Ben",
@@ -55,16 +55,16 @@ export async function POST(request: Request) {
       // );
 
       const client = await clientPromise;
-      console.log("MongoDB client connected");
+      // console.log("MongoDB client connected");
 
       const db = client.db("react-web-app");
       const collection = db.collection<OrderTrackingInfo>(
         `trackers-${process.env.NEXT_PUBLIC_MODE}`
       );
-      console.log(
-        "Using collection:",
-        `trackers-${process.env.NEXT_PUBLIC_MODE}`
-      );
+      // console.log(
+      //   "Using collection:",
+      //   `trackers-${process.env.NEXT_PUBLIC_MODE}`
+      // );
 
       // Update tracking info in database
       const updateResult = await collection.updateOne(
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         }
       );
 
-      console.log("Database update result:", updateResult);
+      // console.log("Database update result:", updateResult);
 
       // Notify all connected clients
       const message = JSON.stringify({
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     }
 
     // Ignore other event types
-    console.log("Ignoring non-tracker event:", event.description);
+    // console.log("Ignoring non-tracker event:", event.description);
     return NextResponse.json({ status: "ignored" }, { status: 200 });
   } catch (error) {
     console.error("Webhook error:", error);

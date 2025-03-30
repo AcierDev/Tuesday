@@ -5,6 +5,8 @@ import {
   ExtendedState,
   RouterSettings,
   AnalysisImage,
+  ImageMetadata,
+  HistoricalImage,
 } from "@/typings/types";
 import { DEFAULT_ROUTER_SETTINGS } from "@/typings/constants";
 import { generateUUID } from "@/utils/functions";
@@ -14,12 +16,13 @@ import { toast } from "sonner";
 const DEFAULT_WEBSOCKET_URL = "ws://192.168.1.222:8080/ws";
 const RECONNECT_DELAY = 2000;
 const MAX_RECONNECT_ATTEMPTS = 5;
+const TOAST_DEBOUNCE_DELAY = 5000; // 5 seconds debounce for toasts
 
 const INITIAL_STATE: ExtendedState = {
   status: "disconnected",
   router_state: "idle",
   push_cylinder: "OFF",
-  riser_cylinder: "OFF",
+  flipper: "OFF",
   ejection_cylinder: "OFF",
   sensor1: "OFF",
   analysisMode: false,
@@ -50,58 +53,196 @@ export const useWebSocketManager = () => {
   const [reconnectAttempts, setReconnectAttempts] = useState<number>(0);
   const [connectionError, setConnectionError] = useState<string>("");
   const [wsUrl, setWsUrl] = useState<string>(DEFAULT_WEBSOCKET_URL);
+  const [lastToastTime, setLastToastTime] = useState<number>(0);
+
+  // Add historical images state
+  const [historicalImages, setHistoricalImages] = useState<HistoricalImage[]>(
+    []
+  );
+  const MAX_HISTORY_ITEMS = 100; // Limit the number of historical images to store
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isConnectingRef = useRef<boolean>(false);
   const mountedRef = useRef<boolean>(true);
   const disconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initialDisconnectRef = useRef<boolean>(true);
 
   const [isReconnecting, setIsReconnecting] = useState(false);
 
-  const updateEjectionSettings = useCallback((newSettings: RouterSettings) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
-          type: "updateSettings",
-          data: {
-            slave: newSettings.slave,
-            ejection: newSettings.ejection,
-          },
-        })
-      );
-      setState((prev) => ({
-        ...prev,
-        settings: newSettings,
-        lastUpdate: new Date(),
-      }));
-      toast.success("Router settings updated");
-    } else {
-      toast.error("Cannot update settings: WebSocket not connected");
-    }
-  }, []);
-
-  const handleBinaryMessage = useCallback((blob: Blob) => {
-    try {
-      const url = URL.createObjectURL(blob);
-
-      setState((prev) => {
-        if (prev.currentImageUrl) {
-          URL.revokeObjectURL(prev.currentImageUrl);
+  // Shows toast only if enough time has passed since the last toast
+  const debouncedToast = useCallback(
+    (message: string, type: "error" | "success" | "warning") => {
+      const now = Date.now();
+      if (now - lastToastTime > TOAST_DEBOUNCE_DELAY) {
+        setLastToastTime(now);
+        if (type === "error") {
+          toast.error(message);
+        } else if (type === "success") {
+          toast.success(message);
+        } else if (type === "warning") {
+          toast.warning(message);
         }
-        return {
-          ...prev,
-          currentImageUrl: url,
-          lastUpdate: new Date(),
-        };
-      });
+      }
+    },
+    [lastToastTime]
+  );
 
-      toast.success("Image captured successfully");
-    } catch (error) {
-      console.error("Error handling image blob:", error);
-      toast.error("Failed to process image");
-    }
+  const updateEjectionSettings = useCallback(
+    (newSettings: RouterSettings) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "updateSettings",
+            data: {
+              slave: newSettings.slave,
+              ejection: newSettings.ejection,
+            },
+          })
+        );
+        setState((prev) => ({
+          ...prev,
+          settings: newSettings,
+          lastUpdate: new Date(),
+        }));
+        debouncedToast("Router settings updated", "success");
+      } else {
+        debouncedToast(
+          "Cannot update settings: WebSocket not connected",
+          "error"
+        );
+      }
+    },
+    [debouncedToast]
+  );
+
+  const handleBinaryMessage = useCallback(
+    (blob: Blob) => {
+      try {
+        const url = URL.createObjectURL(blob);
+
+        setState((prev) => {
+          if (prev.currentImageUrl) {
+            URL.revokeObjectURL(prev.currentImageUrl);
+          }
+          return {
+            ...prev,
+            currentImageUrl: url,
+            lastUpdate: new Date(),
+          };
+        });
+
+        debouncedToast("Image captured successfully", "success");
+      } catch (error) {
+        console.error("Error handling image blob:", error);
+        debouncedToast("Failed to process image", "error");
+      }
+    },
+    [debouncedToast]
+  );
+
+  // Add a function to save images to history
+  const addImageToHistory = useCallback(
+    (
+      url: string,
+      metadata: ImageMetadata | null,
+      analysis: any | null,
+      ejectionDecision: boolean | null
+    ) => {
+      if (!url || !metadata) return;
+
+      // Generate a unique key for this image
+      const imageKey = `${url}-${metadata.timestamp}`;
+
+      setHistoricalImages((prev) => {
+        // Check if this image already exists in history by URL
+        const alreadyExists = prev.some((img) => {
+          const existingKey = `${img.url}-${img.metadata.timestamp}`;
+          return existingKey === imageKey;
+        });
+
+        if (alreadyExists) {
+          // If image already exists but has been updated with analysis/decision, update it
+          if (analysis || ejectionDecision !== null) {
+            const updated = prev.map((img) => {
+              const existingKey = `${img.url}-${img.metadata.timestamp}`;
+              if (existingKey === imageKey) {
+                return {
+                  ...img,
+                  analysis: analysis || img.analysis,
+                  ejectionDecision:
+                    ejectionDecision !== null
+                      ? ejectionDecision
+                      : img.ejectionDecision,
+                };
+              }
+              return img;
+            });
+
+            return updated;
+          }
+          // If no updates, return current state
+          return prev;
+        }
+
+        // Image doesn't exist yet, add it
+        const newImage: HistoricalImage = {
+          id: generateUUID(),
+          url,
+          metadata,
+          timestamp: new Date(),
+          analysis,
+          ejectionDecision,
+        };
+
+        // Add new image to the beginning of the array and limit to MAX_HISTORY_ITEMS
+        const updated = [newImage, ...prev].slice(0, MAX_HISTORY_ITEMS);
+
+        return updated;
+      });
+    },
+    []
+  );
+
+  // Remove localStorage loading
+  useEffect(() => {
+    // No localStorage loading
   }, []);
+
+  // Track the last processed image URL to prevent duplicates
+  const lastProcessedImageRef = useRef<string | null>(null);
+
+  // Use a single effect to handle image history update at the appropriate time
+  useEffect(() => {
+    // Only add to history when analysis is complete and we have an ejection decision
+    if (
+      state.currentImageUrl &&
+      !state.isAnalyzing &&
+      !state.isCapturing &&
+      state.currentImageMetadata &&
+      state.ejectionDecision !== null &&
+      state.currentImageUrl !== lastProcessedImageRef.current // Only process if URL is different from last processed
+    ) {
+      // Save current URL as processed
+      lastProcessedImageRef.current = state.currentImageUrl;
+
+      // Add to history now that we have all info
+      addImageToHistory(
+        state.currentImageUrl,
+        state.currentImageMetadata,
+        state.currentAnalysis,
+        state.ejectionDecision
+      );
+    }
+  }, [
+    state.currentImageUrl,
+    state.isAnalyzing,
+    state.isCapturing,
+    state.currentAnalysis,
+    state.ejectionDecision,
+    addImageToHistory,
+    state.currentImageMetadata,
+  ]);
 
   const connect = useCallback(() => {
     if (
@@ -156,7 +297,8 @@ export const useWebSocketManager = () => {
         setConnectionError("");
         isConnectingRef.current = false;
         setIsReconnecting(false);
-        toast.success("Connected to system");
+        initialDisconnectRef.current = true; // Reset initial disconnect flag
+        debouncedToast("Connected to system", "success");
       };
 
       ws.onmessage = (event: MessageEvent) => {
@@ -235,6 +377,7 @@ export const useWebSocketManager = () => {
                   },
                   success: eventData.data.success,
                   timestamp: eventData.data.timestamp,
+                  shouldEjectResult: eventData.data.shouldEjectResult || null,
                 },
                 isAnalyzing: false,
                 lastUpdate: new Date(),
@@ -244,11 +387,36 @@ export const useWebSocketManager = () => {
             case "ejection_decision": {
               // Make sure we're getting a boolean value
               const shouldEject = Boolean(eventData.data.decision);
-              setState((prev) => ({
-                ...prev,
-                ejectionDecision: shouldEject,
-                lastUpdate: new Date(),
-              }));
+              const reasons = eventData.data.reasons || [];
+
+              setState((prev) => {
+                // Update historical image if available
+                if (prev.currentImageUrl && prev.currentImageMetadata) {
+                  addImageToHistory(
+                    prev.currentImageUrl,
+                    prev.currentImageMetadata,
+                    prev.currentAnalysis,
+                    shouldEject
+                  );
+                }
+
+                return {
+                  ...prev,
+                  ejectionDecision: shouldEject,
+                  // Update the currentAnalysis with ejection reasons if available
+                  currentAnalysis: prev.currentAnalysis
+                    ? {
+                        ...prev.currentAnalysis,
+                        shouldEjectResult: {
+                          decision: shouldEject,
+                          reasons: reasons,
+                        },
+                      }
+                    : prev.currentAnalysis,
+                  lastUpdate: new Date(),
+                };
+              });
+
               break;
             }
             case "alert": {
@@ -262,9 +430,9 @@ export const useWebSocketManager = () => {
               setAlerts((prev) => [newAlert, ...prev]);
 
               if (eventData.level === "error") {
-                toast.error(eventData.data.message);
+                debouncedToast(eventData.data.message, "error");
               } else {
-                toast.warning(eventData.data.message);
+                debouncedToast(eventData.data.message, "warning");
               }
               break;
             }
@@ -299,7 +467,7 @@ export const useWebSocketManager = () => {
               break;
             }
             case "warning": {
-              toast.warning(eventData.data.message);
+              debouncedToast(eventData.data.message, "warning");
               setLogs((prev) => [
                 {
                   id: generateUUID(),
@@ -313,7 +481,7 @@ export const useWebSocketManager = () => {
               break;
             }
             case "error": {
-              toast.error(eventData.data.message);
+              debouncedToast(eventData.data.message, "error");
               setLogs((prev) => [
                 {
                   id: generateUUID(),
@@ -357,21 +525,40 @@ export const useWebSocketManager = () => {
         isConnectingRef.current = false;
         setIsReconnecting(false);
 
-        if (event.code !== 1000 && event.code !== 1005) {
-          toast.error("Disconnected from system");
+        // Only show disconnection toast on first disconnect, not during reconnection attempts
+        if (
+          event.code !== 1000 &&
+          event.code !== 1005 &&
+          initialDisconnectRef.current
+        ) {
+          debouncedToast("Disconnected from system", "error");
+          initialDisconnectRef.current = false;
         }
 
         if (event.code !== 1000 && event.code !== 1005) {
           if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            // Calculate exponential backoff delay
+            const backoffDelay =
+              RECONNECT_DELAY * Math.pow(1.5, reconnectAttempts);
+            console.log(
+              `Reconnection attempt ${
+                reconnectAttempts + 1
+              } scheduled in ${backoffDelay}ms`
+            );
+
             reconnectTimeoutRef.current = setTimeout(() => {
               if (mountedRef.current) {
                 setReconnectAttempts((prev) => prev + 1);
                 connect();
               }
-            }, RECONNECT_DELAY);
+            }, backoffDelay);
           } else {
             setConnectionError(
-              "Maximum reconnection attempts reached. Please refresh the page."
+              "Maximum reconnection attempts reached. Please refresh the page or try again."
+            );
+            debouncedToast(
+              "Connection failed after multiple attempts. Please check your network connection.",
+              "error"
             );
           }
         }
@@ -394,10 +581,11 @@ export const useWebSocketManager = () => {
       isConnectingRef.current = false;
       setIsReconnecting(false);
     }
-  }, [reconnectAttempts, handleBinaryMessage, wsUrl]);
+  }, [reconnectAttempts, handleBinaryMessage, wsUrl, debouncedToast]);
 
   useEffect(() => {
     mountedRef.current = true;
+    initialDisconnectRef.current = true;
 
     // Initial connection attempt
     const initTimeout = setTimeout(connect, 100);
@@ -466,5 +654,6 @@ export const useWebSocketManager = () => {
     updateEjectionSettings,
     updateWebSocketUrl,
     wsUrl,
+    historicalImages,
   };
 };

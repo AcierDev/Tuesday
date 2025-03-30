@@ -16,6 +16,14 @@ export const VALIDATION_RULES = {
       min: 100,
       message: "Ejection duration must be at least 100ms",
     },
+    flipperDelay: {
+      min: 100,
+      message: "Flipper delay must be at least 100ms",
+    },
+    flipperDuration: {
+      min: 100,
+      message: "Flipper duration must be at least 100ms",
+    },
   },
   ejection: {
     minArea: {

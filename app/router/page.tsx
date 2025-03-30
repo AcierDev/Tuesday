@@ -3,6 +3,8 @@
 import LiveView from "@/components/router/LiveView";
 import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionControls";
 import StatsOverview from "@/components/router/stats/StatsOverview";
+import HistoryView from "@/components/router/HistoryView";
+import EjectionInsights from "@/components/router/insights/EjectionInsights";
 import ComputerSelector from "@/components/robotyler/ComputerSelector";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
@@ -14,12 +16,11 @@ import {
   Circle,
   Power,
   Activity,
-  Wifi,
-  WifiOff,
   Settings2,
   BarChart2,
-  Target,
-  ToggleRight,
+  History,
+  RotateCw,
+  Shield,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -45,8 +46,12 @@ function MonitoringDashboard() {
     updateWebSocketUrl,
     wsUrl,
     updateEjectionSettings,
+    historicalImages,
   } = useRouter();
   const [activeTab, setActiveTab] = useState("live");
+
+  // Create a stable, memoized reference for the LiveView component
+  const [tabsInitialized, setTabsInitialized] = useState(false);
 
   // Add state for image processing
   const [currentImage, setCurrentImage] = useState<{
@@ -67,25 +72,17 @@ function MonitoringDashboard() {
     }
   }, [state.currentImageUrl, state.currentImageMetadata]);
 
+  // Mark tabs as initialized after the first render
+  useEffect(() => {
+    setTabsInitialized(true);
+  }, []);
+
   const handleComputerSelect = (ip: string) => {
     updateWebSocketUrl(ip);
   };
 
   const handleReconnect = () => {
     updateWebSocketUrl(wsUrl);
-  };
-
-  const handleAnalysisModeToggle = (enabled: boolean) => {
-    if (state.settings) {
-      const newSettings = {
-        ...state.settings,
-        slave: {
-          ...state.settings.slave,
-          analysisMode: enabled,
-        },
-      };
-      updateEjectionSettings(newSettings);
-    }
   };
 
   const renderConnectionAlert = () => {
@@ -139,14 +136,12 @@ function MonitoringDashboard() {
             isActive={state.push_cylinder === "ON"}
           />
           <StatusCard
-            title="Riser Cylinder"
-            status={state.riser_cylinder === "ON"}
-            icon={Power}
-            description={
-              state.riser_cylinder === "ON" ? "Engaged" : "Disengaged"
-            }
-            duration={state.settings?.slave.riserTime}
-            isActive={state.riser_cylinder === "ON"}
+            title="Flipper"
+            status={state.flipper === "ON"}
+            icon={RotateCw}
+            description={state.flipper === "ON" ? "Engaged" : "Disengaged"}
+            duration={state.settings?.slave.flipperDuration}
+            isActive={state.flipper === "ON"}
           />
           <StatusCard
             title="Ejection Cylinder"
@@ -178,18 +173,6 @@ function MonitoringDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
-              <ComputerSelector
-                onSelect={handleComputerSelect}
-                onReconnect={handleReconnect}
-                isConnecting={connectionStatus === "connecting"}
-                computers={[
-                  { name: "Router Raspi", ip: "192.168.1.243:8080/ws" },
-                  { name: "Bentzi's Laptop", ip: "192.168.1.222:8080/ws" },
-                  { name: "Dev Testing Raspi", ip: "192.168.1.216:8080/ws" },
-                  { name: "localhost", ip: "localhost:8080/ws" },
-                ]}
-              />
-
               <div
                 className={`flex items-center gap-2 px-4 py-2 rounded-full dark:bg-blue-900/30`}
               >
@@ -198,49 +181,22 @@ function MonitoringDashboard() {
                   {state.router_state}
                 </span>
               </div>
-
-              <div className="flex items-center gap-2">
-                <div
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-sm ${
-                    connectionStatus === "connected"
-                      ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                      : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
-                  }`}
-                >
-                  {connectionStatus === "connected" ? (
-                    <Wifi className="h-4 w-4" />
-                  ) : (
-                    <WifiOff className="h-4 w-4" />
-                  )}
-                  <span className="font-medium">
-                    {connectionStatus === "connected"
-                      ? "Connected"
-                      : "Disconnected"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 dark:border-gray-700">
-                <Target className="h-4 w-4 text-blue-500" />
-                <span className="text-sm font-medium">Analysis Mode</span>
-                <ToggleRight
-                  checked={state.settings?.slave.analysisMode}
-                  onCheckedChange={handleAnalysisModeToggle}
-                  className="data-[state=checked]:bg-blue-600"
-                />
-              </div>
-
-              <Button
-                variant="destructive"
-                className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 h-12 text-sm"
-                onClick={() => {
-                  /* Add emergency stop handler */
-                }}
-                disabled={connectionStatus !== "connected"}
-              >
-                <AlertTriangle className="mr-2 h-5 w-5" />
-                Emergency Stop
-              </Button>
+              <ComputerSelector
+                onSelect={handleComputerSelect}
+                onReconnect={handleReconnect}
+                isConnecting={connectionStatus === "connecting"}
+                connectionStatus={
+                  connectionStatus === "connected"
+                    ? "connected"
+                    : "disconnected"
+                }
+                computers={[
+                  { name: "Router Raspi", ip: "192.168.1.243:8080/ws" },
+                  { name: "Bentzi's Laptop", ip: "192.168.1.229:8080/ws" },
+                  { name: "Dev Testing Raspi", ip: "192.168.1.216:8080/ws" },
+                  { name: "localhost", ip: "localhost:8080/ws" },
+                ]}
+              />
             </div>
           </div>
 
@@ -286,6 +242,20 @@ function MonitoringDashboard() {
               description: "Monitor real-time system status and operations",
             },
             {
+              id: "insights",
+              label: "Ejection Insights",
+              icon: Shield,
+              description:
+                "Understand ejection decisions and defect analysis in detail",
+            },
+            {
+              id: "history",
+              label: "History",
+              icon: History,
+              description:
+                "Browse through historical images and analysis results",
+            },
+            {
               id: "settings",
               label: "Settings",
               icon: Settings2,
@@ -306,15 +276,36 @@ function MonitoringDashboard() {
           contentClassName="p-6 bg-white dark:bg-gray-800 rounded-b-lg"
           tabListClassName="bg-gray-50 dark:bg-gray-800 p-2 rounded-t-lg gap-2"
         >
-          <div key="live">
-            <LiveView currentImage={currentImage} state={state} logs={logs} />
+          {/* Use a stable key for each tab content to ensure they're preserved */}
+          <div key="live-tab-content">
+            {tabsInitialized && (
+              <LiveView
+                key="live-view-component"
+                currentImage={currentImage}
+                state={state}
+                logs={logs}
+                historicalImages={historicalImages}
+              />
+            )}
           </div>
 
-          <div key="settings">
+          <div key="insights-tab-content">
+            <EjectionInsights
+              state={state}
+              currentImage={currentImage}
+              historicalImages={historicalImages}
+            />
+          </div>
+
+          <div key="history-tab-content">
+            <HistoryView historicalImages={historicalImages} />
+          </div>
+
+          <div key="settings-tab-content">
             <ImprovedEjectionControlGUI />
           </div>
 
-          <div key="stats">
+          <div key="stats-tab-content">
             <StatsOverview
               dailyStats={state.dailyStats}
               currentCycleStats={state.currentCycleStats}
@@ -322,36 +313,6 @@ function MonitoringDashboard() {
           </div>
         </AnimatedTabs>
       </main>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="fixed bottom-6 left-6 z-50"
-      >
-        <div className="bg-white dark:bg-gray-800 rounded-full shadow-lg p-4 flex items-center gap-3 border border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col items-end">
-            <span className="text-sm font-medium">Analysis Mode</span>
-            <span className="text-xs text-gray-500">
-              {state.settings?.slave.analysisMode ? "Enabled" : "Disabled"}
-            </span>
-          </div>
-          <ToggleRight
-            checked={state.settings?.slave.analysisMode}
-            onCheckedChange={handleAnalysisModeToggle}
-            className="data-[state=checked]:bg-blue-600"
-          />
-          <motion.div
-            animate={{
-              scale: state.settings?.slave.analysisMode ? [1, 1.2, 1] : 1,
-            }}
-            transition={{ duration: 0.5, repeat: Infinity }}
-            className={`absolute inset-0 rounded-full ${
-              state.settings?.slave.analysisMode
-                ? "border-2 border-blue-500/50"
-                : ""
-            }`}
-          />
-        </div>
-      </motion.div>
     </div>
   );
 }

@@ -485,7 +485,7 @@ export default function OutletControl() {
               const isRefreshing = refreshing.includes(index);
 
               return (
-                <Card key={index} className="overflow-hidden">
+                <Card key={index} className="overflow-hidden dark:bg-red-700">
                   <CardHeader className="bg-secondary bg-white dark:bg-gray-800">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">

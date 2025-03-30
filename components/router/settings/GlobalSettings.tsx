@@ -1,5 +1,3 @@
-import React, { useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -278,14 +276,79 @@ const GlobalSettings = ({
                 2
               )}
               {renderTimeControl(
-                "sensorDelay",
-                "Sensor Delay",
-                "Delay of the push mechanism activation",
+                "sensorDelayTime",
+                "Sensor Delay Time",
+                "Delay after detecting a block before starting ejection",
                 config.slave.sensorDelayTime,
-                <PauseCircle className="h-4 w-4 text-yellow-400" />,
+                <PauseCircle className="h-4 w-4 text-blue-400" />,
                 (value) => updateConfig("slave.sensorDelayTime", value),
                 validationErrors.sensorDelayTime,
+                1
+              )}
+            </div>
+          </div>
+
+          <Separator className="bg-gray-800" />
+
+          {/* Flipper Controls Section */}
+          <div className="space-y-4 mt-8">
+            <motion.h3
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-sm font-medium text-gray-400 flex items-center gap-2"
+            >
+              <Settings2 className="h-4 w-4" />
+              Flipper Controls
+            </motion.h3>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="flex items-center justify-between p-4 rounded-lg"
+            >
+              <div className="flex items-center gap-3">
+                <Settings2 className="h-4 w-4 text-blue-400" />
+                <div>
+                  <Label htmlFor="flipperEnabled" className="font-medium">
+                    Enable Flipper
+                  </Label>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Enable the automatic board flipping mechanism
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="flipperEnabled"
+                checked={config.slave.flipperEnabled}
+                onCheckedChange={(checked) =>
+                  updateConfig("slave.flipperEnabled", checked)
+                }
+                className="data-[state=checked]:bg-blue-500"
+              />
+            </motion.div>
+
+            <div className="space-y-6 pl-4">
+              {renderTimeControl(
+                "flipperDelay",
+                "Flipper Delay",
+                "Delay before the flipper activates",
+                config.slave.flipperDelay,
+                <PauseCircle className="h-4 w-4 text-blue-400" />,
+                (value) => updateConfig("slave.flipperDelay", value),
+                validationErrors.flipperDelay,
                 0
+              )}
+
+              {renderTimeControl(
+                "flipperDuration",
+                "Flipper Duration",
+                "How long the flipper remains active",
+                config.slave.flipperDuration,
+                <Clock className="h-4 w-4 text-blue-400" />,
+                (value) => updateConfig("slave.flipperDuration", value),
+                validationErrors.flipperDuration,
+                1
               )}
             </div>
           </div>
@@ -304,6 +367,98 @@ const GlobalSettings = ({
               Defect Detection Parameters
             </motion.h3>
             <div className="space-y-6 pl-4">
+              {/* Ejection Enabled Switch */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center justify-between p-4 rounded-lg border border-gray-800 dark:border-gray-700 bg-gray-950 dark:bg-gray-800/50"
+              >
+                <div className="flex items-center gap-3">
+                  <Shield className="h-5 w-5 text-red-400" />
+                  <div>
+                    <Label
+                      htmlFor="ejectionEnabled"
+                      className="font-medium text-base"
+                    >
+                      Enable Ejection System
+                    </Label>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Master switch for the entire ejection system
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="ejectionEnabled"
+                  checked={config.ejection.globalSettings.ejectionEnabled}
+                  onCheckedChange={(checked) =>
+                    updateConfig(
+                      "ejection.globalSettings.ejectionEnabled",
+                      checked
+                    )
+                  }
+                  className="data-[state=checked]:bg-red-500"
+                />
+              </motion.div>
+
+              {/* Global Confidence Threshold */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="pb-5"
+              >
+                <Label
+                  htmlFor="globalConfidenceThreshold"
+                  className="flex items-center mb-2 text-sm font-medium"
+                >
+                  Global Confidence Threshold
+                  {renderTooltip(
+                    "Minimum confidence score required for any detection to be considered"
+                  )}
+                </Label>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-4">
+                    <Slider
+                      id="globalConfidenceThreshold"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={[
+                        config.ejection.globalSettings
+                          .globalConfidenceThreshold,
+                      ]}
+                      onValueChange={(value) =>
+                        updateConfig(
+                          "ejection.globalSettings.globalConfidenceThreshold",
+                          value[0]
+                        )
+                      }
+                      className="flex-1 dark:data-[state=active]:bg-gray-400 dark:data-[state=inactive]:bg-gray-600"
+                    />
+                    <motion.span
+                      className="w-16 text-right font-mono"
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {config.ejection.globalSettings.globalConfidenceThreshold?.toFixed(
+                        2
+                      )}
+                    </motion.span>
+                  </div>
+                  {validationErrors.globalConfidenceThreshold && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="text-red-500 text-sm mt-1"
+                    >
+                      {validationErrors.globalConfidenceThreshold}
+                    </motion.p>
+                  )}
+                </div>
+              </motion.div>
+
               {/* Multiple Defects Switch */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

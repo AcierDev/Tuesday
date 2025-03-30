@@ -591,7 +591,7 @@ export default function CustomArtRequest() {
         <CardFooter className="flex flex-col items-start border-t border-gray-800 pt-6">
           <div className="w-full space-y-2">
             <div className="mb-4 p-4 bg-gray-900 rounded-md text-sm font-mono">
-              <h4 className="text-gray-400 mb-2">Debug Information:</h4>
+              <h4 className="text-gray-400 mb-2">Full breakdown:</h4>
               {costBreakdown.debug && (
                 <div className="space-y-1 text-gray-300">
                   <div>

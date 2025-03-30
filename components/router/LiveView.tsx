@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LogEntry } from "@/components/router/LogEntry";
@@ -7,7 +7,7 @@ import { EmptyLogs } from "@/utils/functions";
 import { MessageSquare } from "lucide-react";
 import { ImageMetadata } from "@/typings/types";
 import { StatusCard } from "@/components/shared/StatusCard";
-import { Circle, Power } from "lucide-react";
+import { Circle, Power, RotateCw } from "lucide-react";
 
 interface RouterState {
   currentImageUrl: string | null;
@@ -18,13 +18,14 @@ interface RouterState {
   ejectionDecision: boolean | null;
   sensor1: string;
   push_cylinder: string;
-  riser_cylinder: string;
+  flipper: string;
   ejection_cylinder: string;
   settings?: {
     slave: {
       pushTime: number;
-      riserTime: number;
+      flipperDuration: number;
       ejectionTime: number;
+      flipperDelay: number;
     };
   };
 }
@@ -43,100 +44,131 @@ interface LiveViewProps {
   };
   state: RouterState;
   logs: Log[];
+  historicalImages?: {
+    url: string;
+    metadata: ImageMetadata;
+    timestamp: Date;
+    analysis?: any;
+    ejectionDecision?: boolean | null;
+  }[];
 }
 
-const LiveView: React.FC<LiveViewProps> = ({ currentImage, state, logs }) => {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Left Column - Image Analysis */}
-      <div>
-        <ImageAnalysisCard
-          imageUrl={currentImage.url}
-          imageMetadata={currentImage.metadata}
-          analysis={state.currentAnalysis}
-          isCapturing={state.isCapturing}
-          isAnalyzing={state.isAnalyzing}
-          ejectionDecision={state.ejectionDecision}
-        />
-      </div>
+// Wrap LiveView in React.memo to prevent unnecessary re-renders
+const LiveView: React.FC<LiveViewProps> = memo(
+  ({ currentImage, state, logs, historicalImages = [] }) => {
+    // Create a more stable object for passing to ImageAnalysisCard
+    const stableState = React.useMemo(
+      () => ({
+        currentAnalysis: state.currentAnalysis,
+        isCapturing: state.isCapturing,
+        isAnalyzing: state.isAnalyzing,
+        ejectionDecision: state.ejectionDecision,
+      }),
+      [
+        state.currentAnalysis,
+        state.isCapturing,
+        state.isAnalyzing,
+        state.ejectionDecision,
+      ]
+    );
 
-      {/* Right Column - System Status & Monitor */}
-      <div className="space-y-6">
-        {/* System Status */}
-        <Card className="bg-white dark:bg-gray-800 dark:border-gray-700 shadow-card">
-          <CardHeader>
-            <CardTitle>System Status</CardTitle>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Real-time sensor and device status
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <StatusCard
-                title="Block Sensor"
-                status={state.sensor1 === "ON"}
-                icon={Circle}
-                description={state.sensor1 === "ON" ? "Active" : "Inactive"}
-                isActive={state.sensor1 === "ON"}
-                activeColor="green"
-              />
-              <StatusCard
-                title="Push Cylinder"
-                status={state.push_cylinder === "ON"}
-                icon={Power}
-                description={
-                  state.push_cylinder === "ON" ? "Engaged" : "Disengaged"
-                }
-                duration={state.settings?.slave.pushTime}
-                isActive={state.push_cylinder === "ON"}
-              />
-              <StatusCard
-                title="Riser Cylinder"
-                status={state.riser_cylinder === "ON"}
-                icon={Power}
-                description={
-                  state.riser_cylinder === "ON" ? "Engaged" : "Disengaged"
-                }
-                duration={state.settings?.slave.riserTime}
-                isActive={state.riser_cylinder === "ON"}
-              />
-              <StatusCard
-                title="Ejection Cylinder"
-                status={state.ejection_cylinder === "ON"}
-                icon={Power}
-                description={
-                  state.ejection_cylinder === "ON" ? "Engaged" : "Disengaged"
-                }
-                duration={state.settings?.slave.ejectionTime}
-                isActive={state.ejection_cylinder === "ON"}
-              />
-            </div>
-          </CardContent>
-        </Card>
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column - Image Analysis */}
+        <div>
+          <ImageAnalysisCard
+            imageUrl={currentImage.url}
+            imageMetadata={currentImage.metadata}
+            analysis={stableState.currentAnalysis}
+            isCapturing={stableState.isCapturing}
+            isAnalyzing={stableState.isAnalyzing}
+            ejectionDecision={stableState.ejectionDecision}
+            historicalImages={historicalImages}
+            state={state}
+          />
+        </div>
 
-        {/* System Monitor */}
-        <Card className="bg-white dark:bg-gray-800 dark:border-gray-700 shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-blue-500" />
-              System Monitor
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[300px] px-4">
-              <div className="space-y-2 py-4">
-                {logs.length > 0 ? (
-                  logs.map((log) => <LogEntry key={log.id} log={log} />)
-                ) : (
-                  <EmptyLogs />
-                )}
+        {/* Right Column - System Status & Monitor */}
+        <div className="space-y-6">
+          {/* System Status */}
+          <Card className="bg-white dark:bg-gray-800 dark:border-gray-700 shadow-card">
+            <CardHeader>
+              <CardTitle>System Status</CardTitle>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Real-time sensor and device status
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <StatusCard
+                  title="Block Sensor"
+                  status={state.sensor1 === "ON"}
+                  icon={Circle}
+                  description={state.sensor1 === "ON" ? "Active" : "Inactive"}
+                  isActive={state.sensor1 === "ON"}
+                  activeColor="green"
+                />
+                <StatusCard
+                  title="Push Cylinder"
+                  status={state.push_cylinder === "ON"}
+                  icon={Power}
+                  description={
+                    state.push_cylinder === "ON" ? "Engaged" : "Disengaged"
+                  }
+                  duration={state.settings?.slave.pushTime}
+                  isActive={state.push_cylinder === "ON"}
+                />
+                <StatusCard
+                  title="Flipper"
+                  status={state.flipper === "ON"}
+                  icon={RotateCw}
+                  description={
+                    state.flipper === "ON" ? "Engaged" : "Disengaged"
+                  }
+                  duration={state.settings?.slave.flipperDuration}
+                  isActive={state.flipper === "ON"}
+                />
+                <StatusCard
+                  title="Ejection Cylinder"
+                  status={state.ejection_cylinder === "ON"}
+                  icon={Power}
+                  description={
+                    state.ejection_cylinder === "ON" ? "Engaged" : "Disengaged"
+                  }
+                  duration={state.settings?.slave.ejectionTime}
+                  isActive={state.ejection_cylinder === "ON"}
+                />
               </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* System Monitor */}
+          <Card className="bg-white dark:bg-gray-800 dark:border-gray-700 shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-blue-500" />
+                System Monitor
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[300px] px-4">
+                <div className="space-y-2 py-4">
+                  {logs.length > 0 ? (
+                    logs.map((log) => <LogEntry key={log.id} log={log} />)
+                  ) : (
+                    <EmptyLogs />
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  }
+);
+
+// Add display name for React DevTools
+LiveView.displayName = "LiveView";
 
 export default LiveView;

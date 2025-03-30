@@ -291,6 +291,7 @@ export enum ItemDesigns {
   Spectrum = "Spectrum",
   Aloe = "Aloe",
   Mirage = "Mirage",
+  Amethyst = "Amethyst",
 }
 
 export enum ItemSizes {
@@ -514,12 +515,17 @@ export interface SlaveSettings {
   ejectionTime: number;
   sensorDelayTime: number;
   analysisMode: boolean;
+  flipperDelay: number;
+  flipperDuration: number;
+  flipperEnabled: boolean;
 }
 
 export interface GlobalSettings {
   requireMultipleDefects: boolean;
   minTotalArea: number;
   maxDefectsBeforeEject: number;
+  globalConfidenceThreshold: number;
+  ejectionEnabled: boolean;
 }
 
 export type PerClassSettings = {
@@ -580,11 +586,20 @@ export interface AnalysisImage {
   path: string;
 }
 
+export interface HistoricalImage {
+  id: string;
+  url: string;
+  metadata: ImageMetadata;
+  timestamp: Date;
+  analysis: any | null;
+  ejectionDecision: boolean | null;
+}
+
 export interface SlaveState {
   status: string;
   router_state: string;
   push_cylinder: "ON" | "OFF";
-  riser_cylinder: "ON" | "OFF";
+  flipper: "ON" | "OFF";
   ejection_cylinder: "ON" | "OFF";
   sensor1: "ON" | "OFF";
   analysisMode: boolean;

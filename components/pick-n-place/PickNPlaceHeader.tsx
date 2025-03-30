@@ -53,7 +53,7 @@ const PickNPlaceHeader: React.FC<PickNPlaceHeaderProps> = ({
   };
 
   const computers = [
-    { name: "Bentzi's Laptop", ip: "192.168.1.222:8080" },
+    { name: "Bentzi's Laptop", ip: "192.168.1.229:8080" },
     { name: "localhost", ip: "localhost:8080" },
     { name: "Pick & Place Machine", ip: "192.168.1.198:8080" },
   ];
