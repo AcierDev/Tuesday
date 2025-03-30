@@ -10,34 +10,45 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
-import { getDueBadge } from "../../utils/functions";
+import { cn, getDueBadge } from "../../utils/functions";
 import { useOrderSettings } from "../../contexts/OrderSettingsContext";
 import { toast } from "sonner";
-import { ColumnValue, Item, ItemStatus } from "@/typings/types";
-import { useBoardOperations } from "@/hooks/useBoardOperations";
+import {
+  ColumnTitles,
+  ColumnValue,
+  ExtendedItem,
+  Item,
+  ItemStatus,
+} from "@/typings/types";
 
-export const DateCell = ({
-  item,
-  columnValue,
-}: {
-  item: Item;
+interface DateCellProps {
+  item: ExtendedItem;
   columnValue: ColumnValue;
-}) => {
-  const [date, setDate] = useState(null);
-  const { settings } = useOrderSettings();
+  onUpdate: (item: Item, columnName: ColumnTitles) => void;
+}
 
-  const { updateItem } = useBoardOperations();
+export const DateCell = ({ item, columnValue, onUpdate }: DateCellProps) => {
+  const [date, setDate] = useState<Date | null>(null);
+  const { settings } = useOrderSettings();
 
   useEffect(() => {
     if (columnValue.text) {
+      // Try parsing as ISO string first
       const parsedDate = parseISO(columnValue.text);
-      setDate(isValid(parsedDate) ? parsedDate : null);
+
+      if (isValid(parsedDate)) {
+        setDate(parsedDate);
+      } else {
+        // If not valid ISO string, try parsing as milliseconds
+        const msDate = new Date(Number(columnValue.text));
+        setDate(isValid(msDate) ? msDate : null);
+      }
     } else {
       setDate(null);
     }
   }, [columnValue.text]);
 
-  const handleUpdate = async (newDate: Date) => {
+  const handleUpdate = async (newDate: Date | null) => {
     try {
       const newValue = newDate ? newDate.toISOString() : "";
       const updatedItem = {
@@ -48,7 +59,7 @@ export const DateCell = ({
             : value
         ),
       };
-      await updateItem(updatedItem, columnValue.columnName);
+      await onUpdate(updatedItem, columnValue.columnName);
       toast.success("Date updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
@@ -59,14 +70,19 @@ export const DateCell = ({
   const formattedDate = date && isValid(date) ? format(date, "MM/dd/yyyy") : "";
 
   return (
-    <div className="flex items-center justify-center space-x-2 h-full">
+    <div className={"flex items-center justify-center space-x-2 h-full"}>
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            className="w-full h-full justify-center p-2 text-gray-900 dark:text-gray-100"
+            className="w-full h-full justify-center p-2 dark:text-white"
             variant="ghost"
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon
+              className={cn(
+                "mr-2 h-4 w-4",
+                item.isScheduled && "text-yellow-500"
+              )}
+            />
             {formattedDate || ""}
           </Button>
         </PopoverTrigger>
@@ -78,7 +94,7 @@ export const DateCell = ({
             initialFocus
             mode="single"
             selected={date}
-            onSelect={(newDate) => {
+            onSelect={(newDate: Date | null) => {
               setDate(newDate);
               handleUpdate(newDate);
             }}

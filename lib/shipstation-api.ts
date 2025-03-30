@@ -86,7 +86,6 @@ export async function getOrder(orderId: string): Promise<ShipStationOrder> {
       vertical: false,
       visible: false,
       deleted: false,
-      isScheduled: false,
       shippingDetails: order.shipTo,
     };
 

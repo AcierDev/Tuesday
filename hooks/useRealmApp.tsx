@@ -1,98 +1,24 @@
 "use client";
 
-import { useState, useContext, createContext, useEffect } from "react";
-import * as Realm from "realm-web";
-import { Board, InventoryItem } from "../typings/types";
-import { CuttingData } from "@/typings/interfaces";
-import process from "node:process";
+import { createContext, useContext } from "react";
 
-interface RealmContextType {
-  app: Realm.App | null;
-  user: Realm.User | null;
-  boardCollection: globalThis.Realm.Services.MongoDB.MongoDBCollection<Board> | null;
-  cuttingHistoryCollection: globalThis.Realm.Services.MongoDB.MongoDBCollection<CuttingData> | null;
-  inventoryCollection: globalThis.Realm.Services.MongoDB.MongoDBCollection<InventoryItem> | null;
-  isLoading: boolean;
+// This is now just a simple context provider for sharing the mode across components
+interface AppContextType {
+  mode: string;
 }
 
-const RealmAppContext = createContext<RealmContextType>({
-  app: null,
-  user: null,
-  boardCollection: null,
-  cuttingHistoryCollection: null,
-  inventoryCollection: null,
-  isLoading: true,
+const AppContext = createContext<AppContextType>({
+  mode: process.env.NEXT_PUBLIC_MODE || "development",
 });
 
-export function useRealmApp() {
-  return useContext(RealmAppContext);
+export function useApp() {
+  return useContext(AppContext);
 }
 
-export function RealmAppProvider({ children }) {
-  const [app, setApp] = useState<Realm.App | null>(null);
-  const [user, setUser] = useState<Realm.User | null>(null);
-  const [boardCollection, setBoardCollection] =
-    useState<globalThis.Realm.Services.MongoDB.MongoDBCollection<Board> | null>(
-      null
-    );
-  const [cuttingHistoryCollection, setCuttingHistoryCollection] =
-    useState<globalThis.Realm.Services.MongoDB.MongoDBCollection<CuttingData> | null>(
-      null
-    );
-  const [inventoryCollection, setIntentoryCollection] =
-    useState<globalThis.Realm.Services.MongoDB.MongoDBCollection<InventoryItem> | null>(
-      null
-    );
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    console.log(process.env.NEXT_PUBLIC_MODE);
-
-    const initRealm = async () => {
-      const realmApp = new Realm.App({ id: "new-db-realm-sbrnzvh" });
-      setApp(realmApp);
-
-      try {
-        const credentials = Realm.Credentials.anonymous();
-        const loggedInUser = await realmApp.logIn(credentials);
-        setUser(loggedInUser);
-
-        const mongo = loggedInUser.mongoClient("mongodb-atlas");
-        const userCollection = mongo
-          .db("react-web-app")
-          .collection(process.env.NEXT_PUBLIC_MODE!);
-        const cuttingHistoryCollection = mongo
-          .db("react-web-app")
-          .collection("cuttingHistory-" + process.env.NEXT_PUBLIC_MODE);
-        const inventoryCollection = mongo
-          .db("react-web-app")
-          .collection("inventory-" + process.env.NEXT_PUBLIC_MODE);
-
-        setBoardCollection(userCollection);
-        setCuttingHistoryCollection(cuttingHistoryCollection);
-        setIntentoryCollection(inventoryCollection);
-      } catch (err) {
-        console.error("Failed to log in", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initRealm();
-  }, []);
-
+export function AppProvider({ children }: { children: React.ReactNode }) {
   const value = {
-    app,
-    user,
-    boardCollection,
-    cuttingHistoryCollection,
-    inventoryCollection,
-    isLoading,
+    mode: process.env.NEXT_PUBLIC_MODE || "development",
   };
 
-  return (
-    <RealmAppContext.Provider value={value}>
-      {children}
-    </RealmAppContext.Provider>
-  );
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

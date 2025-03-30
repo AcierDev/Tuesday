@@ -1,242 +1,235 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useTheme } from "next-themes";
+import { toast } from "sonner";
+import { parseMinecraftColors } from "../../parseMinecraftColors";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { parseMinecraftColors } from "../../parseMinecraftColors";
-import { useTheme } from "next-themes";
-import { toast } from "sonner";
-import { Plus, X, ChevronRight } from "lucide-react";
-import { useBoardOperations } from "@/hooks/useBoardOperations";
-import { ColumnTitles, GenericColumnValue } from "@/typings/types";
+import {
+  Angry,
+  FileWarning,
+  MessageCircleWarning,
+  MoveVertical,
+} from "lucide-react";
+import { cn } from "@/utils/functions";
+import React from "react";
+import { Item, ColumnValue, ColumnTitles } from "@/typings/types";
 
-interface Tag {
-  id: string;
-  name: string;
-}
+// // Add this style block right after imports
+// const pulseKeyframes = `
+//   @keyframes pulse {
+//     0% {
+//       transform: scale(1);
+//     }
+//     50% {
+//       transform: scale(1.5);
+//     }
+//     100% {
+//       transform: scale(1);
+//     }
+//   }
+// `;
+
+// // Add the style element to inject the keyframes
+// const styleElement = document.createElement("style");
+// styleElement.textContent = pulseKeyframes;
+// if (typeof document !== "undefined") {
+//   document.head.appendChild(styleElement);
+// }
 
 interface NameCellProps {
-  item: any;
-  columnValue: GenericColumnValue;
-  onAddTag: (itemId: string, tagName: string) => void;
-  onRemoveTag: (itemId: string, tagId: string) => void;
-  initialTags: Tag[];
+  item: Item;
+  columnValue: {
+    text: string;
+    columnName: string;
+  };
+  onUpdate: (updatedItem: Item, changedField?: ColumnTitles) => Promise<Item>;
+  tags?: {
+    isDuplicate: boolean;
+    isDifficultCustomer: boolean;
+    isVertical: boolean;
+    hasCustomerMessage: boolean;
+  };
 }
 
 export const NameCell: React.FC<NameCellProps> = ({
   item,
   columnValue,
-  onAddTag,
-  onRemoveTag,
-  initialTags,
+  onUpdate,
+  tags,
 }) => {
   const [inputValue, setInputValue] = useState(columnValue.text || "");
-  const [isHovered, setIsHovered] = useState(false);
-  const [isAddingTag, setIsAddingTag] = useState(false);
-  const [newTagName, setNewTagName] = useState("");
-  const [showAllTags, setShowAllTags] = useState(false);
-  const [tags, setTags] = useState<Tag[]>(initialTags);
+  const [isEditing, setIsEditing] = useState(false);
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
-  const tagInputRef = useRef<HTMLInputElement>(null);
-  const { updateItem } = useBoardOperations();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const previousValueRef = useRef(columnValue.text);
 
   useEffect(() => {
-    setInputValue(columnValue.text || "");
+    if (columnValue.text !== previousValueRef.current) {
+      setInputValue(columnValue.text || "");
+      previousValueRef.current = columnValue.text;
+    }
   }, [columnValue.text]);
 
-  useEffect(() => {
-    setTags(initialTags);
-  }, [initialTags]);
-
-  useEffect(() => {
-    if (isAddingTag && tagInputRef.current) {
-      tagInputRef.current.focus();
-    }
-  }, [isAddingTag]);
-
   const handleUpdate = useCallback(async () => {
-    if (inputValue !== columnValue.text) {
-      try {
-        const updatedItem = {
-          ...item,
-          values: item.values.map((value) =>
-            value.columnName === columnValue.columnName
-              ? {
-                  ...value,
-                  text: inputValue,
-                  lastModifiedTimestamp: Date.now(),
-                }
-              : value
-          ),
-        };
-        await updateItem(updatedItem, columnValue.columnName as ColumnTitles);
-        toast.success("Name updated successfully");
-      } catch (err) {
-        console.error("Failed to update ColumnValue", err);
-        toast.error("Failed to update the name. Please try again.");
+    if (inputValue === columnValue.text) return;
+
+    try {
+      const updatedItem = {
+        ...item,
+        values: item.values.map((value: ColumnValue) =>
+          value.columnName === columnValue.columnName
+            ? {
+                ...value,
+                text: inputValue,
+                lastModifiedTimestamp: Date.now(),
+              }
+            : value
+        ),
+      };
+      await onUpdate(updatedItem, columnValue.columnName as ColumnTitles);
+      toast.success("Name updated successfully");
+    } catch (err) {
+      console.error("Failed to update ColumnValue", err);
+      toast.error("Failed to update the name. Please try again.");
+      setInputValue(columnValue.text || "");
+    }
+  }, [inputValue, columnValue.text, columnValue.columnName, item, onUpdate]);
+
+  const handleInput = useCallback(
+    (e: React.FormEvent<HTMLDivElement>) => {
+      const newValue = e.currentTarget.textContent || "";
+      if (!isEditing) {
+        setIsEditing(true);
       }
-    }
-  }, [inputValue, columnValue.text, columnValue.columnName, item, updateItem]);
-
-  const handleAddTag = useCallback(() => {
-    if (newTagName.trim()) {
-      const newTag = { id: Date.now().toString(), name: newTagName.trim() };
-      setTags((prevTags) => [...(prevTags || []), newTag]);
-      onAddTag(item.id, newTagName.trim());
-      toast.success(`Tag "${newTagName.trim()}" added successfully`);
-      setNewTagName("");
-      setIsAddingTag(false);
-    }
-  }, [newTagName, item.id, onAddTag]);
-
-  const handleRemoveTag = useCallback(
-    (tagId: string) => {
-      setTags((prevTags) => prevTags?.filter((tag) => tag.id !== tagId));
-      onRemoveTag(item.id, tagId);
-      toast.success("Tag removed successfully");
+      setInputValue(newValue);
     },
-    [item.id, onRemoveTag]
+    [isEditing]
   );
 
-  const toggleShowAllTags = useCallback(() => {
-    setShowAllTags((prev) => !prev);
+  const handleBlur = useCallback(async () => {
+    setIsEditing(false);
+    if (contentRef.current) {
+      const newValue = contentRef.current.textContent || "";
+      if (newValue !== columnValue.text) {
+        setInputValue(newValue);
+        await handleUpdate();
+      }
+    }
+  }, [columnValue.text, handleUpdate]);
+
+  const handleFocus = useCallback(() => {
+    setIsEditing(true);
   }, []);
 
-  const displayedTags = showAllTags ? tags : tags?.slice(0, 1);
+  useEffect(() => {
+    if (!isEditing && contentRef.current) {
+      const colorizedContent = parseMinecraftColors(inputValue, isDarkMode)
+        .map((node) => {
+          if (React.isValidElement(node)) {
+            const props = node.props as {
+              style: { color: string };
+              children: React.ReactNode;
+            };
+            return `<span style="color: ${props.style.color}">${props.children}</span>`;
+          }
+          return "";
+        })
+        .join("");
+
+      contentRef.current.innerHTML = colorizedContent;
+    }
+  }, [inputValue, isDarkMode, isEditing]);
 
   return (
-    <div
-      className="flex items-center w-full h-full relative group"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <Popover open={isAddingTag} onOpenChange={setIsAddingTag}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute left-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={() => setIsAddingTag(true)}
-          >
-            <Plus className="h-4 w-4" />
-            <span className="sr-only">Add tag</span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[200px] p-2" align="start">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleAddTag();
-            }}
-          >
-            <Input
-              ref={tagInputRef}
-              placeholder="Enter new tag"
-              value={newTagName}
-              onChange={(e) => setNewTagName(e.target.value)}
-              className="mb-2"
-            />
-            <Button type="submit" size="sm" className="w-full">
-              Add Tag
-            </Button>
-          </form>
-        </PopoverContent>
-      </Popover>
-      <div className="flex items-center space-x-2 w-full pl-8">
-        <Input
-          className="font-medium border-0 p-2 bg-transparent w-full text-center text-transparent caret-black dark:caret-white"
-          value={inputValue}
-          onBlur={handleUpdate}
-          onChange={(e) => setInputValue(e.target.value)}
-        />
-        <div className="flex items-center space-x-1 min-w-fit">
-          {displayedTags?.map((tag: Tag) => (
-            <TooltipProvider key={tag.id}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    variant="secondary"
-                    className="text-xs px-1 max-w-[60px] truncate cursor-pointer"
-                  >
-                    {tag.name}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>{tag.name}</p>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-4 w-4 ml-1"
-                    onClick={() => handleRemoveTag(tag.id)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ))}
-          {tags?.length > 1 && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 p-0"
-                  onClick={toggleShowAllTags}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                  <span className="sr-only">
-                    {showAllTags ? "Show fewer tags" : "Show more tags"}
-                  </span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-2" align="end">
-                <ScrollArea className="h-[200px] w-full">
-                  {tags.map((tag: Tag) => (
-                    <div
-                      key={tag.id}
-                      className="flex items-center justify-between py-1"
-                    >
-                      <span className="truncate">{tag.name}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleRemoveTag(tag.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </ScrollArea>
-              </PopoverContent>
-            </Popover>
-          )}
-        </div>
-        {item.vertical && (
-          <Badge variant="secondary" className="whitespace-nowrap">
-            Vertical
-          </Badge>
+    <div className="flex items-center w-full h-full relative group">
+      <div className="flex items-center space-x-2 w-full pl-2">
+        {tags?.isDuplicate && (
+          <Tooltip>
+            <TooltipTrigger>
+              <FileWarning className="h-4 w-4 text-orange-500" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Multiple orders with this customer name</p>
+            </TooltipContent>
+          </Tooltip>
         )}
-      </div>
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-gray-900 dark:text-gray-100">
-        <span className="whitespace-pre-wrap">
-          {parseMinecraftColors(inputValue, isDarkMode)}
-        </span>
+        {tags?.isDifficultCustomer && (
+          <Tooltip>
+            <TooltipTrigger>
+              <Angry
+                className="h-4 w-4 text-red-500 animate-[pulse_3s_ease-in-out_infinite]"
+                style={{
+                  animation: "pulse 3s ease-in-out infinite",
+                  transformOrigin: "center",
+                }}
+              />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Difficult customer</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {tags?.isVertical && (
+          <Tooltip>
+            <TooltipTrigger>
+              <MoveVertical className="h-4 w-4 text-blue-500" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Vertical Order</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {tags?.hasCustomerMessage && (
+          <Tooltip>
+            <TooltipTrigger>
+              <MessageCircleWarning className="h-4 w-4 text-blue-500" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Customer messaged</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        <div
+          ref={contentRef}
+          className={cn(
+            "min-w-0 flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            "font-medium text-center break-words",
+            "cursor-text select-text",
+            "transition-shadow duration-200",
+            "hover:ring-1 hover:ring-ring/50",
+            "rounded-md",
+            isEditing ? "ring-2 ring-ring ring-offset-2" : ""
+          )}
+          contentEditable
+          onInput={handleInput}
+          onBlur={handleBlur}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              setInputValue(columnValue.text || "");
+              setIsEditing(false);
+              e.currentTarget.blur();
+            }
+          }}
+          onPaste={(e) => {
+            e.preventDefault();
+            const text = e.clipboardData.getData("text/plain");
+            document.execCommand("insertText", false, text);
+          }}
+          onFocus={handleFocus}
+          suppressContentEditableWarning
+        />
       </div>
     </div>
   );

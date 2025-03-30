@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ROIController from "./RegionController";
-import { RouterSettings } from "@/typings/types";
+import { RouterSettings, Region } from "@/typings/types";
 
 interface AdvancedSettingsProps {
   config: RouterSettings;
@@ -39,12 +39,12 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   // Convert config regions to the format expected by ROIController
   const regions = useMemo(() => {
     const roi = {
-      ...config.advancedSettings.regionOfInterest,
+      ...config.ejection.advancedSettings.regionOfInterest,
       type: "roi" as const,
       id: "main-roi",
     };
 
-    const exclusions = config.advancedSettings.exclusionZones.map(
+    const exclusions = config.ejection.advancedSettings.exclusionZones.map(
       (zone, index) => ({
         ...zone,
         type: "exclusion" as const,
@@ -54,18 +54,18 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
 
     return [roi, ...exclusions];
   }, [
-    config.advancedSettings.regionOfInterest,
-    config.advancedSettings.exclusionZones,
+    config.ejection.advancedSettings.regionOfInterest,
+    config.ejection.advancedSettings.exclusionZones,
   ]);
 
   // Handle regions updates from ROIController
-  const handleRegionsChange = (newRegions: any[]) => {
+  const handleRegionsChange = (newRegions: Region[]) => {
     const roi = newRegions.find((r) => r.type === "roi");
     const exclusions = newRegions.filter((r) => r.type === "exclusion");
 
     if (roi) {
       const { x, y, width, height } = roi;
-      updateConfig("advancedSettings.regionOfInterest", {
+      updateConfig("ejection.advancedSettings.regionOfInterest", {
         x,
         y,
         width,
@@ -73,18 +73,20 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
       });
     }
 
-    const formattedExclusions = exclusions.map(({ x, y, width, height }) => ({
-      x,
-      y,
-      width,
-      height,
-    }));
-    updateConfig("advancedSettings.exclusionZones", formattedExclusions);
+    updateConfig(
+      "ejection.advancedSettings.exclusionZones",
+      exclusions.map(({ x, y, width, height }) => ({
+        x,
+        y,
+        width,
+        height,
+      }))
+    );
   };
 
   return (
     <div className="space-y-6">
-      <Card className="bg-gray-900/5 dark:bg-gray-800 backdrop-blur-sm border border-gray-200/20">
+      <Card className="bg-gray-900/5 dark:bg-gray-800 backdrop-blur-sm border border-gray-200/20 shadow-card">
         <CardHeader className="pb-4">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Target className="h-5 w-5 text-blue-500" />
@@ -93,7 +95,7 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Overlap Setting */}
-          <div className="flex items-center justify-between p-4 bg-gray-100/50 dark:bg-gray-800/50 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-gray-100/50 dark:bg-transparent rounded-lg">
             <div className="flex items-center space-x-2">
               <Label
                 htmlFor="considerOverlap"
@@ -107,9 +109,12 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
             </div>
             <Switch
               id="considerOverlap"
-              checked={config.advancedSettings.considerOverlap}
+              checked={config.ejection.advancedSettings.considerOverlap}
               onCheckedChange={(checked) =>
-                updateConfig("advancedSettings.considerOverlap", checked)
+                updateConfig(
+                  "ejection.advancedSettings.considerOverlap",
+                  checked
+                )
               }
               className="data-[state=checked]:bg-blue-600"
             />

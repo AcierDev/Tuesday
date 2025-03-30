@@ -15,7 +15,7 @@ import {
   EMPLOYEE_MAP,
   INITIALS_MAP,
   OPTION_IMAGES,
-} from "@/utils/constants";
+} from "@/typings/constants";
 import { EmployeeNames } from "@/typings/types";
 import {
   authenticate,

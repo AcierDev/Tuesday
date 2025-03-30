@@ -1,48 +1,41 @@
-import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
-import process from "node:process";
+import { NextResponse } from "next/server";
+import { getDb } from "../db/connect";
 
 export async function GET() {
   try {
-    const client = await clientPromise;
-    const db = client.db("react-web-app");
+    const db = await getDb();
     const collection = db.collection(
-      "cuttingHistory-" + process.env.NEXT_PUBLIC_MODE
+      `cuttingHistory-${process.env.NEXT_PUBLIC_MODE}`
     );
 
     const history = await collection.find({}).toArray();
     return NextResponse.json(history);
   } catch (error) {
-    console.error(error);
     return NextResponse.json(
-      { error: "Error connecting to database" },
+      { error: "Failed to fetch cutting history" },
       { status: 500 }
     );
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const client = await clientPromise;
-    const db = client.db("react-web-app");
+    const db = await getDb();
     const collection = db.collection(
-      "cuttingHistory-" + process.env.NEXT_PUBLIC_MODE
+      `cuttingHistory-${process.env.NEXT_PUBLIC_MODE}`
     );
 
-    const { date, count } = await request.json();
-
-    // Use updateOne with upsert instead of insertOne to match the previous behavior
+    const data = await request.json();
     const result = await collection.updateOne(
-      { date },
-      { $set: { count } },
+      { date: data.date },
+      { $set: data },
       { upsert: true }
     );
 
-    return NextResponse.json(result, { status: 201 });
+    return NextResponse.json(result);
   } catch (error) {
-    console.error(error);
     return NextResponse.json(
-      { error: "Error connecting to database" },
+      { error: "Failed to update cutting history" },
       { status: 500 }
     );
   }

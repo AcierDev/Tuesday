@@ -7,6 +7,7 @@ import {
   ItemSizes,
   EmployeeNames,
   ShippingStatus,
+  ItemDesigns,
 } from "../typings/types";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,10 +27,12 @@ import { Box } from "@/typings/interfaces";
 import {
   CREDIT_COLORS,
   CreditOption,
+  DESIGN_COLOR_NAMES,
   EMPLOYEE_MAP,
   INITIALS_MAP,
   OPTION_IMAGES,
-} from "./constants";
+  SIZE_MULTIPLIERS,
+} from "../typings/constants";
 import {
   AlertCircle,
   CheckCircle2,
@@ -287,4 +290,27 @@ export function generateUUID(): string {
     console.warn("Using fallback UUID generation due to error:", error);
     return generateFallbackUUID();
   }
+}
+
+export const calculateTotalSquares = (
+  dayItems: { id: string; done: boolean }[],
+  items: Item[],
+  getItemValue: (item: Item, columnName: ColumnTitles) => string
+): number => {
+  return dayItems.reduce((total, scheduleItem) => {
+    const item = items.find((i) => i.id === scheduleItem.id);
+    if (item) {
+      const size = getItemValue(item, ColumnTitles.Size);
+      const [width = 0, height = 0] = size.split("x").map(Number);
+      return total + width * height;
+    }
+    return total;
+  }, 0);
+};
+
+export function calculateAmountRequiredPerColor(
+  design: ItemDesigns,
+  size: ItemSizes
+) {
+  return SIZE_MULTIPLIERS[size] / DESIGN_COLOR_NAMES[design]?.length || 1;
 }

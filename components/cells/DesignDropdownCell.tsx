@@ -15,10 +15,9 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { XCircleIcon } from "lucide-react";
 import { boardConfig } from "../../config/boardconfig";
-import { DesignBlends, ItemDesignImages } from "@/utils/constants";
+import { DesignBlends, ItemDesignImages } from "@/typings/constants";
 import { toast } from "sonner";
-import { ColumnValue, Item, ItemDesigns } from "@/typings/types";
-import { useBoardOperations } from "@/hooks/useBoardOperations";
+import { ColumnTitles, ColumnValue, Item } from "@/typings/types";
 
 const createBackground = (option: string) => {
   const colors = DesignBlends[option as keyof typeof DesignBlends];
@@ -32,18 +31,18 @@ const createBackground = (option: string) => {
 export const DesignDropdownCell = ({
   item,
   columnValue,
+  onUpdate,
 }: {
   item: Item;
   columnValue: ColumnValue;
+  onUpdate: (item: Item, columnName: ColumnTitles) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [hoveredDesign, setHoveredDesign] = useState<ItemDesigns>();
+  const [hoveredDesign, setHoveredDesign] = useState(null);
   const [showPopover, setShowPopover] = useState(false);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout>(null);
+  const hoverTimeoutRef = useRef(null);
 
-  const { updateItem } = useBoardOperations();
-
-  const handleMouseEnter = useCallback((option: ItemDesigns) => {
+  const handleMouseEnter = useCallback((option) => {
     setHoveredDesign(option);
     hoverTimeoutRef.current = setTimeout(() => {
       setShowPopover(true);
@@ -54,7 +53,7 @@ export const DesignDropdownCell = ({
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
-    setHoveredDesign(undefined);
+    setHoveredDesign(null);
     setShowPopover(false);
   }, []);
 
@@ -66,7 +65,7 @@ export const DesignDropdownCell = ({
     };
   }, []);
 
-  const handleUpdate = async (newValue: ItemDesigns) => {
+  const handleUpdate = async (newValue) => {
     try {
       const updatedItem = {
         ...item,
@@ -76,7 +75,7 @@ export const DesignDropdownCell = ({
             : value
         ),
       };
-      await updateItem(updatedItem, columnValue.columnName);
+      await onUpdate(updatedItem, columnValue.columnName);
       toast.success("Design updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
@@ -133,7 +132,7 @@ export const DesignDropdownCell = ({
                   alt={`${option} design`}
                   width={300}
                   height={200}
-                  style={{ objectFit: "contain" }}
+                  objectFit="contain"
                 />
               </PopoverContent>
             )}

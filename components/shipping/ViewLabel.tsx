@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,69 +15,88 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ColumnTitles } from "@/typings/types";
+import { Tracker } from "@/typings/types";
+import { useTrackingStore } from "@/stores/useTrackingStore";
+import { useUploadProgressStore } from "@/stores/useUploadProgressStore";
+import { useShippingStore } from "@/stores/useShippingStore";
+import { UploadStep, TrackingInfo, FileProgress } from "@/types/shipping";
 
-export function ViewLabel({ orderId }: { orderId: string }) {
+type ManualTrackingInput = {
+  fileIndex: number;
+  fileName: string;
+  show: boolean;
+};
+
+export function ViewLabel({
+  orderId,
+  onClose,
+}: {
+  orderId: string;
+  onClose?: () => void;
+}) {
   const [pdfExists, setPdfExists] = useState<boolean | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [pdfUrls, setPdfUrls] = useState<string[]>([]);
   const [currentPdfIndex, setCurrentPdfIndex] = useState(0);
+  const [manualTracking, setManualTracking] = useState<ManualTrackingInput>({
+    fileIndex: -1,
+    fileName: "",
+    show: false,
+  });
+  const [manualTrackingNumber, setManualTrackingNumber] = useState("");
+  const [manualCarrier, setManualCarrier] =
+    useState<TrackingInfo["carrier"]>("UPS");
+  const { addTrackingInfo } = useTrackingStore();
+  const [pdfFilenames, setPdfFilenames] = useState<string[]>([]);
+  const { updateFileProgress, markFileComplete } = useUploadProgressStore();
+  const { removeLabel, addLabel } = useShippingStore();
 
   useEffect(() => {
-    async function checkLabels() {
-      const exists = await checkPdfExists(orderId);
-      setPdfExists(exists);
-      if (exists) {
-        fetchPdfs();
-      }
-    }
-    checkLabels();
-  }, [orderId]);
+    const checkPdfExists = async () => {
+      try {
+        const { labels, fetchAllLabels } = useShippingStore.getState();
+        fetchAllLabels();
 
-  const checkPdfExists = async (orderId: string) => {
-    try {
-      const response = await fetch(`http://144.172.71.72:3003/pdfs/${orderId}`);
-      if (response.ok) {
-        const pdfList = await response.json();
-        return pdfList.length > 0;
-      }
-      return false;
-    } catch (error) {
-      console.error("Error checking PDF existence:", error);
-      return false;
-    }
-  };
+        const orderLabels = labels[orderId] || [];
+        setPdfExists(orderLabels.length > 0);
 
-  const fetchPdfs = async () => {
-    try {
-      const response = await fetch(`http://144.172.71.72:3003/pdfs/${orderId}`);
-      if (response.ok) {
-        const pdfList = await response.json();
-        const urls = await Promise.all(
-          pdfList.map(async (pdfName: string) => {
-            const pdfResponse = await fetch(
-              `http://144.172.71.72:3003/pdf/${pdfName}`
-            );
-            const blob = await pdfResponse.blob();
-            return URL.createObjectURL(blob);
-          })
-        );
-        setPdfUrls(urls);
-      } else {
-        throw new Error("Failed to fetch PDFs");
+        if (orderLabels.length > 0) {
+          setPdfFilenames(orderLabels);
+          const urls = await Promise.all(
+            orderLabels.map(async (pdfName: string) => {
+              const pdfResponse = await fetch(`/api/shipping/pdf/${pdfName}`);
+              const blob = await pdfResponse.blob();
+              return URL.createObjectURL(blob);
+            })
+          );
+          setPdfUrls(urls);
+        }
+      } catch (error) {
+        console.error("Error checking PDF existence:", error);
+        setPdfExists(false);
       }
-    } catch (error) {
-      console.error("Error fetching PDFs:", error);
-      setError("Failed to load the PDFs. Please try again.");
-    }
-  };
+    };
+
+    checkPdfExists();
+
+    // Cleanup function to revoke object URLs
+    return () => {
+      pdfUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [orderId]); // Add pdfUrls to dependencies if you want to cleanup whenever they change
+
+  useEffect(() => {
+    // Cleanup function to revoke object URLs when component unmounts
+    // or when pdfUrls change
+    return () => {
+      pdfUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [pdfUrls]);
 
   const handleFiles = useCallback((newFiles: FileList) => {
     const pdfFiles = Array.from(newFiles).filter(
@@ -116,29 +135,65 @@ export function ViewLabel({ orderId }: { orderId: string }) {
     }
   };
 
-  const updateItemLabels = async (orderId: string, hasLabel: boolean) => {
+  const saveTrackingInfo = async (tracker: Tracker) => {
     try {
-      const response = await fetch("/api/items/labels", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          orderId,
-          hasLabel,
-          columnName: ColumnTitles.Labels,
-        }),
+      await addTrackingInfo({
+        orderId,
+        trackers: [tracker],
       });
+    } catch (error) {
+      console.error("Failed to save tracking info:", error);
+      throw error;
+    }
+  };
 
-      if (!response.ok) {
-        throw new Error("Failed to update labels status");
+  const handleManualTrackingSubmit = async () => {
+    const fileIndex = manualTracking.fileIndex;
+
+    console.log("Submitting manual tracking:", {
+      trackingNumber: manualTrackingNumber,
+      carrier: manualCarrier,
+    });
+
+    try {
+      setError(null);
+
+      const trackerResponse = await fetch(
+        `/api/shipping/tracker/${manualTrackingNumber}?carrier=${manualCarrier}`
+      );
+
+      if (!trackerResponse.ok) {
+        const errorText = await trackerResponse.text();
+        console.log("Manual tracking API error:", {
+          status: trackerResponse.status,
+          statusText: trackerResponse.statusText,
+          response: errorText,
+        });
+        const errorData = await trackerResponse.json();
+        throw new Error(
+          errorData.error || "Failed to validate tracking number"
+        );
       }
 
-      const result = await response.json();
-      console.log("Labels field updated successfully:", result);
+      const tracker: Tracker = await trackerResponse.json();
+      console.log("Received tracker data:", tracker);
+
+      await saveTrackingInfo(tracker);
+
+      // Close the modal only after successful submission
+      setManualTracking({ fileIndex: -1, fileName: "", show: false });
+      setManualTrackingNumber("");
     } catch (error) {
-      console.error("Error updating Labels field:", error);
-      throw error;
+      console.error("Manual tracking error:", {
+        error,
+        trackingNumber: manualTrackingNumber,
+        carrier: manualCarrier,
+      });
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to process tracking number"
+      );
     }
   };
 
@@ -149,45 +204,230 @@ export function ViewLabel({ orderId }: { orderId: string }) {
     }
 
     setUploading(true);
-    setUploadProgress(0);
     setError(null);
 
+    // Close the dialog if provided
+    onClose?.();
+
     try {
-      const existingLabels = await fetch(
-        `http://144.172.71.72:3003/pdfs/${orderId}`
-      );
+      const existingLabels = await fetch(`/api/shipping/pdfs/${orderId}`);
       const existingLabelsList = await existingLabels.json();
-      const startIndex = existingLabelsList.length;
+      console.log("Existing labels:", existingLabelsList);
+
+      // Modified logic for filename generation
+      const getNextFilename = (existingFiles: string[]) => {
+        // If no files exist yet, start with base filename
+        if (existingFiles.length === 0) {
+          return `${orderId}.pdf`;
+        }
+
+        // Find the highest number suffix
+        const suffixes = existingFiles.map((filename) => {
+          // Base filename without suffix should be considered as index 0
+          if (filename === `${orderId}.pdf`) {
+            return 0;
+          }
+          const match = filename.match(/-(\d+)\.pdf$/);
+          return match ? parseInt(match[1], 10) : -1;
+        });
+
+        const maxSuffix = Math.max(...suffixes);
+        // If maxSuffix is 0 (only base file exists), start with -1
+        // Otherwise increment the highest suffix
+        return maxSuffix === 0
+          ? `${orderId}-1.pdf`
+          : `${orderId}-${maxSuffix + 1}.pdf`;
+      };
 
       for (let i = 0; i < files.length; i++) {
-        const formData = new FormData();
-        formData.append("label", files[i]!);
+        const file = files[i];
+        if (!file) continue;
 
-        let filename;
-        if (startIndex === 0 && i === 0) {
-          filename = `${orderId}.pdf`;
-        } else {
-          filename = `${orderId}-${startIndex + i}.pdf`;
-        }
+        // Get the next available filename
+        const filename = getNextFilename(existingLabelsList);
+        existingLabelsList.push(filename); // Add to list for next iteration
 
-        const response = await fetch(
-          `http://144.172.71.72:3003/upload-label?filename=${filename}`,
-          {
-            method: "POST",
-            body: formData,
+        // Initialize progress for this file
+        const initialProgress: FileProgress = {
+          file,
+          currentStep: "upload",
+          progress: 0,
+          steps: [
+            {
+              id: "upload",
+              label: "Uploading label",
+              status: "processing",
+            },
+            {
+              id: "extraction",
+              label: "Extracting tracking info",
+              status: "waiting",
+            },
+            {
+              id: "tracking",
+              label: "Fetching tracking details",
+              status: "waiting",
+            },
+            {
+              id: "database",
+              label: "Updating database",
+              status: "waiting",
+            },
+          ],
+        };
+
+        updateFileProgress(file.name, initialProgress);
+
+        try {
+          // Upload the file
+          const formData = new FormData();
+          formData.append("label", file);
+
+          // Update progress for upload step
+          updateFileProgress(file.name, {
+            ...initialProgress,
+            progress: 25,
+            steps: initialProgress.steps.map((step) =>
+              step.id === "upload" ? { ...step, status: "processing" } : step
+            ),
+          });
+
+          const response = await fetch(
+            `/api/shipping/upload-label?filename=${filename}`,
+            {
+              method: "POST",
+              body: formData,
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`Upload failed for file ${i + 1}`);
           }
-        );
 
-        if (!response.ok) {
-          throw new Error(`Upload failed for file ${i + 1}`);
+          console.log("Uploaded file:", file.name);
+
+          // Add this line after the successful upload:
+          addLabel(orderId, filename);
+          console.log("Added label to store:", filename);
+
+          // Update progress for extraction step
+          updateFileProgress(file.name, {
+            ...initialProgress,
+            currentStep: "extraction",
+            progress: 50,
+            steps: initialProgress.steps.map((step) =>
+              step.id === "upload"
+                ? { ...step, status: "complete" }
+                : step.id === "extraction"
+                ? { ...step, status: "processing" }
+                : step
+            ),
+          });
+
+          // Extract tracking info
+          const trackingFormData = new FormData();
+          trackingFormData.append("label", file);
+
+          const trackingResponse = await fetch(
+            "/api/shipping/extract-tracking",
+            {
+              method: "POST",
+              body: trackingFormData,
+            }
+          );
+
+          if (!trackingResponse.ok) {
+            throw new Error("Failed to extract tracking info");
+          }
+
+          console.log("Extracted tracking info for file:", file.name);
+
+          const trackingInfo: TrackingInfo = await trackingResponse.json();
+
+          // Validate tracking number
+          const isValidTrackingNumber = validateTrackingNumber(trackingInfo);
+
+          if (!isValidTrackingNumber) {
+            setManualTracking({
+              fileIndex: i,
+              fileName: file.name,
+              show: true,
+            });
+            continue;
+          }
+
+          // Update progress for extraction step
+          updateFileProgress(file.name, {
+            ...initialProgress,
+            currentStep: "tracking",
+            progress: 75,
+            trackingInfo,
+            steps: initialProgress.steps.map((step) =>
+              step.id === "upload"
+                ? { ...step, status: "complete" }
+                : step.id === "extraction"
+                ? { ...step, status: "complete" }
+                : step.id === "tracking"
+                ? { ...step, status: "processing" }
+                : step
+            ),
+          });
+
+          // Get tracker info
+          const trackerResponse = await fetch(
+            `/api/shipping/tracker/${trackingInfo.trackingNumber}?carrier=${trackingInfo.carrier}`
+          );
+
+          if (!trackerResponse.ok) {
+            throw new Error("Failed to validate tracking number");
+          }
+
+          const tracker: Tracker = await trackerResponse.json();
+          await saveTrackingInfo(tracker);
+
+          // Update progress for extraction step
+          updateFileProgress(file.name, {
+            ...initialProgress,
+            currentStep: "database",
+            progress: 100,
+            trackingInfo,
+            steps: initialProgress.steps.map((step) =>
+              step.id === "upload"
+                ? { ...step, status: "complete" }
+                : step.id === "extraction"
+                ? { ...step, status: "complete" }
+                : step.id === "tracking"
+                ? { ...step, status: "complete" }
+                : step.id === "database"
+                ? { ...step, status: "complete" }
+                : step
+            ),
+          });
+
+          // Mark file as complete when done
+          setTimeout(() => {
+            markFileComplete(file.name);
+          }, 1000);
+        } catch (error) {
+          console.error("Error processing file:", error);
+          // Update progress to show error
+          updateFileProgress(file.name, {
+            ...initialProgress,
+            progress: 100,
+            steps: initialProgress.steps.map((step) => ({
+              ...step,
+              status: "error",
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Unknown error occurred",
+            })),
+          });
         }
-
-        setUploadProgress(((i + 1) / files.length) * 100);
       }
 
       setPdfExists(true);
       await fetchPdfs();
-      await updateItemLabels(orderId, true);
       setFiles([]);
     } catch (error) {
       console.error("Upload error:", error);
@@ -197,31 +437,88 @@ export function ViewLabel({ orderId }: { orderId: string }) {
     }
   };
 
+  // Add helper function for tracking number validation
+  const validateTrackingNumber = (trackingInfo: TrackingInfo) => {
+    if (!trackingInfo.trackingNumber) return false;
+
+    const formats = {
+      UPS: /^1Z[A-Z0-9]{16}$/,
+      FedEx: /^(\d{12}|\d{14,15})$/,
+      USPS: /^(\d{20}|\d{26}|\d{30}|9\d{15,21})$/,
+      DHL: /^[0-9]{10,12}$/,
+    };
+
+    const cleaned = trackingInfo.trackingNumber.replace(/\s+/g, "");
+    const pattern = formats[trackingInfo.carrier];
+    return pattern?.test(cleaned) ?? false;
+  };
+
+  const fetchPdfs = async () => {
+    try {
+      const response = await fetch(`/api/shipping/pdfs/${orderId}`);
+      if (response.ok) {
+        const pdfList = await response.json();
+        setPdfFilenames(pdfList);
+        if (pdfList.length > 0) {
+          setPdfExists(true);
+          const urls = await Promise.all(
+            pdfList.map(async (pdfName: string) => {
+              const pdfResponse = await fetch(`/api/shipping/pdf/${pdfName}`);
+              if (!pdfResponse.ok) {
+                throw new Error(`Failed to fetch PDF: ${pdfName}`);
+              }
+              const blob = await pdfResponse.blob();
+              return URL.createObjectURL(blob);
+            })
+          );
+          setPdfUrls(urls);
+        } else {
+          setPdfExists(false);
+        }
+      } else {
+        throw new Error("Failed to fetch PDFs list");
+      }
+    } catch (error) {
+      console.error("Error fetching PDFs:", error);
+      setError("Failed to load the PDFs. Please try again.");
+      setPdfExists(false);
+    }
+  };
+
   const handleDelete = async (index: number) => {
     try {
-      let filename;
-      if (index === 0 && pdfUrls.length === 1) {
-        filename = `${orderId}.pdf`;
-      } else {
-        filename = `${orderId}-${index}.pdf`;
-      }
+      const filename = pdfFilenames[index];
+      console.log("Deleting file:", filename, "for order:", orderId);
 
-      const response = await fetch(
-        `http://144.172.71.72:3003/pdf/${filename}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`/api/shipping/pdf/${filename}`, {
+        method: "DELETE",
+      });
 
       if (response.ok) {
-        await fetchPdfs();
-        if (pdfUrls.length === 1) {
+        console.log("Delete successful, updating store and state");
+        removeLabel(orderId, filename);
+
+        // Update local state
+        const newUrls = [...pdfUrls];
+        newUrls.splice(index, 1);
+        setPdfUrls(newUrls);
+
+        const newFilenames = [...pdfFilenames];
+        newFilenames.splice(index, 1);
+        setPdfFilenames(newFilenames);
+
+        // Update PDF existence state
+        if (newUrls.length === 0) {
           setPdfExists(false);
-          await updateItemLabels(orderId, false);
         }
-        if (currentPdfIndex >= pdfUrls.length - 1) {
-          setCurrentPdfIndex(Math.max(0, pdfUrls.length - 2));
+
+        // Update current index if needed
+        if (currentPdfIndex >= newUrls.length) {
+          setCurrentPdfIndex(Math.max(0, newUrls.length - 1));
         }
+
+        // Revoke the old URL to free up memory
+        URL.revokeObjectURL(pdfUrls[index]);
       } else {
         throw new Error("Delete failed");
       }
@@ -244,7 +541,7 @@ export function ViewLabel({ orderId }: { orderId: string }) {
   }
 
   return (
-    <Card className="w-full max-w-3xl mx-auto bg-background dark:bg-gray-800">
+    <Card className="w-full max-w-3xl mx-auto bg-background dark:bg-gray-800 dark:border-gray-700">
       <CardHeader>
         <CardTitle className="text-2xl font-bold text-foreground dark:text-gray-100">
           Shipping Labels for Order {orderId}
@@ -252,7 +549,7 @@ export function ViewLabel({ orderId }: { orderId: string }) {
       </CardHeader>
       <CardContent className="p-4">
         <Tabs defaultValue={pdfExists ? "view" : "manage"} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsList className="grid w-full grid-cols-2 mb-4 dark:bg-gray-700">
             <TabsTrigger value="view" disabled={!pdfExists}>
               View Labels
             </TabsTrigger>
@@ -263,7 +560,10 @@ export function ViewLabel({ orderId }: { orderId: string }) {
               <div className="space-y-4">
                 <div
                   className="border rounded-lg overflow-hidden dark:border-gray-700"
-                  style={{ height: "calc(100vh - 300px)", minHeight: "400px" }}
+                  style={{
+                    height: "calc(100vh - 300px)",
+                    minHeight: "400px",
+                  }}
                 >
                   <iframe
                     src={pdfUrls[currentPdfIndex]}
@@ -327,14 +627,16 @@ export function ViewLabel({ orderId }: { orderId: string }) {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => globalThis.open(url, "_blank")}
+                            onClick={() => window.open(url, "_blank")}
                           >
                             <Download className="mr-2 h-4 w-4" /> Download
                           </Button>
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDelete(index)}
+                            onClick={() => {
+                              handleDelete(index);
+                            }}
                           >
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </Button>
@@ -387,14 +689,6 @@ export function ViewLabel({ orderId }: { orderId: string }) {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              {uploading && (
-                <div className="space-y-2">
-                  <Progress value={uploadProgress} className="w-full" />
-                  <p className="text-xs text-muted-foreground text-center dark:text-gray-400">
-                    {Math.round(uploadProgress)}% uploaded
-                  </p>
-                </div>
-              )}
               <Button
                 onClick={handleUpload}
                 disabled={files.length === 0 || uploading}
@@ -415,6 +709,69 @@ export function ViewLabel({ orderId }: { orderId: string }) {
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      {manualTracking.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Enter Tracking Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>File: {manualTracking.fileName}</Label>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="carrier">Carrier</Label>
+                <select
+                  id="carrier"
+                  value={manualCarrier}
+                  onChange={(e) =>
+                    setManualCarrier(e.target.value as TrackingInfo["carrier"])
+                  }
+                  className="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-700"
+                >
+                  <option value="UPS">UPS</option>
+                  <option value="FedEx">FedEx</option>
+                  <option value="USPS">USPS</option>
+                  <option value="DHL">DHL</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tracking">Tracking Number</Label>
+                <Input
+                  id="tracking"
+                  value={manualTrackingNumber}
+                  onChange={(e) => setManualTrackingNumber(e.target.value)}
+                  placeholder="Enter tracking number"
+                />
+              </div>
+              <div className="flex space-x-2">
+                <Button
+                  onClick={handleManualTrackingSubmit}
+                  disabled={!manualTrackingNumber}
+                  className="flex-1"
+                >
+                  Submit
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setManualTracking({
+                      fileIndex: -1,
+                      fileName: "",
+                      show: false,
+                    });
+                    setManualTrackingNumber("");
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </Card>
   );
 }

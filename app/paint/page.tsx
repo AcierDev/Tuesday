@@ -1,25 +1,29 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { format, addDays } from "date-fns";
-import { Loader2 } from "lucide-react";
-
 import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
 import { useIsMobile } from "@/components/shared/UseIsMobile";
 import { SchedulePageLayout } from "@/components/shared/SchedulePageLayout";
 import { Filters } from "@/components/shared/Filters";
 import { OverviewTab } from "@/components/paint/OverviewTab";
 import { DetailsTab } from "@/components/paint/DetailsTab";
-import { useBoardOperations } from "@/hooks/useBoardOperations";
-import { calculatePaintRequirements } from "@/components/paint/PaintCalculations";
+import { useOrderStore } from "@/stores/useOrderStore";
 import { Group } from "@/typings/types";
+import { DAYS_OF_WEEK } from "@/typings/constants";
+import { ItemUtil } from "@/components/paint/ItemUtil";
 
 export default function PaintSchedulePage() {
+  const [paintRequirements, setPaintRequirements] = useState<
+    Record<string, PaintRequirement>
+  >({});
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [filterDesign, setFilterDesign] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("overview");
+
   const isMobile = useIsMobile();
+  const { items } = useOrderStore();
 
   const {
     weeklySchedules,
@@ -30,8 +34,6 @@ export default function PaintSchedulePage() {
     resetToCurrentWeek,
     isCurrentWeek,
   } = useWeeklySchedule({ weekStartsOn: 0 });
-
-  const { board, isLoading, isError, updateItem } = useBoardOperations(null);
 
   const toggleDateSelection = (date: Date) => {
     setSelectedDates((prev) => {
@@ -44,8 +46,7 @@ export default function PaintSchedulePage() {
   };
 
   const itemsNeedingPaint = useMemo(() => {
-    if (!board) return [];
-
+    if (!items) return [];
     const selectedDateStrings = selectedDates.map((date) =>
       format(date, "yyyy-MM-dd")
     );
@@ -53,32 +54,23 @@ export default function PaintSchedulePage() {
     const currentWeekSchedule = weeklySchedules[weekKey] || {};
 
     const scheduledItems = new Set<string>();
-    const dayNames = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
 
-    dayNames.forEach((dayName, index) => {
+    DAYS_OF_WEEK.forEach((dayName, index) => {
       const dayDate = format(addDays(currentWeekStart, index), "yyyy-MM-dd");
       if (
         selectedDateStrings.includes(dayDate) &&
         currentWeekSchedule[dayName]
       ) {
-        currentWeekSchedule[dayName].forEach((id) => scheduledItems.add(id));
+        currentWeekSchedule[dayName].forEach((item) =>
+          scheduledItems.add(item.id)
+        );
       }
     });
 
-    return board.items_page.items.filter((item) => scheduledItems.has(item.id));
-  }, [board, selectedDates, weeklySchedules, currentWeekStart]);
+    return items.filter((item) => scheduledItems.has(item.id));
+  }, [items, selectedDates, weeklySchedules, currentWeekStart]);
 
   const filteredItemsNeedingPaint = useMemo(() => {
-    if (!itemsNeedingPaint) return [];
-
     return itemsNeedingPaint.filter((item) => {
       const designValue =
         item.values.find((value) => value.columnName === "Design")?.text || "";
@@ -96,32 +88,22 @@ export default function PaintSchedulePage() {
   const filteredPaintGroup: Group = useMemo(
     () => ({
       id: "paint-group",
-      title: "Paint",
-      items: filteredItemsNeedingPaint || [],
+      title: "Selected Items",
+      items: filteredItemsNeedingPaint,
     }),
     [filteredItemsNeedingPaint]
   );
 
-  const paintRequirements = useMemo(() => {
-    if (!filteredPaintGroup.items.length) return {};
-    return calculatePaintRequirements(filteredPaintGroup);
+  useEffect(() => {
+    const paintRequirements =
+      ItemUtil.getTotalPaintRequirements(filteredPaintGroup);
+    setPaintRequirements(paintRequirements);
   }, [filteredPaintGroup]);
 
-  const filteredRequirements = Object.entries(paintRequirements).filter(
-    ([design, requirements]) => {
-      const matchesDesign = filterDesign === "all" || design === filterDesign;
-      const matchesSearch = design
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-      const hasRequirements = Object.values(requirements).some(
-        (count) => count > 0
-      );
-      return matchesDesign && matchesSearch && hasRequirements;
-    }
-  );
+  const filteredRequirements = Object.entries(paintRequirements);
 
-  const totalPieces = useMemo(() => {
-    return filteredRequirements.reduce((total, [_, colorRequirements]) => {
+  const totalPieces = filteredRequirements.reduce(
+    (total, [_, colorRequirements]) => {
       return (
         total +
         Object.values(colorRequirements).reduce(
@@ -129,41 +111,9 @@ export default function PaintSchedulePage() {
           0
         )
       );
-    }, 0);
-  }, [filteredRequirements]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-        <span className="ml-2 text-gray-500">Loading board data...</span>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center text-red-500">
-          <h2 className="text-xl font-semibold mb-2">Failed to load board</h2>
-          <p>Please try refreshing the page</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!board) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center text-gray-500">
-          <h2 className="text-xl font-semibold mb-2">
-            No board data available
-          </h2>
-          <p>Please check your connection and try again</p>
-        </div>
-      </div>
-    );
-  }
+    },
+    0
+  );
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -214,8 +164,6 @@ export default function PaintSchedulePage() {
         weekStartsOn={0}
         isCurrentWeek={isCurrentWeek()}
         group={filteredPaintGroup}
-        board={board}
-        updateItem={updateItem}
         selectedDates={selectedDates}
         schedule={weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {}}
         toggleDateSelection={toggleDateSelection}

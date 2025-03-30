@@ -1,0 +1,21 @@
+{
+  "name": "everwood-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for Everwood data management",
+  "main": "uploadToMongo.js",
+  "type": "module",
+  "dependencies": {
+    "@types/node": "^18.0.0",
+    "dotenv": "^16.0.3",
+    "mongodb": "^6.3.0",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "split": "tsx splitCollections.ts",
+    "compare": "tsx compareQueries.ts",
+    "init-indexes": "tsx initializeIndexes.ts",
+    "reupload-completed": "tsx reuploadCompletedOrders.ts",
+    "remove-scheduled": "tsx removeIsScheduledField.ts",
+    "fix-labels": "tsx fixLabels.ts"
+  }
+}

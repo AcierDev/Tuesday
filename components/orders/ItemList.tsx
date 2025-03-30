@@ -7,23 +7,21 @@ import {
   Droppable,
   type ResponderProvided,
 } from "@hello-pangea/dnd";
-import { ItemStatus, type Board, type Group, type Item } from "@/typings/types";
+import { ItemStatus, type Group, type Item } from "@/typings/types";
 import { ItemGroupSection } from "./ItemGroup";
 import { useUser } from "@/contexts/UserContext";
 import { getUserPermissions } from "@/app/actions/auth";
 
 interface ItemListProps {
-  board: Board;
   groups: Group[];
-  onDragEnd: (result: DropResult, provided: ResponderProvided) => void;
-  onDelete: (itemId: string) => void;
+  onDragEnd: (result: DropResult, provided: ResponderProvided) => Promise<void>;
+  onDelete: (itemId: string) => Promise<void>;
   onGetLabel: (item: Item) => void;
-  onMarkCompleted: (itemId: string) => void;
-  onShip: (itemId: string) => void;
+  onMarkCompleted: (itemId: string) => Promise<void>;
+  onShip: (itemId: string) => Promise<void>;
 }
 
 export const ItemList: React.FC<ItemListProps> = ({
-  board,
   groups,
   onDragEnd,
   onDelete,
@@ -47,23 +45,43 @@ export const ItemList: React.FC<ItemListProps> = ({
     fetchPermissions();
   }, [user]);
 
+  const handleDragEnd = (result: DropResult, provided: ResponderProvided) => {
+    console.log("ItemList: Drag ended with result:", result);
+    onDragEnd(result, provided);
+  };
+
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
+    <DragDropContext onDragEnd={handleDragEnd}>
       <div className="flex-grow">
         {groups
           .filter((group) =>
             isAdmin ? true : group.title !== ItemStatus.Hidden
           )
           .map((group) => (
-            <ItemGroupSection
-              key={group.id}
-              board={board}
-              group={group}
-              onDelete={onDelete}
-              onGetLabel={onGetLabel}
-              onMarkCompleted={onMarkCompleted}
-              onShip={onShip}
-            />
+            <Droppable droppableId={group.title} key={`droppable-${group.id}`}>
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="min-h-[50px]"
+                >
+                  <ItemGroupSection
+                    key={group.id}
+                    group={group}
+                    onDelete={onDelete}
+                    onGetLabel={onGetLabel}
+                    onMarkCompleted={onMarkCompleted}
+                    onShip={onShip}
+                    isCollapsible={true}
+                    defaultCollapsed={
+                      group.title === ItemStatus.Done ||
+                      group.title === ItemStatus.Hidden
+                    }
+                  />
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
           ))}
       </div>
     </DragDropContext>

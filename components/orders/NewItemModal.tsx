@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronUp,
   Pencil,
-  RotateCcw,
   X,
   User,
   Box,
@@ -24,7 +23,6 @@ import {
   Dialog,
   DialogContent,
   DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -46,7 +44,22 @@ import {
   ItemDesigns,
   ItemSizes,
   ItemStatus,
+  Item,
 } from "../../typings/types";
+
+type OptionalFields = {
+  [K in ColumnTitles]: string;
+};
+
+type CustomInputs = {
+  [K in ColumnTitles]?: boolean;
+};
+
+interface NewItemModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (newItem: Partial<Item>) => Promise<void>;
+}
 
 const SuccessAnimation = () => (
   <motion.div
@@ -70,22 +83,26 @@ const SuccessAnimation = () => (
   </motion.div>
 );
 
-export const NewItemModal = ({ isOpen, onClose, onSubmit }) => {
+export const NewItemModal: React.FC<NewItemModalProps> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+}) => {
   const [customerName, setCustomerName] = useState("");
   const [size, setSize] = useState("");
   const [design, setDesign] = useState("");
   const [vertical, setVertical] = useState(false);
-  const [dueDate, setDueDate] = useState(undefined);
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [customInputs, setCustomInputs] = useState({});
+  const [customInputs, setCustomInputs] = useState<CustomInputs>({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customSize, setCustomSize] = useState(false);
   const [customDesign, setCustomDesign] = useState(false);
 
-  const [optionalFields, setOptionalFields] = useState(() => {
-    const fields = {};
+  const [optionalFields, setOptionalFields] = useState<OptionalFields>(() => {
+    const fields = {} as OptionalFields;
     Object.values(ColumnTitles).forEach((title) => {
       fields[title] = "";
     });
@@ -102,13 +119,40 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }) => {
     }));
   };
 
-  const toggleCustomInput = (field: "size" | "design") => {
+  const toggleCustomInput = (field: "size" | "design" | ColumnTitles) => {
     if (field === "size") {
       setCustomSize(!customSize);
       if (customSize) setSize("");
     } else if (field === "design") {
       setCustomDesign(!customDesign);
       if (customDesign) setDesign("");
+    } else {
+      setCustomInputs((prev) => ({
+        ...prev,
+        [field]: !prev[field],
+      }));
+    }
+  };
+
+  const sendNotification = async (
+    customerName: string,
+    size: string,
+    design: string
+  ) => {
+    try {
+      const response = await fetch("/api/notifications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ customerName, size, design }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send notification");
+      }
+    } catch (error) {
+      console.error("Error sending notification:", error);
     }
   };
 
@@ -123,7 +167,7 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }) => {
     const newItem = {
       values: Object.entries(ColumnTitles).map(([key, title]) => {
         let value = optionalFields[title];
-        let type = boardConfig.columns[title].type || ColumnTypes.Text;
+        let type = boardConfig.columns[title]?.type || ColumnTypes.Text;
 
         if (title === ColumnTitles.Customer_Name) {
           value = customerName;
@@ -148,13 +192,21 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }) => {
       isScheduled: false,
     };
 
-    await onSubmit(newItem);
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      onClose();
-      resetForm();
-    }, 1000);
+    try {
+      await onSubmit(newItem);
+      await sendNotification(customerName, size, design);
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        onClose();
+        resetForm();
+      }, 1000);
+    } catch (error) {
+      console.error("Error submitting item:", error);
+      alert("Failed to submit item");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -167,9 +219,9 @@ export const NewItemModal = ({ isOpen, onClose, onSubmit }) => {
     setShowCalendar(false);
     setCustomInputs({});
     setOptionalFields((prev) => {
-      const reset = { ...prev };
-      Object.keys(reset).forEach((key) => {
-        reset[key] = "";
+      const reset = {} as OptionalFields;
+      Object.values(ColumnTitles).forEach((title) => {
+        reset[title] = "";
       });
       return reset;
     });

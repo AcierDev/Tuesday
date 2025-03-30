@@ -1,43 +1,33 @@
-// app/api/inventory/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
-import process from "node:process";
+import { NextResponse } from "next/server";
+import clientPromise from "../db/connect";
 
 export async function GET() {
   try {
     const client = await clientPromise;
-    const db = client.db("react-web-app");
-    const collection = db.collection(
-      "inventory-" + process.env.NEXT_PUBLIC_MODE
-    );
+    const db = client.db(process.env.MONGODB_DB);
+    const collection = db.collection(`inventory-${process.env.NODE_ENV}`);
 
     const inventory = await collection.find({}).toArray();
     return NextResponse.json(inventory);
   } catch (error) {
-    console.error(error);
     return NextResponse.json(
-      { error: "Error connecting to database" },
+      { error: "Failed to fetch inventory" },
       { status: 500 }
     );
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const client = await clientPromise;
-    const db = client.db("react-web-app");
-    const collection = db.collection(
-      "inventory-" + process.env.NEXT_PUBLIC_MODE
-    );
+    const db = client.db(process.env.MONGODB_DB);
+    const collection = db.collection(`inventory-${process.env.NODE_ENV}`);
 
-    const data = await request.json();
-    const result = await collection.insertOne(data);
-    return NextResponse.json(result, { status: 201 });
+    const newItem = await request.json();
+    const result = await collection.insertOne(newItem);
+
+    return NextResponse.json(result);
   } catch (error) {
-    console.error(error);
-    return NextResponse.json(
-      { error: "Error connecting to database" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to add item" }, { status: 500 });
   }
 }

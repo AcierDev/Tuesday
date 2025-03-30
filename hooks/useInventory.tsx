@@ -13,13 +13,11 @@ export function useInventory() {
       setIsLoading(true);
       const response = await fetch("/api/inventory");
       if (!response.ok) throw new Error("Failed to fetch inventory");
-      const inventoryData = await response.json();
-      setInventory(inventoryData);
+      const data = await response.json();
+      setInventory(data);
     } catch (err) {
       console.error("Failed to fetch inventory", err);
-      toast.error("Failed to fetch inventory. Please refresh the page.", {
-        style: { background: "#EF4444", color: "white" },
-      });
+      toast.error("Failed to fetch inventory. Please refresh the page.");
     } finally {
       setIsLoading(false);
     }
@@ -33,9 +31,7 @@ export function useInventory() {
     try {
       const response = await fetch("/api/inventory", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newItem),
       });
 
@@ -49,9 +45,7 @@ export function useInventory() {
       }
     } catch (err) {
       console.error("Failed to add item", err);
-      toast.error("Failed to add item. Please try again.", {
-        style: { background: "#EF4444", color: "white" },
-      });
+      toast.error("Failed to add item. Please try again.");
     }
     return false;
   };
@@ -82,18 +76,13 @@ export function useInventory() {
         }
       }
 
-      const response = await fetch(`/api/inventory/${itemId}`, {
+      const result = await fetch(`/api/inventory/${itemId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updateData),
       });
 
-      if (!response.ok) throw new Error(`Failed to update ${field}`);
-      const result = await response.json();
-
-      if (result.modifiedCount > 0) {
+      if (result.ok) {
         setInventory(
           inventory.map((item) =>
             item._id === itemId ? { ...item, ...updateData } : item
@@ -104,32 +93,25 @@ export function useInventory() {
       }
     } catch (err) {
       console.error(`Failed to update ${field}`, err);
-      toast.error(`Failed to update ${field}. Please try again.`, {
-        style: { background: "#EF4444", color: "white" },
-      });
+      toast.error(`Failed to update ${field}. Please try again.`);
     }
     return false;
   };
 
   const deleteItem = async (itemId: number) => {
     try {
-      const response = await fetch(`/api/inventory/${itemId}`, {
+      const result = await fetch(`/api/inventory/${itemId}`, {
         method: "DELETE",
       });
 
-      if (!response.ok) throw new Error("Failed to delete item");
-      const result = await response.json();
-
-      if (result.deletedCount > 0) {
+      if (result.ok) {
         setInventory(inventory.filter((item) => item._id !== itemId));
         toast.success("Item deleted successfully");
         return true;
       }
     } catch (err) {
       console.error("Failed to delete item", err);
-      toast.error("Failed to delete item. Please try again.", {
-        style: { background: "#EF4444", color: "white" },
-      });
+      toast.error("Failed to delete item. Please try again.");
     }
     return false;
   };

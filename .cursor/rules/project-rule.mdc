@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+We are using shadcn and framer motion. All UI's should be clean, modern, and intuitive. Components should handle desktop and mobile screen sizes nicely. And we should include styles for dark as well as light mode.

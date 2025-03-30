@@ -1,60 +1,492 @@
-"use client"
+import React from "react";
+import "./page.css"; // Import the CSS file for styling
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { getOrder } from "@/lib/shipstation-api"
-
-export default function Component() {
-  const [orderId, setOrderId] = useState("")
-  const [order, setOrder] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    setOrder(null)
-
-    try {
-      const result = await getOrder(orderId)
-      console.log(result)
-      setOrder(result)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
-    } finally {
-      setLoading(false)
-    }
-  }
+const Table = () => {
+  const tableData = [
+    {
+      id: 1,
+      name: "Alice",
+      age: 28,
+      city: "New York",
+      country: "USA",
+      job: "Engineer",
+      salary: 120000,
+      email: "alice@example.com",
+      phone: "+1-555-123-4567",
+      department: "Engineering",
+      hireDate: "2015-06-01",
+    },
+    {
+      id: 2,
+      name: "Bob",
+      age: 35,
+      city: "London",
+      country: "UK",
+      job: "Designer",
+      salary: 90000,
+      email: "bob@example.com",
+      phone: "+44-20-7123-4567",
+      department: "Design",
+      hireDate: "2016-07-15",
+    },
+    {
+      id: 3,
+      name: "Charlie",
+      age: 42,
+      city: "Paris",
+      country: "France",
+      job: "Manager",
+      salary: 150000,
+      email: "charlie@example.com",
+      phone: "+33-1-2345-6789",
+      department: "Management",
+      hireDate: "2014-03-20",
+    },
+    {
+      id: 4,
+      name: "David",
+      age: 25,
+      city: "Tokyo",
+      country: "Japan",
+      job: "Analyst",
+      salary: 80000,
+      email: "david@example.com",
+      phone: "+81-3-1234-5678",
+      department: "Analysis",
+      hireDate: "2019-11-30",
+    },
+    {
+      id: 5,
+      name: "Emily",
+      age: 31,
+      city: "Sydney",
+      country: "Australia",
+      job: "Developer",
+      salary: 110000,
+      email: "emily@example.com",
+      phone: "+61-2-1234-5678",
+      department: "Development",
+      hireDate: "2018-01-10",
+    },
+    {
+      id: 6,
+      name: "Frank",
+      age: 29,
+      city: "Berlin",
+      country: "Germany",
+      job: "Sales",
+      salary: 95000,
+      email: "frank@example.com",
+      phone: "+49-30-12345678",
+      department: "Sales",
+      hireDate: "2017-05-25",
+    },
+    {
+      id: 7,
+      name: "Grace",
+      age: 38,
+      city: "Toronto",
+      country: "Canada",
+      job: "HR",
+      salary: 85000,
+      email: "grace@example.com",
+      phone: "+1-416-123-4567",
+      department: "Human Resources",
+      hireDate: "2016-09-12",
+    },
+    {
+      id: 8,
+      name: "Hank",
+      age: 45,
+      city: "Madrid",
+      country: "Spain",
+      job: "Marketing",
+      salary: 130000,
+      email: "hank@example.com",
+      phone: "+34-91-123-4567",
+      department: "Marketing",
+      hireDate: "2013-04-18",
+    },
+    {
+      id: 9,
+      name: "Ivy",
+      age: 27,
+      city: "Rome",
+      country: "Italy",
+      job: "Support",
+      salary: 70000,
+      email: "ivy@example.com",
+      phone: "+39-06-12345678",
+      department: "Support",
+      hireDate: "2020-02-22",
+    },
+    {
+      id: 10,
+      name: "Jack",
+      age: 33,
+      city: "Amsterdam",
+      country: "Netherlands",
+      job: "Consultant",
+      salary: 115000,
+      email: "jack@example.com",
+      phone: "+31-20-1234567",
+      department: "Consulting",
+      hireDate: "2015-08-30",
+    },
+    {
+      id: 11,
+      name: "Liam",
+      age: 30,
+      city: "Dublin",
+      country: "Ireland",
+      job: "Developer",
+      salary: 105000,
+      email: "liam@example.com",
+      phone: "+353-1-234-5678",
+      department: "Development",
+      hireDate: "2017-03-15",
+    },
+    {
+      id: 12,
+      name: "Mia",
+      age: 26,
+      city: "Lisbon",
+      country: "Portugal",
+      job: "Designer",
+      salary: 92000,
+      email: "mia@example.com",
+      phone: "+351-21-123-4567",
+      department: "Design",
+      hireDate: "2018-05-20",
+    },
+    {
+      id: 13,
+      name: "Noah",
+      age: 40,
+      city: "Berlin",
+      country: "Germany",
+      job: "Product Manager",
+      salary: 140000,
+      email: "noah@example.com",
+      phone: "+49-30-234-5678",
+      department: "Product",
+      hireDate: "2016-01-10",
+    },
+    {
+      id: 14,
+      name: "Olivia",
+      age: 32,
+      city: "Madrid",
+      country: "Spain",
+      job: "Marketing Specialist",
+      salary: 95000,
+      email: "olivia@example.com",
+      phone: "+34-91-234-5678",
+      department: "Marketing",
+      hireDate: "2019-02-15",
+    },
+    {
+      id: 15,
+      name: "Ethan",
+      age: 29,
+      city: "Toronto",
+      country: "Canada",
+      job: "Sales Executive",
+      salary: 88000,
+      email: "ethan@example.com",
+      phone: "+1-416-234-5678",
+      department: "Sales",
+      hireDate: "2018-11-01",
+    },
+    {
+      id: 16,
+      name: "Sophia",
+      age: 34,
+      city: "Paris",
+      country: "France",
+      job: "HR Manager",
+      salary: 115000,
+      email: "sophia@example.com",
+      phone: "+33-1-3456-7890",
+      department: "Human Resources",
+      hireDate: "2015-07-20",
+    },
+    {
+      id: 17,
+      name: "James",
+      age: 37,
+      city: "London",
+      country: "UK",
+      job: "Business Analyst",
+      salary: 98000,
+      email: "james@example.com",
+      phone: "+44-20-3456-7890",
+      department: "Analysis",
+      hireDate: "2014-09-10",
+    },
+    {
+      id: 18,
+      name: "Ava",
+      age: 24,
+      city: "Sydney",
+      country: "Australia",
+      job: "Intern",
+      salary: 60000,
+      email: "ava@example.com",
+      phone: "+61-2-3456-7890",
+      department: "Development",
+      hireDate: "2021-01-15",
+    },
+    {
+      id: 19,
+      name: "Lucas",
+      age: 41,
+      city: "Rome",
+      country: "Italy",
+      job: "Consultant",
+      salary: 130000,
+      email: "lucas@example.com",
+      phone: "+39-06-2345-6789",
+      department: "Consulting",
+      hireDate: "2013-12-01",
+    },
+    {
+      id: 20,
+      name: "Zoe",
+      age: 36,
+      city: "Amsterdam",
+      country: "Netherlands",
+      job: "Project Manager",
+      salary: 125000,
+      email: "zoe@example.com",
+      phone: "+31-20-2345-6789",
+      department: "Management",
+      hireDate: "2014-05-10",
+    },
+    {
+      id: 21,
+      name: "Mason",
+      age: 28,
+      city: "New York",
+      country: "USA",
+      job: "Software Engineer",
+      salary: 110000,
+      email: "mason@example.com",
+      phone: "+1-555-234-5678",
+      department: "Engineering",
+      hireDate: "2016-08-01",
+    },
+    {
+      id: 22,
+      name: "Ella",
+      age: 30,
+      city: "London",
+      country: "UK",
+      job: "Graphic Designer",
+      salary: 85000,
+      email: "ella@example.com",
+      phone: "+44-20-4567-8901",
+      department: "Design",
+      hireDate: "2017-04-12",
+    },
+    {
+      id: 23,
+      name: "Liam",
+      age: 33,
+      city: "Paris",
+      country: "France",
+      job: "Marketing Manager",
+      salary: 120000,
+      email: "liam@example.com",
+      phone: "+33-1-4567-8901",
+      department: "Marketing",
+      hireDate: "2015-11-20",
+    },
+    {
+      id: 24,
+      name: "Chloe",
+      age: 26,
+      city: "Berlin",
+      country: "Germany",
+      job: "Sales Manager",
+      salary: 95000,
+      email: "chloe@example.com",
+      phone: "+49-30-4567-8901",
+      department: "Sales",
+      hireDate: "2018-03-15",
+    },
+    {
+      id: 25,
+      name: "Benjamin",
+      age: 39,
+      city: "Toronto",
+      country: "Canada",
+      job: "HR Specialist",
+      salary: 90000,
+      email: "benjamin@example.com",
+      phone: "+1-416-4567-8901",
+      department: "Human Resources",
+      hireDate: "2016-06-30",
+    },
+    {
+      id: 26,
+      name: "Sophia",
+      age: 31,
+      city: "Madrid",
+      country: "Spain",
+      job: "Data Analyst",
+      salary: 85000,
+      email: "sophia@example.com",
+      phone: "+34-91-234-5678",
+      department: "Analytics",
+      hireDate: "2019-01-20",
+    },
+    {
+      id: 27,
+      name: "Jackson",
+      age: 29,
+      city: "Sydney",
+      country: "Australia",
+      job: "Web Developer",
+      salary: 95000,
+      email: "jackson@example.com",
+      phone: "+61-2-9876-5432",
+      department: "Development",
+      hireDate: "2017-11-05",
+    },
+    {
+      id: 28,
+      name: "Ava",
+      age: 27,
+      city: "Dublin",
+      country: "Ireland",
+      job: "Content Writer",
+      salary: 70000,
+      email: "ava@example.com",
+      phone: "+353-1-234-5678",
+      department: "Marketing",
+      hireDate: "2020-03-12",
+    },
+    {
+      id: 29,
+      name: "Ethan",
+      age: 34,
+      city: "San Francisco",
+      country: "USA",
+      job: "Product Manager",
+      salary: 130000,
+      email: "ethan@example.com",
+      phone: "+1-415-123-4567",
+      department: "Product",
+      hireDate: "2015-09-30",
+    },
+    {
+      id: 30,
+      name: "Mia",
+      age: 32,
+      city: "Amsterdam",
+      country: "Netherlands",
+      job: "UX Designer",
+      salary: 95000,
+      email: "mia@example.com",
+      phone: "+31-20-123-4567",
+      department: "Design",
+      hireDate: "2018-07-22",
+    },
+    {
+      id: 31,
+      name: "Oliver",
+      age: 36,
+      city: "Berlin",
+      country: "Germany",
+      job: "Software Architect",
+      salary: 140000,
+      email: "oliver@example.com",
+      phone: "+49-30-123-4567",
+      department: "Engineering",
+      hireDate: "2014-02-14",
+    },
+    {
+      id: 32,
+      name: "Isabella",
+      age: 29,
+      city: "Toronto",
+      country: "Canada",
+      job: "Marketing Specialist",
+      salary: 80000,
+      email: "isabella@example.com",
+      phone: "+1-416-234-5678",
+      department: "Marketing",
+      hireDate: "2019-05-18",
+    },
+    {
+      id: 33,
+      name: "Lucas",
+      age: 38,
+      city: "London",
+      country: "UK",
+      job: "Financial Analyst",
+      salary: 110000,
+      email: "lucas@example.com",
+      phone: "+44-20-1234-5678",
+      department: "Finance",
+      hireDate: "2016-10-10",
+    },
+    {
+      id: 34,
+      name: "Avery",
+      age: 30,
+      city: "Paris",
+      country: "France",
+      job: "Operations Manager",
+      salary: 115000,
+      email: "avery@example.com",
+      phone: "+33-1-2345-6789",
+      department: "Operations",
+      hireDate: "2017-08-25",
+    },
+  ];
 
   return (
-    <Card className="w-[350px]">
-      <CardHeader>
-        <CardTitle>Order Lookup</CardTitle>
-        <CardDescription>Enter an order ID to fetch details</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="orderId">Order ID</Label>
-            <Input
-              id="orderId"
-              placeholder="Enter order ID"
-              value={orderId}
-              onChange={(e) => setOrderId(e.target.value)}
-            />
-          </div>
-          <Button type="submit" disabled={loading}>
-            {loading ? "Loading..." : "Get Order"}
-          </Button>
-        </form>
-      </CardContent>
-      <CardFooter className="flex flex-col items-start">
-        {error && <p className="text-destructive">{error}</p>}
-      </CardFooter>
-    </Card>
-  )
-}
+    <div className="page-container">
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Age</th>
+              <th>City</th>
+              <th>Country</th>
+              <th>Job</th>
+              <th>Salary</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Department</th>
+              <th>Hire Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tableData.map((row) => (
+              <tr key={row.id}>
+                <td>{row.id}</td>
+                <td>{row.name}</td>
+                <td>{row.age}</td>
+                <td>{row.city}</td>
+                <td>{row.country}</td>
+                <td>{row.job}</td>
+                <td>{row.salary}</td>
+                <td>{row.email}</td>
+                <td>{row.phone}</td>
+                <td>{row.department}</td>
+                <td>{row.hireDate}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default Table;

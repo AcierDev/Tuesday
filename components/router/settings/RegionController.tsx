@@ -173,7 +173,7 @@ const ROIController: React.FC<ROIControllerProps> = ({
   }, [regions, maxRegions]);
 
   return (
-    <Card className="bg-gray-900/5 dark:bg-gray-800 backdrop-blur-sm">
+    <Card className="bg-gray-900/5 dark:bg-gray-800 backdrop-blur-sm shadow-card">
       <CardHeader className="pb-4">
         <CardTitle className="text-lg font-semibold flex items-center justify-between">
           <div className="flex items-center gap-2">

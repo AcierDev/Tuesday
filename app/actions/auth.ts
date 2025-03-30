@@ -2,7 +2,6 @@
 
 import { cookies } from "next/headers";
 import { EmployeeNames } from "@/typings/types";
-import process from "node:process";
 
 type Permission = "read" | "write" | "admin";
 
@@ -28,12 +27,7 @@ const employeeAuthMap: Record<EmployeeNames, EmployeeAuth> = {
 };
 
 export async function authenticate(formData: FormData) {
-  console.log("Function called with formData:", formData);
-  console.log("Type of formData:", typeof formData);
-  console.log("Is FormData?", formData instanceof FormData);
-
   const user = formData.get("user") as EmployeeNames;
-  console.log(user);
   const password = formData.get("password") as string;
 
   if (!employeeAuthMap[user]) {

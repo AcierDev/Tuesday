@@ -1,20 +1,25 @@
 // LabelCell.jsx
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog';
-import { Barcode } from 'lucide-react';
-import { ViewLabel } from '../shipping/ViewLabel';
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Barcode } from "lucide-react";
+import { ViewLabel } from "../shipping/ViewLabel";
+import { Item } from "@/typings/types";
+import { useShippingStore } from "@/stores/useShippingStore";
 
-export const LabelCell = ({ item, columnValue }) => {
+export const LabelCell = ({ item }: { item: Item }) => {
   const [isLabelDialogOpen, setIsLabelDialogOpen] = useState(false);
-  const isLabelGenerated = columnValue.text?.toLowerCase() === 'true';
+  const isLoading = useShippingStore((state) => state.isLoading);
+  const hasLabel = useShippingStore((state) => {
+    return state.hasLabel(item.id);
+  });
 
   return (
     <Dialog open={isLabelDialogOpen} onOpenChange={setIsLabelDialogOpen}>
@@ -23,10 +28,15 @@ export const LabelCell = ({ item, columnValue }) => {
           className="w-8 h-8 p-0 text-gray-900 dark:text-gray-100"
           variant="ghost"
           onClick={() => setIsLabelDialogOpen(true)}
+          disabled={isLoading}
         >
           <Barcode
             className={`h-4 w-4 ${
-              isLabelGenerated ? 'text-yellow-500' : 'text-gray-500 dark:text-gray-400'
+              isLoading
+                ? "text-gray-300"
+                : hasLabel
+                ? "text-yellow-500"
+                : "text-gray-500 dark:text-gray-400"
             }`}
           />
         </Button>
@@ -35,7 +45,10 @@ export const LabelCell = ({ item, columnValue }) => {
         <DialogHeader>
           <DialogTitle>Shipping Label</DialogTitle>
         </DialogHeader>
-        <ViewLabel orderId={item.id} />
+        <ViewLabel
+          orderId={item.id}
+          onClose={() => setIsLabelDialogOpen(false)}
+        />
       </DialogContent>
     </Dialog>
   );

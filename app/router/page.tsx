@@ -1,37 +1,89 @@
 "use client";
 
-import React from "react";
-import { Toaster } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Circle,
-  Camera,
-  Power,
-  AlertTriangle,
-  Activity,
-  Terminal,
-} from "lucide-react";
-import { StatusBadge } from "@/components/router/StatusBadge";
-import { StatusCard } from "@/components/router/StatusCard";
-import { LogEntry } from "@/components/router/LogEntry";
-import { useWebSocketManager } from "@/hooks/useWebsocket";
-import ImageAnalysisCard from "@/components/router/ImageAnalysisCard";
+import LiveView from "@/components/router/LiveView";
 import ImprovedEjectionControlGUI from "@/components/router/settings/EjectionControls";
-import { EmptyLogs } from "@/utils/functions";
+import StatsOverview from "@/components/router/stats/StatsOverview";
+import HistoryView from "@/components/router/HistoryView";
+import EjectionInsights from "@/components/router/insights/EjectionInsights";
+import ComputerSelector from "@/components/robotyler/ComputerSelector";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
+import { RouterProvider, useRouter } from "@/contexts/RouterContext";
+import { ImageMetadata } from "@/typings/types";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  AlertTriangle,
+  Circle,
+  Power,
+  Activity,
+  Settings2,
+  BarChart2,
+  History,
+  RotateCw,
+  Shield,
+} from "lucide-react";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { StatusCard } from "@/components/shared/StatusCard";
 
-const MAX_RECONNECT_ATTEMPTS = 5;
+export default function RouterPage() {
+  return (
+    <RouterProvider>
+      <MonitoringDashboard />
+    </RouterProvider>
+  );
+}
 
-export default function MonitoringDashboard() {
-  const { state, logs, connectionStatus, connectionError, reconnectAttempts } =
-    useWebSocketManager();
+const MAX_RECONNECT_ATTEMPTS = 3;
+
+function MonitoringDashboard() {
+  const {
+    state,
+    logs,
+    connectionStatus,
+    connectionError,
+    reconnectAttempts,
+    updateWebSocketUrl,
+    wsUrl,
+    updateEjectionSettings,
+    historicalImages,
+  } = useRouter();
+  const [activeTab, setActiveTab] = useState("live");
+
+  // Create a stable, memoized reference for the LiveView component
+  const [tabsInitialized, setTabsInitialized] = useState(false);
+
+  // Add state for image processing
+  const [currentImage, setCurrentImage] = useState<{
+    url: string | null;
+    metadata: ImageMetadata | null;
+  }>({
+    url: null,
+    metadata: null,
+  });
+
+  // Update image when new analysis image is received
+  useEffect(() => {
+    if (state.currentImageUrl) {
+      setCurrentImage({
+        url: state.currentImageUrl,
+        metadata: state.currentImageMetadata || null,
+      });
+    }
+  }, [state.currentImageUrl, state.currentImageMetadata]);
+
+  // Mark tabs as initialized after the first render
+  useEffect(() => {
+    setTabsInitialized(true);
+  }, []);
+
+  const handleComputerSelect = (ip: string) => {
+    updateWebSocketUrl(ip);
+  };
+
+  const handleReconnect = () => {
+    updateWebSocketUrl(wsUrl);
+  };
 
   const renderConnectionAlert = () => {
     if (connectionError) {
@@ -56,117 +108,211 @@ export default function MonitoringDashboard() {
     return null;
   };
 
+  const renderStatusCards = () => (
+    <AnimatePresence>
+      {activeTab !== "live" && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"
+        >
+          <StatusCard
+            title="Block Sensor"
+            status={state.sensor1 === "ON"}
+            icon={Circle}
+            description={state.sensor1 === "ON" ? "Active" : "Inactive"}
+            isActive={state.sensor1 === "ON"}
+            activeColor="green"
+          />
+          <StatusCard
+            title="Push Cylinder"
+            status={state.push_cylinder === "ON"}
+            icon={Power}
+            description={
+              state.push_cylinder === "ON" ? "Engaged" : "Disengaged"
+            }
+            duration={state.settings?.slave.pushTime}
+            isActive={state.push_cylinder === "ON"}
+          />
+          <StatusCard
+            title="Flipper"
+            status={state.flipper === "ON"}
+            icon={RotateCw}
+            description={state.flipper === "ON" ? "Engaged" : "Disengaged"}
+            duration={state.settings?.slave.flipperDuration}
+            isActive={state.flipper === "ON"}
+          />
+          <StatusCard
+            title="Ejection Cylinder"
+            status={state.ejection_cylinder === "ON"}
+            icon={Power}
+            description={
+              state.ejection_cylinder === "ON" ? "Engaged" : "Disengaged"
+            }
+            duration={state.settings?.slave.ejectionTime}
+            isActive={state.ejection_cylinder === "ON"}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <Toaster position="top-center" />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 mb-4 lg:mb-6 lg:z-50">
+        <div className="container mx-auto px-4 py-3 lg:py-4 mt-14 lg:mt-0">
+          <div className="w-full flex flex-wrap items-start lg:items-center justify-between gap-2 lg:gap-4">
+            <div className="flex flex-col">
+              <h1 className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Router Control System
+              </h1>
+              <p className="hidden lg:block text-xs lg:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Monitor and control the router system
+              </p>
+            </div>
 
-      {/* Header with Status */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">
-            System Monitor
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Last updated: {state.lastUpdate.toLocaleTimeString()}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <StatusBadge status={connectionStatus} />
-          <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-            <Activity className="w-4 h-4" />
-            <span className="font-medium">System Status</span>
-          </div>
-        </div>
-      </div>
-
-      {renderConnectionAlert()}
-
-      {/* Main Content - Restructured Layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Status Cards Grid */}
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-gray-50">
-              System Status
-            </CardTitle>
-            <CardDescription className="text-gray-500 dark:text-gray-400">
-              Real-time sensor and device status
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <StatusCard
-                title="Block Sensor"
-                status={state.sensor1.active}
-                icon={Circle}
-                description={state.sensor1 ? "Active" : "Inactive"}
-              />
-              <StatusCard
-                title="Piston"
-                status={state.piston.active}
-                icon={Power}
-                description={state.piston ? "Engaged" : "Disengaged"}
-              />
-              <StatusCard
-                title="Riser"
-                status={state.riser.active}
-                icon={Power}
-                description={state.riser ? "Engaged" : "Disengaged"}
-              />
-              <StatusCard
-                title="Ejector"
-                status={state.ejector.active}
-                icon={Power}
-                description={state.ejector ? "Engaged" : "Disengaged"}
-              />
-              <StatusCard
-                title="Camera"
-                status={state.deviceConnected}
-                icon={Camera}
-                description={
-                  state.deviceConnected ? "Connected" : "Disconnected"
+            <div className="flex items-center gap-4">
+              <div
+                className={`flex items-center gap-2 px-4 py-2 rounded-full dark:bg-blue-900/30`}
+              >
+                <Activity className="w-4 h-4" />
+                <span className="text-sm font-medium">
+                  {state.router_state}
+                </span>
+              </div>
+              <ComputerSelector
+                onSelect={handleComputerSelect}
+                onReconnect={handleReconnect}
+                isConnecting={connectionStatus === "connecting"}
+                connectionStatus={
+                  connectionStatus === "connected"
+                    ? "connected"
+                    : "disconnected"
                 }
+                computers={[
+                  { name: "Router Raspi", ip: "192.168.1.243:8080/ws" },
+                  { name: "Bentzi's Laptop", ip: "192.168.1.229:8080/ws" },
+                  { name: "Dev Testing Raspi", ip: "192.168.1.216:8080/ws" },
+                  { name: "localhost", ip: "localhost:8080/ws" },
+                ]}
               />
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Enlarged Image Analysis Card */}
-        <div className="xl:row-span-2">
-          <ImageAnalysisCard
-            imageUrl={state.currentImageUrl}
-            imageMetadata={state.currentImageMetadata}
-            analysis={state.currentAnalysis}
-            isCapturing={state.isCapturingImage}
-          />
-        </div>
-
-        {/* System Logs Card */}
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-gray-50">
-              System Logs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea
-              className="h-[300px]"
-              viewportClassName="dark:bg-gray-800"
-            >
-              <div className="space-y-2">
-                {logs.length > 0 ? (
-                  logs.map((log) => <LogEntry key={log.id} log={log} />)
-                ) : (
-                  <EmptyLogs />
+          {!connectionStatus && reconnectAttempts > 0 && (
+            <Alert className="mt-3 lg:mt-4 border-2 border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/20">
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+              <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs lg:text-sm">
+                <span>
+                  {reconnectAttempts >= MAX_RECONNECT_ATTEMPTS
+                    ? "Connection failed after multiple attempts."
+                    : `Attempting to connect... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`}
+                </span>
+                {reconnectAttempts >= MAX_RECONNECT_ATTEMPTS && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      /* Add reconnect handler */
+                    }}
+                    className="mt-2 sm:mt-0 border-yellow-500 text-yellow-500 hover:bg-yellow-50 text-xs lg:text-sm px-2 py-1 h-7 lg:h-8"
+                  >
+                    Try Again
+                  </Button>
                 )}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      </header>
 
-      {/* Ejection Controls Card */}
-      <ImprovedEjectionControlGUI />
+      <main className="container mx-auto px-4 py-6">
+        {renderConnectionAlert()}
+
+        {renderStatusCards()}
+
+        <AnimatedTabs
+          id="router-tabs"
+          tabs={[
+            {
+              id: "live",
+              label: "Live View",
+              icon: Activity,
+              description: "Monitor real-time system status and operations",
+            },
+            {
+              id: "insights",
+              label: "Ejection Insights",
+              icon: Shield,
+              description:
+                "Understand ejection decisions and defect analysis in detail",
+            },
+            {
+              id: "history",
+              label: "History",
+              icon: History,
+              description:
+                "Browse through historical images and analysis results",
+            },
+            {
+              id: "settings",
+              label: "Settings",
+              icon: Settings2,
+              description: "Configure system parameters and controls",
+            },
+            {
+              id: "stats",
+              label: "Statistics",
+              icon: BarChart2,
+              description: "View system performance metrics and analytics",
+            },
+          ]}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          variant="card"
+          className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border dark:border-gray-700"
+          tabClassName="px-6 py-4 text-base font-semibold hover:bg-gray-100 dark:hover:bg-gray-700/50 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 rounded-t-lg transition-all duration-200"
+          contentClassName="p-6 bg-white dark:bg-gray-800 rounded-b-lg"
+          tabListClassName="bg-gray-50 dark:bg-gray-800 p-2 rounded-t-lg gap-2"
+        >
+          {/* Use a stable key for each tab content to ensure they're preserved */}
+          <div key="live-tab-content">
+            {tabsInitialized && (
+              <LiveView
+                key="live-view-component"
+                currentImage={currentImage}
+                state={state}
+                logs={logs}
+                historicalImages={historicalImages}
+              />
+            )}
+          </div>
+
+          <div key="insights-tab-content">
+            <EjectionInsights
+              state={state}
+              currentImage={currentImage}
+              historicalImages={historicalImages}
+            />
+          </div>
+
+          <div key="history-tab-content">
+            <HistoryView historicalImages={historicalImages} />
+          </div>
+
+          <div key="settings-tab-content">
+            <ImprovedEjectionControlGUI />
+          </div>
+
+          <div key="stats-tab-content">
+            <StatsOverview
+              dailyStats={state.dailyStats}
+              currentCycleStats={state.currentCycleStats}
+            />
+          </div>
+        </AnimatedTabs>
+      </main>
     </div>
   );
 }

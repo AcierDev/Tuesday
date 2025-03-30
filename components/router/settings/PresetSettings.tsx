@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { PlusCircle } from "lucide-react";
-import { TabsContent } from "@/components/ui/tabs";
+import { RouterSettings } from "@/typings/types";
+import { motion } from "framer-motion";
 
 interface PresetSettingsProps {
-  onLoadPreset: (preset: string) => void;
-  onSavePreset: (name: string) => void;
+  config: RouterSettings;
+  updateConfig: (path: string, value: any) => void;
+  onLoadPreset?: (preset: string) => void;
+  onSavePreset?: (name: string) => void;
 }
 
 const presets = [
@@ -31,8 +34,10 @@ const presets = [
 ];
 
 export default function PresetSettings({
-  onLoadPreset,
-  onSavePreset,
+  config,
+  updateConfig,
+  onLoadPreset = () => {},
+  onSavePreset = () => {},
 }: PresetSettingsProps) {
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
 
@@ -42,14 +47,22 @@ export default function PresetSettings({
   };
 
   return (
-    <TabsContent value="presets">
-      <div className="space-y-6">
-        <div>
-          <Label className="mb-4 block text-lg">Ejection Presets</Label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {presets.map((preset) => (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6"
+    >
+      <div>
+        <Label className="mb-4 block text-lg">Ejection Presets</Label>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {presets.map((preset) => (
+            <motion.div
+              key={preset.id}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
               <Card
-                key={preset.id}
                 className={`relative overflow-hidden group cursor-pointer hover:border-primary transition-colors dark:bg-gray-800 dark:border-gray-600 ${
                   selectedPreset === preset.id
                     ? "border-primary dark:border-primary"
@@ -71,25 +84,25 @@ export default function PresetSettings({
                   />
                 </div>
               </Card>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex justify-end">
-          <Button
-            onClick={() => {
-              const presetName = prompt("Enter a name for the new preset:");
-              if (presetName) {
-                onSavePreset(presetName);
-              }
-            }}
-            variant="outline"
-            className="w-full md:w-auto dark:bg-gray-700 dark:hover:bg-gray-600"
-          >
-            <PlusCircle className="mr-2 h-4 w-4" /> Save Current as Preset
-          </Button>
+            </motion.div>
+          ))}
         </div>
       </div>
-    </TabsContent>
+
+      <div className="flex justify-end">
+        <Button
+          onClick={() => {
+            const presetName = prompt("Enter a name for the new preset:");
+            if (presetName) {
+              onSavePreset(presetName);
+            }
+          }}
+          variant="outline"
+          className="w-full md:w-auto dark:bg-gray-700 dark:hover:bg-gray-600"
+        >
+          <PlusCircle className="mr-2 h-4 w-4" /> Save Current as Preset
+        </Button>
+      </div>
+    </motion.div>
   );
 }

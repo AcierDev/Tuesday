@@ -1,42 +1,37 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { DESIGN_COLORS, ItemDesignImages } from "@/utils/constants";
-import { ItemDesigns, ItemSizes } from "@/typings/types";
-import Image from "next/image";
-
-interface Design {
-  id: string;
-  name: string;
-  imageUrl: string;
-  colors: string[];
-}
+import { ReadonlyURLSearchParams, useSearchParams } from "next/navigation";
+import { DESIGN_COLORS, ItemDesignImages } from "@/typings/constants";
+import { ColumnTitles, Item, ItemDesigns, ItemSizes } from "@/typings/types";
+import { Design, ColorDistribution } from "./types";
+import { DesignSelector } from "./components/DesignSelector";
+import { DesignDetails } from "./components/DesignDetails";
+import { Calculator } from "./components/Calculator";
+import { PackagingDetails } from "./components/PackagingDetails";
+import { BackboardDetails } from "./components/BackboardDetails";
 
 const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
+  const category = design.toLowerCase().includes("stripe")
+    ? "striped"
+    : design.toLowerCase().includes("tile")
+    ? "tiled"
+    : "geometric";
+
   return {
     id: index.toString(),
     name: design,
     imageUrl: ItemDesignImages[design],
     colors: Object.values(DESIGN_COLORS[design] ?? {})?.map((val) => val.hex),
+    category,
   };
 });
 
-function UtilitiesContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+function UtilitiesContent({
+  UrlParams,
+}: {
+  UrlParams: ReadonlyURLSearchParams;
+}) {
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(
     designs[0]!
   );
@@ -45,30 +40,11 @@ function UtilitiesContent() {
   );
   const [width, setWidth] = useState<string>("14");
   const [height, setHeight] = useState<string>("7");
-  const [showBackButton, setShowBackButton] = useState(false);
+  const [isDesignSectionExpanded, setIsDesignSectionExpanded] = useState(false);
+  const [showAdditionalSections, setShowAdditionalSections] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Item | null>(null);
 
-  useEffect(() => {
-    const designId = searchParams.get("design");
-    const size = searchParams.get("size");
-
-    if (designId) {
-      const design = designs.find((d) => d.name === designId);
-      if (design) setSelectedDesign(design);
-    }
-
-    if (size) {
-      if (Object.values(ItemSizes).includes(size as ItemSizes)) {
-        setSelectedSize(size as ItemSizes);
-        const [w, h] = size.split("x").map((dim) => dim.trim());
-        setWidth(w);
-        setHeight(h);
-      }
-    }
-
-    setShowBackButton(!!document.referrer);
-  }, [searchParams]);
-
-  const calculateColorCount = () => {
+  const calculateColorCount = (): ColorDistribution | null => {
     if (!selectedDesign || !width || !height) return null;
 
     const totalPieces = parseInt(width) * parseInt(height);
@@ -96,7 +72,7 @@ function UtilitiesContent() {
 
     for (let i = 0; i < adjustmentCount; i++) {
       const index = Math.floor(i * (colorCount / adjustmentCount));
-      distribution[index].count += useMethod1 ? 1 : -1;
+      distribution[index]!.count += useMethod1 ? 1 : -1;
     }
 
     return {
@@ -109,8 +85,27 @@ function UtilitiesContent() {
   };
 
   useEffect(() => {
+    const designId = UrlParams.get("design");
+    const size = UrlParams.get("size");
+
+    if (designId) {
+      const design = designs.find((d) => d.name === designId);
+      if (design) setSelectedDesign(design);
+    }
+
+    if (size) {
+      if (Object.values(ItemSizes).includes(size as ItemSizes)) {
+        setSelectedSize(size as ItemSizes);
+        const [w = "", h = ""] = size.split("x").map((dim) => dim.trim());
+        setWidth(w);
+        setHeight(h);
+      }
+    }
+  }, [UrlParams]);
+
+  useEffect(() => {
     if (selectedSize !== "custom") {
-      const [w, h] = selectedSize.split("x").map((dim) => dim.trim());
+      const [w = "", h = ""] = selectedSize.split("x").map((dim) => dim.trim());
       setWidth(w);
       setHeight(h);
     }
@@ -148,246 +143,89 @@ function UtilitiesContent() {
     };
   };
 
+  const handleOrderSelect = (order: Item) => {
+    setSelectedDesign(
+      designs.find(
+        (d) =>
+          d.name ===
+          order.values.find((v) => v.columnName === ColumnTitles.Design)?.text
+      ) ?? null
+    );
+    setSelectedSize(
+      order.values.find((v) => v.columnName === ColumnTitles.Size)?.text as
+        | ItemSizes
+        | "custom"
+    );
+    setSelectedOrder(order);
+  };
+
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <div className="container mx-auto p-4 space-y-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        {showBackButton && (
-          <div className="bg-white dark:bg-gray-800 p-2 rounded-md shadow-sm inline-block">
-            <Button
-              variant="ghost"
-              onClick={() => router.back()}
-              className="p-0 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
-          </div>
-        )}
+    <div className="container mx-auto p-4 space-y-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <h1 className="text-3xl font-bold flex items-center justify-between">
+        Setup Utility
+      </h1>
 
-        <h1 className="text-3xl font-bold">Setup Utility</h1>
+      <DesignSelector
+        designs={designs}
+        selectedDesign={selectedDesign}
+        setSelectedDesign={setSelectedDesign}
+        isDesignSectionExpanded={isDesignSectionExpanded}
+        setIsDesignSectionExpanded={setIsDesignSectionExpanded}
+        showAdditionalSections={showAdditionalSections}
+        setShowAdditionalSections={setShowAdditionalSections}
+      />
 
-        <Card className="bg-white dark:bg-gray-800">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-gray-100">
-              Select a Design
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select
-              value={selectedDesign?.id || ""}
-              onValueChange={(value) =>
-                setSelectedDesign(designs.find((d) => d.id === value) || null)
-              }
-            >
-              <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                <SelectValue placeholder="Choose a design" />
-              </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-gray-700">
-                {designs.map((design) => (
-                  <SelectItem
-                    key={design.id}
-                    value={design.id}
-                    className="text-gray-900 dark:text-gray-100"
-                  >
-                    {design.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
+      {selectedDesign && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <DesignDetails
+            design={selectedDesign}
+            getImageDimensions={getImageDimensions}
+          />
 
-        {selectedDesign && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="bg-white dark:bg-gray-800">
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-gray-100">
-                  {selectedDesign.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="relative">
-                  <Image
-                    src={selectedDesign.imageUrl}
-                    alt={selectedDesign.name}
-                    width={getImageDimensions(selectedDesign.imageUrl).width}
-                    height={getImageDimensions(selectedDesign.imageUrl).height}
-                    className="w-full h-auto"
-                  />
-                </div>
-                <p className="text-gray-900 dark:text-gray-100">
-                  Number of colors: {selectedDesign.colors.length}
-                </p>
-                <div className="h-8 w-full flex">
-                  {selectedDesign.colors.map((color, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        backgroundColor: color,
-                        width: `${100 / selectedDesign.colors.length}%`,
-                      }}
-                      className="h-full"
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+          <Calculator
+            selectedDesign={selectedDesign}
+            selectedSize={selectedSize}
+            width={width}
+            height={height}
+            colorDistribution={colorDistribution}
+            onSizeChange={handleSizeChange}
+            onDimensionChange={handleDimensionChange}
+            onOrderSelect={handleOrderSelect}
+          />
+        </div>
+      )}
 
-            <Card className="bg-white dark:bg-gray-800">
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-gray-100">
-                  Calculator
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="size-select"
-                    className="text-gray-900 dark:text-gray-100"
-                  >
-                    Choose a size:
-                  </Label>
-                  <Select value={selectedSize} onValueChange={handleSizeChange}>
-                    <SelectTrigger
-                      id="size-select"
-                      className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    >
-                      <SelectValue placeholder="Choose a size" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-gray-700">
-                      {Object.values(ItemSizes).map((size) => (
-                        <SelectItem
-                          key={size}
-                          value={size}
-                          className="text-gray-900 dark:text-gray-100"
-                        >
-                          {size}
-                        </SelectItem>
-                      ))}
-                      <SelectItem
-                        value="custom"
-                        className="text-gray-900 dark:text-gray-100"
-                      >
-                        Custom
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="custom-width"
-                    className="text-gray-900 dark:text-gray-100"
-                  >
-                    Dimensions:
-                  </Label>
-                  <div className="flex space-x-2">
-                    <Input
-                      id="custom-width"
-                      type="number"
-                      placeholder="Width"
-                      value={width}
-                      onChange={(e) =>
-                        handleDimensionChange("width", e.target.value)
-                      }
-                      className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    />
-                    <Input
-                      id="custom-height"
-                      type="number"
-                      placeholder="Height"
-                      value={height}
-                      onChange={(e) =>
-                        handleDimensionChange("height", e.target.value)
-                      }
-                      className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    />
-                  </div>
-                </div>
-
-                {colorDistribution && (
-                  <>
-                    <Card className="bg-white dark:bg-gray-700">
-                      <CardHeader>
-                        <CardTitle className="text-gray-900 dark:text-gray-100">
-                          Total Pieces
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-gray-900 dark:text-gray-100">
-                          {colorDistribution.totalPieces}
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-white dark:bg-gray-700">
-                      <CardHeader>
-                        <CardTitle className="text-gray-900 dark:text-gray-100">
-                          Adjustment
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-gray-900 dark:text-gray-100">
-                          {colorDistribution.adjustmentCount} pieces{" "}
-                          {colorDistribution.adjustmentType === "add"
-                            ? "added to"
-                            : "subtracted from"}{" "}
-                          colors, spread evenly across the design
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-white dark:bg-gray-700">
-                      <CardHeader>
-                        <CardTitle className="text-gray-900 dark:text-gray-100">
-                          Distribution Diagram
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="w-full flex flex-wrap">
-                          {colorDistribution.distribution.map(
-                            ({ color, count }, index) => (
-                              <div
-                                key={index}
-                                style={{
-                                  backgroundColor: color,
-                                  width: `${
-                                    (count / colorDistribution.totalPieces) *
-                                    100
-                                  }%`,
-                                }}
-                                className="h-10 relative group h-20 flex items-center justify-center"
-                              >
-                                <span className="text-xs font-bold text-white text-shadow">
-                                  {count}
-                                </span>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <PackagingDetails
+          selectedSize={selectedSize}
+          selectedOrder={selectedOrder}
+        />
+        <BackboardDetails
+          selectedSize={selectedSize}
+          selectedOrder={selectedOrder}
+        />
       </div>
-    </Suspense>
+    </div>
   );
 }
 
 export default function UtilitiesPage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <SearchParamsWrapper>
-        {(searchParams) => <UtilitiesContent searchParams={searchParams} />}
-      </SearchParamsWrapper>
+      <UrlParamsWrapper>
+        {(UrlParams: ReadonlyURLSearchParams) => (
+          <UtilitiesContent UrlParams={UrlParams} />
+        )}
+      </UrlParamsWrapper>
     </Suspense>
   );
 }
 
-function SearchParamsWrapper({ children }) {
-  const searchParams = useSearchParams();
-  return children(searchParams);
+function UrlParamsWrapper({
+  children,
+}: {
+  children: (UrlParams: ReadonlyURLSearchParams) => React.ReactNode;
+}) {
+  const UrlParams = useSearchParams();
+  return children(UrlParams);
 }

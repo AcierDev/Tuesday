@@ -1,34 +1,29 @@
 "use client";
 
-import { DragDropContext } from "@hello-pangea/dnd";
+import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { format, startOfWeek, addWeeks, subWeeks } from "date-fns";
 
-import { Button } from "@/components/ui/button";
-import { ColumnTitles, type Item, ItemStatus } from "@/typings/types";
+import {
+  ColumnTitles,
+  DayName,
+  type Item,
+  ItemStatus,
+  WeeklyScheduleData,
+} from "@/typings/types";
 import { ConfirmCompletionDialog } from "./ConfirmCompletionDialog";
 import { AddItemDialog } from "./AddItemDialog";
 import { DayColumn } from "./DayColumn";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useBoardOperations } from "@/hooks/useBoardOperations";
+import { WeekSelector } from "./WeekSelector";
+import { calculateTotalSquares } from "@/utils/functions";
+import { useOrderStore } from "@/stores/useOrderStore";
+import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 
-type DaySchedule = Record<string, string[]>;
-type WeeklySchedules = Record<string, DaySchedule>;
-
-interface WeeklyScheduleProps {
-  items: Item[];
-  boardId: string;
-}
-
-export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
-  const { updateBoardInDb, updateItem } = useBoardOperations();
-  const [weeklySchedules, setWeeklySchedules] = useState<WeeklySchedules>({});
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() =>
-    startOfWeek(new Date(), { weekStartsOn: 0 })
-  );
+export function WeeklySchedule() {
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
-  const [currentDay, setCurrentDay] = useState("");
+  const [currentDay, setCurrentDay] = useState<DayName>("Monday");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDesign, setFilterDesign] = useState("all");
   const [filterSize, setFilterSize] = useState("all");
@@ -36,182 +31,83 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
     null
   );
 
-  const loadSchedules = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/weekly-schedules/${boardId}`);
-      if (!response.ok) throw new Error("Failed to load weekly schedules");
-      const schedules = await response.json();
-
-      setWeeklySchedules((prev) => {
-        const currentWeekKey = format(currentWeekStart, "yyyy-MM-dd");
-        if (schedules.weeklySchedules) {
-          // Only create new week if it doesn't exist in the fetched data
-          if (!schedules.weeklySchedules[currentWeekKey]) {
-            return {
-              ...schedules.weeklySchedules,
-              [currentWeekKey]: {
-                Sunday: [],
-                Monday: [],
-                Tuesday: [],
-                Wednesday: [],
-                Thursday: [],
-                Friday: [],
-                Saturday: [],
-              },
-            };
-          }
-          return schedules.weeklySchedules;
-        }
-
-        // If no schedules exist, create new week
-        return {
-          [currentWeekKey]: {
-            Sunday: [],
-            Monday: [],
-            Tuesday: [],
-            Wednesday: [],
-            Thursday: [],
-            Friday: [],
-            Saturday: [],
-          },
-        };
-      });
-    } catch (err) {
-      console.error("Failed to load weekly schedules", err);
-      toast.error("Failed to load weekly schedules. Please refresh the page.");
-    }
-  }, [boardId]); // Remove currentWeekStart from dependencies
+  const { items } = useOrderStore();
+  const {
+    schedules,
+    markDone,
+    addItemToDay,
+    removeItemFromDay,
+    updateSchedule,
+    createWeek,
+  } = useWeeklyScheduleStore();
 
   useEffect(() => {
-    loadSchedules();
-  }, [loadSchedules, currentWeekStart]); // Add currentWeekStart here instead
-
-  const createNewWeek = useCallback((weekStart: Date) => {
-    const adjustedWeekStart = startOfWeek(weekStart, { weekStartsOn: 0 });
-    const weekKey = format(adjustedWeekStart, "yyyy-MM-dd");
-    setWeeklySchedules((prev) => ({
-      ...prev,
-      [weekKey]: {
-        Sunday: [],
-        Monday: [],
-        Tuesday: [],
-        Wednesday: [],
-        Thursday: [],
-        Friday: [],
-        Saturday: [],
-      },
-    }));
-    setCurrentWeekStart(adjustedWeekStart);
+    setCurrentWeekStart(startOfWeek(new Date()));
   }, []);
 
-  const saveSchedules = useCallback(
-    async (newSchedules: WeeklySchedules) => {
-      try {
-        await updateBoardInDb(boardId, {
-          $set: { weeklySchedules: newSchedules },
-        });
-        console.log("Weekly schedules saved successfully");
-      } catch (err) {
-        console.error("Failed to save weekly schedules", err);
-        toast.error("Failed to save weekly schedules. Please try again.");
-      }
-    },
-    [boardId, updateBoardInDb]
-  );
-
-  const handleAddItem = useCallback((day: string) => {
+  const handleAddItem = useCallback((day: DayName) => {
     setCurrentDay(day);
     setIsAddingItem(true);
   }, []);
 
   const handleQuickAdd = useCallback(
-    async (day: string, item: Item) => {
+    async (item: Item, day: DayName) => {
+      if (!currentWeekStart) return;
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-      const newSchedules = {
-        ...weeklySchedules,
-        [weekKey]: {
-          ...weeklySchedules[weekKey],
-          [day]: [...(weeklySchedules[weekKey]?.[day] || []), item.id],
-        },
-      };
-      setWeeklySchedules(newSchedules);
-      await saveSchedules(newSchedules);
-
-      // Update item's isScheduled status
-      const updatedItem = { ...item, isScheduled: true };
-      await updateItem(updatedItem, null);
+      try {
+        await addItemToDay(weekKey, day, item.id);
+      } catch (err) {
+        toast.error("Failed to add item");
+      }
     },
-    [weeklySchedules, currentWeekStart, saveSchedules, updateItem]
+    [currentWeekStart, addItemToDay]
   );
 
   const handleRemoveItem = useCallback(
-    async (day: string, itemId: string) => {
+    async (day: DayName, itemId: string) => {
+      if (!currentWeekStart) return;
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-      const newSchedules = {
-        ...weeklySchedules,
-        [weekKey]: {
-          ...weeklySchedules[weekKey],
-          [day]: weeklySchedules[weekKey]![day]!.filter((id) => id !== itemId),
-        },
-      };
-      setWeeklySchedules(newSchedules);
-      await saveSchedules(newSchedules);
-
-      // Find the item and update its isScheduled status
-      const item = items.find((i) => i.id === itemId);
-      if (item) {
-        const updatedItem = { ...item, isScheduled: false };
-        await updateItem(updatedItem, null);
+      try {
+        await removeItemFromDay(weekKey, day, itemId);
+      } catch (err) {
+        toast.error("Failed to remove item");
       }
     },
-    [weeklySchedules, currentWeekStart, saveSchedules, updateItem, items]
+    [currentWeekStart, removeItemFromDay]
   );
 
   const handleDragEnd = useCallback(
-    async (result: any) => {
-      if (!result.destination) return;
-
+    async (result: DropResult) => {
+      if (!result.destination || !currentWeekStart) return;
       const { source, destination } = result;
-      const sourceDay = source.droppableId;
-      const destDay = destination.droppableId;
-
       const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-      const newSchedules = { ...weeklySchedules };
-      const [movedItemId] = newSchedules[weekKey]![sourceDay]!.splice(
-        source.index,
-        1
-      );
-      newSchedules[weekKey]![destDay]!.splice(
-        destination.index,
-        0,
-        movedItemId!
-      );
 
-      setWeeklySchedules(newSchedules);
-      await saveSchedules(newSchedules);
-    },
-    [weeklySchedules, currentWeekStart, saveSchedules]
-  );
+      const currentSchedule = schedules.find((s) => s.weekKey === weekKey);
+      if (!currentSchedule) return;
 
-  const handleMarkAsCompleted = useCallback(
-    async (item: Item) => {
+      const newSchedule = { ...currentSchedule };
+      const sourceItems = [
+        ...(newSchedule.schedule[source.droppableId as DayName] || []),
+      ];
+      const destItems = [
+        ...(newSchedule.schedule[destination.droppableId as DayName] || []),
+      ];
+
+      const [movedItem] = sourceItems.splice(source.index, 1);
+      if (movedItem) {
+        destItems.splice(destination.index, 0, movedItem);
+      }
+
+      newSchedule.schedule[source.droppableId as DayName] = sourceItems;
+      newSchedule.schedule[destination.droppableId as DayName] = destItems;
+
       try {
-        const updatedItem = {
-          ...item,
-          status: ItemStatus.Done,
-          completedAt: Date.now(),
-        };
-
-        await updateItem(updatedItem, null);
-        toast.success("Item marked as completed");
+        await updateSchedule(weekKey, newSchedule);
       } catch (err) {
-        console.error("Failed to mark item as completed", err);
-        toast.error("Failed to mark item as completed. Please try again.");
-      } finally {
-        setConfirmCompleteItem(null);
+        toast.error("Failed to update item position");
       }
     },
-    [updateItem]
+    [currentWeekStart, schedules, updateSchedule]
   );
 
   const getItemValue = useCallback(
@@ -234,109 +130,85 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
     [items, getItemValue]
   );
 
-  const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+  const weekKey = currentWeekStart
+    ? format(currentWeekStart, "yyyy-MM-dd")
+    : "";
+  const currentSchedule = schedules.find((s) => s.weekKey === weekKey);
+
   const filteredItems = useMemo(
     () =>
       items.filter(
         (item) =>
           !item.isScheduled &&
-          !Object.values(weeklySchedules[weekKey] || {})
-            .flat()
-            .includes(item.id) &&
+          item.status !== ItemStatus.Done &&
+          item.status !== ItemStatus.Hidden &&
+          !(
+            currentSchedule &&
+            Object.values(currentSchedule.schedule)
+              .flat()
+              .some((scheduledItem) => scheduledItem.id === item.id)
+          ) &&
           getItemValue(item, ColumnTitles.Customer_Name)
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) &&
           (filterDesign === "all" ||
             getItemValue(item, ColumnTitles.Design) === filterDesign) &&
           (filterSize === "all" ||
-            getItemValue(item, ColumnTitles.Size) === filterSize) &&
-          item.status !== ItemStatus.Done
+            getItemValue(item, ColumnTitles.Size) === filterSize)
       ),
-    [
-      items,
-      weeklySchedules,
-      weekKey,
-      searchTerm,
-      filterDesign,
-      filterSize,
-      getItemValue,
-    ]
+    [items, currentSchedule, searchTerm, filterDesign, filterSize, getItemValue]
   );
 
   const changeWeek = useCallback(
     (direction: "prev" | "next") => {
+      if (!currentWeekStart) return;
       const newWeekStart =
         direction === "prev"
           ? subWeeks(currentWeekStart, 1)
           : addWeeks(currentWeekStart, 1);
       setCurrentWeekStart(newWeekStart);
-      if (!weeklySchedules[format(newWeekStart, "yyyy-MM-dd")]) {
-        createNewWeek(newWeekStart);
+      const newWeekKey = format(newWeekStart, "yyyy-MM-dd");
+      if (!schedules.some((s) => s.weekKey === newWeekKey)) {
+        createWeek(newWeekKey);
       }
     },
-    [currentWeekStart, weeklySchedules, createNewWeek]
-  );
-
-  const calculateTotalSquares = useCallback(
-    (dayItemIds: string[]) => {
-      return dayItemIds.reduce((total, itemId) => {
-        const item = items.find((i) => i.id === itemId);
-        if (item) {
-          const size = getItemValue(item, ColumnTitles.Size);
-          const [width, height] = size.split("x").map(Number);
-          return total + width! * height!;
-        }
-        return total;
-      }, 0);
-    },
-    [items, getItemValue]
+    [currentWeekStart, schedules, createWeek]
   );
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 sticky top-30">
-      <div className="p-4 bg-white dark:bg-gray-800 shadow-md">
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => changeWeek("prev")}
-          >
-            <ChevronLeft className="mr-1 h-4 w-4" /> Previous
-          </Button>
-          <span className="text-lg font-semibold">
-            {format(currentWeekStart, "MMM d")} -{" "}
-            {format(addWeeks(currentWeekStart, 1), "MMM d, yyyy")}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => changeWeek("next")}
-          >
-            Next <ChevronRight className="ml-1 h-4 w-4" />
-          </Button>
+    <div className="h-full overflow-y-auto no-scrollbar p-4 bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 text-gray-900 dark:text-gray-100 max-w-[1400px] mx-auto">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold mb-2">Weekly Planner</h2>
+        <WeekSelector
+          bgColor="bg-white dark:bg-gray-700"
+          currentWeekStart={currentWeekStart || new Date()}
+          onChangeWeek={changeWeek}
+        />
+      </div>
+      <div className="rounded-lg">
+        <div className="space-y-4">
+          <DragDropContext onDragEnd={handleDragEnd}>
+            {currentSchedule &&
+              Object.entries(currentSchedule.schedule).map(
+                ([day, dayItems]) => (
+                  <DayColumn
+                    key={day}
+                    day={day as DayName}
+                    dayItemIds={dayItems}
+                    items={items}
+                    calculateTotalSquares={(dayItems) =>
+                      calculateTotalSquares(dayItems, items, getItemValue)
+                    }
+                    handleAddItem={handleAddItem}
+                    handleRemoveItem={handleRemoveItem}
+                    setConfirmCompleteItem={setConfirmCompleteItem}
+                    getItemValue={getItemValue}
+                  />
+                )
+              )}
+          </DragDropContext>
         </div>
       </div>
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex-grow overflow-hidden">
-          <div className="flex h-full">
-            {Object.entries(weeklySchedules[weekKey] || {}).map(
-              ([day, dayItemIds]) => (
-                <DayColumn
-                  key={day}
-                  day={day}
-                  dayItemIds={dayItemIds}
-                  items={items}
-                  calculateTotalSquares={calculateTotalSquares}
-                  handleAddItem={handleAddItem}
-                  handleRemoveItem={handleRemoveItem}
-                  setConfirmCompleteItem={setConfirmCompleteItem}
-                  getItemValue={getItemValue}
-                />
-              )
-            )}
-          </div>
-        </div>
-      </DragDropContext>
 
       <AddItemDialog
         isOpen={isAddingItem}
@@ -359,8 +231,9 @@ export function WeeklySchedule({ items, boardId }: WeeklyScheduleProps) {
         isOpen={!!confirmCompleteItem}
         onClose={() => setConfirmCompleteItem(null)}
         item={confirmCompleteItem}
-        handleMarkAsCompleted={handleMarkAsCompleted}
+        handleMarkAsCompleted={markDone}
         getItemValue={getItemValue}
+        weekKey={weekKey}
       />
     </div>
   );

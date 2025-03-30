@@ -11,12 +11,12 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { ItemGroupPreview } from "../orders/ItemGroupPreview";
-import { WeeklySchedules } from "@/components/weekly-schedule/UseWeeklySchedule";
+import { ItemGroupSection } from "../orders/ItemGroup";
 import { WeekView } from "@/components/shared/WeekView";
 import { CalendarView } from "@/components/shared/CalendarView";
-import { Board, ColumnTitles, Group, Item } from "@/typings/types";
+import { DayName, Group } from "@/typings/types";
 import { cn } from "@/utils/functions";
+import { useOrderStore } from "@/stores/useOrderStore";
 
 type SchedulePageLayoutProps = {
   title: string;
@@ -37,10 +37,8 @@ type SchedulePageLayoutProps = {
   weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   isCurrentWeek: boolean;
   group: Group;
-  board: Board;
-  updateItem: (updatedItem: Item, changedField: ColumnTitles) => Promise<void>;
   selectedDates: Date[];
-  schedule: WeeklySchedules;
+  schedule: Record<string, Record<DayName, number>>;
   toggleDateSelection: (date: Date) => void;
 };
 
@@ -59,7 +57,6 @@ export function SchedulePageLayout({
   weekStartsOn,
   isCurrentWeek,
   group,
-  board,
   selectedDates,
   schedule,
   toggleDateSelection,
@@ -69,6 +66,7 @@ export function SchedulePageLayout({
   const calendarRef = useRef<HTMLDivElement>(null);
   const tabsCardRef = useRef<HTMLDivElement>(null);
   const fullscreenRef = useRef<HTMLDivElement>(null);
+  const { updateItem } = useOrderStore();
 
   useEffect(() => {
     const adjustTabsCardHeight = () => {
@@ -79,10 +77,10 @@ export function SchedulePageLayout({
     };
 
     adjustTabsCardHeight();
-    globalThis.addEventListener("resize", adjustTabsCardHeight);
+    window.addEventListener("resize", adjustTabsCardHeight);
 
     return () => {
-      globalThis.removeEventListener("resize", adjustTabsCardHeight);
+      window.removeEventListener("resize", adjustTabsCardHeight);
     };
   }, [viewMode]);
 
@@ -287,7 +285,17 @@ export function SchedulePageLayout({
         {viewMode === "week" ? (
           <>
             {renderWeekView()}
-            <ItemGroupPreview group={group} board={board} />
+            <ItemGroupSection
+              group={group}
+              onDelete={() => Promise.resolve()}
+              onShip={() => Promise.resolve()}
+              onMarkCompleted={() => Promise.resolve()}
+              onGetLabel={() => {}}
+              onReorder={() => {}}
+              isPreview={true}
+              isCollapsible={true}
+              defaultCollapsed={true}
+            />
             <div className="flex-grow">{renderTabs()}</div>
           </>
         ) : (
@@ -306,7 +314,18 @@ export function SchedulePageLayout({
                 {renderTabs()}
               </div>
             </div>
-            <ItemGroupPreview group={group} board={board} />
+            <ItemGroupSection
+              group={group}
+              onDelete={() => Promise.resolve()}
+              onShip={() => Promise.resolve()}
+              onMarkCompleted={() => Promise.resolve()}
+              onGetLabel={() => {}}
+              onReorder={() => {}}
+              onDragToWeeklySchedule={() => {}}
+              isPreview={true}
+              isCollapsible={true}
+              defaultCollapsed={true}
+            />
           </>
         )}
       </div>

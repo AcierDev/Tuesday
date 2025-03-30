@@ -19,29 +19,32 @@ import { Button } from "@/components/ui/button";
 import { XCircle, UserX, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { boardConfig } from "@/config/boardconfig";
-import { Board, ColumnTitles, GenericColumnValue, Item } from "@/typings/types";
+import { ColumnTitles, GenericColumnValue, Item } from "@/typings/types";
 import {
   CREDIT_COLORS,
   CREDIT_OPTIONS,
   CreditOption,
   EMPLOYEE_MAP,
   INITIALS_MAP,
-} from "@/utils/constants";
+  ITEM_DEFAULT_VALUES,
+} from "@/typings/constants";
 import { combineImages, getEmployeeInfoFromInitials } from "@/utils/functions";
-import { useBoardOperations } from "@/hooks/useBoardOperations";
 
 interface DropdownCellProps {
   item: Item;
   columnValue: GenericColumnValue;
+  onUpdate: (updatedItem: Item, changedField: ColumnTitles) => void;
 }
 
-export function DropdownCell({ item, columnValue }: DropdownCellProps) {
+export function DropdownCell({
+  item,
+  columnValue,
+  onUpdate,
+}: DropdownCellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCreditDialogOpen, setIsCreditDialogOpen] = useState(false);
   const [selectedCredits, setSelectedCredits] = useState<CreditOption[]>([]);
   const [combinedImageUrl, setCombinedImageUrl] = useState<string | null>(null);
-
-  const { updateItem } = useBoardOperations();
 
   useEffect(() => {
     if (columnValue.credit && columnValue.credit.length > 0) {
@@ -84,9 +87,19 @@ export function DropdownCell({ item, columnValue }: DropdownCellProps) {
   const handleUpdate = useCallback(
     async (newValue: string, credits: CreditOption[] | null) => {
       try {
+        // Ensure all default values are present by spreading ITEM_DEFAULT_VALUES
+        const completeValues = Object.values(ColumnTitles).map(
+          (columnTitle) => {
+            const existingValue = item.values.find(
+              (v) => v.columnName === columnTitle
+            );
+            return existingValue || ITEM_DEFAULT_VALUES[columnTitle];
+          }
+        );
+
         const updatedItem = {
           ...item,
-          values: item.values.map((value) =>
+          values: completeValues.map((value) =>
             value.columnName === columnValue.columnName
               ? {
                   ...value,
@@ -99,14 +112,14 @@ export function DropdownCell({ item, columnValue }: DropdownCellProps) {
               : value
           ),
         };
-        await updateItem(updatedItem, columnValue.columnName);
+        await onUpdate(updatedItem, columnValue.columnName);
         toast.success("Value updated successfully");
       } catch (err) {
         console.error("Failed to update ColumnValue", err);
         toast.error("Failed to update the value. Please try again.");
       }
     },
-    [item, columnValue.columnName, updateItem]
+    [item, columnValue.columnName, onUpdate]
   );
 
   const handleSaveCredits = useCallback(async () => {
