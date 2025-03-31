@@ -517,6 +517,11 @@ export interface SlaveSettings {
   flipperDelay: number;
   flipperDuration: number;
   flipperEnabled: boolean;
+  servoAnalysisAngle: number;
+  servoIdleAngle: number;
+  servoPassAngle: number;
+  servoEjectAngle: number;
+  servoEnabled: boolean;
 }
 
 export interface GlobalSettings {

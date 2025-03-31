@@ -438,6 +438,311 @@ const GlobalSettings = ({
 
               <Separator className="bg-gray-800" />
 
+              {/* Servo Controls Section */}
+              <div className="space-y-4 mt-8">
+                <motion.h3
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="text-sm font-medium text-gray-400 flex items-center gap-2"
+                >
+                  <Settings2 className="h-4 w-4" />
+                  Servo Controls
+                </motion.h3>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="flex items-center justify-between p-4 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <Settings2 className="h-4 w-4 text-blue-400" />
+                    <div>
+                      <Label htmlFor="servoEnabled" className="font-medium">
+                        Enable Servo
+                      </Label>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Enable the servo positioning mechanism
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="servoEnabled"
+                    checked={config.slave.servoEnabled}
+                    onCheckedChange={(checked) =>
+                      updateConfig("slave.servoEnabled", checked)
+                    }
+                    className="data-[state=checked]:bg-blue-500"
+                  />
+                </motion.div>
+
+                <div className="space-y-6 pl-4">
+                  {/* Servo Angle Control - Analysis Position */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center">
+                      <div className="flex items-center gap-2">
+                        <Settings2 className="h-4 w-4 text-green-400" />
+                        <Label
+                          htmlFor="servoAnalysisAngle"
+                          className="font-medium"
+                        >
+                          Analysis Position
+                        </Label>
+                      </div>
+                      {renderTooltip("Servo angle during analysis (0-180°)")}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="relative flex-1">
+                        <Slider
+                          id="servoAnalysisAngle"
+                          min={0}
+                          max={180}
+                          step={1}
+                          value={[config.slave.servoAnalysisAngle]}
+                          onValueChange={(value) =>
+                            updateConfig("slave.servoAnalysisAngle", value[0])
+                          }
+                          className="flex-1 [&>.relative>div:last-child]:dark:bg-gray-700"
+                        />
+                      </div>
+                      <div className="flex items-center">
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.3 }}
+                        >
+                          <Input
+                            type="number"
+                            min={0}
+                            max={180}
+                            step={1}
+                            value={config.slave.servoAnalysisAngle}
+                            onChange={(e) =>
+                              updateConfig(
+                                "slave.servoAnalysisAngle",
+                                parseInt(e.target.value)
+                              )
+                            }
+                            className="w-20 text-right dark:bg-gray-700"
+                          />
+                        </motion.div>
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.3 }}
+                          className="text-sm text-gray-400 w-8 ml-2"
+                        >
+                          deg
+                        </motion.span>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Servo Angle Control - Idle Position */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center">
+                      <div className="flex items-center gap-2">
+                        <Settings2 className="h-4 w-4 text-blue-400" />
+                        <Label htmlFor="servoIdleAngle" className="font-medium">
+                          Idle Position
+                        </Label>
+                      </div>
+                      {renderTooltip("Servo angle when idle (0-180°)")}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="relative flex-1">
+                        <Slider
+                          id="servoIdleAngle"
+                          min={0}
+                          max={180}
+                          step={1}
+                          value={[config.slave.servoIdleAngle]}
+                          onValueChange={(value) =>
+                            updateConfig("slave.servoIdleAngle", value[0])
+                          }
+                          className="flex-1 [&>.relative>div:last-child]:dark:bg-gray-700"
+                        />
+                      </div>
+                      <div className="flex items-center">
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.4 }}
+                        >
+                          <Input
+                            type="number"
+                            min={0}
+                            max={180}
+                            step={1}
+                            value={config.slave.servoIdleAngle}
+                            onChange={(e) =>
+                              updateConfig(
+                                "slave.servoIdleAngle",
+                                parseInt(e.target.value)
+                              )
+                            }
+                            className="w-20 text-right dark:bg-gray-700"
+                          />
+                        </motion.div>
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.4 }}
+                          className="text-sm text-gray-400 w-8 ml-2"
+                        >
+                          deg
+                        </motion.span>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Servo Angle Control - Pass Position */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center">
+                      <div className="flex items-center gap-2">
+                        <Settings2 className="h-4 w-4 text-green-400" />
+                        <Label htmlFor="servoPassAngle" className="font-medium">
+                          Pass Position
+                        </Label>
+                      </div>
+                      {renderTooltip(
+                        "Servo angle for passing a board (0-180°)"
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="relative flex-1">
+                        <Slider
+                          id="servoPassAngle"
+                          min={0}
+                          max={180}
+                          step={1}
+                          value={[config.slave.servoPassAngle]}
+                          onValueChange={(value) =>
+                            updateConfig("slave.servoPassAngle", value[0])
+                          }
+                          className="flex-1 [&>.relative>div:last-child]:dark:bg-gray-700"
+                        />
+                      </div>
+                      <div className="flex items-center">
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.5 }}
+                        >
+                          <Input
+                            type="number"
+                            min={0}
+                            max={180}
+                            step={1}
+                            value={config.slave.servoPassAngle}
+                            onChange={(e) =>
+                              updateConfig(
+                                "slave.servoPassAngle",
+                                parseInt(e.target.value)
+                              )
+                            }
+                            className="w-20 text-right dark:bg-gray-700"
+                          />
+                        </motion.div>
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.5 }}
+                          className="text-sm text-gray-400 w-8 ml-2"
+                        >
+                          deg
+                        </motion.span>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Servo Angle Control - Ejection Position */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center">
+                      <div className="flex items-center gap-2">
+                        <Settings2 className="h-4 w-4 text-red-400" />
+                        <Label
+                          htmlFor="servoEjectAngle"
+                          className="font-medium"
+                        >
+                          Ejection Position
+                        </Label>
+                      </div>
+                      {renderTooltip(
+                        "Servo angle for ejecting a board (0-180°)"
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="relative flex-1">
+                        <Slider
+                          id="servoEjectAngle"
+                          min={0}
+                          max={180}
+                          step={1}
+                          value={[config.slave.servoEjectAngle]}
+                          onValueChange={(value) =>
+                            updateConfig("slave.servoEjectAngle", value[0])
+                          }
+                          className="flex-1 [&>.relative>div:last-child]:dark:bg-gray-700"
+                        />
+                      </div>
+                      <div className="flex items-center">
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.6 }}
+                        >
+                          <Input
+                            type="number"
+                            min={0}
+                            max={180}
+                            step={1}
+                            value={config.slave.servoEjectAngle}
+                            onChange={(e) =>
+                              updateConfig(
+                                "slave.servoEjectAngle",
+                                parseInt(e.target.value)
+                              )
+                            }
+                            className="w-20 text-right dark:bg-gray-700"
+                          />
+                        </motion.div>
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.6 }}
+                          className="text-sm text-gray-400 w-8 ml-2"
+                        >
+                          deg
+                        </motion.span>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+              </div>
+
+              <Separator className="bg-gray-800" />
+
               {/* Defect Detection Section */}
               <div className="space-y-4">
                 <motion.h3
@@ -748,6 +1053,172 @@ const GlobalSettings = ({
                     validationErrors["slave.flipperDuration"],
                     1
                   )}
+                </div>
+              </div>
+
+              <Separator className="my-4" />
+
+              {/* Servo Controls Section - mobile */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-blue-400 text-sm flex items-center gap-2">
+                  <Settings2 className="h-4 w-4" />
+                  Servo Controls
+                </h3>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="flex items-center justify-between bg-gray-800/30 p-3 rounded-lg"
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings2 className="h-4 w-4 text-blue-400" />
+                    <div>
+                      <Label
+                        htmlFor="servoEnabled_mobile"
+                        className="font-medium text-sm"
+                      >
+                        Enable Servo
+                      </Label>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Enable servo positioning
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="servoEnabled_mobile"
+                    checked={config.slave.servoEnabled}
+                    onCheckedChange={(checked) =>
+                      updateConfig("slave.servoEnabled", checked)
+                    }
+                    className="data-[state=checked]:bg-blue-500 scale-90"
+                  />
+                </motion.div>
+
+                <div className="grid grid-cols-1 gap-4 bg-gray-800/10 p-3 rounded-lg border border-gray-800/20">
+                  {/* Servo Analysis Angle - Mobile */}
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <Label
+                        htmlFor="servoAnalysisAngle_mobile"
+                        className="text-sm font-medium flex items-center"
+                      >
+                        <Settings2 className="h-4 w-4 text-green-400 mr-2" />
+                        Analysis Position
+                      </Label>
+                      {renderTooltip("Servo angle during analysis (0-180°)")}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Slider
+                        id="servoAnalysisAngle_mobile"
+                        min={0}
+                        max={180}
+                        step={1}
+                        value={[config.slave.servoAnalysisAngle]}
+                        onValueChange={(value) =>
+                          updateConfig("slave.servoAnalysisAngle", value[0])
+                        }
+                        className="flex-1"
+                      />
+                      <div className="w-12 text-right font-mono">
+                        {config.slave.servoAnalysisAngle}°
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Servo Idle Angle - Mobile */}
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <Label
+                        htmlFor="servoIdleAngle_mobile"
+                        className="text-sm font-medium flex items-center"
+                      >
+                        <Settings2 className="h-4 w-4 text-blue-400 mr-2" />
+                        Idle Position
+                      </Label>
+                      {renderTooltip("Servo angle when idle (0-180°)")}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Slider
+                        id="servoIdleAngle_mobile"
+                        min={0}
+                        max={180}
+                        step={1}
+                        value={[config.slave.servoIdleAngle]}
+                        onValueChange={(value) =>
+                          updateConfig("slave.servoIdleAngle", value[0])
+                        }
+                        className="flex-1"
+                      />
+                      <div className="w-12 text-right font-mono">
+                        {config.slave.servoIdleAngle}°
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Servo Pass Angle - Mobile */}
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <Label
+                        htmlFor="servoPassAngle_mobile"
+                        className="text-sm font-medium flex items-center"
+                      >
+                        <Settings2 className="h-4 w-4 text-green-400 mr-2" />
+                        Pass Position
+                      </Label>
+                      {renderTooltip(
+                        "Servo angle for passing a board (0-180°)"
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Slider
+                        id="servoPassAngle_mobile"
+                        min={0}
+                        max={180}
+                        step={1}
+                        value={[config.slave.servoPassAngle]}
+                        onValueChange={(value) =>
+                          updateConfig("slave.servoPassAngle", value[0])
+                        }
+                        className="flex-1"
+                      />
+                      <div className="w-12 text-right font-mono">
+                        {config.slave.servoPassAngle}°
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Servo Eject Angle - Mobile */}
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <Label
+                        htmlFor="servoEjectAngle_mobile"
+                        className="text-sm font-medium flex items-center"
+                      >
+                        <Settings2 className="h-4 w-4 text-red-400 mr-2" />
+                        Ejection Position
+                      </Label>
+                      {renderTooltip(
+                        "Servo angle for ejecting a board (0-180°)"
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Slider
+                        id="servoEjectAngle_mobile"
+                        min={0}
+                        max={180}
+                        step={1}
+                        value={[config.slave.servoEjectAngle]}
+                        onValueChange={(value) =>
+                          updateConfig("slave.servoEjectAngle", value[0])
+                        }
+                        className="flex-1"
+                      />
+                      <div className="w-12 text-right font-mono">
+                        {config.slave.servoEjectAngle}°
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 

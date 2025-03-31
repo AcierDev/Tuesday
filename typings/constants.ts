@@ -632,6 +632,11 @@ export const DEFAULT_ROUTER_SETTINGS: RouterSettings = {
     flipperDelay: 300,
     flipperDuration: 500,
     flipperEnabled: true,
+    servoAnalysisAngle: 10,
+    servoIdleAngle: 80,
+    servoPassAngle: 10,
+    servoEjectAngle: 180,
+    servoEnabled: true,
   },
   ejection: {
     globalSettings: {
