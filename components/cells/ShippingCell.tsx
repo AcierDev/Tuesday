@@ -19,8 +19,6 @@ interface ShippingCellProps {
 export function ShippingCell({ item }: ShippingCellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { trackingInfo } = useTrackingStore();
-  const orderTracking = trackingInfo.find((t) => t.orderId === item.id);
-  const carrier = orderTracking?.trackers[0]?.carrier;
 
   // Memoize the tracking lookup
   const { orderTracking, carrier } = useMemo(() => {

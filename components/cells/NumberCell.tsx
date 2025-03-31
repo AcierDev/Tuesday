@@ -10,9 +10,8 @@ import { Button } from "@/components/ui/button";
 import { StarIcon } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { useBoardOperations } from "@/hooks/useBoardOperations";
 import { ColumnValue, Item } from "@/typings/types";
-
+import { useOrderStore } from "@/stores/useOrderStore";
 export const NumberCell = ({
   item,
   columnValue,
@@ -22,7 +21,7 @@ export const NumberCell = ({
 }) => {
   const [ratingValue, setRatingValue] = useState(Number(columnValue.text) || 0);
 
-  const { updateItem } = useBoardOperations();
+  const { updateItem } = useOrderStore();
 
   const handleUpdate = async (newRating) => {
     setRatingValue(newRating);

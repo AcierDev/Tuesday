@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import clientPromise from "@/lib/mongodb";
 import { Board } from "@/typings/types";
 import { ChangeStream } from "mongodb";
 import process from "node:process";
+import clientPromise from "../../db/connect";
 
 const RETRY_INTERVAL = 5000; // 5 seconds
 const MAX_AWAIT_TIME = 30000; // 30 seconds

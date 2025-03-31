@@ -1053,7 +1053,7 @@ export function ItemGroupSection({
   );
 }
 
-function getStatusColor(columnValue: {
+export function getStatusColor(columnValue: {
   columnName: string;
   type: ColumnTypes;
   text?: string;

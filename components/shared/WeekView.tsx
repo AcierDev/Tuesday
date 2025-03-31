@@ -1,13 +1,17 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { addDays, format } from "date-fns";
-import { useWeeklySchedule } from "../weekly-schedule/UseWeeklySchedule";
 import { cn } from "@/utils/functions";
 import { ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Item, WeeklySchedules, ColumnTitles } from "@/typings/types";
+import { Item, DayName, ColumnTitles } from "@/typings/types";
 import { Button } from "@/components/ui/button";
 import { WORK_DAYS } from "@/typings/constants";
+
+type WeeklySchedules = Record<
+  string,
+  Record<string, { id: string; done: boolean }[]>
+>;
 
 type WeekViewProps = {
   currentWeekStart: Date;

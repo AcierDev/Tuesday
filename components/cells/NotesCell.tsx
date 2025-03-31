@@ -17,8 +17,7 @@ import { StickyNoteIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ColumnValue, Item } from "@/typings/types";
-import { useBoardOperations } from "@/hooks/useBoardOperations";
-
+import { useOrderStore } from "@/stores/useOrderStore";
 export const NotesCell = ({
   item,
   columnValue,
@@ -28,7 +27,7 @@ export const NotesCell = ({
 }) => {
   const [notesValue, setNotesValue] = useState(columnValue.text || "");
 
-  const { updateItem } = useBoardOperations();
+  const { updateItem } = useOrderStore();
 
   const handleUpdate = async () => {
     try {

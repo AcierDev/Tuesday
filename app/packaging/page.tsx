@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { format, addDays } from "date-fns";
+import { format, addDays, startOfWeek } from "date-fns";
 
 import { useIsMobile } from "@/components/shared/UseIsMobile";
 import { SchedulePageLayout } from "@/components/shared/SchedulePageLayout";
@@ -25,9 +25,51 @@ export default function BoxSchedulePage() {
   const [filterSize, setFilterSize] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("overview");
-  const isMobile = useIsMobile();
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() =>
+    startOfWeek(new Date(), { weekStartsOn: 0 })
+  );
 
-  const { schedules, currentWeek } = useWeeklyScheduleStore();
+  const isMobile = useIsMobile();
+  const { schedules } = useWeeklyScheduleStore();
+
+  const changeWeek = (direction: "prev" | "next") => {
+    const newDate = new Date(currentWeekStart);
+    if (direction === "prev") {
+      newDate.setDate(newDate.getDate() - 7);
+    } else {
+      newDate.setDate(newDate.getDate() + 7);
+    }
+    setCurrentWeekStart(newDate);
+  };
+
+  const resetToCurrentWeek = () => {
+    setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 0 }));
+  };
+
+  const isCurrentWeek = () => {
+    const today = new Date();
+    const currentWeekStartDate = startOfWeek(today, { weekStartsOn: 0 });
+    return (
+      format(currentWeekStart, "yyyy-MM-dd") ===
+      format(currentWeekStartDate, "yyyy-MM-dd")
+    );
+  };
+
+  const hasDataInPreviousWeek = () => {
+    // Check if there's data in the previous week
+    const prevDate = new Date(currentWeekStart);
+    prevDate.setDate(prevDate.getDate() - 7);
+    const prevWeekKey = format(prevDate, "yyyy-MM-dd");
+    return !!schedules.find((s) => s.weekKey === prevWeekKey);
+  };
+
+  const hasDataInNextWeek = () => {
+    // Check if there's data in the next week
+    const nextDate = new Date(currentWeekStart);
+    nextDate.setDate(nextDate.getDate() + 7);
+    const nextWeekKey = format(nextDate, "yyyy-MM-dd");
+    return !!schedules.find((s) => s.weekKey === nextWeekKey);
+  };
 
   const toggleDateSelection = (date: Date) => {
     setSelectedDates((prev) => {
@@ -40,16 +82,18 @@ export default function BoxSchedulePage() {
   };
 
   const itemsNeedingBoxes = useMemo(() => {
+    if (!items) return [];
     const selectedDateStrings = selectedDates.map((date) =>
       format(date, "yyyy-MM-dd")
     );
-    const weekKey = format(currentWeek, "yyyy-MM-dd");
-    const currentWeekSchedule = schedules[weekKey] || {};
+    const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+    const currentWeekSchedule =
+      schedules.find((s) => s.weekKey === weekKey)?.schedule || {};
 
     const scheduledItems = new Set<string>();
 
     DAYS_OF_WEEK.forEach((dayName, index) => {
-      const dayDate = format(addDays(currentWeek, index), "yyyy-MM-dd");
+      const dayDate = format(addDays(currentWeekStart, index), "yyyy-MM-dd");
       if (
         selectedDateStrings.includes(dayDate) &&
         currentWeekSchedule[dayName as DayName]
@@ -60,8 +104,8 @@ export default function BoxSchedulePage() {
       }
     });
 
-    return items?.filter((item) => scheduledItems.has(item.id));
-  }, [items, selectedDates, schedules, currentWeek]);
+    return items.filter((item) => scheduledItems.has(item.id));
+  }, [items, selectedDates, schedules, currentWeekStart]);
 
   const filteredItemsNeedingBoxes = useMemo(() => {
     return itemsNeedingBoxes?.filter((item) => {
@@ -104,7 +148,7 @@ export default function BoxSchedulePage() {
       <SchedulePageLayout
         title="Box Schedule"
         isMobile={isMobile}
-        currentWeekStart={currentWeek}
+        currentWeekStart={currentWeekStart}
         changeWeek={changeWeek}
         resetToCurrentWeek={resetToCurrentWeek}
         renderFilters={() => (
@@ -149,7 +193,11 @@ export default function BoxSchedulePage() {
         isCurrentWeek={isCurrentWeek()}
         group={filteredBoxGroup}
         selectedDates={selectedDates}
-        schedule={schedules[currentWeek]}
+        schedule={
+          schedules.find(
+            (s) => s.weekKey === format(currentWeekStart, "yyyy-MM-dd")
+          )?.schedule || {}
+        }
         toggleDateSelection={toggleDateSelection}
       />
     </div>

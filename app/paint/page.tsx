@@ -1,17 +1,22 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { format, addDays } from "date-fns";
-import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
+import { format, addDays, startOfWeek } from "date-fns";
 import { useIsMobile } from "@/components/shared/UseIsMobile";
 import { SchedulePageLayout } from "@/components/shared/SchedulePageLayout";
 import { Filters } from "@/components/shared/Filters";
 import { OverviewTab } from "@/components/paint/OverviewTab";
 import { DetailsTab } from "@/components/paint/DetailsTab";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { Group } from "@/typings/types";
 import { DAYS_OF_WEEK } from "@/typings/constants";
-import { ItemUtil } from "@/components/paint/ItemUtil";
+import { ItemUtil } from "@/utils/ItemUtil";
+
+// Define the PaintRequirement interface
+interface PaintRequirement {
+  [color: string]: number;
+}
 
 export default function PaintSchedulePage() {
   const [paintRequirements, setPaintRequirements] = useState<
@@ -21,19 +26,52 @@ export default function PaintSchedulePage() {
   const [filterDesign, setFilterDesign] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("overview");
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() =>
+    startOfWeek(new Date(), { weekStartsOn: 0 })
+  );
 
   const isMobile = useIsMobile();
   const { items } = useOrderStore();
+  const { schedules } = useWeeklyScheduleStore();
 
-  const {
-    weeklySchedules,
-    currentWeekStart,
-    hasDataInPreviousWeek,
-    hasDataInNextWeek,
-    changeWeek,
-    resetToCurrentWeek,
-    isCurrentWeek,
-  } = useWeeklySchedule({ weekStartsOn: 0 });
+  const changeWeek = (direction: "prev" | "next") => {
+    const newDate = new Date(currentWeekStart);
+    if (direction === "prev") {
+      newDate.setDate(newDate.getDate() - 7);
+    } else {
+      newDate.setDate(newDate.getDate() + 7);
+    }
+    setCurrentWeekStart(newDate);
+  };
+
+  const resetToCurrentWeek = () => {
+    setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 0 }));
+  };
+
+  const isCurrentWeek = () => {
+    const today = new Date();
+    const currentWeekStartDate = startOfWeek(today, { weekStartsOn: 0 });
+    return (
+      format(currentWeekStart, "yyyy-MM-dd") ===
+      format(currentWeekStartDate, "yyyy-MM-dd")
+    );
+  };
+
+  const hasDataInPreviousWeek = () => {
+    // Check if there's data in the previous week
+    const prevDate = new Date(currentWeekStart);
+    prevDate.setDate(prevDate.getDate() - 7);
+    const prevWeekKey = format(prevDate, "yyyy-MM-dd");
+    return !!schedules.find((s) => s.weekKey === prevWeekKey);
+  };
+
+  const hasDataInNextWeek = () => {
+    // Check if there's data in the next week
+    const nextDate = new Date(currentWeekStart);
+    nextDate.setDate(nextDate.getDate() + 7);
+    const nextWeekKey = format(nextDate, "yyyy-MM-dd");
+    return !!schedules.find((s) => s.weekKey === nextWeekKey);
+  };
 
   const toggleDateSelection = (date: Date) => {
     setSelectedDates((prev) => {
@@ -51,7 +89,8 @@ export default function PaintSchedulePage() {
       format(date, "yyyy-MM-dd")
     );
     const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-    const currentWeekSchedule = weeklySchedules[weekKey] || {};
+    const currentWeekSchedule =
+      schedules.find((s) => s.weekKey === weekKey)?.schedule || {};
 
     const scheduledItems = new Set<string>();
 
@@ -61,14 +100,14 @@ export default function PaintSchedulePage() {
         selectedDateStrings.includes(dayDate) &&
         currentWeekSchedule[dayName]
       ) {
-        currentWeekSchedule[dayName].forEach((item) =>
+        currentWeekSchedule[dayName].forEach((item: { id: string }) =>
           scheduledItems.add(item.id)
         );
       }
     });
 
     return items.filter((item) => scheduledItems.has(item.id));
-  }, [items, selectedDates, weeklySchedules, currentWeekStart]);
+  }, [items, selectedDates, schedules, currentWeekStart]);
 
   const filteredItemsNeedingPaint = useMemo(() => {
     return itemsNeedingPaint.filter((item) => {
@@ -95,25 +134,24 @@ export default function PaintSchedulePage() {
   );
 
   useEffect(() => {
-    const paintRequirements =
-      ItemUtil.getTotalPaintRequirements(filteredPaintGroup);
-    setPaintRequirements(paintRequirements);
+    if (!filteredPaintGroup || !filteredPaintGroup.items) return;
+    const requirements = ItemUtil.getTotalPaintRequirements(filteredPaintGroup);
+    setPaintRequirements(requirements);
   }, [filteredPaintGroup]);
 
   const filteredRequirements = Object.entries(paintRequirements);
 
-  const totalPieces = filteredRequirements.reduce(
-    (total, [_, colorRequirements]) => {
+  const totalPieces = useMemo(() => {
+    return filteredRequirements.reduce((total, [_, colorRequirements]) => {
       return (
         total +
-        Object.values(colorRequirements).reduce(
+        Object.values(colorRequirements as Record<string, number>).reduce(
           (sum, pieces) => sum + pieces,
           0
         )
       );
-    },
-    0
-  );
+    }, 0);
+  }, [filteredRequirements]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -165,7 +203,11 @@ export default function PaintSchedulePage() {
         isCurrentWeek={isCurrentWeek()}
         group={filteredPaintGroup}
         selectedDates={selectedDates}
-        schedule={weeklySchedules[format(currentWeekStart, "yyyy-MM-dd")] || {}}
+        schedule={
+          schedules.find(
+            (s) => s.weekKey === format(currentWeekStart, "yyyy-MM-dd")
+          )?.schedule || {}
+        }
         toggleDateSelection={toggleDateSelection}
       />
     </div>

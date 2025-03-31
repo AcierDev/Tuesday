@@ -4,8 +4,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ColumnValue, Item } from "@/typings/types";
-import { useBoardOperations } from "@/hooks/useBoardOperations";
-
+import { useOrderStore } from "@/stores/useOrderStore";
 export const TextCell = ({
   item,
   columnValue,
@@ -14,7 +13,7 @@ export const TextCell = ({
   columnValue: ColumnValue;
 }) => {
   const [inputValue, setInputValue] = useState(columnValue.text || "");
-  const { updateItem } = useBoardOperations();
+  const { updateItem } = useOrderStore();
 
   useEffect(() => {
     setInputValue(columnValue.text || "");

@@ -15,14 +15,22 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Item, ColumnTitles } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
-import { OrderItem, getDaysRemaining, formatDate } from "../utils/orderUtils";
+import {
+  OrderItem,
+  getDaysRemaining,
+  formatDate,
+  processItem,
+} from "../utils/orderUtils";
 import { CustomTableCell } from "../../cells/CustomTableCell";
 import { DesignDropdownCell } from "../../cells/DesignDropdownCell";
 import { DropdownCell } from "../../cells/DropdownCell";
 import { ShippingStatusDisplay } from "./ShippingStatusDisplay";
+import { useOrderStore } from "@/stores/useOrderStore";
+import { cn } from "@/utils/functions";
+import { getStatusColor } from "../ItemGroup";
 
 interface OrderDetailViewProps {
-  item: OrderItem | null;
+  orderId: string;
   onClose: () => void;
   onEdit: (item: Item) => void;
   onDelete: (item: Item) => void;
@@ -32,21 +40,23 @@ interface OrderDetailViewProps {
 }
 
 export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
-  item,
+  orderId,
   onClose,
   onEdit,
   onDelete,
   onShip,
   onMarkCompleted,
-  onGetLabel,
 }) => {
+  const { items } = useOrderStore();
+  const item = items.find((o) => o.id === orderId);
   if (!item) return null;
+  const processedItem = processItem(item);
 
-  const daysRemaining = getDaysRemaining(item.dueDate || "");
+  const daysRemaining = getDaysRemaining(processedItem.dueDate || "");
   const isPastDue = daysRemaining < 0;
 
   const renderColumnValue = (columnName: ColumnTitles) => {
-    const value = item.values.find((v) => v.columnName === columnName);
+    const value = processedItem.values.find((v) => v.columnName === columnName);
     if (!value) return <span className="text-sm text-gray-500">N/A</span>;
     return (
       <CustomTableCell columnValue={value} isNameColumn={false} item={item} />
@@ -96,7 +106,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
               <CardTitle className="text-base">Customer</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm">{item.customerName || "N/A"}</p>
+              <p className="text-sm">{processedItem.customerName || "N/A"}</p>
             </CardContent>
           </Card>
 
@@ -131,7 +141,9 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                     isPastDue ? "text-red-500 dark:text-red-400" : ""
                   }`}
                 >
-                  {item.dueDate ? formatDate(item.dueDate) : "No date"}
+                  {processedItem.dueDate
+                    ? formatDate(processedItem.dueDate)
+                    : "No date"}
                 </span>
               </DetailItem>
               <DetailItem label="Status">
@@ -148,27 +160,72 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <DetailItem label="Painted">
-                <div className="border-2 dark:border-gray-600 rounded-md">
+                <div
+                  className={cn(
+                    "border-2 dark:border-gray-600 rounded-md",
+                    getStatusColor(
+                      processedItem.values.find(
+                        (v) => v.columnName === ColumnTitles.Painted
+                      )!
+                    )
+                  )}
+                >
                   {renderColumnValue(ColumnTitles.Painted)}
                 </div>
               </DetailItem>
               <DetailItem label="Backboard">
-                <div className="border-2 dark:border-gray-600 rounded-md">
+                <div
+                  className={cn(
+                    "border-2 dark:border-gray-600 rounded-md",
+                    getStatusColor(
+                      processedItem.values.find(
+                        (v) => v.columnName === ColumnTitles.Backboard
+                      )!
+                    )
+                  )}
+                >
                   {renderColumnValue(ColumnTitles.Backboard)}
                 </div>
               </DetailItem>
               <DetailItem label="Glued">
-                <div className="border-2 dark:border-gray-600 rounded-md">
+                <div
+                  className={cn(
+                    "border-2 dark:border-gray-600 rounded-md",
+                    getStatusColor(
+                      processedItem.values.find(
+                        (v) => v.columnName === ColumnTitles.Glued
+                      )!
+                    )
+                  )}
+                >
                   {renderColumnValue(ColumnTitles.Glued)}
                 </div>
               </DetailItem>
               <DetailItem label="Packaging">
-                <div className="border-2 dark:border-gray-600 rounded-md">
+                <div
+                  className={cn(
+                    "border-2 dark:border-gray-600 rounded-md",
+                    getStatusColor(
+                      processedItem.values.find(
+                        (v) => v.columnName === ColumnTitles.Packaging
+                      )!
+                    )
+                  )}
+                >
                   {renderColumnValue(ColumnTitles.Packaging)}
                 </div>
               </DetailItem>
               <DetailItem label="Boxes">
-                <div className="border-2 dark:border-gray-600 rounded-md">
+                <div
+                  className={cn(
+                    "border-2 dark:border-gray-600 rounded-md",
+                    getStatusColor(
+                      processedItem.values.find(
+                        (v) => v.columnName === ColumnTitles.Boxes
+                      )!
+                    )
+                  )}
+                >
                   {renderColumnValue(ColumnTitles.Boxes)}
                 </div>
               </DetailItem>

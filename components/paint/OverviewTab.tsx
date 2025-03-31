@@ -14,9 +14,7 @@ export function OverviewTab({
   isMobile,
   filteredRequirements,
 }: OverviewTabProps) {
-  const totalPieces = Object.values(
-    ItemUtil.getTotalPaintRequirements(group)
-  ).reduce((sum, pieces) => sum + pieces, 0);
+  const totalPieces = 0;
 
   return (
     <ScrollArea className="h-full">

@@ -1,7 +1,7 @@
 // app/api/items/labels/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
 import process from "node:process";
+import clientPromise from "../../db/connect";
 
 export async function PATCH(request: NextRequest) {
   try {

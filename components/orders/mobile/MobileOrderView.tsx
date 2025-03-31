@@ -62,28 +62,22 @@ export const MobileOrderView = ({
   };
 
   // Process items to OrderItems
-  const startTime = performance.now();
   const processedItems = useMemo(() => {
-    console.log("Recalculating processedItems..."); // Add log for debugging
     return (allItems || []).map(processItem);
   }, [allItems]); // Dependency: allItems
-  const endTime = performance.now();
-  console.log(`Processing items took ${endTime - startTime} milliseconds.`);
 
   // Load done items when the "Done" tab is clicked or expanded
-  useEffect(() => {
-    if (
-      (activeTab === "all" || activeTab === ItemStatus.Done) &&
-      !storeData.doneItemsLoaded
-    ) {
-      storeData.loadDoneItems();
-    }
-  }, [activeTab, storeData.doneItemsLoaded, storeData.loadDoneItems]);
+  // useEffect(() => {
+  //   if (
+  //     (activeTab === "all" || activeTab === ItemStatus.Done) &&
+  //     !storeData.doneItemsLoaded
+  //   ) {
+  //     storeData.loadDoneItems();
+  //   }
+  // }, [activeTab, storeData.doneItemsLoaded, storeData.loadDoneItems]);
 
   // Filter items based on active tab and search query
-  const startTime2 = performance.now(); // Start timing
   const filteredItems = useMemo(() => {
-    console.log("Recalculating filteredItems..."); // Add log for debugging
     return processedItems.filter((item) => {
       // 0. Skip deleted items
       if (item.deleted) return false;
@@ -165,12 +159,9 @@ export const MobileOrderView = ({
       return true;
     });
   }, [processedItems, activeTab, filters, searchQuery]); // Dependencies
-  const endTime2 = performance.now(); // End timing
-  console.log(`Filtering items took ${endTime2 - startTime2} milliseconds.`); // Log duration
 
   // Group and sort filtered items by status
   const sortedGroupedItems = useMemo(() => {
-    console.log("Recalculating sortedGroupedItems..."); // Add log for debugging
     const grouped = filteredItems.reduce((acc, item) => {
       const status = item.status || "Unknown"; // Handle potential undefined status
       if (!acc[status]) {
@@ -293,7 +284,7 @@ export const MobileOrderView = ({
     return (
       selectedOrder && (
         <OrderDetailView
-          item={selectedOrder}
+          orderId={selectedOrder.id}
           onClose={() => setSelectedOrder(null)}
           onEdit={handleEdit}
           onDelete={handleDelete}
@@ -404,15 +395,17 @@ export const MobileOrderView = ({
                 All
               </TabsTrigger>
               {/* Map directly over ItemStatus values */}
-              {Object.values(ItemStatus).map((status) => (
-                <TabsTrigger
-                  key={status}
-                  value={status}
-                  className="rounded-md px-3 py-1.5 h-auto text-sm"
-                >
-                  {status}
-                </TabsTrigger>
-              ))}
+              {Object.values(ItemStatus)
+                .filter((status) => status !== ItemStatus.Hidden)
+                .map((status) => (
+                  <TabsTrigger
+                    key={status}
+                    value={status}
+                    className="rounded-md px-3 py-1.5 h-auto text-sm"
+                  >
+                    {status}
+                  </TabsTrigger>
+                ))}
             </TabsList>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>

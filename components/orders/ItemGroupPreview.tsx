@@ -38,8 +38,7 @@ import {
 } from "../../typings/types";
 import { cn, isPastDue } from "../../utils/functions";
 import { CustomTableCell } from "../cells/CustomTableCell";
-import { useBoardOperations } from "@/hooks/useBoardOperations";
-
+import { useOrderStore } from "@/stores/useOrderStore";
 interface ItemGroupPreviewProps {
   group: Group;
   board: Board;
@@ -55,7 +54,7 @@ export const ItemGroupPreview = ({ group, board }: ItemGroupPreviewProps) => {
   const [orderedItems, setOrderedItems] = useState<Item[]>(group.items);
   const orderSettingsContext = useOrderSettings();
   const settings = orderSettingsContext.settings || {};
-  const { updateItem } = useBoardOperations(null, settings);
+  const { updateItem } = useOrderStore();
 
   useEffect(() => {
     setOrderedItems(group.items);
@@ -171,11 +170,9 @@ export const ItemGroupPreview = ({ group, board }: ItemGroupPreviewProps) => {
                     )}
                   >
                     <CustomTableCell
-                      board={board}
                       columnValue={columnValue}
                       isNameColumn={cellIndex === 0}
                       item={item}
-                      onUpdate={handleItemUpdate}
                     />
                   </TableCell>
                 ))}

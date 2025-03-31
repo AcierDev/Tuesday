@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { format, addDays } from "date-fns";
+import { format, addDays, startOfWeek } from "date-fns";
 
-import { useWeeklySchedule } from "@/components/weekly-schedule/UseWeeklySchedule";
+import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { useIsMobile } from "@/components/shared/UseIsMobile";
 import { SchedulePageLayout } from "@/components/shared/SchedulePageLayout";
 import { Filters } from "@/components/shared/Filters";

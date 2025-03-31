@@ -1,9 +1,9 @@
 // app/api/board/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
 import { Board } from "@/typings/types";
 import { UpdateFilter } from "mongodb";
 import process from "node:process";
+import clientPromise from "../db/connect";
 
 type ApiResponse<T> = {
   data?: T;
