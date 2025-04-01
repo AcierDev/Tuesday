@@ -5,6 +5,7 @@ import GlobalSettings from "./GlobalSettings";
 import PerClassSettings from "./PerClassSettings";
 import { AdvancedSettings } from "./AdvancedSettings";
 import PresetSettings from "./PresetSettings";
+import ManualControls from "./ManualControls";
 import { useRouter } from "@/contexts/RouterContext";
 import { useEjectionConfig } from "@/hooks/useEjectionConfig";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
@@ -15,12 +16,13 @@ import {
   BookMarked,
   ChevronDown,
   ChevronUp,
+  Hand,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function ImprovedEjectionControlGUI() {
-  const { updateEjectionSettings, state } = useRouter();
+  const { updateEjectionSettings, state, sendManualCommand } = useRouter();
   const {
     config,
     hasChanges,
@@ -132,6 +134,53 @@ export default function ImprovedEjectionControlGUI() {
                     config={config}
                     updateConfig={updateConfig}
                     validationErrors={validationErrors}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Manual Controls Section */}
+        <motion.div
+          className="rounded-lg overflow-hidden border border-gray-800 bg-gray-900/50"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <div
+            className="flex items-center justify-between p-3 cursor-pointer"
+            onClick={() => toggleSection("manual")}
+          >
+            <div className="flex items-center gap-2">
+              <Hand className="h-4 w-4 text-blue-400" />
+              <h3 className="font-medium">Manual Controls</h3>
+            </div>
+            <motion.div
+              initial={{ rotate: 0 }}
+              animate={{ rotate: expandedSection === "manual" ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {expandedSection === "manual" ? (
+                <ChevronUp className="h-5 w-5 text-gray-400" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-gray-400" />
+              )}
+            </motion.div>
+          </div>
+          <AnimatePresence>
+            {expandedSection === "manual" && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="p-3 pt-0">
+                  <ManualControls
+                    config={config}
+                    slaveState={state}
+                    sendManualCommand={sendManualCommand}
                   />
                 </div>
               </motion.div>
@@ -289,6 +338,11 @@ export default function ImprovedEjectionControlGUI() {
               icon: Settings2,
             },
             {
+              id: "manual",
+              label: "Manual Controls",
+              icon: Hand,
+            },
+            {
               id: "perClass",
               label: "Per-Class",
               icon: Target,
@@ -315,6 +369,11 @@ export default function ImprovedEjectionControlGUI() {
             config={config}
             updateConfig={updateConfig}
             validationErrors={validationErrors}
+          />
+          <ManualControls
+            config={config}
+            slaveState={state}
+            sendManualCommand={sendManualCommand}
           />
           <PerClassSettings
             config={config}

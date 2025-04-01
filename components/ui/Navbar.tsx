@@ -5,7 +5,6 @@ import {
   Moon,
   Sun,
   Logs,
-  Truck,
   PaintbrushVertical,
   PackageOpen,
   Layers3,
@@ -18,7 +17,6 @@ import {
   ChevronRight,
   Menu,
   ClipboardList,
-  Router,
   SprayCan,
   LayoutGrid,
   Magnet,
@@ -26,6 +24,7 @@ import {
 import { GiCircularSaw } from "react-icons/gi";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -39,7 +38,7 @@ type NavItemBase = {
 
 type NavLinkItem = NavItemBase & {
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string }> | string;
   label: string;
 };
 
@@ -61,7 +60,7 @@ const mainNavItems: NavItem[] = [
   { type: "divider" },
   { href: "/robotyler", icon: SprayCan, label: "RoboTyler" },
   { href: "/pick-n-place", icon: Magnet, label: "Pick N Place" },
-  { href: "/router", icon: Router, label: "Router" },
+  { href: "/router", icon: "/icons/router.png", label: "Router" },
   { href: "/pick-and-place", icon: LayoutGrid, label: "Pick & Place" },
   { type: "divider" },
   { href: "/inventory", icon: ClipboardList, label: "Inventory" },
@@ -92,7 +91,7 @@ interface NavbarProps {
 
 interface NavLinkProps {
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string }> | string;
   label: string;
 }
 
@@ -218,11 +217,23 @@ export function Navbar({
           transition-all duration-200 relative`}
         onClick={handleClick}
       >
-        <Icon
-          className={`${isMobile ? "h-5 w-5" : "h-5 w-5 flex-shrink-0"} ${
-            !sidebarOpen && !isMobile ? "mr-0" : "mr-3"
-          }`}
-        />
+        {typeof Icon === "string" ? (
+          <Image
+            src={Icon}
+            alt={label}
+            width={20}
+            height={20}
+            className={`${!sidebarOpen && !isMobile ? "mr-0" : "mr-3"} ${
+              theme === "dark" ? "invert" : "text-black"
+            }`}
+          />
+        ) : (
+          <Icon
+            className={`${isMobile ? "h-5 w-5" : "h-5 w-5 flex-shrink-0"} ${
+              !sidebarOpen && !isMobile ? "mr-0" : "mr-3"
+            }`}
+          />
+        )}
         {(sidebarOpen || isMobile) && <span>{label}</span>}
         {isActive && (
           <span className="absolute inset-y-0 left-0 w-1 bg-blue-500 rounded-r-full" />

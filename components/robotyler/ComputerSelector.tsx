@@ -189,8 +189,8 @@ const ComputerSelector: React.FC<ComputerSelectorProps> = ({
           <SelectContent
             align="start"
             className={styles.contentClass}
-            position={isMobile ? "popper" : "item-aligned"}
-            side={isMobile ? "bottom" : "bottom"}
+            position="popper"
+            side="bottom"
             sideOffset={isMobile ? 8 : 4}
             alignOffset={isMobile ? -10 : 0}
           >

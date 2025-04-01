@@ -116,6 +116,25 @@ export const useWebSocketManager = () => {
     [debouncedToast]
   );
 
+  // Add method to send manual control commands
+  const sendManualCommand = useCallback(
+    (command: string) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "manualControl",
+            command: command,
+          })
+        );
+        // Don't show toast for every command to avoid spamming
+        console.log("Sent manual command:", command);
+      } else {
+        debouncedToast("Cannot send command: WebSocket not connected", "error");
+      }
+    },
+    [debouncedToast]
+  );
+
   const handleBinaryMessage = useCallback(
     (blob: Blob) => {
       try {
@@ -655,5 +674,6 @@ export const useWebSocketManager = () => {
     updateWebSocketUrl,
     wsUrl,
     historicalImages,
+    sendManualCommand,
   };
 };
