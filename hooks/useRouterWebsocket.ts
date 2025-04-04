@@ -59,7 +59,7 @@ export const useWebSocketManager = () => {
   const [historicalImages, setHistoricalImages] = useState<HistoricalImage[]>(
     []
   );
-  const MAX_HISTORY_ITEMS = 100; // Limit the number of historical images to store
+  const MAX_HISTORY_ITEMS = 300; // Limit the number of historical images to store
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);

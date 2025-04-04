@@ -479,10 +479,17 @@ export interface BoundingBox {
 }
 
 export interface Prediction {
-  bbox: BoundingBox;
+  bbox?: BoundingBox;
   class_name: string;
   confidence: number;
   detection_id: string;
+  is_classification?: boolean;
+}
+
+export interface ClassificationPrediction extends Prediction {
+  is_classification: true;
+  class_name: "Good" | "Bad";
+  bbox?: undefined;
 }
 
 export interface AnalysisResults {

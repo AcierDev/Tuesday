@@ -45,7 +45,6 @@ function MonitoringDashboard() {
     reconnectAttempts,
     updateWebSocketUrl,
     wsUrl,
-    updateEjectionSettings,
     historicalImages,
   } = useRouter();
   const [activeTab, setActiveTab] = useState("live");

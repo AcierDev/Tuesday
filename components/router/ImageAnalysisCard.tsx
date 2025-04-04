@@ -327,6 +327,9 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = memo(
                   // Draw all prediction boxes
                   analysis.data.predictions.forEach(
                     (prediction: Prediction) => {
+                      // Skip predictions without a bounding box
+                      if (!prediction.bbox) return;
+
                       const x1 = prediction.bbox[0] * img.width;
                       const y1 = prediction.bbox[1] * img.height;
                       const x2 = prediction.bbox[2] * img.width;
@@ -785,6 +788,97 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = memo(
       );
     };
 
+    // Update the analysis summary section in the ImageAnalysisCard
+    const AnalysisSummary = () => {
+      // Handle classification model results
+      if (
+        analysis?.data?.predictions &&
+        analysis.data.predictions.some((pred) => pred.is_classification)
+      ) {
+        const classificationResult = analysis.data.predictions.find(
+          (pred) => pred.is_classification
+        );
+        const isGood = classificationResult?.class_name === "Good";
+
+        return (
+          <div className="flex flex-col space-y-2 mt-3">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Classification Result
+            </h4>
+            <div className="flex items-center">
+              <div
+                className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+                  isGood
+                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                    : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                }`}
+              >
+                <span className="font-medium">
+                  {classificationResult?.class_name}
+                </span>
+                <span className="text-xs opacity-80">
+                  {classificationResult?.confidence
+                    ? `${Math.round(classificationResult.confidence * 100)}%`
+                    : ""}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Legacy object detection summary
+      if (
+        !analysis?.data?.predictions ||
+        analysis.data.predictions.length === 0
+      ) {
+        return (
+          <div className="flex flex-col space-y-2 mt-3">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              No defects detected
+            </h4>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              Analysis completed successfully with no issues found.
+            </div>
+          </div>
+        );
+      }
+
+      // Count defects by type
+      const defectCounts: Record<string, number> = {};
+      analysis.data.predictions.forEach((prediction) => {
+        if (
+          prediction.confidence >=
+          (state?.settings?.ejection?.globalSettings
+            ?.globalConfidenceThreshold || 0.5)
+        ) {
+          defectCounts[prediction.class_name] =
+            (defectCounts[prediction.class_name] || 0) + 1;
+        }
+      });
+
+      return (
+        <div className="flex flex-col space-y-2 mt-3">
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Analysis Summary
+          </h4>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(defectCounts).map(([className, count]) => (
+              <div
+                key={className}
+                className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-xs"
+              >
+                <span className="font-medium">{className}</span>
+                <span className="text-gray-500 dark:text-gray-400">
+                  ({count})
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
     return (
       <Card
         className="shadow-sm dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden transition-all duration-200"
@@ -874,58 +968,114 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = memo(
               {isAnalyzing && renderLoadingOverlay("analyzing")}
 
               {/* Prediction Bounding Boxes */}
-              {shouldShowPredictions &&
-                analysis.data.predictions
-                  .filter((prediction: Prediction) => {
-                    // Get global confidence threshold from settings or use default
-                    const globalConfidenceThreshold =
-                      state?.settings?.ejection?.globalSettings
-                        ?.globalConfidenceThreshold || 0.5;
+              {shouldShowPredictions && analysis?.data?.predictions && (
+                <>
+                  {/* Check if this is a classification result */}
+                  {analysis.data.predictions.some(
+                    (pred) => pred.is_classification
+                  ) ? (
+                    // Classification result
+                    <div className="absolute top-3 left-3 z-10">
+                      {analysis.data.predictions
+                        .filter((pred) => pred.is_classification)
+                        .map((pred, index) => {
+                          const isGood = pred.class_name === "Good";
+                          const colorClass = isGood
+                            ? "border-green-500 bg-green-500/20 text-green-600 dark:text-green-400"
+                            : "border-red-500 bg-red-500/20 text-red-600 dark:text-red-400";
 
-                    // Only show predictions above threshold
-                    return prediction.confidence >= globalConfidenceThreshold;
-                  })
-                  .map((prediction: Prediction) => {
-                    // Fix for the linter error - access array items individually instead of destructuring
-                    const x1 = prediction.bbox[0];
-                    const y1 = prediction.bbox[1];
-                    const x2 = prediction.bbox[2];
-                    const y2 = prediction.bbox[3];
+                          return (
+                            <div
+                              key={`classification-${index}`}
+                              className={`rounded-md border-2 ${colorClass} px-4 py-2 font-bold shadow-lg`}
+                            >
+                              <div className="flex items-center gap-2">
+                                {isGood ? (
+                                  <CheckCircle className="h-5 w-5" />
+                                ) : (
+                                  <CircleX className="h-5 w-5" />
+                                )}
+                                <span className="text-xl">
+                                  {pred.class_name}
+                                </span>
+                              </div>
+                              <div className="text-sm opacity-80 mt-1">
+                                Confidence: {Math.round(pred.confidence * 100)}%
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  ) : (
+                    // Legacy object detection results
+                    <>
+                      {analysis.data.predictions
+                        .filter((prediction: Prediction) => {
+                          // Get global confidence threshold from settings or use default
+                          const globalConfidenceThreshold =
+                            state?.settings?.ejection?.globalSettings
+                              ?.globalConfidenceThreshold || 0.5;
 
-                    // Use the calculated position based on actual image display size
-                    const position = calculateOverlayPosition([x1, y1, x2, y2]);
+                          // Only show predictions above threshold and only those with bounding boxes
+                          return (
+                            prediction.confidence >=
+                              globalConfidenceThreshold &&
+                            prediction.bbox !== undefined
+                          );
+                        })
+                        .map((prediction: Prediction) => {
+                          // Skip if no bbox
+                          if (!prediction.bbox) return null;
 
-                    // Determine color based on class
-                    const colorMap: Record<string, string> = {
-                      crack: "border-red-500 bg-red-500/20",
-                      damage: "border-orange-500 bg-orange-500/20",
-                      edge: "border-blue-500 bg-blue-500/20",
-                      corner: "border-green-500 bg-green-500/20",
-                      knot: "border-yellow-500 bg-yellow-500/20",
-                      router: "border-purple-500 bg-purple-500/20",
-                      side: "border-indigo-500 bg-indigo-500/20",
-                      tearout: "border-pink-500 bg-pink-500/20",
-                    };
-                    const colorClass =
-                      colorMap[prediction.class_name] ||
-                      "border-gray-500 bg-gray-500/20";
+                          // Fix for the linter error - safely access array items with optional chaining
+                          const x1 = prediction.bbox[0];
+                          const y1 = prediction.bbox[1];
+                          const x2 = prediction.bbox[2];
+                          const y2 = prediction.bbox[3];
 
-                    return (
-                      <div
-                        key={prediction.detection_id}
-                        className={`absolute border-2 ${colorClass} rounded-sm flex items-start justify-start`}
-                        style={{
-                          ...position,
-                          transition: "all 0.2s ease-in-out",
-                        }}
-                      >
-                        <span className="text-xs font-bold bg-black/80 text-white px-1 py-0.5 rounded-sm m-1 whitespace-nowrap">
-                          {prediction.class_name}{" "}
-                          {Math.round(prediction.confidence * 100)}%
-                        </span>
-                      </div>
-                    );
-                  })}
+                          // Use the calculated position based on actual image display size
+                          const position = calculateOverlayPosition([
+                            x1,
+                            y1,
+                            x2,
+                            y2,
+                          ]);
+
+                          // Determine color based on class
+                          const colorMap: Record<string, string> = {
+                            crack: "border-red-500 bg-red-500/20",
+                            damage: "border-orange-500 bg-orange-500/20",
+                            edge: "border-blue-500 bg-blue-500/20",
+                            corner: "border-green-500 bg-green-500/20",
+                            knot: "border-yellow-500 bg-yellow-500/20",
+                            router: "border-purple-500 bg-purple-500/20",
+                            side: "border-indigo-500 bg-indigo-500/20",
+                            tearout: "border-pink-500 bg-pink-500/20",
+                          };
+                          const colorClass =
+                            colorMap[prediction.class_name] ||
+                            "border-gray-500 bg-gray-500/20";
+
+                          return (
+                            <div
+                              key={prediction.detection_id}
+                              className={`absolute border-2 ${colorClass} rounded-sm flex items-start justify-start`}
+                              style={{
+                                ...position,
+                                transition: "all 0.2s ease-in-out",
+                              }}
+                            >
+                              <span className="text-xs font-bold bg-black/80 text-white px-1 py-0.5 rounded-sm m-1 whitespace-nowrap">
+                                {prediction.class_name}{" "}
+                                {Math.round(prediction.confidence * 100)}%
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </>
+                  )}
+                </>
+              )}
             </React.Fragment>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
@@ -967,7 +1117,58 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = memo(
                 )}
               </div>
               <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg text-xs">
-                {analysis.data.predictions.length > 0 ? (
+                {/* For classification model */}
+                {analysis.data.predictions.some(
+                  (pred) => pred.is_classification
+                ) ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span>Decision:</span>
+                      <span
+                        className={`font-medium px-2 py-0.5 rounded-full ${getBadgeClass()}`}
+                      >
+                        {ejectionDecision === true
+                          ? "Eject"
+                          : ejectionDecision === false
+                          ? "Pass"
+                          : "Pending"}
+                      </span>
+                    </div>
+
+                    {/* Classification result */}
+                    <div className="pt-2 border-t border-gray-200 dark:border-gray-700 mt-1">
+                      {analysis.data.predictions
+                        .filter((pred) => pred.is_classification)
+                        .map((pred, index) => {
+                          const isGood = pred.class_name === "Good";
+                          return (
+                            <div
+                              key={`classification-${index}`}
+                              className={`flex justify-between items-center p-2 rounded-md ${
+                                isGood
+                                  ? "bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/30"
+                                  : "bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                {isGood ? (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <CircleX className="h-4 w-4 text-red-500" />
+                                )}
+                                <span className="font-medium">
+                                  {pred.class_name}
+                                </span>
+                              </div>
+                              <span className="font-semibold">
+                                {Math.round(pred.confidence * 100)}%
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                ) : (
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span>Decision:</span>
@@ -1032,8 +1233,6 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = memo(
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <p>No defects detected in this image.</p>
                 )}
               </div>
             </motion.div>
@@ -1093,64 +1292,115 @@ const ImageAnalysisCard: React.FC<ImageAnalysisCardProps> = memo(
                   </AnimatePresence>
 
                   {/* Prediction Bounding Boxes */}
-                  {shouldShowPredictions &&
-                    analysis.data.predictions
-                      .filter((prediction: Prediction) => {
-                        // Get global confidence threshold from settings or use default
-                        const globalConfidenceThreshold =
-                          state?.settings?.ejection?.globalSettings
-                            ?.globalConfidenceThreshold || 0.5;
+                  {shouldShowPredictions && analysis?.data?.predictions && (
+                    <>
+                      {/* Check if this is a classification result */}
+                      {analysis.data.predictions.some(
+                        (pred) => pred.is_classification
+                      ) ? (
+                        // Classification result
+                        <div className="absolute top-3 left-3 z-10">
+                          {analysis.data.predictions
+                            .filter((pred) => pred.is_classification)
+                            .map((pred, index) => {
+                              const isGood = pred.class_name === "Good";
+                              const colorClass = isGood
+                                ? "border-green-500 bg-green-500/20 text-green-600 dark:text-green-400"
+                                : "border-red-500 bg-red-500/20 text-red-600 dark:text-red-400";
 
-                        // Only show predictions above threshold
-                        return (
-                          prediction.confidence >= globalConfidenceThreshold
-                        );
-                      })
-                      .map((prediction: Prediction) => {
-                        // Fix for the linter error - access array items individually instead of destructuring
-                        const x1 = prediction.bbox[0];
-                        const y1 = prediction.bbox[1];
-                        const x2 = prediction.bbox[2];
-                        const y2 = prediction.bbox[3];
+                              return (
+                                <div
+                                  key={`classification-${index}`}
+                                  className={`rounded-md border-2 ${colorClass} px-4 py-2 font-bold shadow-lg`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {isGood ? (
+                                      <CheckCircle className="h-5 w-5" />
+                                    ) : (
+                                      <CircleX className="h-5 w-5" />
+                                    )}
+                                    <span className="text-xl">
+                                      {pred.class_name}
+                                    </span>
+                                  </div>
+                                  <div className="text-sm opacity-80 mt-1">
+                                    Confidence:{" "}
+                                    {Math.round(pred.confidence * 100)}%
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      ) : (
+                        // Legacy object detection results
+                        <>
+                          {analysis.data.predictions
+                            .filter((prediction: Prediction) => {
+                              // Get global confidence threshold from settings or use default
+                              const globalConfidenceThreshold =
+                                state?.settings?.ejection?.globalSettings
+                                  ?.globalConfidenceThreshold || 0.5;
 
-                        // Use the calculated position based on actual image display size
-                        const position = calculateOverlayPosition([
-                          x1,
-                          y1,
-                          x2,
-                          y2,
-                        ]);
+                              // Only show predictions above threshold and only those with bounding boxes
+                              return (
+                                prediction.confidence >=
+                                  globalConfidenceThreshold &&
+                                prediction.bbox !== undefined
+                              );
+                            })
+                            .map((prediction: Prediction) => {
+                              // Skip if no bbox
+                              if (!prediction.bbox) return null;
 
-                        // Determine color based on class
-                        const colorMap: Record<string, string> = {
-                          crack: "border-red-500 bg-red-500/20",
-                          damage: "border-orange-500 bg-orange-500/20",
-                          edge: "border-blue-500 bg-blue-500/20",
-                          corner: "border-green-500 bg-green-500/20",
-                          knot: "border-yellow-500 bg-yellow-500/20",
-                          router: "border-purple-500 bg-purple-500/20",
-                          side: "border-indigo-500 bg-indigo-500/20",
-                          tearout: "border-pink-500 bg-pink-500/20",
-                        };
-                        const colorClass =
-                          colorMap[prediction.class_name] ||
-                          "border-gray-500 bg-gray-500/20";
+                              // Fix for the linter error - safely access array items with optional chaining
+                              const x1 = prediction.bbox[0];
+                              const y1 = prediction.bbox[1];
+                              const x2 = prediction.bbox[2];
+                              const y2 = prediction.bbox[3];
 
-                        return (
-                          <div
-                            key={prediction.detection_id}
-                            className={`absolute border-2 ${colorClass} rounded-sm flex items-start justify-start`}
-                            style={{
-                              ...position,
-                            }}
-                          >
-                            <span className="text-xs font-bold bg-black/80 text-white px-1 py-0.5 rounded-sm m-1 whitespace-nowrap">
-                              {prediction.class_name}{" "}
-                              {Math.round(prediction.confidence * 100)}%
-                            </span>
-                          </div>
-                        );
-                      })}
+                              // Use the calculated position based on actual image display size
+                              const position = calculateOverlayPosition([
+                                x1,
+                                y1,
+                                x2,
+                                y2,
+                              ]);
+
+                              // Determine color based on class
+                              const colorMap: Record<string, string> = {
+                                crack: "border-red-500 bg-red-500/20",
+                                damage: "border-orange-500 bg-orange-500/20",
+                                edge: "border-blue-500 bg-blue-500/20",
+                                corner: "border-green-500 bg-green-500/20",
+                                knot: "border-yellow-500 bg-yellow-500/20",
+                                router: "border-purple-500 bg-purple-500/20",
+                                side: "border-indigo-500 bg-indigo-500/20",
+                                tearout: "border-pink-500 bg-pink-500/20",
+                              };
+                              const colorClass =
+                                colorMap[prediction.class_name] ||
+                                "border-gray-500 bg-gray-500/20";
+
+                              return (
+                                <div
+                                  key={prediction.detection_id}
+                                  className={`absolute border-2 ${colorClass} rounded-sm flex items-start justify-start`}
+                                  style={{
+                                    ...position,
+                                    transition: "all 0.2s ease-in-out",
+                                  }}
+                                >
+                                  <span className="text-xs font-bold bg-black/80 text-white px-1 py-0.5 rounded-sm m-1 whitespace-nowrap">
+                                    {prediction.class_name}{" "}
+                                    {Math.round(prediction.confidence * 100)}%
+                                  </span>
+                                </div>
+                              );
+                            })}
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
