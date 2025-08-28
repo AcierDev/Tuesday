@@ -171,7 +171,9 @@ export const ItemGroupPreview = ({ group, board }: ItemGroupPreviewProps) => {
                   >
                     <CustomTableCell
                       columnValue={columnValue}
-                      isNameColumn={cellIndex === 0}
+                      isNameColumn={
+                        columnValue.columnName === ColumnTitles.Customer_Name
+                      }
                       item={item}
                     />
                   </TableCell>

@@ -20,8 +20,8 @@ import {
   SprayCan,
   LayoutGrid,
   Magnet,
+  Scissors,
 } from "lucide-react";
-import { GiCircularSaw } from "react-icons/gi";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import Image from "next/image";
@@ -56,7 +56,7 @@ const mainNavItems: NavItem[] = [
   { href: "/paint", icon: PaintbrushVertical, label: "Paint", hotkey: "3" },
   { href: "/packaging", icon: PackageOpen, label: "Packaging", hotkey: "4" },
   { href: "/backboards", icon: Layers3, label: "Backboards", hotkey: "5" },
-  { href: "/cutting", icon: GiCircularSaw, label: "Cutting" },
+  { href: "/cutting", icon: Scissors, label: "Cutting" },
   { type: "divider" },
   { href: "/robotyler", icon: SprayCan, label: "RoboTyler" },
   { href: "/pick-n-place", icon: Magnet, label: "Pick N Place" },

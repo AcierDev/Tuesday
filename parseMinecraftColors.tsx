@@ -1,5 +1,9 @@
 // utils/parseMinecraftColors.tsx
 import React from "react";
+import {
+  AnimatedLetterE,
+  AnimatedLetterWF,
+} from "@/components/ui/AnimatedLetter";
 
 export const minecraftColors: { [key: string]: string } = {
   "0": "#000000", // Black
@@ -67,12 +71,72 @@ export const parseMinecraftColors = (
       });
     }
 
-    // Convert segments to React elements
-    return segments.map((segment, idx) => (
-      <span key={idx} style={{ color: segment.color }}>
-        {segment.text}
-      </span>
-    ));
+    // Convert segments to React elements and handle prefix replacement
+    const elements: React.ReactNode[] = [];
+
+    segments.forEach((segment, idx) => {
+      const text = segment.text;
+
+      // Check for company prefixes and replace with animated components
+      if (text.includes("[E]")) {
+        const parts = text.split("[E]");
+        parts.forEach((part, partIdx) => {
+          if (partIdx > 0) {
+            // Add animated E component before this part
+            elements.push(
+              <AnimatedLetterE
+                key={`${idx}-e-${partIdx}`}
+                size="sm"
+                className="inline-flex mx-1"
+              />
+            );
+          }
+          if (part) {
+            elements.push(
+              <span
+                key={`${idx}-text-${partIdx}`}
+                style={{ color: segment.color }}
+              >
+                {part}
+              </span>
+            );
+          }
+        });
+      } else if (text.includes("[WF]")) {
+        const parts = text.split("[WF]");
+        parts.forEach((part, partIdx) => {
+          if (partIdx > 0) {
+            // Add animated WF component before this part
+            elements.push(
+              <AnimatedLetterWF
+                key={`${idx}-wf-${partIdx}`}
+                size="sm"
+                className="inline-flex mx-1"
+              />
+            );
+          }
+          if (part) {
+            elements.push(
+              <span
+                key={`${idx}-text-${partIdx}`}
+                style={{ color: segment.color }}
+              >
+                {part}
+              </span>
+            );
+          }
+        });
+      } else {
+        // No prefix, just add the regular text span
+        elements.push(
+          <span key={idx} style={{ color: segment.color }}>
+            {text}
+          </span>
+        );
+      }
+    });
+
+    return elements;
   } catch (error) {
     console.error("Error parsing Minecraft colors:", error);
     return [

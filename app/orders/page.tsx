@@ -8,7 +8,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Header } from "@/components/orders/Header";
 import { NewItemModal } from "@/components/orders/NewItemModal";
 import { WeeklySchedule } from "@/components/weekly-schedule/WeeklySchedule";
-import { SettingsPanel } from "@/components/setttings/SettingsPanel";
+import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";

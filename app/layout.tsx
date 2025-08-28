@@ -11,7 +11,7 @@ import {
   useOrderSettings,
 } from "@/contexts/OrderSettingsContext";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
-import { SettingsPanel } from "@/components/setttings/SettingsPanel";
+import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { UserProvider } from "@/contexts/UserContext";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";

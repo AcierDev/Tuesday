@@ -15,6 +15,7 @@ import {
   CheckCircle,
   ArrowUpDown,
   Settings2,
+  Building2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,7 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const [company, setCompany] = useState("Everwood");
   const [customerName, setCustomerName] = useState("");
   const [size, setSize] = useState("");
   const [design, setDesign] = useState("");
@@ -170,7 +172,8 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
         let type = boardConfig.columns[title]?.type || ColumnTypes.Text;
 
         if (title === ColumnTitles.Customer_Name) {
-          value = customerName;
+          const prefix = company === "Everwood" ? "" : "[WF]";
+          value = customerName ? `${prefix} ${customerName}` : customerName;
         } else if (title === ColumnTitles.Size) {
           value = size;
           type = ColumnTypes.Dropdown;
@@ -210,6 +213,7 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
   };
 
   const resetForm = () => {
+    setCompany("Everwood");
     setCustomerName("");
     setSize("");
     setDesign("");
@@ -273,6 +277,39 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 }}
               >
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right flex items-center justify-end gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Company
+                  </Label>
+                  <div className="col-span-3 flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCompany("Everwood")}
+                      className={cn(
+                        "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200",
+                        company === "Everwood"
+                          ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
+                          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                      )}
+                    >
+                      Everwood
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCompany("Woodform")}
+                      className={cn(
+                        "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200",
+                        company === "Woodform"
+                          ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
+                          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                      )}
+                    >
+                      Woodform
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label className="text-right flex items-center justify-end gap-2">
                     <User className="h-4 w-4" />

@@ -16,6 +16,7 @@
     "init-indexes": "tsx initializeIndexes.ts",
     "reupload-completed": "tsx reuploadCompletedOrders.ts",
     "remove-scheduled": "tsx removeIsScheduledField.ts",
-    "fix-labels": "tsx fixLabels.ts"
+    "fix-labels": "tsx fixLabels.ts",
+    "download-db": "tsx downloadDatabases.ts"
   }
 }

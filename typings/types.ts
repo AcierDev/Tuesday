@@ -246,6 +246,7 @@ export enum ProgressStatus {
 }
 
 export enum ColumnTitles {
+  Labels = "Labels",
   Customer_Name = "Customer Name",
   Design = "Design",
   Size = "Size",
@@ -257,7 +258,6 @@ export enum ColumnTitles {
   Boxes = "Boxes",
   Notes = "Notes",
   Rating = "Rating",
-  Labels = "Labels",
   Shipping = "Shipping",
 }
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { parseMinecraftColors } from "../../parseMinecraftColors";
+import { parseMinecraftColors } from "@/parseMinecraftColors";
 import {
   Tooltip,
   TooltipContent,
@@ -66,7 +66,6 @@ export const NameCell: React.FC<NameCellProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
-  const contentRef = useRef<HTMLDivElement>(null);
   const previousValueRef = useRef(columnValue.text);
 
   useEffect(() => {
@@ -101,50 +100,38 @@ export const NameCell: React.FC<NameCellProps> = ({
     }
   }, [inputValue, columnValue.text, columnValue.columnName, item, onUpdate]);
 
-  const handleInput = useCallback(
-    (e: React.FormEvent<HTMLDivElement>) => {
-      const newValue = e.currentTarget.textContent || "";
-      if (!isEditing) {
-        setIsEditing(true);
-      }
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value;
       setInputValue(newValue);
     },
-    [isEditing]
+    []
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setIsEditing(false);
+        handleUpdate();
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setInputValue(columnValue.text || "");
+        setIsEditing(false);
+      }
+    },
+    [columnValue.text, handleUpdate]
   );
 
   const handleBlur = useCallback(async () => {
     setIsEditing(false);
-    if (contentRef.current) {
-      const newValue = contentRef.current.textContent || "";
-      if (newValue !== columnValue.text) {
-        setInputValue(newValue);
-        await handleUpdate();
-      }
-    }
-  }, [columnValue.text, handleUpdate]);
+    await handleUpdate();
+  }, [handleUpdate]);
 
   const handleFocus = useCallback(() => {
     setIsEditing(true);
   }, []);
-
-  useEffect(() => {
-    if (!isEditing && contentRef.current) {
-      const colorizedContent = parseMinecraftColors(inputValue, isDarkMode)
-        .map((node) => {
-          if (React.isValidElement(node)) {
-            const props = node.props as {
-              style: { color: string };
-              children: React.ReactNode;
-            };
-            return `<span style="color: ${props.style.color}">${props.children}</span>`;
-          }
-          return "";
-        })
-        .join("");
-
-      contentRef.current.innerHTML = colorizedContent;
-    }
-  }, [inputValue, isDarkMode, isEditing]);
 
   return (
     <div className="flex items-center w-full h-full relative group">
@@ -196,40 +183,41 @@ export const NameCell: React.FC<NameCellProps> = ({
           </Tooltip>
         )}
 
-        <div
-          ref={contentRef}
-          className={cn(
-            "min-w-0 flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-            "font-medium text-center break-words",
-            "cursor-text select-text",
-            "transition-shadow duration-200",
-            "hover:ring-1 hover:ring-ring/50",
-            "rounded-md",
-            isEditing ? "ring-2 ring-ring ring-offset-2" : ""
-          )}
-          contentEditable
-          onInput={handleInput}
-          onBlur={handleBlur}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              e.currentTarget.blur();
-            }
-            if (e.key === "Escape") {
-              e.preventDefault();
-              setInputValue(columnValue.text || "");
-              setIsEditing(false);
-              e.currentTarget.blur();
-            }
-          }}
-          onPaste={(e) => {
-            e.preventDefault();
-            const text = e.clipboardData.getData("text/plain");
-            document.execCommand("insertText", false, text);
-          }}
-          onFocus={handleFocus}
-          suppressContentEditableWarning
-        />
+        {isEditing ? (
+          <input
+            type="text"
+            value={inputValue}
+            onChange={handleInputChange}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className={cn(
+              "min-w-0 flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+              "font-medium text-center break-words",
+              "transition-shadow duration-200",
+              "rounded-md",
+              "bg-background border border-input"
+            )}
+            autoFocus
+          />
+        ) : (
+          <div
+            className={cn(
+              "min-w-0 flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+              "font-medium text-center break-words",
+              "cursor-text select-text",
+              "transition-shadow duration-200",
+              "hover:ring-1 hover:ring-ring/50",
+              "rounded-md",
+              "flex items-center justify-center"
+            )}
+            onClick={() => {
+              console.log("clicked");
+              handleFocus();
+            }}
+          >
+            {parseMinecraftColors(inputValue, isDarkMode)}
+          </div>
+        )}
       </div>
     </div>
   );
