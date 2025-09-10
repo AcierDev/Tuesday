@@ -1,9 +1,10 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { Boxes } from "lucide-react";
 
 interface AnimatedLetterProps {
-  letter: "E" | "WF";
+  letter: "E" | "EW" | "WF" | "SH";
   className?: string;
   size?: "sm" | "md" | "lg" | "xl";
 }
@@ -28,11 +29,25 @@ export function AnimatedLetter({
         0 0 6px #fbbf24
       `,
     },
+    EW: {
+      color: "text-yellow-400",
+      shadow: `
+        0 0 3px #fbbf24,
+        0 0 6px #fbbf24
+      `,
+    },
     WF: {
       color: "text-purple-400",
       shadow: `
         0 0 3px #c084fc,
         0 0 6px #c084fc
+      `,
+    },
+    SH: {
+      color: "text-blue-400",
+      shadow: `
+        0 0 3px #60a5fa,
+        0 0 6px #60a5fa
       `,
     },
   };
@@ -41,32 +56,60 @@ export function AnimatedLetter({
 
   return (
     <div className={cn("flex items-center justify-center pr-2", className)}>
-      <span
-        className={cn(
-          "font-bold select-none transition-all duration-1000 ease-in-out",
-          style.color,
-          "drop-shadow-sm",
-          "animate-pulse hover:animate-none",
-          "hover:scale-105 transform-gpu",
-          "cursor-default",
-          sizeClasses[size]
-        )}
-        style={{
-          textShadow: style.shadow,
-          animationDuration: "4s",
-        }}
-      >
-        {letter}
-      </span>
+      {letter === "SH" ? (
+        <Boxes
+          className={cn(
+            "select-none transition-all duration-1000 ease-in-out",
+            style.color,
+            "drop-shadow-sm",
+            "animate-pulse hover:animate-none",
+            "hover:scale-105 transform-gpu",
+            "cursor-default",
+            size === "sm"
+              ? "w-4 h-4"
+              : size === "md"
+              ? "w-8 h-8"
+              : size === "lg"
+              ? "w-12 h-12"
+              : "w-16 h-16"
+          )}
+          style={{
+            filter: `drop-shadow(0 0 3px #60a5fa) drop-shadow(0 0 6px #60a5fa)`,
+            animationDuration: "4s",
+          }}
+        />
+      ) : (
+        <span
+          className={cn(
+            "font-bold select-none transition-all duration-1000 ease-in-out",
+            style.color,
+            "drop-shadow-sm",
+            "animate-pulse hover:animate-none",
+            "hover:scale-105 transform-gpu",
+            "cursor-default",
+            sizeClasses[size]
+          )}
+          style={{
+            textShadow: style.shadow,
+            animationDuration: "4s",
+          }}
+        >
+          {letter}
+        </span>
+      )}
     </div>
   );
 }
 
 // Convenience components for easier use
 export function AnimatedLetterE(props: Omit<AnimatedLetterProps, "letter">) {
-  return <AnimatedLetter letter="E" {...props} />;
+  return <AnimatedLetter letter="EW" {...props} />;
 }
 
 export function AnimatedLetterWF(props: Omit<AnimatedLetterProps, "letter">) {
   return <AnimatedLetter letter="WF" {...props} />;
+}
+
+export function AnimatedLetterSH(props: Omit<AnimatedLetterProps, "letter">) {
+  return <AnimatedLetter letter="SH" {...props} />;
 }

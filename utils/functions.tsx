@@ -296,16 +296,93 @@ export const calculateTotalSquares = (
   dayItems: { id: string; done: boolean }[],
   items: Item[],
   getItemValue: (item: Item, columnName: ColumnTitles) => string
-): number => {
-  return dayItems.reduce((total, scheduleItem) => {
-    const item = items.find((i) => i.id === scheduleItem.id);
-    if (item) {
-      const size = getItemValue(item, ColumnTitles.Size);
-      const [width = 0, height = 0] = size.split("x").map(Number);
-      return total + width * height;
-    }
-    return total;
-  }, 0);
+): { count: number; hasIndeterminate: boolean } => {
+  return dayItems.reduce(
+    (acc, scheduleItem) => {
+      const item = items.find((i) => i.id === scheduleItem.id);
+      if (item) {
+        const size = getItemValue(item, ColumnTitles.Size);
+
+        // Split by 'x' to get width and height, but be more careful about extra content
+        const parts = size.split("x");
+        const dimensions = parts.slice(0, 2).map((dim) => {
+          const trimmed = dim.trim().toLowerCase();
+          if (
+            trimmed === "n/a" ||
+            trimmed === "" ||
+            isNaN(parseFloat(trimmed))
+          ) {
+            return null;
+          }
+          return parseFloat(trimmed);
+        });
+
+        const width = dimensions[0] || null;
+        const height = dimensions[1] || null;
+
+        // If either dimension is indeterminate, we have an indeterminate count
+        const hasIndeterminate = width === null || height === null;
+
+        // Calculate base blocks from known dimensions
+        let baseBlocks = 0;
+        if (
+          width !== null &&
+          height !== null &&
+          !isNaN(width) &&
+          !isNaN(height)
+        ) {
+          baseBlocks = width * height;
+        } else if (
+          width !== null &&
+          !isNaN(width) &&
+          (height === null || isNaN(height))
+        ) {
+          // Width known, height unknown - use width as minimum
+          baseBlocks = width;
+        } else if (
+          height !== null &&
+          !isNaN(height) &&
+          (width === null || isNaN(width))
+        ) {
+          // Height known, width unknown - use height as minimum
+          baseBlocks = height;
+        }
+
+        // Ensure baseBlocks is never NaN
+        if (isNaN(baseBlocks)) {
+          baseBlocks = 0;
+        }
+
+        // Look for additional blocks in other fields (like a +122 value)
+        const additionalBlocksPattern = /\+(\d+)/;
+        let additionalBlocks = 0;
+
+        // Check various fields for additional blocks
+        const fieldsToCheck = [
+          getItemValue(item, ColumnTitles.Size),
+          getItemValue(item, ColumnTitles.Design),
+          getItemValue(item, ColumnTitles.Customer_Name),
+        ];
+
+        for (const field of fieldsToCheck) {
+          const match = field.match(additionalBlocksPattern);
+          if (match) {
+            additionalBlocks += parseInt(match[1], 10);
+          }
+        }
+
+        const itemTotal = baseBlocks + additionalBlocks;
+        const safeItemTotal = isNaN(itemTotal) ? 0 : itemTotal;
+
+        return {
+          count: acc.count + safeItemTotal,
+          hasIndeterminate: acc.hasIndeterminate || hasIndeterminate,
+        };
+      }
+      return acc;
+    },
+    { count: 0, hasIndeterminate: false }
+  );
 };
 
 export function calculateAmountRequiredPerColor(

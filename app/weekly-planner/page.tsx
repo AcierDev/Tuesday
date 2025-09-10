@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { format, isSameDay, startOfDay, startOfWeek } from "date-fns";
+import { format, isSameDay, startOfDay, startOfWeek, addDays } from "date-fns";
+import { useTheme } from "next-themes";
+import { parseMinecraftColors } from "@/parseMinecraftColors";
 import { ColumnTitles, Item, DayName, ItemStatus } from "@/typings/types";
 import { Button } from "@/components/ui/button";
 import { Plus, Minus, Check, RotateCcw, Wand2, Trash2 } from "lucide-react";
@@ -91,6 +93,10 @@ interface DayCardProps {
   weekKey: string;
   items: Item[];
   onBadgeClick: () => void;
+  currentWeekStart: Date;
+  isDarkMode: boolean;
+  totalBlocksResult: { count: number; hasIndeterminate: boolean };
+  doneBlocksResult: { count: number; hasIndeterminate: boolean };
 }
 
 interface ScheduleItem {
@@ -100,7 +106,8 @@ interface ScheduleItem {
 
 const getDueDateStatus = (
   dueDate: Date | null,
-  useNumber: boolean
+  useNumber: boolean,
+  scheduledDate?: Date
 ): BadgeStatus => {
   if (!dueDate) {
     return {
@@ -109,13 +116,13 @@ const getDueDateStatus = (
     };
   }
 
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
+  const referenceDate = scheduledDate || new Date();
+  referenceDate.setHours(0, 0, 0, 0);
   const dueDateStart = new Date(dueDate);
   dueDateStart.setHours(0, 0, 0, 0);
 
   const diffDays = Math.ceil(
-    (dueDateStart.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    (dueDateStart.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24)
   );
 
   if (diffDays < 0) {
@@ -229,26 +236,15 @@ const DayCard = ({
   weekKey,
   items,
   onBadgeClick,
+  currentWeekStart,
+  isDarkMode,
+  totalBlocksResult,
+  doneBlocksResult,
 }: DayCardProps) => {
   const [showDone, setShowDone] = useState(true);
   const toggleShowDone = () => setShowDone(!showDone);
 
-  // Add the calculateBlocks helper function
-  const calculateBlocks = (item: Item): number => {
-    const sizeStr = getItemValue(item, ColumnTitles.Size);
-    const dimensions = sizeStr.split("x").map((dim) => parseFloat(dim.trim()));
-    const width = dimensions[0] || 0;
-    const height = dimensions[1] || 0;
-    return width * height;
-  };
-
-  // Calculate total blocks for completed items
-  const doneBlocks = daySchedule.reduce((total, scheduleItem) => {
-    if (scheduleItem.done || scheduleItem.item.status === "Done") {
-      return total + calculateBlocks(scheduleItem.item);
-    }
-    return total;
-  }, 0);
+  const doneBlocks = doneBlocksResult.count;
 
   return (
     <div className="relative group h-full">
@@ -285,6 +281,7 @@ const DayCard = ({
               onClick={onBadgeClick}
             >
               Blocks: {totalBlocks}
+              {totalBlocksResult.hasIndeterminate ? "+" : ""}
             </Badge>
             {showDone ? (
               <Badge
@@ -297,6 +294,7 @@ const DayCard = ({
                 onClick={toggleShowDone}
               >
                 Done: {doneBlocks}
+                {doneBlocksResult.hasIndeterminate ? "+" : ""}
               </Badge>
             ) : (
               <Badge
@@ -309,6 +307,10 @@ const DayCard = ({
                 onClick={toggleShowDone}
               >
                 Undone: {totalBlocks - doneBlocks}
+                {totalBlocksResult.hasIndeterminate ||
+                doneBlocksResult.hasIndeterminate
+                  ? "+"
+                  : ""}
               </Badge>
             )}
           </div>
@@ -320,9 +322,22 @@ const DayCard = ({
             if (!item) return null;
 
             const dueDate = new Date(getItemValue(item, ColumnTitles.Due));
+            // Calculate the scheduled date for this day
+            const dayIndex = [
+              "Sunday",
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+            ].indexOf(day);
+            const scheduledDate = addDays(currentWeekStart, dayIndex);
+
             const badgeStatus = getDueDateStatus(
               isNaN(dueDate.getTime()) ? null : dueDate,
-              useNumber
+              useNumber,
+              scheduledDate
             );
 
             return (
@@ -337,9 +352,12 @@ const DayCard = ({
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium tracking-tight text-gray-900 dark:text-gray-100">
-                      {getItemValue(item, ColumnTitles.Customer_Name)}
-                    </span>
+                    <div className="font-medium tracking-tight text-gray-900 dark:text-gray-100">
+                      {parseMinecraftColors(
+                        getItemValue(item, ColumnTitles.Customer_Name),
+                        isDarkMode
+                      )}
+                    </div>
                     <Badge
                       variant="outline"
                       className={cn(
@@ -493,6 +511,9 @@ const WeeklyPlanner = () => {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filterDesign, setFilterDesign] = React.useState("all");
   const [filterSize, setFilterSize] = React.useState("all");
+
+  const { theme } = useTheme();
+  const isDarkMode = theme === "dark";
   const [itemToRemove, setItemToRemove] = React.useState<{
     day: DayName;
     itemId: string;
@@ -778,13 +799,80 @@ const WeeklyPlanner = () => {
     }
   };
 
-  const calculateBlocks = (item: Item): number => {
+  const calculateBlocks = (
+    item: Item
+  ): { count: number; hasIndeterminate: boolean } => {
     const sizeStr =
       item.values.find((v) => v.columnName === "Size")?.text || "";
-    const dimensions = sizeStr.split("x").map((dim) => parseFloat(dim.trim()));
-    const width = dimensions[0] || 0;
-    const height = dimensions[1] || 0;
-    return width * height;
+
+    // Split by 'x' to get width and height, but be more careful about extra content
+    const parts = sizeStr.split("x");
+    const dimensions = parts.slice(0, 2).map((dim) => {
+      const trimmed = dim.trim().toLowerCase();
+      if (trimmed === "n/a" || trimmed === "" || isNaN(parseFloat(trimmed))) {
+        return null;
+      }
+      return parseFloat(trimmed);
+    });
+
+    const width = dimensions[0] || null;
+    const height = dimensions[1] || null;
+
+    // If either dimension is indeterminate, we have an indeterminate count
+    const hasIndeterminate = width === null || height === null;
+
+    // Calculate base blocks from known dimensions
+    let baseBlocks = 0;
+    if (width !== null && height !== null && !isNaN(width) && !isNaN(height)) {
+      baseBlocks = width * height;
+    } else if (
+      width !== null &&
+      !isNaN(width) &&
+      (height === null || isNaN(height))
+    ) {
+      // Width known, height unknown - use width as minimum
+      baseBlocks = width;
+    } else if (
+      height !== null &&
+      !isNaN(height) &&
+      (width === null || isNaN(width))
+    ) {
+      // Height known, width unknown - use height as minimum
+      baseBlocks = height;
+    }
+
+    // Ensure baseBlocks is never NaN
+    if (isNaN(baseBlocks)) {
+      baseBlocks = 0;
+    }
+
+    // Look for additional blocks in other fields (like a +122 value)
+    const additionalBlocksPattern = /\+(\d+)/;
+    let additionalBlocks = 0;
+
+    // Check various fields for additional blocks
+    const fieldsToCheck = [
+      item.values.find((v) => v.columnName === ColumnTitles.Size)?.text || "",
+      item.values.find((v) => v.columnName === ColumnTitles.Design)?.text || "",
+      item.values.find((v) => v.columnName === ColumnTitles.Customer_Name)
+        ?.text || "",
+    ];
+
+    for (const field of fieldsToCheck) {
+      if (field) {
+        const match = field.match(additionalBlocksPattern);
+        if (match) {
+          additionalBlocks += parseInt(match[1], 10);
+        }
+      }
+    }
+
+    const totalCount = baseBlocks + additionalBlocks;
+
+    return {
+      count: isNaN(totalCount) ? 0 : totalCount,
+      hasIndeterminate,
+    };
   };
 
   const handleWeekChange = (direction: "prev" | "next") => {
@@ -1134,9 +1222,34 @@ const WeeklyPlanner = () => {
               }))
               .filter((item) => item.item);
 
-            const totalBlocks = daySchedule.reduce((total, scheduleItem) => {
-              return total + calculateBlocks(scheduleItem.item);
-            }, 0);
+            const totalBlocksResult = daySchedule.reduce(
+              (acc, scheduleItem) => {
+                const blockResult = calculateBlocks(scheduleItem.item);
+                return {
+                  count: acc.count + blockResult.count,
+                  hasIndeterminate:
+                    acc.hasIndeterminate || blockResult.hasIndeterminate,
+                };
+              },
+              { count: 0, hasIndeterminate: false }
+            );
+
+            const doneBlocksResult = daySchedule.reduce(
+              (acc, scheduleItem) => {
+                if (scheduleItem.done || scheduleItem.item.status === "Done") {
+                  const blockResult = calculateBlocks(scheduleItem.item);
+                  return {
+                    count: acc.count + blockResult.count,
+                    hasIndeterminate:
+                      acc.hasIndeterminate || blockResult.hasIndeterminate,
+                  };
+                }
+                return acc;
+              },
+              { count: 0, hasIndeterminate: false }
+            );
+
+            const totalBlocks = totalBlocksResult.count;
 
             return (
               <DayCard
@@ -1157,6 +1270,10 @@ const WeeklyPlanner = () => {
                 weekKey={weekKey}
                 items={items}
                 onBadgeClick={() => setUseNumber(!useNumber)}
+                currentWeekStart={currentWeekStart}
+                isDarkMode={isDarkMode}
+                totalBlocksResult={totalBlocksResult}
+                doneBlocksResult={doneBlocksResult}
               />
             );
           })}

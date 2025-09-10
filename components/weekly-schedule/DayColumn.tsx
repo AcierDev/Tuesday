@@ -2,22 +2,110 @@ import { ColumnTitles, DayName, Item, ItemStatus } from "@/typings/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Check, GripVertical, Info, Minus, Plus } from "lucide-react";
 import { useState } from "react";
+import { useTheme } from "next-themes";
+import { parseMinecraftColors } from "@/parseMinecraftColors";
 import { PaintRequirementsDialog } from "./PaintRequirementsDialog";
 import { cn } from "@/utils/functions";
+import { format, startOfWeek, addDays } from "date-fns";
 
-type NewType = Item;
+type BadgeStatus = {
+  text: string;
+  classes: string;
+};
+
+const getDueDateStatus = (
+  dueDate: Date | null,
+  useNumber: boolean,
+  scheduledDate?: Date
+): BadgeStatus => {
+  if (!dueDate) {
+    return {
+      text: "?",
+      classes: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
+    };
+  }
+
+  const referenceDate = scheduledDate || new Date();
+  referenceDate.setHours(0, 0, 0, 0);
+  const dueDateStart = new Date(dueDate);
+  dueDateStart.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.ceil(
+    (dueDateStart.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (diffDays < 0) {
+    return {
+      text: useNumber
+        ? diffDays.toString()
+        : diffDays === -1
+        ? "Yesterday"
+        : diffDays === -2
+        ? "2 days ago"
+        : diffDays > -7 // Less than a week ago
+        ? "3+ days ago"
+        : diffDays > -30 // Less than a month ago
+        ? "Week+ ago"
+        : "Month+ ago",
+      classes: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    };
+  } else if (diffDays === 0) {
+    return {
+      text: useNumber ? "0" : "Today",
+      classes:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    };
+  } else if (diffDays === 1) {
+    return {
+      text: useNumber ? "+1" : "Tomorrow",
+      classes:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    };
+  } else if (diffDays === 2) {
+    return {
+      text: useNumber ? "+2" : "2 days",
+      classes:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    };
+  } else if (diffDays < 7) {
+    return {
+      text: useNumber ? `+${diffDays}` : "3+ days",
+      classes:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    };
+  } else if (diffDays < 30) {
+    return {
+      text: useNumber ? `+${diffDays}` : "Week+",
+      classes:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    };
+  } else {
+    return {
+      text: useNumber ? `+${diffDays}` : "Month+",
+      classes:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    };
+  }
+};
 
 interface DayColumnProps {
   day: DayName;
   dayItemIds: { id: string; done: boolean }[];
   items: Item[];
-  calculateTotalSquares: (dayItems: { id: string; done: boolean }[]) => number;
+  calculateTotalSquares: (dayItems: { id: string; done: boolean }[]) => {
+    count: number;
+    hasIndeterminate: boolean;
+  };
   handleAddItem: (day: DayName) => void;
   handleRemoveItem: (day: DayName, itemId: string) => void;
   setConfirmCompleteItem: (item: Item | null) => void;
   getItemValue: (item: Item, columnName: ColumnTitles) => string;
+  currentWeekStart?: Date;
+  useNumber?: boolean;
+  onBadgeClick?: () => void;
 }
 
 export function DayColumn({
@@ -29,8 +117,28 @@ export function DayColumn({
   handleRemoveItem,
   setConfirmCompleteItem,
   getItemValue,
+  currentWeekStart,
+  useNumber = true,
+  onBadgeClick,
 }: DayColumnProps) {
   const [showPaintRequirements, setShowPaintRequirements] = useState(false);
+  const { theme } = useTheme();
+  const isDarkMode = theme === "dark";
+
+  // Calculate the date for this specific day
+  const getScheduledDate = () => {
+    if (!currentWeekStart) return new Date();
+    const dayIndex = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ].indexOf(day);
+    return addDays(currentWeekStart, dayIndex);
+  };
 
   const dayItems = items.filter((item) =>
     dayItemIds.some((scheduleItem) => scheduleItem.id === item.id)
@@ -44,7 +152,11 @@ export function DayColumn({
             <span>{day}</span>
             <div className="flex items-center space-x-2">
               <span className="text-xs font-normal">
-                Squares: {calculateTotalSquares(dayItemIds)}
+                Squares:{" "}
+                {(() => {
+                  const result = calculateTotalSquares(dayItemIds);
+                  return `${result.count}${result.hasIndeterminate ? "+" : ""}`;
+                })()}
               </span>
               <Button
                 size="sm"
@@ -92,16 +204,56 @@ export function DayColumn({
                                 <GripVertical className="h-4 w-4 text-muted-foreground" />
                               </div>
                               <div className="flex-grow">
-                                <p className="font-semibold truncate">
-                                  {getItemValue(
-                                    item,
-                                    ColumnTitles.Customer_Name
+                                <div className="font-semibold truncate">
+                                  {parseMinecraftColors(
+                                    getItemValue(
+                                      item,
+                                      ColumnTitles.Customer_Name
+                                    ),
+                                    isDarkMode
                                   )}
-                                </p>
-                                <p className="text-muted-foreground truncate">
-                                  {getItemValue(item, ColumnTitles.Design)} -{" "}
-                                  {getItemValue(item, ColumnTitles.Size)}
-                                </p>
+                                </div>
+                                <div className="text-muted-foreground truncate text-xs flex items-center gap-2">
+                                  <span>
+                                    {getItemValue(item, ColumnTitles.Design)} -{" "}
+                                    {getItemValue(item, ColumnTitles.Size)}
+                                  </span>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      "text-[10px] px-1 py-0 h-4",
+                                      (() => {
+                                        const dueDate = new Date(
+                                          getItemValue(item, ColumnTitles.Due)
+                                        );
+                                        const badgeStatus = getDueDateStatus(
+                                          isNaN(dueDate.getTime())
+                                            ? null
+                                            : dueDate,
+                                          useNumber,
+                                          getScheduledDate()
+                                        );
+                                        return badgeStatus.classes;
+                                      })(),
+                                      "cursor-pointer hover:opacity-80"
+                                    )}
+                                    onClick={onBadgeClick}
+                                  >
+                                    {(() => {
+                                      const dueDate = new Date(
+                                        getItemValue(item, ColumnTitles.Due)
+                                      );
+                                      const badgeStatus = getDueDateStatus(
+                                        isNaN(dueDate.getTime())
+                                          ? null
+                                          : dueDate,
+                                        useNumber,
+                                        getScheduledDate()
+                                      );
+                                      return badgeStatus.text;
+                                    })()}
+                                  </Badge>
+                                </div>
                               </div>
                             </div>
                             <div className="flex space-x-1">

@@ -582,14 +582,12 @@ export const EMPLOYEE_MAP: Record<EmployeeOption, EmployeeNames> = {
   AM: EmployeeNames.Alex,
   BS: EmployeeNames.Bentzi,
   AW: EmployeeNames.Akiva,
-  BC: EmployeeNames.Ben,
   TB: EmployeeNames.Tyler,
 };
 
 export const INITIALS_MAP: Record<EmployeeNames, EmployeeOption> = {
   [EmployeeNames.Akiva]: "AW",
   [EmployeeNames.Alex]: "AM",
-  [EmployeeNames.Ben]: "BC",
   [EmployeeNames.Bentzi]: "BS",
   [EmployeeNames.Tyler]: "TB",
 };

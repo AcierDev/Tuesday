@@ -222,7 +222,6 @@ export type GenericColumnValue = {
 
 export enum EmployeeNames {
   Alex = "Alex Morrell",
-  Ben = "Ben Clark",
   Bentzi = "Ben Steele",
   Akiva = "Akiva Weil",
   Tyler = "Tyler Blancett",

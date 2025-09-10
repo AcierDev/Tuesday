@@ -172,7 +172,12 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
         let type = boardConfig.columns[title]?.type || ColumnTypes.Text;
 
         if (title === ColumnTitles.Customer_Name) {
-          const prefix = company === "Everwood" ? "" : "[WF]";
+          let prefix = "";
+          if (company === "Woodform") {
+            prefix = "[WF]";
+          } else if (company === "Sheppit") {
+            prefix = "[SH]";
+          }
           value = customerName ? `${prefix} ${customerName}` : customerName;
         } else if (title === ColumnTitles.Size) {
           value = size;
@@ -306,6 +311,18 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
                       )}
                     >
                       Woodform
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCompany("Sheppit")}
+                      className={cn(
+                        "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200",
+                        company === "Sheppit"
+                          ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
+                          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                      )}
+                    >
+                      Sheppit
                     </button>
                   </div>
                 </div>

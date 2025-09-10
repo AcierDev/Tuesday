@@ -3,6 +3,7 @@ import React from "react";
 import {
   AnimatedLetterE,
   AnimatedLetterWF,
+  AnimatedLetterSH,
 } from "@/components/ui/AnimatedLetter";
 
 export const minecraftColors: { [key: string]: string } = {
@@ -78,8 +79,8 @@ export const parseMinecraftColors = (
       const text = segment.text;
 
       // Check for company prefixes and replace with animated components
-      if (text.includes("[E]")) {
-        const parts = text.split("[E]");
+      if (text.includes("[EW]")) {
+        const parts = text.split("[EW]");
         parts.forEach((part, partIdx) => {
           if (partIdx > 0) {
             // Add animated E component before this part
@@ -110,6 +111,30 @@ export const parseMinecraftColors = (
             elements.push(
               <AnimatedLetterWF
                 key={`${idx}-wf-${partIdx}`}
+                size="sm"
+                className="inline-flex mx-1"
+              />
+            );
+          }
+          if (part) {
+            elements.push(
+              <span
+                key={`${idx}-text-${partIdx}`}
+                style={{ color: segment.color }}
+              >
+                {part}
+              </span>
+            );
+          }
+        });
+      } else if (text.includes("[SH]")) {
+        const parts = text.split("[SH]");
+        parts.forEach((part, partIdx) => {
+          if (partIdx > 0) {
+            // Add animated SH component before this part
+            elements.push(
+              <AnimatedLetterSH
+                key={`${idx}-sh-${partIdx}`}
                 size="sm"
                 className="inline-flex mx-1"
               />
