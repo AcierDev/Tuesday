@@ -13,7 +13,10 @@ dotenv.config({ path: path.join(__dirname, "../.env") });
 const uri = process.env.MONGODB_URI!;
 
 async function downloadDatabases() {
-  const client = new MongoClient(uri);
+  const client = new MongoClient(uri, {
+    serverSelectionTimeoutMS: 10000, // 10 second timeout
+    connectTimeoutMS: 10000,
+  });
 
   try {
     await client.connect();
@@ -29,9 +32,16 @@ async function downloadDatabases() {
       { name: "production", filename: "production-boards.json" },
     ];
 
-    // Get Downloads directory path
+    // Get Downloads directory path with timestamp
     const downloadsDir = path.join(os.homedir(), "Downloads");
-    const outputDir = path.join(downloadsDir, "everwood-database-backup");
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .slice(0, 19);
+    const outputDir = path.join(
+      downloadsDir,
+      `everwood-database-backup-${timestamp}`
+    );
 
     // Create output directory if it doesn't exist
     try {

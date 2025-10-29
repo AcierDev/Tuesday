@@ -107,6 +107,8 @@ export const CustomTableCell = ({
           );
         }
         if (isNameColumn) {
+          const isDuplicate = checkDuplicate(item);
+
           return (
             <NameCell
               item={item}
@@ -116,7 +118,7 @@ export const CustomTableCell = ({
               onRemoveTag={() => {}}
               initialTags={[]}
               tags={{
-                isDuplicate: checkDuplicate(item),
+                isDuplicate: isDuplicate,
                 isDifficultCustomer: item.tags?.isDifficultCustomer || false,
                 isVertical: item.tags?.isVertical || false,
                 hasCustomerMessage: item.tags?.hasCustomerMessage || false,

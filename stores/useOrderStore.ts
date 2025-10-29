@@ -62,19 +62,45 @@ interface OrderState {
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+// Helper function to get the customer name from an item's values
+function getCustomerName(item: Item): string | undefined {
+  const customerNameValue = item.values.find(
+    (v) => v.columnName === ColumnTitles.Customer_Name
+  );
+  return customerNameValue?.text;
+}
+
 // Add this helper function before the store creation
 function hasDuplicateFirstValue(item: Item, items: Item[]): boolean {
-  // Get the first value's text from the current item
-  const firstValue = item.values[0]?.text;
-  if (!firstValue) return false;
+  // Get the customer name from the current item
+  const customerName = getCustomerName(item);
 
-  // Check if any other item has the same first value
-  return items.some(
-    (otherItem) =>
-      otherItem.id !== item.id && // Don't compare with self
-      otherItem.values[0]?.text?.includes(firstValue) && // Compare first values
-      !otherItem.deleted // Don't compare with deleted items
-  );
+  if (!customerName) {
+    return false;
+  }
+
+  // Check if any other item has a matching customer name
+  const duplicates = items.filter((otherItem) => {
+    const isSelf = otherItem.id === item.id;
+    const notDeleted = !otherItem.deleted;
+
+    if (isSelf || !notDeleted) {
+      return false;
+    }
+
+    const otherCustomerName = getCustomerName(otherItem);
+
+    if (!otherCustomerName) {
+      return false;
+    }
+
+    // Check if the other customer name includes this customer name
+    const includesMatch = otherCustomerName.includes(customerName);
+
+    return includesMatch;
+  });
+
+  return duplicates.length > 0;
 }
 
 export const useOrderStore = create<OrderState>()(
@@ -417,7 +443,9 @@ export const useOrderStore = create<OrderState>()(
 
       checkDuplicate: (item: Item): boolean => {
         const { items } = get();
-        if (!items) return false;
+        if (!items) {
+          return false;
+        }
 
         return hasDuplicateFirstValue(item, items);
       },
