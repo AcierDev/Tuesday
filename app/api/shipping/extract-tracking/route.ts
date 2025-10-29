@@ -14,7 +14,7 @@ async function pdfToGenerativePart(pdfBuffer: Buffer) {
 
 async function extractTrackingNumber(pdfBuffer: Buffer) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
     const prompt = `Extract the main tracking number from this shipping label. Ignore the final delivery tracking number.
     Return ONLY a raw JSON object (no markdown, no code blocks) with these fields:

@@ -3,6 +3,15 @@ import clientPromise from "../db/connect";
 import { Item } from "@/typings/types";
 import { ItemStatus } from "@/typings/types";
 
+// CORS headers helper function
+function getCorsHeaders() {
+  const headers = new Headers();
+  headers.set("Access-Control-Allow-Origin", "https://www.etsy.com");
+  headers.set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "Content-Type");
+  return headers;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -35,11 +44,11 @@ export async function GET(request: Request) {
     }
 
     const items = await collection.find(filter).toArray();
-    return NextResponse.json(items);
+    return NextResponse.json(items, { headers: getCorsHeaders() });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch board" },
-      { status: 500 }
+      { status: 500, headers: getCorsHeaders() }
     );
   }
 }
@@ -66,15 +75,18 @@ export async function PATCH(request: Request) {
     );
 
     if (result.matchedCount === 0) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Item not found" },
+        { status: 404, headers: getCorsHeaders() }
+      );
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: getCorsHeaders() });
   } catch (error) {
     console.error("Error updating item:", error);
     return NextResponse.json(
       { error: "Failed to update item" },
-      { status: 500 }
+      { status: 500, headers: getCorsHeaders() }
     );
   }
 }
@@ -93,13 +105,24 @@ export async function POST(request: Request) {
     if (!result.acknowledged) {
       return NextResponse.json(
         { error: "Failed to add item" },
-        { status: 500 }
+        { status: 500, headers: getCorsHeaders() }
       );
     }
 
-    return NextResponse.json(newItem);
+    return NextResponse.json(newItem, { headers: getCorsHeaders() });
   } catch (error) {
     console.error("Error adding item:", error);
-    return NextResponse.json({ error: "Failed to add item" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to add item" },
+      { status: 500, headers: getCorsHeaders() }
+    );
   }
+}
+
+// Handle preflight OPTIONS requests
+export async function OPTIONS(request: Request) {
+  return new Response(null, {
+    status: 200,
+    headers: getCorsHeaders(),
+  });
 }

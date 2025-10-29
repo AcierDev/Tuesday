@@ -36,6 +36,10 @@ interface CostBreakdown {
   };
   tax: number;
   total: number;
+  weight: {
+    grams: number;
+    pounds: number;
+  };
   debug?: {
     dimensions: { height: number; width: number };
     blocks: { height: number; width: number; total: number };
@@ -214,6 +218,10 @@ export default function CustomArtRequest() {
     },
     tax: 0,
     total: 0,
+    weight: {
+      grams: 0,
+      pounds: 0,
+    },
   });
   const [showBlocks, setShowBlocks] = useState(false);
   const [scale, setScale] = useState(1);
@@ -277,6 +285,10 @@ export default function CustomArtRequest() {
       },
     };
 
+    // Calculate weight
+    const weightInGrams = totalBlocks * 96;
+    const weightInPounds = weightInGrams / 453.592; // Convert grams to pounds
+
     // Calculate base price using interpolation
     const basePrice = interpolatePrice(totalBlocks, PRICE_DATA_POINTS);
 
@@ -308,6 +320,10 @@ export default function CustomArtRequest() {
       },
       tax,
       total,
+      weight: {
+        grams: weightInGrams,
+        pounds: weightInPounds,
+      },
       debug: debugInfo,
     };
   };
@@ -325,6 +341,7 @@ export default function CustomArtRequest() {
         shipping: { base: 0, additionalHeight: 0, expedited: 0, total: 0 },
         tax: 0,
         total: 0,
+        weight: { grams: 0, pounds: 0 },
       });
     }
   };
@@ -602,6 +619,10 @@ export default function CustomArtRequest() {
                     Blocks: {costBreakdown.debug.blocks.height} ×{" "}
                     {costBreakdown.debug.blocks.width} ={" "}
                     {costBreakdown.debug.blocks.total} total blocks
+                  </div>
+                  <div>
+                    Weight: {costBreakdown.weight.pounds.toFixed(2)} lb (
+                    {costBreakdown.weight.grams.toLocaleString()} g)
                   </div>
                   <div>Base Price: ${costBreakdown.basePrice.toFixed(2)}</div>
                   <div>
