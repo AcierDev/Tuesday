@@ -1,32 +1,29 @@
 import { NextRequest } from "next/server";
-import { getWarehouseIP } from "../../lib/warehouseStorage";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { action: string } }
+  { params }: { params: Promise<{ action: string }> }
 ) {
   console.debug("=== Starting outlet proxy request ===");
   console.debug("Raw request URL:", request.url);
-  console.debug("Action param:", params.action);
+
+  const { action } = await params;
+  console.debug("Action param:", action);
 
   try {
-    console.debug("Fetching warehouse data...");
-    const warehouseData = await getWarehouseIP();
-    console.debug("Warehouse data retrieved:", warehouseData);
+    const warehouseIP = process.env.WAREHOUSE_IP;
 
-    if (!warehouseData) {
-      console.warn(
-        "Warehouse connection not established - no warehouse data found"
-      );
+    if (!warehouseIP) {
+      console.warn("Warehouse IP not configured");
       return Response.json(
-        { error: "Warehouse connection not established" },
+        { error: "Warehouse IP not configured" },
         { status: 503 }
       );
     }
 
     // Add proper endpoint handling
     let warehouseEndpoint: string;
-    switch (params.action) {
+    switch (action) {
       case "on":
         warehouseEndpoint = "on";
         break;
@@ -37,7 +34,7 @@ export async function POST(
         warehouseEndpoint = "status";
         break;
       default:
-        console.warn("Invalid endpoint requested:", params.action);
+        console.warn("Invalid endpoint requested:", action);
         return Response.json({ error: "Invalid endpoint" }, { status: 400 });
     }
 
@@ -45,9 +42,9 @@ export async function POST(
     const body = await request.json();
     console.debug("Parsed request body:", body);
 
-    const warehouseUrl = `${process.env.WAREHOUSE_PROTOCOL || "http"}://${
-      warehouseData.ip
-    }:${process.env.WAREHOUSE_OUTLET_PORT || "3004"}`;
+    const warehouseUrl = `${
+      process.env.WAREHOUSE_PROTOCOL || "http"
+    }://${warehouseIP}:${process.env.WAREHOUSE_OUTLET_PORT || "3004"}`;
 
     console.debug(
       "Full warehouse endpoint:",

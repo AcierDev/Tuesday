@@ -4,16 +4,17 @@ import { ObjectId } from "mongodb";
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB);
     const collection = db.collection(`inventory-${process.env.NODE_ENV}`);
 
     const updates = await request.json();
     const result = await collection.updateOne(
-      { _id: new ObjectId(params.id) },
+      { _id: new ObjectId(id) },
       { $set: updates }
     );
 
@@ -28,14 +29,15 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB);
     const collection = db.collection(`inventory-${process.env.NODE_ENV}`);
 
-    const result = await collection.deleteOne({ _id: new ObjectId(params.id) });
+    const result = await collection.deleteOne({ _id: new ObjectId(id) });
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

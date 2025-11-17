@@ -7,7 +7,7 @@ const EASYPOST_BASE_URL = "https://api.easypost.com/v2";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { trackingCode: string } }
+  { params }: { params: Promise<{ trackingCode: string }> }
 ) {
   const { trackingCode } = await params;
   let carrier = request.nextUrl.searchParams.get("carrier") || "UPS";

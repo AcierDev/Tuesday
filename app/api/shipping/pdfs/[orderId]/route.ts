@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
-  { params }: { params: { orderId: string } }
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   try {
-    const orderId = (await params).orderId;
+    const { orderId } = await params;
 
     if (!orderId) {
       return NextResponse.json(
@@ -25,7 +25,7 @@ export async function GET(
     // Ensure we're returning an array
     return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (error) {
-    console.error(`Failed to fetch PDFs for order ${params.orderId}:`, error);
+    console.error(`Failed to fetch PDFs for order ${orderId}:`, error);
     return NextResponse.json(
       {
         error: "Failed to fetch PDFs",

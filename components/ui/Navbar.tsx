@@ -21,6 +21,8 @@ import {
   LayoutGrid,
   Magnet,
   Scissors,
+  BarChart3,
+  CalendarDays,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
@@ -51,20 +53,25 @@ type NavItem = NavLinkItem | DividerItem;
 const mainNavItems: NavItem[] = [
   { href: "/orders", icon: Logs, label: "Orders", hotkey: "1" },
   { href: "/weekly-planner", icon: ClipboardList, label: "Weekly Planner" },
+  {
+    href: "/production-planning",
+    icon: CalendarDays,
+    label: "Production Planning",
+  },
   // { href: "/shipping", icon: Truck, label: "Shipping", hotkey: "2" },
+  // { type: "divider" },
+  // { href: "/paint", icon: PaintbrushVertical, label: "Paint", hotkey: "3" },
+  // { href: "/packaging", icon: PackageOpen, label: "Packaging", hotkey: "4" },
+  // { href: "/backboards", icon: Layers3, label: "Backboards", hotkey: "5" },
+  // { href: "/cutting", icon: Scissors, label: "Cutting" },
+  // { type: "divider" },
+  // { href: "/robotyler", icon: SprayCan, label: "RoboTyler" },
+  // { href: "/pick-n-place", icon: Magnet, label: "Pick N Place" },
+  // { href: "/router", icon: "/icons/router.png", label: "Router" },
+  // { href: "/pick-and-place", icon: LayoutGrid, label: "Pick & Place" },
   { type: "divider" },
-  { href: "/paint", icon: PaintbrushVertical, label: "Paint", hotkey: "3" },
-  { href: "/packaging", icon: PackageOpen, label: "Packaging", hotkey: "4" },
-  { href: "/backboards", icon: Layers3, label: "Backboards", hotkey: "5" },
-  { href: "/cutting", icon: Scissors, label: "Cutting" },
-  { type: "divider" },
-  { href: "/robotyler", icon: SprayCan, label: "RoboTyler" },
-  { href: "/pick-n-place", icon: Magnet, label: "Pick N Place" },
-  { href: "/router", icon: "/icons/router.png", label: "Router" },
-  { href: "/pick-and-place", icon: LayoutGrid, label: "Pick & Place" },
-  { type: "divider" },
-  { href: "/inventory", icon: ClipboardList, label: "Inventory" },
-  { type: "divider" },
+  // { href: "/inventory", icon: ClipboardList, label: "Inventory" },
+  // { type: "divider" },
   {
     href: "/setup-utility",
     icon: Accessibility,
@@ -72,15 +79,8 @@ const mainNavItems: NavItem[] = [
     hotkey: "9",
   },
   { href: "/print", icon: Printer, label: "Print", hotkey: "7" },
-  { href: "/outlets", icon: Power, label: "Outlets", hotkey: "8" },
+  // { href: "/outlets", icon: Power, label: "Outlets", hotkey: "8" },
   { href: "/calculator", icon: Calculator, label: "Calculator", hotkey: "6" },
-];
-
-const EASTER_EGG_SEQUENCE = [
-  "/orders",
-  "/weekly-planner",
-  "/orders",
-  "/weekly-planner",
 ];
 
 interface NavbarProps {
@@ -124,7 +124,6 @@ export function Navbar({
   const pathname = usePathname();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(pathname);
-  const [navigationSequence, setNavigationSequence] = useState<string[]>([]);
 
   useEffect(() => {
     setActiveTab(pathname);
@@ -178,25 +177,6 @@ export function Navbar({
   const NavLink = ({ href, icon: Icon, label }: NavLinkProps) => {
     if (!href) return null;
 
-    const handleClick = (e: React.MouseEvent) => {
-      e.preventDefault(); // Prevent default Link navigation
-
-      // Update sequence by keeping last 3 items and adding new href
-      const newSequence = [...navigationSequence.slice(-3), href];
-      setNavigationSequence(newSequence);
-
-      // Check if sequence matches
-      if (
-        newSequence.length === 4 &&
-        newSequence.every((path, i) => path === EASTER_EGG_SEQUENCE[i])
-      ) {
-        router.push("/surprise-page");
-        setNavigationSequence([]); // Reset sequence
-      } else {
-        router.push(href); // Normal navigation if sequence doesn't match
-      }
-    };
-
     const isMobile = useMediaQuery("(max-width: 1023px)");
     const isActive = activeTab === href;
 
@@ -215,7 +195,6 @@ export function Navbar({
               : "text-muted-foreground hover:bg-muted hover:text-primary dark:hover:bg-gray-800/50"
           }
           transition-all duration-200 relative`}
-        onClick={handleClick}
       >
         {typeof Icon === "string" ? (
           <Image
