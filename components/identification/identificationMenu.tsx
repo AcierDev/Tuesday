@@ -7,7 +7,6 @@ import { LogOut, ArrowLeft, Users, User, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { useIdleTimer } from "react-idle-timer";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   CREDIT_COLORS,
@@ -25,7 +24,6 @@ import {
 } from "@/app/actions/auth";
 import { EmployeeAvatar } from "./EmployeeAvatar";
 import { useUser } from "@/contexts/UserContext";
-import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 
 export function UserIdentificationMenu() {
   const { user: currentUser, isAdmin, login, logout } = useUser();
@@ -42,7 +40,6 @@ export function UserIdentificationMenu() {
   const [passwordProtectedUsers, setPasswordProtectedUsers] = useState<
     EmployeeNames[]
   >([]);
-  const { settings } = useOrderSettings();
   const [isMobile, setIsMobile] = useState(false);
 
   // Check if on mobile device
@@ -57,23 +54,6 @@ export function UserIdentificationMenu() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const handleIdle = () => {
-    setIsVisible(true);
-  };
-
-  const { reset, pause, resume } = useIdleTimer({
-    timeout: Math.max(settings.idleTimeout, 5000),
-    onIdle: handleIdle,
-    debounce: 500,
-  });
-
-  useEffect(() => {
-    if (isAdmin && !settings.showIdentificationMenuForAdmins) {
-      pause();
-    } else {
-      resume();
-    }
-  }, [isAdmin, settings.showIdentificationMenuForAdmins, pause, resume]);
 
   useEffect(() => {
     const fetchPasswordProtectedUsers = async () => {
@@ -165,7 +145,6 @@ export function UserIdentificationMenu() {
     setPassword("");
     setError(null);
     setFocusedIndex(-1);
-    reset();
   };
 
   const handleUserSelect = async (credit: CreditOption) => {
