@@ -99,11 +99,9 @@ export const getDueBadge = (dateString: string, range: number) => {
 };
 
 export const isPastDue = (item: Item) => {
-  const dueDateValue = item.values.find(
-    (value) => value.columnName === ColumnTitles.Due
-  );
-  if (dueDateValue && dueDateValue.text) {
-    const dueDate = parseISO(dueDateValue.text);
+  const dueDateText = item.dueDate;
+  if (dueDateText) {
+    const dueDate = parseISO(dueDateText);
     return isBefore(dueDate, new Date());
   }
   return false;
@@ -295,13 +293,14 @@ export function generateUUID(): string {
 export const calculateTotalSquares = (
   dayItems: { id: string; done: boolean }[],
   items: Item[],
+  // Deprecated getItemValue for compatibility
   getItemValue: (item: Item, columnName: ColumnTitles) => string
 ): { count: number; hasIndeterminate: boolean } => {
   return dayItems.reduce(
     (acc, scheduleItem) => {
       const item = items.find((i) => i.id === scheduleItem.id);
       if (item) {
-        const size = getItemValue(item, ColumnTitles.Size);
+        const size = item.size || "";
 
         // Split by 'x' to get width and height, but be more careful about extra content
         const parts = size.split("x");
@@ -359,9 +358,9 @@ export const calculateTotalSquares = (
 
         // Check various fields for additional blocks
         const fieldsToCheck = [
-          getItemValue(item, ColumnTitles.Size),
-          getItemValue(item, ColumnTitles.Design),
-          getItemValue(item, ColumnTitles.Customer_Name),
+          item.size || "",
+          item.design || "",
+          item.customerName || "",
         ];
 
         for (const field of fieldsToCheck) {

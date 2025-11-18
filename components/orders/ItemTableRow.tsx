@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Draggable } from "@hello-pangea/dnd";
 import { GripVertical } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -36,7 +37,7 @@ interface ItemTableRowProps {
   onShip: (itemId: string) => Promise<void>;
 }
 
-export function ItemTableRow({
+export const ItemTableRow = memo(function ItemTableRow({
   item,
   index,
   visibleColumns,
@@ -87,12 +88,32 @@ export function ItemTableRow({
           {visibleColumns
             .filter((columnName) => columnName !== "Shipping")
             .map((columnName, cellIndex) => {
-              const columnValue = item.values.find(
-                (value) => value.columnName === columnName
-              ) || {
+              // Reconstruct pseudo-column-value for the cell
+              // This is a compatibility layer. Ideally cells should take raw values.
+              const fieldMap: Record<string, keyof Item> = {
+                [ColumnTitles.Customer_Name]: "customerName",
+                [ColumnTitles.Due]: "dueDate",
+                [ColumnTitles.Design]: "design",
+                [ColumnTitles.Size]: "size",
+                [ColumnTitles.Painted]: "painted",
+                [ColumnTitles.Backboard]: "backboard",
+                [ColumnTitles.Glued]: "glued",
+                [ColumnTitles.Packaging]: "packaging",
+                [ColumnTitles.Boxes]: "boxes",
+                [ColumnTitles.Notes]: "notes",
+                [ColumnTitles.Rating]: "rating",
+                [ColumnTitles.Shipping]: "shipping",
+                [ColumnTitles.Labels]: "labels"
+              };
+
+              const key = fieldMap[columnName];
+              // Force the type for now as strings
+              const textValue = key ? String(item[key] || "") : "";
+
+              const columnValue: any = {
                 columnName,
                 type: boardConfig.columns[columnName]?.type || ColumnTypes.Text,
-                text: "\u00A0", // Unicode non-breaking space
+                text: textValue,
               };
 
               return (
@@ -124,4 +145,4 @@ export function ItemTableRow({
       )}
     </Draggable>
   );
-}
+});

@@ -34,30 +34,30 @@ type UserContextType = {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<EmployeeNames | null>(null);
+  const [user, setUser] = useState<EmployeeNames | null>(EmployeeNames.Alex);
   const [isAdmin, setIsAdmin] = useState(false);
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     // Check for existing user session on component mount
-    const checkUserSession = async () => {
-      const response = await fetch("/api/user");
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Fetched data from user api path", data);
-        setUser(data.user);
-      } else {
-        const manualCookie = document.cookie;
-        const splits = manualCookie.split("=");
-        console.log("splits", splits);
-        if (splits && splits.length > 1) {
-          const user = splits[1];
-          console.log("user", user);
-          setUser(user as EmployeeNames);
-        }
-      }
-    };
-    checkUserSession();
+    // const checkUserSession = async () => {
+    //   const response = await fetch("/api/user");
+    //   if (response.ok) {
+    //     const data = await response.json();
+    //     console.log("Fetched data from user api path", data);
+    //     setUser(data.user);
+    //   } else {
+    //     const manualCookie = document.cookie;
+    //     const splits = manualCookie.split("=");
+    //     console.log("splits", splits);
+    //     if (splits && splits.length > 1) {
+    //       const user = splits[1];
+    //       console.log("user", user);
+    //       setUser(user as EmployeeNames);
+    //     }
+    //   }
+    // };
+    // checkUserSession();
   }, []);
 
   useEffect(() => {

@@ -10,6 +10,27 @@ import { cn } from "@/utils/functions";
 import { ColumnTitles, Item, ColumnValue, DayName } from "@/typings/types";
 import { getStatusColor } from "./ItemGroup";
 
+// Helper to get property from flat item using column title
+const getFlatValue = (item: Item, columnName: ColumnTitles): string | undefined => {
+  const fieldMap: Record<string, keyof Item> = {
+    [ColumnTitles.Customer_Name]: "customerName",
+    [ColumnTitles.Due]: "dueDate",
+    [ColumnTitles.Design]: "design",
+    [ColumnTitles.Size]: "size",
+    [ColumnTitles.Painted]: "painted",
+    [ColumnTitles.Backboard]: "backboard",
+    [ColumnTitles.Glued]: "glued",
+    [ColumnTitles.Packaging]: "packaging",
+    [ColumnTitles.Boxes]: "boxes",
+    [ColumnTitles.Notes]: "notes",
+    [ColumnTitles.Rating]: "rating",
+    [ColumnTitles.Shipping]: "shipping",
+    [ColumnTitles.Labels]: "labels"
+  };
+  const key = fieldMap[columnName];
+  return key ? (item[key] as string) : undefined;
+};
+
 interface ItemTableCellProps {
   item: Item;
   columnValue: ColumnValue;

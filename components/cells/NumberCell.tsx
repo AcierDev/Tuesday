@@ -28,15 +28,7 @@ export const NumberCell = ({
     try {
       const updatedItem = {
         ...item,
-        values: item.values.map((value) =>
-          value.columnName === columnValue.columnName
-            ? {
-                ...value,
-                text: newRating.toString(),
-                lastModifiedTimestamp: Date.now(),
-              }
-            : value
-        ),
+        rating: newRating.toString(),
       };
       await updateItem(updatedItem, columnValue.columnName);
       toast.success("Rating updated successfully");

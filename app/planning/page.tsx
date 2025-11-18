@@ -50,8 +50,7 @@ type BaseData = {
 };
 
 function calculateBlocks(item: Item): number {
-  const sizeStr =
-    item.values.find((v) => v.columnName === ColumnTitles.Size)?.text || "";
+  const sizeStr = item.size || "";
   const parts = sizeStr.split("x").slice(0, 2);
   const [width, height] = parts.map((part) => {
     const value = parseFloat(part.trim());
@@ -123,9 +122,7 @@ export default function PlanningDashboard() {
 
     onOrderItems.forEach((item) => {
       const blocks = calculateBlocks(item);
-      const dueValue = item.values.find(
-        (v) => v.columnName === ColumnTitles.Due
-      )?.text;
+      const dueValue = item.dueDate;
 
       let dueDate: Date | null = null;
       let bucket: DueBucket = "noDue";

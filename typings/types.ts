@@ -40,7 +40,7 @@ export type Board = {
 export type Group = {
   id: string;
   title: string;
-  items: ExtendedItem[];
+  items: Item[];
 };
 
 export type Column = {
@@ -57,7 +57,21 @@ export type ItemsResponse = {
 
 export type Item = {
   id: string;
-  values: ColumnValue[];
+  // Flattened fields
+  customerName?: string;
+  dueDate?: string;
+  design?: string;
+  size?: string;
+  painted?: string;
+  backboard?: string;
+  glued?: string;
+  packaging?: string;
+  boxes?: string;
+  notes?: string;
+  rating?: string;
+  shipping?: string;
+  labels?: string;
+
   createdAt: number;
   completedAt?: number;
   status: ItemStatus;
@@ -70,10 +84,8 @@ export type Item = {
     isVertical?: boolean;
     hasCustomerMessage?: boolean;
   };
-};
-
-export type ExtendedItem = Item & {
   isScheduled?: boolean;
+  searchText?: string;
 };
 
 export type ShippingDetails = {

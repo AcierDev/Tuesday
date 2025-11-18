@@ -24,9 +24,8 @@ import { useOrderStore } from "@/stores/useOrderStore";
 import { useProductionPlanningStore } from "@/stores/useProductionPlanningStore";
 import { ColumnTitles, ItemStatus, DayName } from "@/typings/types";
 
-function calculateBlocks(item: { values: Array<{ columnName: string; text?: string }> }): number {
-  const sizeStr =
-    item.values.find((v) => v.columnName === ColumnTitles.Size)?.text || "";
+function calculateBlocks(item: { size?: string }): number {
+  const sizeStr = item.size || "";
   const parts = sizeStr.split("x").slice(0, 2);
   const [width, height] = parts.map((part) => {
     const value = parseFloat(part.trim());
@@ -90,9 +89,7 @@ export default function ProductionPlanningPage() {
 
     availableOrders.forEach((item) => {
       const blocks = calculateBlocks(item);
-      const dueValue = item.values.find(
-        (v) => v.columnName === ColumnTitles.Due
-      )?.text;
+      const dueValue = item.dueDate;
 
       let dueDate: Date | null = null;
       let bucket: "overdue" | "thisWeek" | "nextWeek" | "future" | "noDue" = "noDue";

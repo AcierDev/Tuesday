@@ -36,6 +36,24 @@ export function PreviewTableRow({
   onAddToSchedule,
   onScheduleUpdate,
 }: PreviewTableRowProps) {
+
+  // Map column names to flat keys
+  const fieldMap: Record<string, keyof Item> = {
+    [ColumnTitles.Customer_Name]: "customerName",
+    [ColumnTitles.Due]: "dueDate",
+    [ColumnTitles.Design]: "design",
+    [ColumnTitles.Size]: "size",
+    [ColumnTitles.Painted]: "painted",
+    [ColumnTitles.Backboard]: "backboard",
+    [ColumnTitles.Glued]: "glued",
+    [ColumnTitles.Packaging]: "packaging",
+    [ColumnTitles.Boxes]: "boxes",
+    [ColumnTitles.Notes]: "notes",
+    [ColumnTitles.Rating]: "rating",
+    [ColumnTitles.Shipping]: "shipping",
+    [ColumnTitles.Labels]: "labels",
+  };
+
   return (
     <TableRow
       key={item.id}
@@ -55,12 +73,13 @@ export function PreviewTableRow({
       {visibleColumns
         .filter((columnName) => columnName !== "Shipping")
         .map((columnName, cellIndex) => {
-          const columnValue = item.values.find(
-            (value) => value.columnName === columnName
-          ) || {
+          const fieldKey = fieldMap[columnName];
+          const textValue = fieldKey ? (item[fieldKey] as string) : undefined;
+          
+          const columnValue = {
             columnName,
             type: boardConfig.columns[columnName]?.type || ColumnTypes.Text,
-            text: "\u00A0", // Unicode non-breaking space
+            text: textValue || "\u00A0", // Unicode non-breaking space
           };
 
           return (

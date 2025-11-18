@@ -60,36 +60,19 @@ export const createBackground = (option: string | undefined) => {
 };
 
 import { DesignBlends } from "@/typings/constants";
-import { Item, ColumnTitles, ExtendedItem } from "@/typings/types";
+import { Item, ColumnTitles } from "@/typings/types";
 
 // Modified OrderItem type to match Item structure
-export interface OrderItem extends ExtendedItem {
-  customerName?: string;
-  design?: string;
-  size?: string;
-  dueDate?: string;
-}
+export interface OrderItem extends Item {}
 
 // Process an Item into OrderItem format
 export const processItem = (item: Item): OrderItem => {
-  const customerName =
-    item.values.find((v) => v.columnName === ColumnTitles.Customer_Name)
-      ?.text || "Unknown";
-
-  const design =
-    item.values.find((v) => v.columnName === ColumnTitles.Design)?.text || "";
-
-  const size =
-    item.values.find((v) => v.columnName === ColumnTitles.Size)?.text || "";
-
-  const dueDate =
-    item.values.find((v) => v.columnName === ColumnTitles.Due)?.text || "";
-
+  // Item is already flat
   return {
     ...item,
-    customerName,
-    design,
-    size,
-    dueDate,
+    customerName: item.customerName || "Unknown",
+    design: item.design || "",
+    size: item.size || "",
+    dueDate: item.dueDate || "",
   };
 };

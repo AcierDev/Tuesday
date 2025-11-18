@@ -111,15 +111,15 @@ export default function PaintSchedulePage() {
 
   const filteredItemsNeedingPaint = useMemo(() => {
     return itemsNeedingPaint.filter((item) => {
-      const designValue =
-        item.values.find((value) => value.columnName === "Design")?.text || "";
+      const designValue = item.design || "";
       const matchesDesign =
         filterDesign === "all" || designValue === filterDesign;
-      const matchesSearch = item.values.some((value) =>
-        String(value.text || "")
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())
-      );
+      
+      const searchText = searchTerm.toLowerCase();
+      const matchesSearch = item.searchText 
+          ? item.searchText.includes(searchText)
+          : [item.customerName, item.design, item.size, item.notes].some(val => val?.toLowerCase().includes(searchText));
+
       return matchesDesign && matchesSearch;
     });
   }, [itemsNeedingPaint, filterDesign, searchTerm]);

@@ -81,17 +81,12 @@ export const NameCell: React.FC<NameCellProps> = ({
     try {
       const updatedItem = {
         ...item,
-        values: item.values.map((value: ColumnValue) =>
-          value.columnName === columnValue.columnName
-            ? {
-                ...value,
-                text: inputValue,
-                lastModifiedTimestamp: Date.now(),
-              }
-            : value
-        ),
+        customerName: inputValue,
+        // We can rely on the store to handle metadata like timestamps if needed,
+        // or pass a separate metadata object if we really need to track lastModified per field.
+        // For now, simple update.
       };
-      await onUpdate(updatedItem, columnValue.columnName as ColumnTitles);
+      await onUpdate(updatedItem, ColumnTitles.Customer_Name);
       toast.success("Name updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);

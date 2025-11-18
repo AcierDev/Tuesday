@@ -49,10 +49,8 @@ export function ItemPreviewTooltip({
 
   const hasPositioned = useRef(false);
 
-  const size =
-    item.values.find((v) => v.columnName === ColumnTitles.Size)?.text || "";
-  const design = item.values.find((v) => v.columnName === ColumnTitles.Design)
-    ?.text as ItemDesigns;
+  const size = item.size || "";
+  const design = item.design as ItemDesigns;
 
   if (!size || !design) return null;
 

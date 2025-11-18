@@ -198,7 +198,14 @@ export function WeeklySchedule() {
 
   const getItemValue = useCallback(
     (item: Item, columnName: ColumnTitles): string => {
-      return item.values.find((v) => v.columnName === columnName)?.text || "";
+      const fieldMap: Record<string, keyof Item> = {
+          [ColumnTitles.Size]: "size",
+          [ColumnTitles.Customer_Name]: "customerName",
+          [ColumnTitles.Due]: "dueDate",
+          [ColumnTitles.Design]: "design",
+      };
+      const key = fieldMap[columnName];
+      return key ? (item[key] as string) || "" : "";
     },
     []
   );

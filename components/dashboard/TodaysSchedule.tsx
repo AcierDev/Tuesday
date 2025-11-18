@@ -41,7 +41,14 @@ export function TodaysSchedule({ selectedEmployee }: TodaysScheduleProps) {
 
   // Helper function to get item value
   const getItemValue = (item: Item, columnName: ColumnTitles): string => {
-    return item.values.find((v) => v.columnName === columnName)?.text || "";
+    const fieldMap: Record<string, keyof Item> = {
+        [ColumnTitles.Size]: "size",
+        [ColumnTitles.Customer_Name]: "customerName",
+        [ColumnTitles.Due]: "dueDate",
+        [ColumnTitles.Design]: "design",
+    };
+    const key = fieldMap[columnName];
+    return key ? (item[key] as string) || "" : "";
   };
 
   // Calculate blocks for an item

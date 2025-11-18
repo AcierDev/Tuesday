@@ -60,9 +60,7 @@ export function Calculator({
                   <div style={printStyles.customerName}>
                     Customer:{" "}
                     {
-                      selectedOrder.values.find(
-                        (v) => v.columnName === "Customer Name"
-                      )?.text
+                      selectedOrder.customerName
                     }
                   </div>
                 )}
@@ -199,13 +197,12 @@ export function Calculator({
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors"
                 >
                   <p className="text-gray-900 dark:text-gray-100 font-medium">
-                    {order.values.find((v) => v.columnName === "Customer Name")
-                      ?.text || "Unnamed Order"}
+                    {order.customerName || "Unnamed Order"}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-300">
-                    {order.values.find((v) => v.columnName === "Design")?.text +
+                    {order.design +
                       " - " +
-                      order.values.find((v) => v.columnName === "Size")?.text}
+                      order.size}
                   </p>
                 </div>
               ))}

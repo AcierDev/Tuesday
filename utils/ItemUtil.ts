@@ -11,9 +11,31 @@ import { BOX_COLORS } from "@/typings/constants";
 import { backboardData } from "@/typings/constants";
 
 export class ItemUtil {
+  static processItem(item: Item): Item {
+    // Since items are now flat, this method is largely redundant but kept for compatibility
+    // or if we need to calculate derived fields in the future.
+    // We ensure searching works by pre-computing searchText if not present.
+
+    if (item.searchText) return item;
+
+    const searchableFields = [
+      item.customerName,
+      item.design,
+      item.size,
+      item.notes,
+      item.id,
+    ];
+
+    const searchText = searchableFields.filter(Boolean).join(" ").toLowerCase();
+
+    return {
+      ...item,
+      searchText,
+    };
+  }
+
   static getTotalSquares(item: Item): number {
-    const size = item.values.find((v) => v.columnName === ColumnTitles.Size)
-      ?.text as ItemSizes;
+    const size = item.size as ItemSizes;
     if (size && SIZE_MULTIPLIERS[size]) {
       return SIZE_MULTIPLIERS[size];
     }
@@ -22,10 +44,8 @@ export class ItemUtil {
 
   static getPaintRequirements(item: Item): Record<string, number> {
     const requirements: Record<string, number> = {};
-    const design = item.values.find((v) => v.columnName === ColumnTitles.Design)
-      ?.text as ItemDesigns;
-    const size = item.values.find((v) => v.columnName === ColumnTitles.Size)
-      ?.text as ItemSizes;
+    const design = item.design as ItemDesigns;
+    const size = item.size as ItemSizes;
 
     if (
       design &&
@@ -59,13 +79,12 @@ export class ItemUtil {
   }
 
   static getBoxRequirements(item: Item): BoxRequirement | null {
-    const size = item.values.find((v) => v.columnName === ColumnTitles.Size)
-      ?.text as ItemSizes;
-    if (size && BOX_COLORS[size]) {
+    const sizeKey = item.size as ItemSizes | undefined;
+    if (sizeKey && BOX_COLORS[sizeKey]) {
       return {
-        count: BOX_COLORS[size].count,
-        hardwareBag: BOX_COLORS[size].hardwareBag,
-        mountingRail: BOX_COLORS[size].mountingRail,
+        count: BOX_COLORS[sizeKey].count,
+        hardwareBag: BOX_COLORS[sizeKey].hardwareBag,
+        mountingRail: BOX_COLORS[sizeKey].mountingRail,
       };
     }
     return null;
@@ -76,13 +95,12 @@ export class ItemUtil {
     blankSize: string;
     instructions: string;
   } | null {
-    const size = item.values.find((v) => v.columnName === ColumnTitles.Size)
-      ?.text as ItemSizes;
-    if (size && backboardData[size]) {
+    const sizeKey = item.size as ItemSizes | undefined;
+    if (sizeKey && backboardData[sizeKey]) {
       return {
-        panels: backboardData[size].panels,
-        blankSize: backboardData[size].blankSize,
-        instructions: backboardData[size].instructions,
+        panels: backboardData[sizeKey].panels,
+        blankSize: backboardData[sizeKey].blankSize,
+        instructions: backboardData[sizeKey].instructions,
       };
     }
     return null;
@@ -113,15 +131,15 @@ export class ItemUtil {
   }
 
   static getBackboardPanels(size: ItemSizes): number {
-    return backboardData[size]?.panels || 0;
+    return (backboardData[size]?.panels as number | undefined) || 0;
   }
 
   static getBackboardBlankSize(size: ItemSizes): string | null {
-    return backboardData[size]?.blankSize || null;
+    return (backboardData[size]?.blankSize as string | undefined) || null;
   }
 
   static getBackboardInstructions(size: ItemSizes): string | null {
-    return backboardData[size]?.instructions || null;
+    return (backboardData[size]?.instructions as string | undefined) || null;
   }
 
   static getTotalPaintRequirements(group: Group): Record<string, number> {
@@ -143,10 +161,7 @@ export class ItemUtil {
     group.items.forEach((item) => {
       const boxReq = this.getBoxRequirements(item);
       if (boxReq) {
-        const color = this.getBoxColor(
-          item.values.find((v) => v.columnName === ColumnTitles.Size)
-            ?.text as ItemSizes
-        );
+        const color = this.getBoxColor(item.size as ItemSizes);
         if (color) {
           if (!requirements[color]) {
             requirements[color] = {
@@ -172,8 +187,7 @@ export class ItemUtil {
     >;
 
     group.items.forEach((item) => {
-      const size = item.values.find((v) => v.columnName === ColumnTitles.Size)
-        ?.text as ItemSizes;
+      const size = item.size as ItemSizes | undefined;
       if (size) {
         requirements[size] = (requirements[size] || 0) + 1;
       }
@@ -376,7 +390,7 @@ export class ItemUtil {
   }
 
   static getFullPackagingDetails(size: ItemSizes): {
-    panels: string;
+    panels: string[];
     boxQuantity: string;
     score: string;
     fold: string;
@@ -399,7 +413,9 @@ export class ItemUtil {
     const panelSizes = this.getPanels(size);
 
     return panelSizes.map((size) => {
-      const [width, height] = size.split("x").map(Number);
+      const [widthStr, heightStr] = size.split("x");
+      const width = Number(widthStr);
+      const height = Number(heightStr);
       const actualWidth = width * 3 - 3 / 16;
       const actualHeight = height * 3 - 3 / 16;
 

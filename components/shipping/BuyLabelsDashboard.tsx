@@ -177,7 +177,7 @@ const handleBuyLabel = async (rate: ShippingRate) => {
         country: item.shippingDetails.country || 'US',
       });
 
-      const sizeValue = item.values.find(v => v.columnName === 'Size')?.text as ItemSizes;
+      const sizeValue = item.size as ItemSizes;
       if (sizeValue) {
         const boxDataArray = getBoxData(sizeValue);
         const newBoxes: Box[] = boxDataArray.map(boxData => ({

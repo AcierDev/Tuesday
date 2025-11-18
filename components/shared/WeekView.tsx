@@ -51,18 +51,10 @@ export function WeekView({
       return null;
     }
 
-    const customerName =
-      item.values.find((v) => v.columnName === ColumnTitles.Customer_Name)
-        ?.text || "";
-    const design =
-      item.values.find((v) => v.columnName === ColumnTitles.Design)?.text || "";
-    const size =
-      item.values.find((v) => v.columnName === ColumnTitles.Size)?.text || "";
-
     return {
-      customerName,
-      design,
-      size,
+      customerName: item.customerName || "",
+      design: item.design || "",
+      size: item.size || "",
     };
   };
 

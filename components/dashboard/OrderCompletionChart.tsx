@@ -57,26 +57,18 @@ export function OrderCompletionChart({ timeRange }: { timeRange: TimeRange }) {
     const groupedData: { [key: string]: OrderCompletionData } = {};
 
     completedItems.forEach((item: Item) => {
-      const dueColumn = item.values.find(
-        (value: ColumnValue) => value.columnName === ColumnTitles.Due
-      );
-      const designColumn = item.values.find(
-        (value: ColumnValue) => value.columnName === ColumnTitles.Design
-      );
-      const sizeColumn = item.values.find(
-        (value: ColumnValue) => value.columnName === ColumnTitles.Size
-      );
-      const customerNameColumn = item.values.find(
-        (value: ColumnValue) => value.columnName === ColumnTitles.Customer_Name
-      );
+      const dueText = item.dueDate;
+      const designText = item.design;
+      const sizeText = item.size;
+      const customerNameText = item.customerName;
 
       if (
-        dueColumn?.text &&
-        designColumn?.text &&
-        sizeColumn?.text &&
-        customerNameColumn?.text
+        dueText &&
+        designText &&
+        sizeText &&
+        customerNameText
       ) {
-        const parsedDate = parseDateSafely(dueColumn.text);
+        const parsedDate = parseDateSafely(dueText);
         if (!parsedDate) {
           return;
         }
@@ -118,9 +110,9 @@ export function OrderCompletionChart({ timeRange }: { timeRange: TimeRange }) {
 
         groupedData[key]!.completions += 1;
         groupedData[key]!.items.push({
-          customerName: customerNameColumn.text,
-          design: designColumn.text,
-          size: sizeColumn.text,
+          customerName: customerNameText,
+          design: designText,
+          size: sizeText,
           completedDate: parsedDate.toISOString().split("T")[0]!,
         });
       }

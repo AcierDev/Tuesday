@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Item, ColumnTitles } from "@/typings/types";
+import { Item, ColumnTitles, ColumnTypes } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
+import { boardConfig } from "@/config/boardconfig";
 import {
   OrderItem,
   getDaysRemaining,
@@ -56,8 +57,25 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const isPastDue = daysRemaining < 0;
 
   const renderColumnValue = (columnName: ColumnTitles) => {
-    const value = processedItem.values.find((v) => v.columnName === columnName);
-    if (!value) return <span className="text-sm text-gray-500">N/A</span>;
+    const fieldMap: Record<string, keyof Item> = {
+        [ColumnTitles.Painted]: "painted",
+        [ColumnTitles.Backboard]: "backboard",
+        [ColumnTitles.Glued]: "glued",
+        [ColumnTitles.Packaging]: "packaging",
+        [ColumnTitles.Boxes]: "boxes",
+    };
+    const key = fieldMap[columnName];
+    const text = key ? String(item[key] || "") : "";
+    
+    const type = boardConfig.columns[columnName]?.type || ColumnTypes.Text;
+    
+    const value = {
+        columnName,
+        type,
+        text
+    };
+
+    if (!text) return <span className="text-sm text-gray-500">N/A</span>;
     return (
       <CustomTableCell columnValue={value} isNameColumn={false} item={item} />
     );
@@ -118,20 +136,22 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
               <DetailItem label="Design">
                 <DesignDropdownCell
                   item={item}
-                  columnValue={
-                    item.values.find(
-                      (v) => v.columnName === ColumnTitles.Design
-                    )!
-                  }
+                  columnValue={{
+                      columnName: ColumnTitles.Design,
+                      type: ColumnTypes.Dropdown,
+                      text: item.design || ""
+                  }}
                   onUpdate={() => {}}
                 />
               </DetailItem>
               <DetailItem label="Size">
                 <DropdownCell
                   item={item}
-                  columnValue={
-                    item.values.find((v) => v.columnName === ColumnTitles.Size)!
-                  }
+                  columnValue={{
+                      columnName: ColumnTitles.Size,
+                      type: ColumnTypes.Dropdown,
+                      text: item.size || ""
+                  }}
                   onUpdate={() => {}}
                 />
               </DetailItem>
@@ -163,11 +183,11 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 <div
                   className={cn(
                     "border-2 dark:border-gray-600 rounded-md",
-                    getStatusColor(
-                      processedItem.values.find(
-                        (v) => v.columnName === ColumnTitles.Painted
-                      )!
-                    )
+                    getStatusColor({
+                        columnName: ColumnTitles.Painted,
+                        type: ColumnTypes.Dropdown,
+                        text: item.painted || ""
+                    })
                   )}
                 >
                   {renderColumnValue(ColumnTitles.Painted)}
@@ -177,11 +197,11 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 <div
                   className={cn(
                     "border-2 dark:border-gray-600 rounded-md",
-                    getStatusColor(
-                      processedItem.values.find(
-                        (v) => v.columnName === ColumnTitles.Backboard
-                      )!
-                    )
+                    getStatusColor({
+                        columnName: ColumnTitles.Backboard,
+                        type: ColumnTypes.Dropdown,
+                        text: item.backboard || ""
+                    })
                   )}
                 >
                   {renderColumnValue(ColumnTitles.Backboard)}
@@ -191,11 +211,11 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 <div
                   className={cn(
                     "border-2 dark:border-gray-600 rounded-md",
-                    getStatusColor(
-                      processedItem.values.find(
-                        (v) => v.columnName === ColumnTitles.Glued
-                      )!
-                    )
+                    getStatusColor({
+                        columnName: ColumnTitles.Glued,
+                        type: ColumnTypes.Dropdown,
+                        text: item.glued || ""
+                    })
                   )}
                 >
                   {renderColumnValue(ColumnTitles.Glued)}
@@ -205,11 +225,11 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 <div
                   className={cn(
                     "border-2 dark:border-gray-600 rounded-md",
-                    getStatusColor(
-                      processedItem.values.find(
-                        (v) => v.columnName === ColumnTitles.Packaging
-                      )!
-                    )
+                    getStatusColor({
+                        columnName: ColumnTitles.Packaging,
+                        type: ColumnTypes.Dropdown,
+                        text: item.packaging || ""
+                    })
                   )}
                 >
                   {renderColumnValue(ColumnTitles.Packaging)}
@@ -219,11 +239,11 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 <div
                   className={cn(
                     "border-2 dark:border-gray-600 rounded-md",
-                    getStatusColor(
-                      processedItem.values.find(
-                        (v) => v.columnName === ColumnTitles.Boxes
-                      )!
-                    )
+                    getStatusColor({
+                        columnName: ColumnTitles.Boxes,
+                        type: ColumnTypes.Dropdown,
+                        text: item.boxes || ""
+                    })
                   )}
                 >
                   {renderColumnValue(ColumnTitles.Boxes)}

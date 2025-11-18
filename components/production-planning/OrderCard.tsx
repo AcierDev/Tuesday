@@ -58,17 +58,9 @@ export function OrderCard({
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
-  const size = meta.item.values.find(
-    (v) => v.columnName === ColumnTitles.Size
-  )?.text || "N/A";
-  
-  const customerName = meta.item.values.find(
-    (v) => v.columnName === ColumnTitles.Customer_Name
-  )?.text || "Unknown";
-
-  const design = meta.item.values.find(
-    (v) => v.columnName === ColumnTitles.Design
-  )?.text || "";
+  const size = meta.item.size || "N/A";
+  const customerName = meta.item.customerName || "Unknown";
+  const design = meta.item.design || "";
 
   const bucketColor = bucketColors[meta.bucket];
   const backgroundStyle = design ? createBackground(design) : undefined;

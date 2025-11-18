@@ -105,15 +105,11 @@ export default function TestingPage() {
 
     // Process each completed item
     q4CompletedItems.forEach((item) => {
-      // Find the size value from the item
-      const sizeValue = item.values.find(
-        (v) => v.columnName === ColumnTitles.Size
-      )?.text;
+      // Use flattened fields
+      const sizeValue = item.size;
 
       // Get customer name for reference
-      const customerName =
-        item.values.find((v) => v.columnName === ColumnTitles.Customer_Name)
-          ?.text || "Unknown";
+      const customerName = item.customerName || "Unknown";
 
       // Get order date for logging
       const orderDate = item.completedAt

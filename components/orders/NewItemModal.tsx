@@ -166,10 +166,36 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
 
     setIsSubmitting(true);
 
-    const newItem = {
-      values: Object.entries(ColumnTitles).map(([key, title]) => {
+    const newItem: any = {
+      status: ItemStatus.New,
+      createdAt: Date.now(),
+      vertical,
+      visible: true,
+      deleted: false,
+      isScheduled: false,
+    };
+
+    const fieldMap: Record<string, string> = {
+        [ColumnTitles.Customer_Name]: "customerName",
+        [ColumnTitles.Due]: "dueDate",
+        [ColumnTitles.Design]: "design",
+        [ColumnTitles.Size]: "size",
+        [ColumnTitles.Painted]: "painted",
+        [ColumnTitles.Backboard]: "backboard",
+        [ColumnTitles.Glued]: "glued",
+        [ColumnTitles.Packaging]: "packaging",
+        [ColumnTitles.Boxes]: "boxes",
+        [ColumnTitles.Notes]: "notes",
+        [ColumnTitles.Rating]: "rating",
+        [ColumnTitles.Shipping]: "shipping",
+        [ColumnTitles.Labels]: "labels"
+    };
+
+    Object.values(ColumnTitles).forEach((title) => {
+        const key = fieldMap[title];
+        if (!key) return;
+
         let value = optionalFields[title];
-        let type = boardConfig.columns[title]?.type || ColumnTypes.Text;
 
         if (title === ColumnTitles.Customer_Name) {
           let prefix = "";
@@ -178,27 +204,17 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
           } else if (company === "Sheppit") {
             prefix = "[SH]";
           }
-          value = customerName ? `${prefix} ${customerName}` : customerName;
+          value = customerName ? (prefix ? `${prefix} ${customerName}` : customerName) : customerName;
         } else if (title === ColumnTitles.Size) {
           value = size;
-          type = ColumnTypes.Dropdown;
         } else if (title === ColumnTitles.Design) {
           value = design;
-          type = ColumnTypes.Dropdown;
         } else if (title === ColumnTitles.Due) {
           value = dueDate ? format(dueDate, "yyyy-MM-dd") : "";
-          type = ColumnTypes.Date;
         }
 
-        return { columnName: title, type, text: value };
-      }),
-      status: ItemStatus.New,
-      createdAt: Date.now(),
-      vertical,
-      visible: true,
-      deleted: false,
-      isScheduled: false,
-    };
+        newItem[key] = value || "";
+    });
 
     try {
       await onSubmit(newItem);

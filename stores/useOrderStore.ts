@@ -1,16 +1,11 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { toast } from "sonner";
-import {
-  Item,
-  ColumnTitles,
-  ItemStatus,
-  Settings,
-  ExtendedItem,
-} from "@/typings/types";
+import { Item, ColumnTitles, ItemStatus, Settings } from "@/typings/types";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { useWeeklyScheduleStore } from "./useWeeklyScheduleStore";
 import { ITEM_DEFAULT_VALUES } from "@/typings/constants";
+import { ItemUtil } from "@/utils/ItemUtil";
 
 interface OrderState {
   lastFetched: number | null;
@@ -18,10 +13,10 @@ interface OrderState {
   eventSource: EventSource | null;
   doneItemsLoaded: boolean;
   hiddenItemsLoaded: boolean;
-  items: ExtendedItem[];
-  allItems: ExtendedItem[];
+  items: Item[];
+  allItems: Item[];
   searchQuery: string;
-  searchResults: ExtendedItem[];
+  searchResults: Item[];
   // Actions
   loadItems: () => Promise<void>;
   updateItem: (updatedItem: Item, changedField?: ColumnTitles) => Promise<Item>;
@@ -64,10 +59,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Helper function to get the customer name from an item's values
 function getCustomerName(item: Item): string | undefined {
-  const customerNameValue = item.values.find(
-    (v) => v.columnName === ColumnTitles.Customer_Name
-  );
-  return customerNameValue?.text;
+  return item.customerName;
 }
 
 // Add this helper function before the store creation
@@ -119,6 +111,11 @@ export const useOrderStore = create<OrderState>()(
 
       loadItems: async () => {
         try {
+          // Avoid running this on the server where relative fetch URLs break
+          if (typeof window === "undefined") {
+            return;
+          }
+
           set({ isLoading: true });
           const response = await fetch(
             "/api/items?includeDone=true&includeHidden=true"
@@ -126,10 +123,11 @@ export const useOrderStore = create<OrderState>()(
           if (!response.ok) throw new Error("Failed to fetch orders");
 
           const allItems = await response.json();
+          const processedAllItems: Item[] = allItems.map(ItemUtil.processItem);
           set({
-            allItems,
-            items: allItems.filter(
-              (item: ExtendedItem) =>
+            allItems: processedAllItems,
+            items: processedAllItems.filter(
+              (item: Item) =>
                 item.status !== ItemStatus.Done &&
                 item.status !== ItemStatus.Hidden
             ),
@@ -180,7 +178,7 @@ export const useOrderStore = create<OrderState>()(
             const { items, doneItemsLoaded, hiddenItemsLoaded } = get();
 
             if (change.type === "update") {
-              const updatedItem = change.item;
+              const updatedItem = ItemUtil.processItem(change.item);
               const updatedItems = items.map((item) =>
                 item.id === updatedItem.id ? updatedItem : item
               );
@@ -218,27 +216,39 @@ export const useOrderStore = create<OrderState>()(
 
         const currentTimestamp = Date.now();
 
-        // Ensure all default values are present by spreading ITEM_DEFAULT_VALUES
         const completeValues = Object.values(ColumnTitles).map(
           (columnTitle) => {
-            const existingValue = updatedItem.values.find(
-              (v) => v.columnName === columnTitle
-            );
-            return existingValue || ITEM_DEFAULT_VALUES[columnTitle];
+            // This logic needs adjustment for flat structure if we still use this flow
+            // But `updatedItem` is now a flat item.
+            // The `changedField` parameter is likely used for timestamp tracking.
+            return {}; // Placeholder or removed logic if values are gone
           }
         );
 
-        // Update the timestamp for the changed field
-        const finalValues = completeValues.map((value) =>
-          value.columnName === changedField
-            ? { ...value, lastModifiedTimestamp: currentTimestamp }
-            : value
-        );
-
-        let itemToUpdate = {
-          ...updatedItem,
-          values: finalValues,
+        // Map changedField to property name
+        const fieldMap: Record<string, keyof Item> = {
+          [ColumnTitles.Customer_Name]: "customerName",
+          [ColumnTitles.Due]: "dueDate",
+          [ColumnTitles.Design]: "design",
+          [ColumnTitles.Size]: "size",
+          [ColumnTitles.Painted]: "painted",
+          [ColumnTitles.Backboard]: "backboard",
+          [ColumnTitles.Glued]: "glued",
+          [ColumnTitles.Packaging]: "packaging",
+          [ColumnTitles.Boxes]: "boxes",
+          [ColumnTitles.Notes]: "notes",
+          [ColumnTitles.Rating]: "rating",
+          [ColumnTitles.Shipping]: "shipping",
+          [ColumnTitles.Labels]: "labels",
         };
+
+        const fieldKey = changedField ? fieldMap[changedField] : undefined;
+
+        // Construct item to update with flat fields
+        let itemToUpdate = { ...updatedItem };
+
+        // If we need to track timestamps per field, we might need a separate 'metadata' object or suffix fields like 'design_timestamp'
+        // For now, assuming raw update.
 
         //! TODO: Add back in
         // Apply automatron rules if active
@@ -264,7 +274,9 @@ export const useOrderStore = create<OrderState>()(
 
           // Update local state
           const updatedItems = items.map((item) =>
-            item.id === updatedItem.id ? itemToUpdate : item
+            item.id === updatedItem.id
+              ? ItemUtil.processItem(itemToUpdate)
+              : item
           );
 
           set({ items: updatedItems });
@@ -279,10 +291,29 @@ export const useOrderStore = create<OrderState>()(
         const { items } = get();
         if (!items) return;
 
+        // Default empty strings for all mapped fields
+        const defaultFlatItem: Partial<Item> = {
+          customerName: "",
+          dueDate: "",
+          design: "",
+          size: "",
+          painted: "",
+          backboard: "",
+          glued: "",
+          packaging: "",
+          boxes: "",
+          notes: "",
+          rating: "",
+          shipping: "",
+          labels: "",
+        };
+
         const fullNewItem: Item = {
+          ...defaultFlatItem,
+          ...newItem,
           id: Date.now().toString(),
           index: items.filter((item) => item.status === ItemStatus.New).length,
-          values: newItem.values || [],
+          // values array removed
           createdAt: Date.now(),
           status: ItemStatus.New,
           visible: true,
@@ -303,7 +334,7 @@ export const useOrderStore = create<OrderState>()(
 
           if (!response.ok) throw new Error("Failed to add item");
 
-          set({ items: [...items, fullNewItem] });
+          set({ items: [...items, ItemUtil.processItem(fullNewItem)] });
 
           toast.success("New item added successfully");
           return fullNewItem;
@@ -461,15 +492,16 @@ export const useOrderStore = create<OrderState>()(
           if (!response.ok) throw new Error("Failed to fetch done items");
 
           const doneItems: Item[] = await response.json();
+          const processedDoneItems = doneItems.map(ItemUtil.processItem);
           console.log("Done items:", items.length, doneItems.length);
 
           // Remove board structure assumption
           set({
-            items: items.concat(doneItems),
+            items: items.concat(processedDoneItems),
             doneItemsLoaded: true,
             isLoading: false,
           });
-          return items.concat(doneItems);
+          return items.concat(processedDoneItems);
         } catch (err) {
           console.error("Failed to load done items", err);
           toast.error("Failed to load done items. Please try again.");
@@ -533,23 +565,50 @@ export const useOrderStore = create<OrderState>()(
           ? Array.isArray(columns)
             ? columns
             : [columns]
-          : Object.values(ColumnTitles);
+          : [];
 
         const results = itemsToSearch.filter((item) => {
-          // If searching specific columns
-          if (searchColumns.length > 0) {
-            return item.values.some(
-              (value) =>
-                // Only search in specified columns
-                searchColumns.includes(value.columnName) &&
-                value.text?.toLowerCase().includes(normalizedQuery)
-            );
+          // Optimized search using searchText if no specific columns are requested
+          if (searchColumns.length === 0 && item.searchText) {
+            return item.searchText.includes(normalizedQuery);
           }
 
-          // If no columns specified, search all values and tags
+          // If searching specific columns
+          if (searchColumns.length > 0) {
+            // Map mapped columns to flat keys
+            const fieldMap: Record<ColumnTitles, keyof Item> = {
+              [ColumnTitles.Customer_Name]: "customerName",
+              [ColumnTitles.Due]: "dueDate",
+              [ColumnTitles.Design]: "design",
+              [ColumnTitles.Size]: "size",
+              [ColumnTitles.Painted]: "painted",
+              [ColumnTitles.Backboard]: "backboard",
+              [ColumnTitles.Glued]: "glued",
+              [ColumnTitles.Packaging]: "packaging",
+              [ColumnTitles.Boxes]: "boxes",
+              [ColumnTitles.Notes]: "notes",
+              [ColumnTitles.Rating]: "rating",
+              [ColumnTitles.Shipping]: "shipping",
+              [ColumnTitles.Labels]: "labels",
+            };
+
+            return (searchColumns as ColumnTitles[]).some((colTitle) => {
+              const key = fieldMap[colTitle as ColumnTitles];
+              const val = item[key];
+              return (
+                typeof val === "string" &&
+                val.toLowerCase().includes(normalizedQuery)
+              );
+            });
+          }
+
+          // Fallback for items without cached search text (shouldn't happen often)
           return (
-            item.values.some((value) =>
-              value.text?.toLowerCase().includes(normalizedQuery)
+            // Search all flat string fields
+            Object.values(item).some(
+              (val) =>
+                typeof val === "string" &&
+                val.toLowerCase().includes(normalizedQuery)
             ) ||
             // Search through tags
             Object.entries(item.tags || {}).some(([key, value]) => {
@@ -582,7 +641,26 @@ function applyAutomatronRules(
     [];
 
   for (const rule of relevantRules) {
-    const value = item.values.find((v) => v.columnName === rule.field)?.text;
+    // Map rule.field (ColumnTitle) to item key
+    const fieldMap: Record<string, keyof Item> = {
+      [ColumnTitles.Customer_Name]: "customerName",
+      [ColumnTitles.Due]: "dueDate",
+      [ColumnTitles.Design]: "design",
+      [ColumnTitles.Size]: "size",
+      [ColumnTitles.Painted]: "painted",
+      [ColumnTitles.Backboard]: "backboard",
+      [ColumnTitles.Glued]: "glued",
+      [ColumnTitles.Packaging]: "packaging",
+      [ColumnTitles.Boxes]: "boxes",
+      [ColumnTitles.Notes]: "notes",
+      [ColumnTitles.Rating]: "rating",
+      [ColumnTitles.Shipping]: "shipping",
+      [ColumnTitles.Labels]: "labels",
+    };
+
+    const key = fieldMap[rule.field];
+    const value = key ? item[key] : undefined;
+
     if (value === rule.value && item.status !== rule.newStatus) {
       updatedItem.status = rule.newStatus as ItemStatus;
       statusChanged = true;

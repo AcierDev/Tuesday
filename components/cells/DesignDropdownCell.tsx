@@ -71,11 +71,7 @@ export const DesignDropdownCell = ({
     try {
       const updatedItem = {
         ...item,
-        values: item.values.map((value) =>
-          value.columnName === columnValue.columnName
-            ? { ...value, text: newValue, lastModifiedTimestamp: Date.now() }
-            : value
-        ),
+        design: newValue,
       };
       onUpdate(updatedItem, columnValue.columnName);
       toast.success("Design updated successfully");

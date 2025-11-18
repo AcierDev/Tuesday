@@ -33,11 +33,7 @@ export const NotesCell = ({
     try {
       const updatedItem = {
         ...item,
-        values: item.values.map((value) =>
-          value.columnName === columnValue.columnName
-            ? { ...value, text: notesValue, lastModifiedTimestamp: Date.now() }
-            : value
-        ),
+        notes: notesValue,
       };
       await updateItem(updatedItem, columnValue.columnName);
       toast.success("Notes updated successfully");

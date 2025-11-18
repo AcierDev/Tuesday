@@ -76,14 +76,11 @@ export default function BackboardSchedulePage() {
 
   // const filteredItemsNeedingBackboards = useMemo(() => {
   //   return itemsNeedingBackboards?.filter((item) => {
-  //     const sizeValue =
-  //       item.values.find((value) => value.columnName === "Size")?.text || "";
+  //     const sizeValue = item.size || "";
   //     const matchesSize = filterSize === "all" || sizeValue === filterSize;
-  //     const matchesSearch = item.values.some((value) =>
-  //       String(value.text || "")
-  //         .toLowerCase()
-  //         .includes(searchTerm.toLowerCase())
-  //     );
+  //     const matchesSearch = item.searchText 
+  //         ? item.searchText.includes(searchTerm.toLowerCase())
+  //         : [item.customerName, item.design, item.size, item.notes].some(val => val?.toLowerCase().includes(searchTerm.toLowerCase()));
   //     return matchesSize && matchesSearch;
   //   });
   // }, [itemsNeedingBackboards, filterSize, searchTerm]);

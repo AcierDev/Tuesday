@@ -72,12 +72,9 @@ export function OrderListItem({ meta, onSchedule }: OrderListItemProps) {
   const [selectedWeek, setSelectedWeek] = useState<"current" | "next">("current");
   const [selectedDay, setSelectedDay] = useState<DayName>("Monday");
 
-  const customerName =
-    meta.item.values.find((v) => v.columnName === ColumnTitles.Customer_Name)?.text || "Unknown";
-  const design =
-    meta.item.values.find((v) => v.columnName === ColumnTitles.Design)?.text || "No Design";
-  const size =
-    meta.item.values.find((v) => v.columnName === ColumnTitles.Size)?.text || "No Size";
+  const customerName = meta.item.customerName || "Unknown";
+  const design = meta.item.design || "No Design";
+  const size = meta.item.size || "No Size";
 
   const bucketStyle = bucketStyles[meta.bucket];
 

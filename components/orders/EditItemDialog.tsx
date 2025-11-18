@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { type Item } from "../../typings/types";
+import { type Item, ColumnTitles } from "../../typings/types";
 
 interface Shipment {
   tracking_code: string;
@@ -49,12 +49,31 @@ export const EditItemDialog = ({
     }
   }, [editingItem]);
 
+  const getFieldKey = (columnName: string): keyof Item | undefined => {
+      const fieldMap: Record<string, keyof Item> = {
+          [ColumnTitles.Customer_Name]: "customerName",
+          [ColumnTitles.Due]: "dueDate",
+          [ColumnTitles.Design]: "design",
+          [ColumnTitles.Size]: "size",
+          [ColumnTitles.Painted]: "painted",
+          [ColumnTitles.Backboard]: "backboard",
+          [ColumnTitles.Glued]: "glued",
+          [ColumnTitles.Packaging]: "packaging",
+          [ColumnTitles.Boxes]: "boxes",
+          [ColumnTitles.Notes]: "notes",
+          [ColumnTitles.Rating]: "rating",
+          [ColumnTitles.Shipping]: "shipping",
+          [ColumnTitles.Labels]: "labels"
+      };
+      return fieldMap[columnName];
+  }
+
   const updateItemValue = (columnName: string, value: string) => {
     if (!editingItem) return;
-    const newValues = editingItem.values.map((v) =>
-      v.columnName === columnName ? { ...v, text: value } : v
-    );
-    setEditingItem({ ...editingItem, values: newValues });
+    const key = getFieldKey(columnName);
+    if (key) {
+        setEditingItem({ ...editingItem, [key]: value });
+    }
   };
 
   const updateReceiptValue = (key: keyof Address, value: any) => {
@@ -159,27 +178,34 @@ export const EditItemDialog = ({
                     animate={{ opacity: 1 }}
                     transition={{ staggerChildren: 0.1 }}
                   >
-                    {editingItem?.values
-                      .filter((value) => value.text)
-                      .map((value) => (
+                    {Object.values(ColumnTitles)
+                      .map((title) => {
+                          const key = getFieldKey(title);
+                          return {
+                              columnName: title,
+                              value: key ? editingItem?.[key] : ""
+                          };
+                      })
+                      .filter((field) => field.value)
+                      .map((field) => (
                         <motion.div
-                          key={value.columnName}
+                          key={field.columnName}
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           className="grid grid-cols-4 items-center gap-4"
                         >
                           <Label
                             className="text-right font-medium"
-                            htmlFor={value.columnName}
+                            htmlFor={field.columnName}
                           >
-                            {value.columnName}
+                            {field.columnName}
                           </Label>
                           <Input
                             className="col-span-3 dark:bg-gray-700 dark:border-none transition-colors"
-                            id={value.columnName}
-                            value={value.text}
+                            id={field.columnName}
+                            value={String(field.value)}
                             onChange={(e) =>
-                              updateItemValue(value.columnName, e.target.value)
+                              updateItemValue(field.columnName, e.target.value)
                             }
                           />
                         </motion.div>

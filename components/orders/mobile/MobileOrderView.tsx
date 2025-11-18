@@ -493,9 +493,7 @@ export const MobileOrderView = ({
       <DeleteConfirmationDialog
         isOpen={Boolean(deletingItem)}
         itemName={
-          deletingItem?.values.find(
-            (v) => v.columnName === ColumnTitles.Customer_Name
-          )?.text || "Unknown"
+          deletingItem?.customerName || "Unknown"
         }
         onClose={() => setDeletingItem(null)}
         onConfirm={handleConfirmDelete}

@@ -45,7 +45,7 @@ type ValidDay = (typeof daysOrder)[number];
 
 // Calculate blocks for an item based on its size
 const calculateBlocks = (item: Item): number => {
-  const sizeStr = item.values.find((v) => v.columnName === "Size")?.text || "";
+  const sizeStr = item.size || "";
   const dimensions = sizeStr.split("x").map((dim) => parseFloat(dim.trim()));
 
   // Check if we have valid dimensions
@@ -110,13 +110,9 @@ export const sortItems = ({
     if (blocks > 1000) {
       const highBlockItem = {
         id: item.id,
-        customerName:
-          item.values.find((v) => v.columnName === "Customer Name")?.text ||
-          "Unknown",
-        design:
-          item.values.find((v) => v.columnName === "Design")?.text || "Unknown",
-        size:
-          item.values.find((v) => v.columnName === "Size")?.text || "Unknown",
+        customerName: item.customerName || "Unknown",
+        design: item.design || "Unknown",
+        size: item.size || "Unknown",
         blocks: blocks,
       };
 
@@ -243,9 +239,7 @@ export const sortItems = ({
     );
 
     const urgentItems = activeItems.filter((item) => {
-      const dueDateValue = item.values.find(
-        (v) => v.columnName === "Due Date"
-      )?.text;
+      const dueDateValue = item.dueDate;
       if (!dueDateValue) return false;
 
       try {
@@ -288,9 +282,7 @@ export const sortItems = ({
     const scheduleItemsByDesign = (items: Item[], isUrgent: boolean) => {
       const itemsByDesign: Record<string, Item[]> = {};
       items.forEach((item) => {
-        const design =
-          item.values.find((v) => v.columnName === "Design")?.text ||
-          "No Design";
+        const design = item.design || "No Design";
         if (!itemsByDesign[design]) {
           itemsByDesign[design] = [];
         }

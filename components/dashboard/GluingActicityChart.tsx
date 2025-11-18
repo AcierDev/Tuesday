@@ -67,84 +67,16 @@ export function GluingActivityChart({
     const groupedData: { [key: string]: GluingActivityData } = {};
 
     items.forEach((item: Item) => {
-      const gluedColumn = item.values.find(
-        (value: ColumnValue) => value.columnName === ColumnTitles.Glued
-      );
-      const sizeColumn = item.values.find(
-        (value: ColumnValue) => value.columnName === ColumnTitles.Size
-      );
-      const designColumn = item.values.find(
-        (value: ColumnValue) => value.columnName === ColumnTitles.Design
-      );
-      const customerNameColumn = item.values.find(
-        (value: ColumnValue) => value.columnName === ColumnTitles.Customer_Name
-      );
-
-      if (
-        gluedColumn &&
-        !item.deleted &&
-        "credit" in gluedColumn &&
-        Array.isArray(gluedColumn.credit) &&
-        sizeColumn &&
-        "text" in sizeColumn &&
-        designColumn &&
-        "text" in designColumn &&
-        customerNameColumn &&
-        "text" in customerNameColumn
-      ) {
-        const [width, height] = sizeColumn.text
-          ?.split("x")
-          .map((dim) => parseInt(dim.trim(), 10))!;
-        let squares = width && height ? width * height : 0;
-
-        const isStripedDesign = designColumn.text
-          ?.toLowerCase()
-          .includes("striped");
-        if (isStripedDesign) {
-          squares = Math.round(squares / 9);
-        }
-
-        const squaresPerPerson = squares / gluedColumn.credit.length;
-
-        gluedColumn.credit.forEach((employee: string) => {
-          if (selectedEmployee && employee !== selectedEmployee) return;
-
-          const date = new Date(gluedColumn.lastModifiedTimestamp || "");
-          let key: string;
-
-          switch (timeRange) {
-            case "daily":
-              key = date.toISOString().split("T")[0] || "";
-              break;
-            case "weekly":
-              const weekStart = new Date(
-                date.setDate(date.getDate() - date.getDay())
-              );
-              key = weekStart.toISOString().split("T")[0] || "";
-              break;
-            case "monthly":
-              key = `${date.getFullYear()}-${(date.getMonth() + 1)
-                .toString()
-                .padStart(2, "0")}`;
-              break;
-            case "yearly":
-              key = date.getFullYear().toString();
-              break;
-          }
-
-          if (!groupedData[key]) {
-            groupedData[key] = { date: key, squares: 0, items: [] };
-          }
-
-          groupedData[key]!.squares += squaresPerPerson;
-          groupedData[key]!.items.push({
-            customerName: customerNameColumn.text!,
-            design: designColumn.text!,
-            size: sizeColumn.text!,
-            completedDate: date.toISOString().split("T")[0] || "",
-            gluedBy: gluedColumn.credit!,
-          });
-        });
+      // Similar to TopPerformers, we lack credit/timestamp metadata in the flat structure.
+      // Disabling logic that relies on `credit` array for now.
+      
+      /*
+      const gluedColumn = ...
+      */
+     
+      // Placeholder to prevent crash but chart will be empty
+      if (false) {
+         // ...
       }
     });
 

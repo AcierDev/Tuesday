@@ -2,7 +2,7 @@
 
 import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -60,7 +60,7 @@ interface ItemGroupProps {
   defaultCollapsed?: boolean;
 }
 
-export function ItemGroupSection({
+export const ItemGroupSection = memo(function ItemGroupSection({
   group,
   onDelete,
   onShip,
@@ -89,15 +89,13 @@ export function ItemGroupSection({
 
   const { schedules, addItemToDay } = useWeeklyScheduleStore();
 
-  const {
-    loadDoneItems,
-    removeDoneItems,
-    doneItemsLoaded,
-    loadHiddenItems,
-    removeHiddenItems,
-    hiddenItemsLoaded,
-    updateItem,
-  } = useOrderStore();
+  const loadDoneItems = useOrderStore((state) => state.loadDoneItems);
+  const removeDoneItems = useOrderStore((state) => state.removeDoneItems);
+  const doneItemsLoaded = useOrderStore((state) => state.doneItemsLoaded);
+  const loadHiddenItems = useOrderStore((state) => state.loadHiddenItems);
+  const removeHiddenItems = useOrderStore((state) => state.removeHiddenItems);
+  const hiddenItemsLoaded = useOrderStore((state) => state.hiddenItemsLoaded);
+  const updateItem = useOrderStore((state) => state.updateItem);
 
   const handleScheduleUpdate = useCallback(() => {
     const event = new CustomEvent("weeklyScheduleUpdate");
@@ -221,11 +219,9 @@ export function ItemGroupSection({
 
       const updatedItem = {
         ...item,
-        values: item.values.map((v) =>
-          v.columnName === ColumnTitles.Due
-            ? { ...v, text: format(selectedDate, "yyyy-MM-dd") }
-            : v
-        ),
+        // Directly update due date field
+        dueDate: format(selectedDate, "yyyy-MM-dd"),
+        // Keep values for compatibility if needed, or rely on store to handle patch
       };
 
       try {
@@ -509,11 +505,7 @@ export function ItemGroupSection({
       />
       <DeleteConfirmationDialog
         isOpen={Boolean(deletingItem)}
-        itemName={
-          deletingItem?.values.find(
-            (v) => v.columnName === ColumnTitles.Customer_Name
-          )?.text || "Unknown"
-        }
+        itemName={deletingItem?.customerName || "Unknown"}
         onClose={() => setDeletingItem(null)}
         onConfirm={handleConfirmDelete}
       />
@@ -544,7 +536,7 @@ export function ItemGroupSection({
       ) : null}
     </div>
   );
-}
+});
 
 export function getStatusColor(columnValue: {
   columnName: string;

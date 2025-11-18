@@ -52,9 +52,7 @@ export function PackagingDetails({
                   <div style={printStyles.customerName}>
                     Customer:{" "}
                     {
-                      selectedOrder.values.find(
-                        (v) => v.columnName === "Customer Name"
-                      )?.text
+                      selectedOrder.customerName
                     }
                   </div>
                 )}

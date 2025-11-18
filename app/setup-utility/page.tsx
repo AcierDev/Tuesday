@@ -148,11 +148,11 @@ function UtilitiesContent({
       designs.find(
         (d) =>
           d.name ===
-          order.values.find((v) => v.columnName === ColumnTitles.Design)?.text
+          order.design
       ) ?? null
     );
     setSelectedSize(
-      order.values.find((v) => v.columnName === ColumnTitles.Size)?.text as
+      order.size as
         | ItemSizes
         | "custom"
     );

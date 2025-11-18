@@ -278,8 +278,7 @@ export function AutoScheduleDialog({
   };
 
   const calculateBlocks = (item: Item): number => {
-    const sizeStr =
-      item.values.find((v) => v.columnName === "Size")?.text || "";
+    const sizeStr = item.size || "";
     const dimensions = sizeStr.split("x").map((dim) => parseFloat(dim.trim()));
     const width = dimensions[0] || 0;
     const height = dimensions[1] || 0;

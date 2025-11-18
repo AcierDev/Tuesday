@@ -8,13 +8,13 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { isSameDay, addDays } from "date-fns";
 import { cn } from "@/utils/functions";
 import { toast } from "sonner";
-import { DayName, ExtendedItem, WeeklyScheduleData } from "@/typings/types";
+import { DayName, Item, WeeklyScheduleData } from "@/typings/types";
 
 interface DueDateTooltipProps {
   onSelectDay: (date: Date) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
-  item: ExtendedItem;
+  item: Item;
   schedules: WeeklyScheduleData[];
   onAddToSchedule?: (
     weekKey: string,

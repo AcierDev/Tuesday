@@ -592,7 +592,14 @@ const WeeklyPlanner = () => {
   }, [currentWeekStart]);
 
   const getItemValue = (item: Item, columnName: ColumnTitles): string => {
-    return item.values.find((v) => v.columnName === columnName)?.text || "";
+    const fieldMap: Record<string, keyof Item> = {
+        [ColumnTitles.Size]: "size",
+        [ColumnTitles.Customer_Name]: "customerName",
+        [ColumnTitles.Due]: "dueDate",
+        [ColumnTitles.Design]: "design",
+    };
+    const key = fieldMap[columnName];
+    return key ? (item[key] as string) || "" : "";
   };
 
   const daysOfWeek = [
@@ -802,8 +809,7 @@ const WeeklyPlanner = () => {
   const calculateBlocks = (
     item: Item
   ): { count: number; hasIndeterminate: boolean } => {
-    const sizeStr =
-      item.values.find((v) => v.columnName === "Size")?.text || "";
+    const sizeStr = item.size || "";
 
     // Split by 'x' to get width and height, but be more careful about extra content
     const parts = sizeStr.split("x");
@@ -852,10 +858,9 @@ const WeeklyPlanner = () => {
 
     // Check various fields for additional blocks
     const fieldsToCheck = [
-      item.values.find((v) => v.columnName === ColumnTitles.Size)?.text || "",
-      item.values.find((v) => v.columnName === ColumnTitles.Design)?.text || "",
-      item.values.find((v) => v.columnName === ColumnTitles.Customer_Name)
-        ?.text || "",
+      item.size || "",
+      item.design || "",
+      item.customerName || "",
     ];
 
     for (const field of fieldsToCheck) {

@@ -16,13 +16,12 @@ import { toast } from "sonner";
 import {
   ColumnTitles,
   ColumnValue,
-  ExtendedItem,
   Item,
   ItemStatus,
 } from "@/typings/types";
 
 interface DateCellProps {
-  item: ExtendedItem;
+  item: Item;
   columnValue: ColumnValue;
   onUpdate: (item: Item, columnName: ColumnTitles) => void;
 }
@@ -53,11 +52,7 @@ export const DateCell = ({ item, columnValue, onUpdate }: DateCellProps) => {
       const newValue = newDate ? newDate.toISOString() : "";
       const updatedItem = {
         ...item,
-        values: item.values.map((value) =>
-          value.columnName === columnValue.columnName
-            ? { ...value, text: newValue, lastModifiedTimestamp: Date.now() }
-            : value
-        ),
+        dueDate: newValue,
       };
       await onUpdate(updatedItem, columnValue.columnName);
       toast.success("Date updated successfully");

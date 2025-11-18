@@ -44,14 +44,8 @@ export function UnscheduledOrdersList({
       // Search filter
       if (!normalized) return true;
 
-      const customerName =
-        meta.item.values
-          .find((v) => v.columnName === ColumnTitles.Customer_Name)
-          ?.text?.toLowerCase() || "";
-      const size =
-        meta.item.values
-          .find((v) => v.columnName === ColumnTitles.Size)
-          ?.text?.toLowerCase() || "";
+      const customerName = (meta.item.customerName || "").toLowerCase();
+      const size = (meta.item.size || "").toLowerCase();
 
       return customerName.includes(normalized) || size.includes(normalized);
     });

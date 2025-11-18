@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import {
   DragDropContext,
   type DropResult,
@@ -21,14 +21,14 @@ interface ItemListProps {
   onShip: (itemId: string) => Promise<void>;
 }
 
-export const ItemList: React.FC<ItemListProps> = ({
+export const ItemList = memo(function ItemList({
   groups,
   onDragEnd,
   onDelete,
   onGetLabel,
   onMarkCompleted,
   onShip,
-}) => {
+}: ItemListProps) {
   const { user } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -86,4 +86,4 @@ export const ItemList: React.FC<ItemListProps> = ({
       </div>
     </DragDropContext>
   );
-};
+});

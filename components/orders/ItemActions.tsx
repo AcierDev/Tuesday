@@ -49,23 +49,9 @@ export const ItemActions = ({
 }: ItemActionsProps) => {
   const router = useRouter();
 
-  const getItemValue = (
-    columnName: ColumnTitles,
-    type: ColumnTypes
-  ): string | undefined => {
-    const value = item.values.find(
-      (value) => value.columnName === columnName && value.type === type
-    );
-    return value?.text;
-  };
-
   const handleSetupUtility = () => {
-    const design = getItemValue(ColumnTitles.Design, ColumnTypes.Dropdown) as
-      | ItemDesigns
-      | undefined;
-    const size = getItemValue(ColumnTitles.Size, ColumnTypes.Dropdown) as
-      | ItemSizes
-      | undefined;
+    const design = item.design as ItemDesigns | undefined;
+    const size = item.size as ItemSizes | undefined;
 
     if (design && size) {
       const queryParams = new URLSearchParams({
@@ -93,14 +79,14 @@ export const ItemActions = ({
         Delete
       </DropdownMenuItem>
       <DropdownMenuSeparator className="dark:bg-gray-600" />
-      <DropdownMenuItem onClick={() => onGetLabel(item)}>
+      {/* <DropdownMenuItem onClick={() => onGetLabel(item)}>
         <Truck className="mr-2 h-4 w-4" />
         Shipping Dashboard
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => onShip(item.id)}>
+      </DropdownMenuItem> */}
+      {/* <DropdownMenuItem onClick={() => onShip(item.id)}>
         <Ship className="mr-2 h-4 w-4" />
         Mark as Shipped
-      </DropdownMenuItem>
+      </DropdownMenuItem> */}
       <DropdownMenuItem onClick={() => onMarkCompleted(item.id)}>
         <CheckCircle className="mr-2 h-4 w-4" />
         Mark as Completed

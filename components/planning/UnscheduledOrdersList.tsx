@@ -65,18 +65,9 @@ export function UnscheduledOrdersList({
 
       if (!normalized) return true;
 
-      const customerName =
-        meta.item.values
-          .find((v) => v.columnName === ColumnTitles.Customer_Name)
-          ?.text?.toLowerCase() || "";
-      const design =
-        meta.item.values
-          .find((v) => v.columnName === ColumnTitles.Design)
-          ?.text?.toLowerCase() || "";
-      const size =
-        meta.item.values
-          .find((v) => v.columnName === ColumnTitles.Size)
-          ?.text?.toLowerCase() || "";
+      const customerName = (meta.item.customerName || "").toLowerCase();
+      const design = (meta.item.design || "").toLowerCase();
+      const size = (meta.item.size || "").toLowerCase();
 
       return (
         customerName.includes(normalized) ||

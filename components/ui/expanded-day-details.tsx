@@ -13,9 +13,9 @@ export const ExpandedDayDetails = ({ items, type }: ExpandedDayDetailsProps) => 
         <h3 className="text-lg font-semibold mb-4">Items for the Day</h3>
         <ul className="space-y-2">
           {items.map((item) => {
-            const customerName = item.values.find(v => v.columnName === ColumnTitles.Customer_Name)?.text
-            const size = item.values.find(v => v.columnName === ColumnTitles.Size)?.text as ItemSizes
-            const design = item.values.find(v => v.columnName === ColumnTitles.Design)?.text as ItemDesigns
+            const customerName = item.customerName
+            const size = item.size as ItemSizes
+            const design = item.design as ItemDesigns
             return (
               <li key={item.id} className="bg-gray-50 p-2 rounded">
                 <p className="font-medium">{customerName}</p>

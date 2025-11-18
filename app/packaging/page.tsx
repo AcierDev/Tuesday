@@ -109,14 +109,14 @@ export default function BoxSchedulePage() {
 
   const filteredItemsNeedingBoxes = useMemo(() => {
     return itemsNeedingBoxes?.filter((item) => {
-      const sizeValue =
-        item.values.find((value) => value.columnName === "Size")?.text || "";
+      const sizeValue = item.size || "";
       const matchesSize = filterSize === "all" || sizeValue === filterSize;
-      const matchesSearch = item.values.some((value) =>
-        String(value.text || "")
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())
-      );
+      
+      const searchText = searchTerm.toLowerCase();
+      const matchesSearch = item.searchText 
+          ? item.searchText.includes(searchText)
+          : [item.customerName, item.design, item.size, item.notes].some(val => val?.toLowerCase().includes(searchText));
+
       return matchesSize && matchesSearch;
     });
   }, [itemsNeedingBoxes, filterSize, searchTerm]);
