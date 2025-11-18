@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import MobileOrderView from "./mobile/MobileOrderView";
 import { ItemList } from "./ItemList";
-import { Group, Item } from "@/typings/types";
-import { DropResult, ResponderProvided } from "@hello-pangea/dnd";
+import { Group, Item, ItemStatus } from "@/typings/types";
 
 interface ResponsiveOrdersViewProps {
   groups: Group[];
-  onDragEnd: (result: DropResult, provided: ResponderProvided) => Promise<void>;
+  onStatusChange: (itemId: string, newStatus: ItemStatus) => Promise<void>;
   onDelete: (itemId: string) => Promise<void>;
   onGetLabel: (item: Item) => void;
   onMarkCompleted: (itemId: string) => Promise<void>;
@@ -15,7 +14,7 @@ interface ResponsiveOrdersViewProps {
 
 export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
   groups,
-  onDragEnd,
+  onStatusChange,
   onDelete,
   onGetLabel,
   onMarkCompleted,
@@ -56,7 +55,7 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
       ) : (
         <ItemList
           groups={groups}
-          onDragEnd={onDragEnd}
+          onStatusChange={onStatusChange}
           onDelete={onDelete}
           onGetLabel={onGetLabel}
           onMarkCompleted={onMarkCompleted}

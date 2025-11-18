@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { Toaster, toast } from "sonner";
-import { DropResult, ResponderProvided } from "@hello-pangea/dnd";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Header } from "@/components/orders/Header";
@@ -47,7 +46,6 @@ export default function OrderManagementPage() {
   const updateItem = useOrderStore((state) => state.updateItem);
   const addNewItem = useOrderStore((state) => state.addNewItem);
   const deleteItem = useOrderStore((state) => state.deleteItem);
-  const reorderItems = useOrderStore((state) => state.reorderItems);
 
   const { logActivity } = useActivities();
 
@@ -196,105 +194,53 @@ export default function OrderManagementPage() {
     [updateItem, logActivity]
   );
 
-  const onDragEnd = useCallback(
-    async (result: DropResult, provided: ResponderProvided) => {
-      const { source, destination, draggableId } = result;
+  const handleStatusChange = useCallback(
+    async (itemId: string, newStatus: ItemStatus) => {
+      const item = items.find((i) => i.id === itemId);
+      if (!item) return;
 
-      // Add more detailed logging
-      console.log("Drag operation started with:", {
-        source,
-        destination,
-        draggableId,
-        itemsLength: items?.length,
-      });
-
-      if (!destination || !items || !draggableId) {
-        console.warn(
-          "Drag ended without valid destination/items/draggableId:",
-          { destination, itemsLength: items?.length, draggableId }
-        );
-        return;
-      }
-
-      const movedItem = items.find(
-        (item) => item.id && item.id.toString() === draggableId
-      );
-
-      if (!movedItem) {
-        console.error("Could not find item with id:", draggableId);
-        return;
-      }
-
-      // Skip if dropped in same location
-      if (
-        source.droppableId === destination.droppableId &&
-        source.index === destination.index
-      ) {
-        console.debug("Item dropped in same location, skipping update");
-        return;
-      }
-
-      const sourceStatus = source.droppableId as ItemStatus;
-      const newStatus = destination.droppableId as ItemStatus;
-      const statusChanged = sourceStatus !== newStatus;
-
-      console.log("Processing drag with:", {
-        sourceStatus,
-        newStatus,
-        statusChanged,
-        destinationIndex: destination.index,
-        itemId: movedItem.id,
-      });
+      if (item.status === newStatus) return;
 
       try {
-        const originalStatus = movedItem.status;
+        const previousStatus = item.status;
+        const updatedItem = {
+          ...item,
+          status: newStatus,
+          completedAt: newStatus === ItemStatus.Done ? Date.now() : undefined,
+        };
 
-        // This will handle both reordering and status changes
-        await reorderItems(
-          movedItem.id,
-          sourceStatus,
-          newStatus,
-          destination.index
-        );
+        await updateItem(updatedItem);
 
-        console.log("Successfully reordered items");
-
-        if (statusChanged) {
           await logActivity(
-            movedItem.id!,
+          item.id!,
             "status_change",
             [
               {
                 field: "status",
-                oldValue: originalStatus,
+              oldValue: previousStatus,
                 newValue: newStatus,
               },
             ],
             {
-              customerName: movedItem.customerName,
-              design: movedItem.design,
-              size: movedItem.size,
+            customerName: item.customerName,
+            design: item.design,
+            size: item.size,
             }
           );
-
-          console.debug("Logged status change activity.");
 
           toast.success(getStatusChangeMessage(newStatus), {
             style: { background: "#10B981", color: "white" },
             action: {
               label: "Undo",
-              onClick: () => undoStatusChange(movedItem, originalStatus),
+            onClick: () => undoStatusChange(item, previousStatus),
             },
           });
-        }
       } catch (error) {
-        console.error("Failed to update item status:", error);
-        toast.error("Failed to update item status. Please try again.", {
-          style: { background: "#EF4444", color: "white" },
-        });
+        console.error("Failed to update status:", error);
+        toast.error("Failed to update status");
       }
     },
-    [items, reorderItems, undoStatusChange, logActivity]
+    [items, updateItem, logActivity, undoStatusChange]
   );
 
   const undoItemDeletion = useCallback(
@@ -453,7 +399,7 @@ export default function OrderManagementPage() {
               <ResponsiveOrdersView
                 groups={sortedGroups}
                 onDelete={handleDeleteItem}
-                onDragEnd={onDragEnd}
+                onStatusChange={handleStatusChange}
                 onGetLabel={onGetLabel}
                 onMarkCompleted={markItemCompleted}
                 onShip={shipItem}

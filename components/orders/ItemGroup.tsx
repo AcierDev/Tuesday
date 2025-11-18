@@ -1,6 +1,5 @@
 "use client";
 
-import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { toast } from "sonner";
@@ -54,7 +53,7 @@ interface ItemGroupProps {
   onShip: (itemId: string) => Promise<void>;
   onMarkCompleted: (itemId: string) => Promise<void>;
   onGetLabel: (item: Item) => void;
-  onReorder?: (newItems: Item[]) => void;
+  onStatusChange?: (itemId: string, newStatus: ItemStatus) => Promise<void>;
   isPreview?: boolean;
   isCollapsible?: boolean;
   defaultCollapsed?: boolean;
@@ -66,6 +65,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   onShip,
   onMarkCompleted,
   onGetLabel,
+  onStatusChange,
   isPreview = false,
   isCollapsible = false,
   defaultCollapsed = true,
@@ -78,7 +78,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(
     null
   );
-  const [isDragging, setIsDragging] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -339,96 +338,87 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       {(!isCollapsible || !isCollapsed) && (
         <div className="relative overflow-visible">
           {!isPreview ? (
-            <Droppable droppableId={group.title}>
-              {(provided, snapshot) => (
-                <BorderedTable
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  borderColor={`bg-${
-                    GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
-                  }`}
-                >
-                  <TableHeader className="sticky top-[132px] z-20 bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_6px_-1px_rgba(255,255,255,0.1),0_2px_4px_-2px_rgba(255,255,255,0.1)]">
-                    <TableRow>
-                      <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
-                        Order
+            <BorderedTable
+              borderColor={`bg-${
+                GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
+              }`}
+            >
+              <TableHeader className="sticky top-[132px] z-20 bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_6px_-1px_rgba(255,255,255,0.1),0_2px_4px_-2px_rgba(255,255,255,0.1)]">
+                <TableRow>
+                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+                    Order
+                  </TableHead>
+                  {visibleColumns.includes("Shipping" as ColumnTitles) && (
+                    <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center w-12">
+                      Shipping
+                    </TableHead>
+                  )}
+                  {visibleColumns
+                    .filter((columnName) => columnName !== "Shipping")
+                    .map((columnName) => (
+                      <TableHead
+                        key={columnName}
+                        className={cn(
+                          "border border-gray-200 dark:border-gray-600 p-2 text-center",
+                          columnName === ColumnTitles.Customer_Name
+                            ? "w-1/3"
+                            : "",
+                          columnName === ColumnTitles.Labels
+                            ? "w-8 flex-shrink-0"
+                            : ""
+                        )}
+                      >
+                        <Button
+                          className="h-8 flex items-center justify-center gap-2 w-full text-gray-900 dark:text-gray-400"
+                          variant="ghost"
+                          onClick={() => handleSort(columnName)}
+                        >
+                          <span>{columnName}</span>
+                          {settings.showSortingIcons ? (
+                            sortColumn === columnName ? (
+                              sortDirection === "asc" ? (
+                                <ArrowUp className="h-4 w-4" />
+                              ) : sortDirection === "desc" ? (
+                                <ArrowDown className="h-4 w-4" />
+                              ) : (
+                                <ArrowUpDown className="h-4 w-4" />
+                              )
+                            ) : (
+                              <ArrowUpDown className="h-4 w-4" />
+                            )
+                          ) : null}
+                        </Button>
                       </TableHead>
-                      {visibleColumns.includes("Shipping" as ColumnTitles) && (
-                        <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center w-12">
-                          Shipping
-                        </TableHead>
-                      )}
-                      {visibleColumns
-                        .filter((columnName) => columnName !== "Shipping")
-                        .map((columnName) => (
-                          <TableHead
-                            key={columnName}
-                            className={cn(
-                              "border border-gray-200 dark:border-gray-600 p-2 text-center",
-                              columnName === ColumnTitles.Customer_Name
-                                ? "w-1/3"
-                                : "",
-                              columnName === ColumnTitles.Labels
-                                ? "w-8 flex-shrink-0"
-                                : ""
-                            )}
-                          >
-                            <Button
-                              className="h-8 flex items-center justify-center gap-2 w-full text-gray-900 dark:text-gray-400"
-                              disabled={isDragging}
-                              variant="ghost"
-                              onClick={() =>
-                                !isDragging && handleSort(columnName)
-                              }
-                            >
-                              <span>{columnName}</span>
-                              {settings.showSortingIcons ? (
-                                sortColumn === columnName ? (
-                                  sortDirection === "asc" ? (
-                                    <ArrowUp className="h-4 w-4" />
-                                  ) : sortDirection === "desc" ? (
-                                    <ArrowDown className="h-4 w-4" />
-                                  ) : (
-                                    <ArrowUpDown className="h-4 w-4" />
-                                  )
-                                ) : (
-                                  <ArrowUpDown className="h-4 w-4" />
-                                )
-                              ) : null}
-                            </Button>
-                          </TableHead>
-                        ))}
-                      <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody key={`${group.title}-body`}>
-                    {shouldShowSkeleton
-                      ? renderSkeletonRows()
-                      : sortedItems.map((item, index) => (
-                          <ItemTableRow
-                            key={item.id}
-                            item={item}
-                            index={index}
-                            visibleColumns={visibleColumns}
-                            schedules={schedules}
-                            onContextMenu={handleContextMenu}
-                            onDaySelect={handleDaySelect}
-                            onAddToSchedule={addItemToDay}
-                            onScheduleUpdate={handleScheduleUpdate}
-                            onDelete={handleDelete}
-                            onEdit={handleEdit}
-                            onGetLabel={onGetLabel}
-                            onMarkCompleted={onMarkCompleted}
-                            onShip={onShip}
-                          />
-                        ))}
-                    {provided.placeholder}
-                  </TableBody>
-                </BorderedTable>
-              )}
-            </Droppable>
+                    ))}
+                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody key={`${group.title}-body`}>
+                {shouldShowSkeleton
+                  ? renderSkeletonRows()
+                  : sortedItems.map((item, index) => (
+                      <ItemTableRow
+                        key={item.id}
+                        item={item}
+                        index={index}
+                        visibleColumns={visibleColumns}
+                        schedules={schedules}
+                        onContextMenu={handleContextMenu}
+                        onDaySelect={handleDaySelect}
+                        onAddToSchedule={addItemToDay}
+                        onScheduleUpdate={handleScheduleUpdate}
+                        onDelete={handleDelete}
+                        onEdit={handleEdit}
+                        onGetLabel={onGetLabel}
+                        onMarkCompleted={onMarkCompleted}
+                        onShip={onShip}
+                        onStatusChange={onStatusChange}
+                      />
+                    ))}
+              </TableBody>
+            </BorderedTable>
           ) : (
             <BorderedTable
               borderColor={`bg-${
@@ -455,9 +445,8 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                     >
                       <Button
                         className="h-8 flex items-center justify-between w-full"
-                        disabled={isDragging}
                         variant="ghost"
-                        onClick={() => !isDragging && handleSort(columnName)}
+                        onClick={() => handleSort(columnName)}
                       >
                         {columnName}
                         {settings.showSortingIcons ? (
