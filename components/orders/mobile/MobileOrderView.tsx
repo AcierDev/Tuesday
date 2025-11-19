@@ -19,7 +19,7 @@ import { STATUS_COLORS } from "@/typings/constants";
 import { OrderItem, processItem, STATUS_ORDER } from "../utils/orderUtils";
 import { OrderCard } from "./OrderCard";
 import { OrderDetailView } from "./OrderDetailView";
-import { OrderFilterSheet } from "./OrderFilterSheet";
+import { LoadMoreSentinel } from "../LoadMoreSentinel";
 
 export const MobileOrderView = ({
   items: externalItems,
@@ -464,15 +464,11 @@ export const MobileOrderView = ({
                       {status === ItemStatus.Done &&
                         hasMoreDoneItems &&
                         loadDoneItems && (
-                          <div className="p-4 flex justify-center">
-                            <Button
-                              onClick={() => loadDoneItems(false)}
-                              disabled={isDoneLoading}
-                              variant="outline"
-                            >
-                              {isDoneLoading ? "Loading..." : "Load More"}
-                            </Button>
-                          </div>
+                          <LoadMoreSentinel
+                            hasMore={hasMoreDoneItems}
+                            isLoading={isDoneLoading || false}
+                            onLoadMore={() => loadDoneItems(false)}
+                          />
                         )}
                     </>
                   ) : (

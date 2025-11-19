@@ -27,8 +27,6 @@ export async function GET(request: Request) {
     const offset = parseInt(searchParams.get("offset") || "0", 10);
     const search = searchParams.get("search") || "";
 
-    console.log("API items GET params:", { includeDone, includeHidden, status, limit, offset, search });
-
     const client = await clientPromise;
     const db = client.db("react-web-app");
     const collection = db.collection<Item>(

@@ -38,6 +38,7 @@ import { PreviewTableRow } from "./PreviewTableRow";
 import { DEFAULT_COLUMN_VISIBILITY, STATUS_COLORS } from "@/typings/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { LoadMoreSentinel } from "./LoadMoreSentinel";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
@@ -500,19 +501,13 @@ export const ItemGroupSection = memo(function ItemGroupSection({
               </TableBody>
             </BorderedTable>
           )}
-          {group.title === ItemStatus.Done &&
-            hasMoreDoneItems &&
-            !isCollapsed && (
-              <div className="p-4 flex justify-center">
-                <Button
-                  onClick={() => loadDoneItems(false)}
-                  disabled={isDoneLoading}
-                  variant="outline"
-                >
-                  {isDoneLoading ? "Loading..." : "Load More"}
-                </Button>
-              </div>
-            )}
+          {group.title === ItemStatus.Done && !isCollapsed && (
+            <LoadMoreSentinel
+              hasMore={hasMoreDoneItems}
+              isLoading={isDoneLoading}
+              onLoadMore={() => loadDoneItems(false)}
+            />
+          )}
         </div>
       )}
       <EditItemDialog
