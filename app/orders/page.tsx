@@ -47,6 +47,10 @@ export default function OrderManagementPage() {
   } | null>(null);
 
   const handleStartClickToAdd = useCallback((day: DayName, weekKey: string) => {
+    if (weekKey === "") {
+      setClickToAddTarget(null);
+      return;
+    }
     // If clicking the same day, toggle off
     setClickToAddTarget((prev) => {
       if (prev?.day === day && prev?.weekKey === weekKey) {
@@ -187,8 +191,6 @@ export default function OrderManagementPage() {
         return "Item moved to Work in Progress";
       case ItemStatus.Packaging:
         return "Item ready for packaging";
-      case ItemStatus.Shipping:
-        return "Item moved to Shipping";
       case ItemStatus.At_The_Door:
         return "Item is at the door - ready for pickup";
       case ItemStatus.Done:
