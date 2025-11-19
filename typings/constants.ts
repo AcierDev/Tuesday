@@ -262,7 +262,7 @@ export const BRISKET_COLORS: Record<number, { hex: string; name: string }> = {
   8: { hex: "#76636F", name: "Brisket 8" },
   9: { hex: "#666775", name: "Brisket 9" },
   10: { hex: "#525E6D", name: "Brisket 10" },
-  11: { hex: "#3E5565", name: "Brisket 11" },
+  // 11: { hex: "#3E5565", name: "Brisket 11" },
   12: { hex: "#304758", name: "Brisket 12" },
   13: { hex: "#21394B", name: "Brisket 13" },
 };
@@ -354,7 +354,7 @@ export const DESIGN_COLOR_NAMES: Record<ItemDesigns, (number | string)[]> = {
   [ItemDesigns.Spectrum]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
   [ItemDesigns.Mirage]: [1, 2, 3, 4, 5, 6, 7, 8, 9],
   [ItemDesigns.Amethyst]: [1, 2, 3, 4, 5, 6, 7, 8],
-  [ItemDesigns.Brisket]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+  [ItemDesigns.Brisket]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
   [ItemDesigns.Nevada]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   [ItemDesigns.Mint]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
 };
