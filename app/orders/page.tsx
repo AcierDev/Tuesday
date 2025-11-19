@@ -47,7 +47,13 @@ export default function OrderManagementPage() {
   } | null>(null);
 
   const handleStartClickToAdd = useCallback((day: DayName, weekKey: string) => {
-    setClickToAddTarget({ day, weekKey });
+    // If clicking the same day, toggle off
+    setClickToAddTarget((prev) => {
+      if (prev?.day === day && prev?.weekKey === weekKey) {
+        return null;
+      }
+      return { day, weekKey };
+    });
   }, []);
 
   const handleCancelClickToAdd = useCallback(() => {
