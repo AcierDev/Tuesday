@@ -3,13 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, GripVertical, Info, Minus, Plus } from "lucide-react";
+import {
+  Check,
+  GripVertical,
+  Info,
+  Minus,
+  Plus,
+  MousePointerClick,
+} from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "next-themes";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
 import { PaintRequirementsDialog } from "./PaintRequirementsDialog";
 import { cn } from "@/utils/functions";
 import { format, startOfWeek, addDays } from "date-fns";
+import { SplitButton } from "@/components/ui/split-button";
 
 type BadgeStatus = {
   text: string;
@@ -106,6 +114,8 @@ interface DayColumnProps {
   currentWeekStart?: Date;
   useNumber?: boolean;
   onBadgeClick?: () => void;
+  onStartClickToAdd?: (day: DayName, weekKey: string) => void;
+  clickToAddTarget?: { day: DayName; weekKey: string } | null;
 }
 
 export function DayColumn({
@@ -120,6 +130,8 @@ export function DayColumn({
   currentWeekStart,
   useNumber = true,
   onBadgeClick,
+  onStartClickToAdd,
+  clickToAddTarget,
 }: DayColumnProps) {
   const [showPaintRequirements, setShowPaintRequirements] = useState(false);
   const { theme } = useTheme();
@@ -136,6 +148,7 @@ export function DayColumn({
       "Thursday",
       "Friday",
       "Saturday",
+      "Sunday",
     ].indexOf(day);
     return addDays(currentWeekStart, dayIndex);
   };
@@ -144,9 +157,20 @@ export function DayColumn({
     dayItemIds.some((scheduleItem) => scheduleItem.id === item.id)
   );
 
+  const isTarget =
+    clickToAddTarget?.day === day &&
+    clickToAddTarget?.weekKey ===
+      format(currentWeekStart || new Date(), "yyyy-MM-dd");
+
   return (
     <>
-      <Card className="flex-1 flex flex-col m-1 bg-background shadow-sm overflow-hidden dark:bg-gray-700">
+      <Card
+        className={cn(
+          "flex-1 flex flex-col m-1 bg-background shadow-sm overflow-hidden dark:bg-gray-700",
+          isTarget &&
+            "ring-2 ring-primary ring-offset-2 transition-all duration-300"
+        )}
+      >
         <CardHeader className="py-2 px-3 bg-muted dark:bg-gray-600">
           <CardTitle className="text-sm flex justify-between items-center">
             <span>{day}</span>
@@ -295,14 +319,35 @@ export function DayColumn({
             )}
           </Droppable>
         </CardContent>
-        <Button
-          className="m-2 dark:bg-gray-600"
-          size="sm"
-          variant="outline"
-          onClick={() => handleAddItem(day)}
-        >
-          <Plus className="mr-1 h-3 w-3" /> Add
-        </Button>
+        {isTarget ? (
+          <Button
+            className="m-2 bg-red-500 hover:bg-red-600 text-white"
+            size="sm"
+            onClick={() => onStartClickToAdd?.(day, "")} // Passing empty string to signal cancel
+          >
+            Cancel Selection
+          </Button>
+        ) : (
+          <SplitButton
+            className="m-2 flex dark:bg-gray-600"
+            size="sm"
+            variant="outline"
+            onMainClick={() =>
+              onStartClickToAdd?.(
+                day,
+                format(currentWeekStart || new Date(), "yyyy-MM-dd")
+              )
+            }
+            onSplitClick={() => handleAddItem(day)}
+            mainContent={<MousePointerClick className="h-3 w-3" />}
+            splitContent={
+              <>
+                <Plus className="mr-1 h-3 w-3" /> Add
+              </>
+            }
+            splitButtonClassName="dark:bg-gray-600 w-1/2"
+          />
+        )}
       </Card>
 
       <PaintRequirementsDialog

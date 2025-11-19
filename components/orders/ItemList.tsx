@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, memo } from "react";
-import { ItemStatus, type Group, type Item } from "@/typings/types";
+import { ItemStatus, type Group, type Item, DayName } from "@/typings/types";
 import { ItemGroupSection } from "./ItemGroup";
 import { useUser } from "@/contexts/UserContext";
 import { getUserPermissions } from "@/app/actions/auth";
@@ -17,6 +17,8 @@ interface ItemListProps {
   loadDoneItems: (reset?: boolean) => Promise<void>;
   hasMoreDoneItems: boolean;
   isDoneLoading: boolean;
+  clickToAddTarget?: { day: DayName; weekKey: string } | null;
+  onItemClick?: (item: Item) => Promise<void>;
 }
 
 export const ItemList = memo(function ItemList({
@@ -27,6 +29,8 @@ export const ItemList = memo(function ItemList({
   onMarkCompleted,
   onShip,
   doneItems,
+  clickToAddTarget,
+  onItemClick,
 }: ItemListProps) {
   const { user } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -71,6 +75,8 @@ export const ItemList = memo(function ItemList({
               defaultCollapsed={
                 group.title === ItemStatus.Hidden
               }
+              clickToAddTarget={clickToAddTarget}
+              onItemClick={onItemClick}
             />
           </div>
         ))}
@@ -84,6 +90,8 @@ export const ItemList = memo(function ItemList({
           onShip={onShip}
           isCollapsible={true}
           defaultCollapsed={true}
+          clickToAddTarget={clickToAddTarget}
+          onItemClick={onItemClick}
         />
       </div>
     </div>

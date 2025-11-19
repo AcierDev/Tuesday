@@ -8,7 +8,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { Item, ItemStatus, ColumnTitles } from "@/typings/types";
+import { Item, ItemStatus, ColumnTitles, DayName } from "@/typings/types";
 import { DeleteConfirmationDialog } from "@/components/ui/DeleteConfirmationDialog";
 import { EditItemDialog } from "../EditItemDialog";
 import { toast } from "sonner";
@@ -31,6 +31,8 @@ export const MobileOrderView = ({
   onGetLabel: externalHandleGetLabel,
   onMarkCompleted: externalHandleMarkCompleted,
   onShip: externalHandleShip,
+  clickToAddTarget,
+  onItemClick,
 }: {
   items?: Item[];
   doneItems?: Item[];
@@ -41,6 +43,8 @@ export const MobileOrderView = ({
   onGetLabel?: (item: Item) => void;
   onMarkCompleted?: (itemId: string) => Promise<void>;
   onShip?: (itemId: string) => Promise<void>;
+  clickToAddTarget?: { day: DayName; weekKey: string } | null;
+  onItemClick?: (item: Item) => Promise<void>;
 }) => {
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -287,9 +291,16 @@ export const MobileOrderView = ({
   }, []);
 
   // Create a stable function for selecting an order
-  const handleSelectOrder = useCallback((item: OrderItem) => {
+  const handleSelectOrder = useCallback(
+    (item: OrderItem) => {
+      if (clickToAddTarget) {
+        onItemClick?.(item as unknown as Item);
+        return;
+      }
     setSelectedOrder(item);
-  }, []); // No dependencies needed as setSelectedOrder is stable
+    },
+    [clickToAddTarget, onItemClick]
+  );
 
   // Memoize the selectedOrder component to prevent unnecessary rerenders when opening/closing the detail view
   const memoizedSelectedOrder = useMemo(() => {
@@ -459,6 +470,7 @@ export const MobileOrderView = ({
                           key={item.id}
                           item={item}
                           onSelect={handleSelectOrder}
+                          clickToAddTarget={clickToAddTarget}
                         />
                       ))}
                       {status === ItemStatus.Done &&

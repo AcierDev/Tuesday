@@ -9,7 +9,7 @@ import {
 import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/utils/functions";
-import { ItemStatus } from "@/typings/types";
+import { ItemStatus, DayName } from "@/typings/types";
 import { STATUS_BORDER_COLORS, STATUS_COLORS } from "@/typings/constants";
 import {
   OrderItem,
@@ -22,10 +22,11 @@ import { ShippingStatusIcon } from "../ShippingStatusIcon";
 interface OrderCardProps {
   item: OrderItem;
   onSelect: (item: OrderItem) => void;
+  clickToAddTarget?: { day: DayName; weekKey: string } | null;
 }
 
 export const OrderCard: React.FC<OrderCardProps> = React.memo(
-  ({ item, onSelect }) => {
+  ({ item, onSelect, clickToAddTarget }) => {
     const daysRemaining = getDaysRemaining(item.dueDate || "");
     const isPastDue = daysRemaining < 0;
     const isNearDue = daysRemaining >= 0 && daysRemaining <= 7;
@@ -59,7 +60,10 @@ export const OrderCard: React.FC<OrderCardProps> = React.memo(
         whileTap={{ scale: 0.97 }}
         whileHover={{ scale: 1.02, transition: { duration: 0.1 } }}
         onClick={() => onSelect(item)}
-        className="mb-3 cursor-pointer"
+        className={cn(
+          "mb-3 cursor-pointer",
+          clickToAddTarget && "ring-2 ring-primary ring-offset-2 rounded-lg"
+        )}
       >
         <Card
           className={cn(

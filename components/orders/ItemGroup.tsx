@@ -26,6 +26,7 @@ import {
   Group,
   Item,
   ItemStatus,
+  DayName,
 } from "../../typings/types";
 import { cn } from "../../utils/functions";
 import { DeleteConfirmationDialog } from "../ui/DeleteConfirmationDialog";
@@ -58,6 +59,8 @@ interface ItemGroupProps {
   isPreview?: boolean;
   isCollapsible?: boolean;
   defaultCollapsed?: boolean;
+  clickToAddTarget?: { day: DayName; weekKey: string } | null;
+  onItemClick?: (item: Item) => Promise<void>;
 }
 
 export const ItemGroupSection = memo(function ItemGroupSection({
@@ -70,6 +73,8 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   isPreview = false,
   isCollapsible = false,
   defaultCollapsed = true,
+  clickToAddTarget,
+  onItemClick,
   ...props
 }: ItemGroupProps) {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
@@ -431,6 +436,8 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                         onMarkCompleted={onMarkCompleted}
                         onShip={onShip}
                         onStatusChange={onStatusChange}
+                        clickToAddTarget={clickToAddTarget}
+                        onItemClick={onItemClick}
                       />
                     ))}
               </TableBody>

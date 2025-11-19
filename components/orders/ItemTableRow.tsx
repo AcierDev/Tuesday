@@ -35,6 +35,8 @@ interface ItemTableRowProps {
   onMarkCompleted: (itemId: string) => Promise<void>;
   onShip: (itemId: string) => Promise<void>;
   onStatusChange?: (itemId: string, newStatus: ItemStatus) => Promise<void>;
+  clickToAddTarget?: { day: DayName; weekKey: string } | null;
+  onItemClick?: (item: Item) => Promise<void>;
 }
 
 export const ItemTableRow = memo(function ItemTableRow({
@@ -52,6 +54,8 @@ export const ItemTableRow = memo(function ItemTableRow({
   onMarkCompleted,
   onShip,
   onStatusChange,
+  clickToAddTarget,
+  onItemClick,
 }: ItemTableRowProps) {
   if (!item.id) {
     console.warn("Item missing id:", item);
@@ -66,9 +70,23 @@ export const ItemTableRow = memo(function ItemTableRow({
           : "bg-gray-100 dark:bg-gray-700",
         isPastDue(item) &&
           item.status !== ItemStatus.Done &&
-          "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]"
+          "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]",
+        clickToAddTarget &&
+          "cursor-crosshair hover:bg-blue-50 dark:hover:bg-blue-900/20"
       )}
-      onContextMenu={(e) => onContextMenu(e, item)}
+      onClick={(e) => {
+        if (clickToAddTarget) {
+          e.preventDefault();
+          onItemClick?.(item);
+        }
+      }}
+      onContextMenu={(e) => {
+        if (clickToAddTarget) {
+          e.preventDefault();
+          return;
+        }
+        onContextMenu(e, item);
+      }}
     >
       <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center relative">
         <StatusRadialMenu

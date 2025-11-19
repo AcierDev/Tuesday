@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MobileOrderView from "./mobile/MobileOrderView";
 import { ItemList } from "./ItemList";
-import { Group, Item, ItemStatus } from "@/typings/types";
+import { Group, Item, ItemStatus, DayName } from "@/typings/types";
 
 interface ResponsiveOrdersViewProps {
   groups: Group[];
@@ -14,6 +14,8 @@ interface ResponsiveOrdersViewProps {
   loadDoneItems: (reset?: boolean) => Promise<void>;
   hasMoreDoneItems: boolean;
   isDoneLoading: boolean;
+  clickToAddTarget?: { day: DayName; weekKey: string } | null;
+  onItemClick?: (item: Item) => Promise<void>;
 }
 
 export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
@@ -27,6 +29,8 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
   loadDoneItems,
   hasMoreDoneItems,
   isDoneLoading,
+  clickToAddTarget,
+  onItemClick,
 }) => {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -63,6 +67,8 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
           onGetLabel={onGetLabel}
           onMarkCompleted={onMarkCompleted}
           onShip={onShip}
+          clickToAddTarget={clickToAddTarget}
+          onItemClick={onItemClick}
         />
       ) : (
         <ItemList
@@ -76,6 +82,8 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
           onGetLabel={onGetLabel}
           onMarkCompleted={onMarkCompleted}
           onShip={onShip}
+          clickToAddTarget={clickToAddTarget}
+          onItemClick={onItemClick}
         />
       )}
     </div>

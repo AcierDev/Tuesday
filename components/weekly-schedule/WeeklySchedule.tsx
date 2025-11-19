@@ -102,7 +102,15 @@ const getDueDateStatus = (
   }
 };
 
-export function WeeklySchedule() {
+interface WeeklyScheduleProps {
+  onStartClickToAdd?: (day: DayName, weekKey: string) => void;
+  clickToAddTarget?: { day: DayName; weekKey: string } | null;
+}
+
+export function WeeklySchedule({
+  onStartClickToAdd,
+  clickToAddTarget,
+}: WeeklyScheduleProps) {
   const [currentWeekStart, setCurrentWeekStart] = useState<Date | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [currentDay, setCurrentDay] = useState<DayName>("Monday");
@@ -299,6 +307,8 @@ export function WeeklySchedule() {
                     currentWeekStart={currentWeekStart || new Date()}
                     useNumber={useNumber}
                     onBadgeClick={() => setUseNumber(!useNumber)}
+                    onStartClickToAdd={onStartClickToAdd}
+                    clickToAddTarget={clickToAddTarget}
                   />
                 )
               )}

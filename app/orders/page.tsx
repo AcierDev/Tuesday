@@ -17,8 +17,10 @@ import {
   ItemSizes,
   ItemDesigns,
   ColumnTitles,
+  DayName,
 } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { ShippingDashboard } from "@/components/shipping/ShippingDashboard";
 import { cn } from "@/utils/functions";
 import { useActivities } from "@/hooks/useActivities";
@@ -38,6 +40,49 @@ export default function OrderManagementPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [itemToComplete, setItemToComplete] = useState<string | null>(null);
+  const { addItemToDay } = useWeeklyScheduleStore();
+  const [clickToAddTarget, setClickToAddTarget] = useState<{
+    day: DayName;
+    weekKey: string;
+  } | null>(null);
+
+  const handleStartClickToAdd = useCallback((day: DayName, weekKey: string) => {
+    setClickToAddTarget({ day, weekKey });
+    toast.info(`Select an item to add to ${day}`, {
+      duration: Infinity,
+      id: "click-to-add-toast",
+      action: {
+        label: "Cancel",
+        onClick: () => {
+          setClickToAddTarget(null);
+          toast.dismiss("click-to-add-toast");
+        },
+      },
+    });
+  }, []);
+
+  const handleCancelClickToAdd = useCallback(() => {
+    setClickToAddTarget(null);
+    toast.dismiss("click-to-add-toast");
+  }, []);
+
+  const handleItemClick = useCallback(
+    async (item: Item) => {
+      if (!clickToAddTarget) return;
+
+      try {
+        await addItemToDay(
+          clickToAddTarget.weekKey,
+          clickToAddTarget.day,
+          item.id
+        );
+        toast.success(`Added ${item.customerName} to ${clickToAddTarget.day}`);
+      } catch (error) {
+        toast.error("Failed to add item to schedule");
+      }
+    },
+    [clickToAddTarget, addItemToDay]
+  );
 
   const orderSettingsContext = useOrderSettings();
   const settings = orderSettingsContext.settings || {};
@@ -412,6 +457,8 @@ export default function OrderManagementPage() {
                 loadDoneItems={loadDoneItems}
                 hasMoreDoneItems={hasMoreDoneItems}
                 isDoneLoading={isDoneLoading}
+                clickToAddTarget={clickToAddTarget}
+                onItemClick={handleItemClick}
               />
             </div>
             <div
@@ -424,7 +471,10 @@ export default function OrderManagementPage() {
             >
               {items && isWeeklyPlannerOpen && (
                 <div className="h-full bg-white dark:bg-transparent shadow-lg rounded-l-lg">
-                  <WeeklySchedule />
+                  <WeeklySchedule
+                    onStartClickToAdd={handleStartClickToAdd}
+                    clickToAddTarget={clickToAddTarget}
+                  />
                 </div>
               )}
             </div>
