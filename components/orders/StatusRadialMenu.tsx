@@ -11,6 +11,8 @@ import {
   Archive,
   Truck,
   Package,
+  Hammer,
+  ScrollText,
 } from "lucide-react";
 import { ItemStatus } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
@@ -51,12 +53,12 @@ const STATUS_CONFIG: Record<
   },
   [ItemStatus.OnDeck]: {
     label: "On Deck",
-    icon: <RotateCcw size={24} />,
+    icon: <ScrollText size={24} />,
     color: `bg-${STATUS_COLORS[ItemStatus.OnDeck]}`,
   },
   [ItemStatus.Wip]: {
     label: "WIP",
-    icon: <RotateCcw size={24} />,
+    icon: <Hammer size={24} />,
     color: `bg-${STATUS_COLORS[ItemStatus.Wip]}`,
   },
   [ItemStatus.Packaging]: {
