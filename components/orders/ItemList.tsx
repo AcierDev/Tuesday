@@ -13,6 +13,10 @@ interface ItemListProps {
   onGetLabel: (item: Item) => void;
   onMarkCompleted: (itemId: string) => Promise<void>;
   onShip: (itemId: string) => Promise<void>;
+  doneItems: Item[];
+  loadDoneItems: (reset?: boolean) => Promise<void>;
+  hasMoreDoneItems: boolean;
+  isDoneLoading: boolean;
 }
 
 export const ItemList = memo(function ItemList({
@@ -22,6 +26,7 @@ export const ItemList = memo(function ItemList({
   onGetLabel,
   onMarkCompleted,
   onShip,
+  doneItems,
 }: ItemListProps) {
   const { user } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -39,30 +44,48 @@ export const ItemList = memo(function ItemList({
     fetchPermissions();
   }, [user]);
 
+  const doneGroup: Group = {
+    id: "done-group",
+    title: ItemStatus.Done,
+    items: doneItems,
+  };
+
   return (
-      <div className="flex-grow">
-        {groups
-          .filter((group) =>
-          (isAdmin ? true : group.title !== ItemStatus.Hidden)
-          )
-          .map((group) => (
+    <div className="flex-grow">
+      {groups
+        .filter((group) =>
+          (isAdmin ? true : group.title !== ItemStatus.Hidden) &&
+          group.title !== ItemStatus.Done
+        )
+        .map((group) => (
           <div key={group.id} className="min-h-[50px]">
-                  <ItemGroupSection
-                    key={group.id}
-                    group={group}
+            <ItemGroupSection
+              key={group.id}
+              group={group}
               onStatusChange={onStatusChange}
-                    onDelete={onDelete}
-                    onGetLabel={onGetLabel}
-                    onMarkCompleted={onMarkCompleted}
-                    onShip={onShip}
-                    isCollapsible={true}
-                    defaultCollapsed={
-                      group.title === ItemStatus.Done ||
-                      group.title === ItemStatus.Hidden
-                    }
-                  />
-                </div>
-          ))}
+              onDelete={onDelete}
+              onGetLabel={onGetLabel}
+              onMarkCompleted={onMarkCompleted}
+              onShip={onShip}
+              isCollapsible={true}
+              defaultCollapsed={
+                group.title === ItemStatus.Hidden
+              }
+            />
+          </div>
+        ))}
+      <div key="done-section" className="min-h-[50px]">
+        <ItemGroupSection
+          group={doneGroup}
+          onStatusChange={onStatusChange}
+          onDelete={onDelete}
+          onGetLabel={onGetLabel}
+          onMarkCompleted={onMarkCompleted}
+          onShip={onShip}
+          isCollapsible={true}
+          defaultCollapsed={true}
+        />
       </div>
+    </div>
   );
 });

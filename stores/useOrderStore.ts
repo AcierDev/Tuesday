@@ -10,10 +10,14 @@ import { ItemUtil } from "@/utils/ItemUtil";
 interface OrderState {
   lastFetched: number | null;
   isLoading: boolean;
+  isDoneLoading: boolean;
   eventSource: EventSource | null;
   doneItemsLoaded: boolean;
   hiddenItemsLoaded: boolean;
   items: Item[];
+  doneItems: Item[];
+  doneItemsPage: number;
+  hasMoreDoneItems: boolean;
   allItems: Item[];
   searchQuery: string;
   searchResults: Item[];
@@ -37,7 +41,8 @@ interface OrderState {
   ) => Promise<void>;
   init: () => Promise<void>;
   checkDuplicate: (item: Item) => boolean;
-  loadDoneItems: () => Promise<void>;
+  loadDoneItems: (reset?: boolean) => Promise<void>;
+  searchDoneItems: (query: string) => Promise<void>;
   removeDoneItems: () => void;
   loadHiddenItems: () => Promise<void>;
   removeHiddenItems: () => void;
@@ -100,8 +105,12 @@ export const useOrderStore = create<OrderState>()(
     return {
       allItems: [],
       items: [],
+      doneItems: [],
+      doneItemsPage: 0,
+      hasMoreDoneItems: true,
       lastFetched: null,
       isLoading: false,
+      isDoneLoading: false,
       settings: null,
       eventSource: null,
       doneItemsLoaded: false,
@@ -118,7 +127,7 @@ export const useOrderStore = create<OrderState>()(
 
           set({ isLoading: true });
           const response = await fetch(
-            "/api/items?includeDone=true&includeHidden=true"
+            "/api/items?includeDone=false&includeHidden=true"
           );
           if (!response.ok) throw new Error("Failed to fetch orders");
 
@@ -175,14 +184,48 @@ export const useOrderStore = create<OrderState>()(
         eventSource.onmessage = (event) => {
           try {
             const change = JSON.parse(event.data);
-            const { items, doneItemsLoaded, hiddenItemsLoaded } = get();
+            const { items, doneItems } = get();
 
             if (change.type === "update") {
               const updatedItem = ItemUtil.processItem(change.item);
-              const updatedItems = items.map((item) =>
-                item.id === updatedItem.id ? updatedItem : item
-              );
-              set({ items: updatedItems });
+              
+              let newItems = [...items];
+              let newDoneItems = [...doneItems];
+              
+              const isDone = updatedItem.status === ItemStatus.Done;
+              const isHidden = updatedItem.status === ItemStatus.Hidden;
+              
+              // Remove from old locations if status changed (or just ensure it's not in wrong list)
+              // If it's Done, it shouldn't be in items.
+              if (isDone) {
+                  newItems = newItems.filter(i => i.id !== updatedItem.id);
+                  // Update or Add to doneItems
+                  const idx = newDoneItems.findIndex(i => i.id === updatedItem.id);
+                  if (idx !== -1) {
+                      newDoneItems[idx] = updatedItem;
+                  } else {
+                      newDoneItems.unshift(updatedItem);
+                  }
+              } 
+              else if (isHidden) {
+                  newItems = newItems.filter(i => i.id !== updatedItem.id);
+                  newDoneItems = newDoneItems.filter(i => i.id !== updatedItem.id);
+                  // If hidden items are loaded, we might update them, but let's ignore for now as per plan focus.
+              }
+              else {
+                  // Active
+                  newDoneItems = newDoneItems.filter(i => i.id !== updatedItem.id);
+                  
+                  const idx = newItems.findIndex(i => i.id === updatedItem.id);
+                  if (idx !== -1) {
+                      newItems[idx] = updatedItem;
+                  } else {
+                      // New active item or moved from Done/Hidden
+                      newItems.push(updatedItem);
+                  }
+              }
+
+              set({ items: newItems, doneItems: newDoneItems });
             }
           } catch (error) {
             console.error("Failed to process change:", error);
@@ -273,13 +316,42 @@ export const useOrderStore = create<OrderState>()(
           if (!response.ok) throw new Error("Failed to update item");
 
           // Update local state
-          const updatedItems = items.map((item) =>
-            item.id === updatedItem.id
-              ? ItemUtil.processItem(itemToUpdate)
-              : item
-          );
+          const { items: currentItems, doneItems: currentDoneItems } = get();
+          const processedUpdate = ItemUtil.processItem(itemToUpdate);
+          
+          let newItems = [...currentItems];
+          let newDoneItems = [...currentDoneItems];
+          
+          const isDone = processedUpdate.status === ItemStatus.Done;
+          const isHidden = processedUpdate.status === ItemStatus.Hidden;
+          
+          // Remove from all lists first (simplest way to handle moves)
+          // But we want to preserve order if staying in same list.
+          
+          const inItemsIndex = newItems.findIndex(i => i.id === processedUpdate.id);
+          const inDoneIndex = newDoneItems.findIndex(i => i.id === processedUpdate.id);
+          
+          if (isDone) {
+              if (inItemsIndex !== -1) newItems.splice(inItemsIndex, 1);
+              if (inDoneIndex !== -1) {
+                  newDoneItems[inDoneIndex] = processedUpdate;
+              } else {
+                  newDoneItems.unshift(processedUpdate);
+              }
+          } else if (isHidden) {
+              if (inItemsIndex !== -1) newItems.splice(inItemsIndex, 1);
+              if (inDoneIndex !== -1) newDoneItems.splice(inDoneIndex, 1);
+          } else {
+              // Active
+              if (inDoneIndex !== -1) newDoneItems.splice(inDoneIndex, 1);
+              if (inItemsIndex !== -1) {
+                  newItems[inItemsIndex] = processedUpdate;
+              } else {
+                  newItems.push(processedUpdate);
+              }
+          }
 
-          set({ items: updatedItems });
+          set({ items: newItems, doneItems: newDoneItems });
         } catch (err) {
           console.error("Failed to update item", err);
           toast.error("Failed to update item. Please try again.");
@@ -481,44 +553,58 @@ export const useOrderStore = create<OrderState>()(
         return hasDuplicateFirstValue(item, items);
       },
 
-      loadDoneItems: async () => {
-        const { items } = get();
+      loadDoneItems: async (reset = false) => {
+        const { doneItems, doneItemsPage, searchQuery } = get();
+
+        if (reset) {
+          set({ doneItems: [], doneItemsPage: 0, hasMoreDoneItems: true });
+        }
+
+        const currentPage = reset ? 0 : doneItemsPage;
+        const limit = 50;
+        const offset = currentPage * limit;
 
         try {
-          set({ isLoading: true });
-          const response = await fetch(
-            "/api/items?status=Done&includeHidden=false&includeDone=true"
-          );
+          set({ isDoneLoading: true });
+          let url = `/api/items?status=Done&includeDone=true&limit=${limit}&offset=${offset}`;
+          if (searchQuery.trim()) {
+             url += `&search=${encodeURIComponent(searchQuery)}`;
+          }
+          
+          const response = await fetch(url);
           if (!response.ok) throw new Error("Failed to fetch done items");
 
-          const doneItems: Item[] = await response.json();
-          const processedDoneItems = doneItems.map(ItemUtil.processItem);
-          console.log("Done items:", items.length, doneItems.length);
+          const newItems: Item[] = await response.json();
+          const processedItems = newItems.map(ItemUtil.processItem);
+          console.log("Loaded done items page:", currentPage, "Count:", newItems.length);
 
-          // Remove board structure assumption
-          set({
-            items: items.concat(processedDoneItems),
+          set((state) => ({
+            doneItems: reset
+              ? processedItems
+              : [...state.doneItems, ...processedItems],
+            doneItemsPage: currentPage + 1,
+            hasMoreDoneItems: newItems.length === limit,
             doneItemsLoaded: true,
-            isLoading: false,
-          });
-          return items.concat(processedDoneItems);
+            isDoneLoading: false,
+          }));
         } catch (err) {
           console.error("Failed to load done items", err);
           toast.error("Failed to load done items. Please try again.");
-          set({ isLoading: false });
+          set({ isDoneLoading: false });
         }
       },
 
+      searchDoneItems: async (query: string) => {
+          console.log("searchDoneItems called with:", query);
+          // Just trigger loadDoneItems with reset, assuming searchQuery state is set
+          // Actually setSearchQuery sets the state.
+          // But if this is called directly...
+          // Let's just reuse loadDoneItems logic.
+          get().loadDoneItems(true);
+      },
+
       removeDoneItems: () => {
-        const { items } = get();
-        if (!items) return;
-
-        // Filter out done items
-        const activeItems = items.filter(
-          (item) => item.status !== ItemStatus.Done
-        );
-
-        set({ items: activeItems, doneItemsLoaded: false });
+        set({ doneItems: [], doneItemsLoaded: false });
       },
 
       loadHiddenItems: () => {
@@ -542,8 +628,14 @@ export const useOrderStore = create<OrderState>()(
         columns?: ColumnTitles[] | ColumnTitles,
         searchAllItems?: boolean
       ) => {
+        console.log("setSearchQuery called with:", query);
         set({ searchQuery: query });
         get().searchItems(query, columns, searchAllItems);
+
+        // Trigger server-side search for done items
+        // Debouncing should be handled by the caller or a utility if needed.
+        // For now, we call it directly to ensure responsiveness.
+        get().searchDoneItems(query);
       },
 
       searchItems: (

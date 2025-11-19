@@ -27,7 +27,8 @@ import { useOrderStats } from "@/hooks/useOrderStats";
 import { ResponsiveOrdersView } from "@/components/orders/ResponsiveOrdersView";
 
 export default function OrderManagementPage() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const setSearchQuery = useOrderStore((state) => state.setSearchQuery);
+  const searchTerm = useOrderStore((state) => state.searchQuery);
   const [currentMode, setCurrentMode] = useState("all");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false);
@@ -43,6 +44,10 @@ export default function OrderManagementPage() {
   const updateSettings = orderSettingsContext.updateSettings || (() => {});
 
   const items = useOrderStore((state) => state.items);
+  const doneItems = useOrderStore((state) => state.doneItems);
+  const loadDoneItems = useOrderStore((state) => state.loadDoneItems);
+  const hasMoreDoneItems = useOrderStore((state) => state.hasMoreDoneItems);
+  const isDoneLoading = useOrderStore((state) => state.isDoneLoading);
   const updateItem = useOrderStore((state) => state.updateItem);
   const addNewItem = useOrderStore((state) => state.addNewItem);
   const deleteItem = useOrderStore((state) => state.deleteItem);
@@ -108,11 +113,11 @@ export default function OrderManagementPage() {
             newValue: ItemStatus.Done,
           },
         ],
-          {
-            customerName: itemToUpdate.customerName,
-            design: itemToUpdate.design,
-            size: itemToUpdate.size,
-          }
+        {
+          customerName: itemToUpdate.customerName,
+          design: itemToUpdate.design,
+          size: itemToUpdate.size,
+        }
       );
 
       toast.success("Item marked as completed", {
@@ -211,30 +216,30 @@ export default function OrderManagementPage() {
 
         await updateItem(updatedItem);
 
-          await logActivity(
+        await logActivity(
           item.id!,
-            "status_change",
-            [
-              {
-                field: "status",
-              oldValue: previousStatus,
-                newValue: newStatus,
-              },
-            ],
+          "status_change",
+          [
             {
+              field: "status",
+              oldValue: previousStatus,
+              newValue: newStatus,
+            },
+          ],
+          {
             customerName: item.customerName,
             design: item.design,
             size: item.size,
-            }
-          );
+          }
+        );
 
-          toast.success(getStatusChangeMessage(newStatus), {
-            style: { background: "#10B981", color: "white" },
-            action: {
-              label: "Undo",
+        toast.success(getStatusChangeMessage(newStatus), {
+          style: { background: "#10B981", color: "white" },
+          action: {
+            label: "Undo",
             onClick: () => undoStatusChange(item, previousStatus),
-            },
-          });
+          },
+        });
       } catch (error) {
         console.error("Failed to update status:", error);
         toast.error("Failed to update status");
@@ -376,7 +381,7 @@ export default function OrderManagementPage() {
           isMobile={isMobile}
           searchTerm={searchTerm}
           onNewOrder={() => setIsNewItemModalOpen(true)}
-          onSearchChange={setSearchTerm}
+          onSearchChange={setSearchQuery}
           currentMode={currentMode}
           onModeChange={setCurrentMode}
           dueCounts={dueCounts}
@@ -403,6 +408,10 @@ export default function OrderManagementPage() {
                 onGetLabel={onGetLabel}
                 onMarkCompleted={markItemCompleted}
                 onShip={shipItem}
+                doneItems={doneItems}
+                loadDoneItems={loadDoneItems}
+                hasMoreDoneItems={hasMoreDoneItems}
+                isDoneLoading={isDoneLoading}
               />
             </div>
             <div

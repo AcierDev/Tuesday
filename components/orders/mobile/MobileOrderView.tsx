@@ -23,12 +23,20 @@ import { OrderFilterSheet } from "./OrderFilterSheet";
 
 export const MobileOrderView = ({
   items: externalItems,
+  doneItems,
+  loadDoneItems,
+  hasMoreDoneItems,
+  isDoneLoading,
   onDelete: externalHandleDelete,
   onGetLabel: externalHandleGetLabel,
   onMarkCompleted: externalHandleMarkCompleted,
   onShip: externalHandleShip,
 }: {
   items?: Item[];
+  doneItems?: Item[];
+  loadDoneItems?: (reset?: boolean) => Promise<void>;
+  hasMoreDoneItems?: boolean;
+  isDoneLoading?: boolean;
   onDelete?: (itemId: string) => Promise<void>;
   onGetLabel?: (item: Item) => void;
   onMarkCompleted?: (itemId: string) => Promise<void>;
@@ -45,8 +53,11 @@ export const MobileOrderView = ({
   // Get data from stores
   const storeData = useOrderStore();
 
-  // Use either external items or fallback to store items
-  const allItems = externalItems || storeData.items || [];
+  // Use either external items or fallback to store items, merged with doneItems
+  const allItems = useMemo(() => {
+    const active = externalItems || storeData.items || [];
+    return [...active, ...(doneItems || [])];
+  }, [externalItems, storeData.items, doneItems]);
 
   const columnVisibility = {
     "Customer Name": true,
@@ -66,15 +77,16 @@ export const MobileOrderView = ({
     return (allItems || []).map(processItem);
   }, [allItems]); // Dependency: allItems
 
-  // Load done items when the "Done" tab is clicked or expanded
-  // useEffect(() => {
-  //   if (
-  //     (activeTab === "all" || activeTab === ItemStatus.Done) &&
-  //     !storeData.doneItemsLoaded
-  //   ) {
-  //     storeData.loadDoneItems();
-  //   }
-  // }, [activeTab, storeData.doneItemsLoaded, storeData.loadDoneItems]);
+  // Load done items when the "Done" tab is clicked
+  useEffect(() => {
+    if (
+      activeTab === ItemStatus.Done &&
+      loadDoneItems &&
+      !storeData.doneItemsLoaded
+    ) {
+      loadDoneItems(true);
+    }
+  }, [activeTab, storeData.doneItemsLoaded, loadDoneItems]);
 
   // Filter items based on active tab and search query
   const filteredItems = useMemo(() => {
@@ -441,13 +453,28 @@ export const MobileOrderView = ({
                       Loading done items...
                     </p>
                   ) : items.length > 0 ? (
-                    items.map((item) => (
-                      <OrderCard
-                        key={item.id}
-                        item={item}
-                        onSelect={handleSelectOrder}
-                      />
-                    ))
+                    <>
+                      {items.map((item) => (
+                        <OrderCard
+                          key={item.id}
+                          item={item}
+                          onSelect={handleSelectOrder}
+                        />
+                      ))}
+                      {status === ItemStatus.Done &&
+                        hasMoreDoneItems &&
+                        loadDoneItems && (
+                          <div className="p-4 flex justify-center">
+                            <Button
+                              onClick={() => loadDoneItems(false)}
+                              disabled={isDoneLoading}
+                              variant="outline"
+                            >
+                              {isDoneLoading ? "Loading..." : "Load More"}
+                            </Button>
+                          </div>
+                        )}
+                    </>
                   ) : (
                     <p className="text-sm text-gray-500 dark:text-gray-400 p-2">
                       No items in this section.

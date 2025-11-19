@@ -10,6 +10,10 @@ interface ResponsiveOrdersViewProps {
   onGetLabel: (item: Item) => void;
   onMarkCompleted: (itemId: string) => Promise<void>;
   onShip: (itemId: string) => Promise<void>;
+  doneItems: Item[];
+  loadDoneItems: (reset?: boolean) => Promise<void>;
+  hasMoreDoneItems: boolean;
+  isDoneLoading: boolean;
 }
 
 export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
@@ -19,6 +23,10 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
   onGetLabel,
   onMarkCompleted,
   onShip,
+  doneItems,
+  loadDoneItems,
+  hasMoreDoneItems,
+  isDoneLoading,
 }) => {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -47,6 +55,10 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
       {isMobile ? (
         <MobileOrderView
           items={groups.flatMap((group) => group.items)}
+          doneItems={doneItems}
+          loadDoneItems={loadDoneItems}
+          hasMoreDoneItems={hasMoreDoneItems}
+          isDoneLoading={isDoneLoading}
           onDelete={onDelete}
           onGetLabel={onGetLabel}
           onMarkCompleted={onMarkCompleted}
@@ -55,6 +67,10 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
       ) : (
         <ItemList
           groups={groups}
+          doneItems={doneItems}
+          loadDoneItems={loadDoneItems}
+          hasMoreDoneItems={hasMoreDoneItems}
+          isDoneLoading={isDoneLoading}
           onStatusChange={onStatusChange}
           onDelete={onDelete}
           onGetLabel={onGetLabel}

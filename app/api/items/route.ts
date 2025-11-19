@@ -18,6 +18,16 @@ export async function GET(request: Request) {
     const includeDone = searchParams.get("includeDone") === "true" || false;
     const includeHidden = searchParams.get("includeHidden") === "true" || false;
     const status = searchParams.get("status") || "";
+    const limit = parseInt(searchParams.get("limit") || "0", 10); // 0 means no limit (backward compatibility if needed, but we should default to 50 for safety if client doesn't specify, OR only limit if specified)
+    // Actually, for backward compatibility with existing calls that expect everything, let's default to 0 (no limit) unless specified.
+    // The plan says "default 50". But existing calls might break if I impose a limit they don't expect.
+    // "Done" loading currently fetches EVERYTHING.
+    // "loadItems" fetches everything except Done/Hidden.
+    // To be safe, I will default to 0 (all) but allow client to specify limit.
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
+    const search = searchParams.get("search") || "";
+
+    console.log("API items GET params:", { includeDone, includeHidden, status, limit, offset, search });
 
     const client = await clientPromise;
     const db = client.db("react-web-app");
@@ -26,6 +36,17 @@ export async function GET(request: Request) {
     );
 
     const filter: any = { visible: true, deleted: false };
+
+    if (search) {
+      const searchRegex = { $regex: search, $options: "i" };
+      filter.$or = [
+        { customerName: searchRegex },
+        { design: searchRegex },
+        { size: searchRegex },
+        { notes: searchRegex },
+        { id: searchRegex } // Allow searching by ID
+      ];
+    }
 
     if (!status) {
       const excludeStatuses = [];
@@ -43,7 +64,23 @@ export async function GET(request: Request) {
       filter.status = status;
     }
 
-    const items = await collection.find(filter).toArray();
+    let cursor = collection.find(filter);
+
+    // Sort by completedAt for Done items, otherwise by index or createdAt
+    if (status === "Done") {
+      cursor = cursor.sort({ completedAt: -1 });
+    } else {
+      cursor = cursor.sort({ index: 1, createdAt: -1 });
+    }
+
+    if (offset > 0) {
+      cursor = cursor.skip(offset);
+    }
+    if (limit > 0) {
+      cursor = cursor.limit(limit);
+    }
+
+    const items = await cursor.toArray();
     return NextResponse.json(items, { headers: getCorsHeaders() });
   } catch (error) {
     return NextResponse.json(

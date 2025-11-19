@@ -95,6 +95,21 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   const removeHiddenItems = useOrderStore((state) => state.removeHiddenItems);
   const hiddenItemsLoaded = useOrderStore((state) => state.hiddenItemsLoaded);
   const updateItem = useOrderStore((state) => state.updateItem);
+  const hasMoreDoneItems = useOrderStore((state) => state.hasMoreDoneItems);
+  const isDoneLoading = useOrderStore((state) => state.isDoneLoading);
+  const searchQuery = useOrderStore((state) => state.searchQuery);
+
+  useEffect(() => {
+    // Auto-expand "Done" section if searching and there are items
+    if (
+      group.title === ItemStatus.Done &&
+      searchQuery &&
+      group.items.length > 0 &&
+      isCollapsed
+    ) {
+      setIsCollapsed(false);
+    }
+  }, [group.title, searchQuery, group.items.length, isCollapsed]);
 
   const handleScheduleUpdate = useCallback(() => {
     const event = new CustomEvent("weeklyScheduleUpdate");
@@ -238,7 +253,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     setIsCollapsed(!isCollapsed);
     if (group.title === ItemStatus.Done) {
       if (isCollapsed) {
-        loadDoneItems();
+        loadDoneItems(true);
       } else {
         removeDoneItems();
       }
@@ -485,6 +500,19 @@ export const ItemGroupSection = memo(function ItemGroupSection({
               </TableBody>
             </BorderedTable>
           )}
+          {group.title === ItemStatus.Done &&
+            hasMoreDoneItems &&
+            !isCollapsed && (
+              <div className="p-4 flex justify-center">
+                <Button
+                  onClick={() => loadDoneItems(false)}
+                  disabled={isDoneLoading}
+                  variant="outline"
+                >
+                  {isDoneLoading ? "Loading..." : "Load More"}
+                </Button>
+              </div>
+            )}
         </div>
       )}
       <EditItemDialog

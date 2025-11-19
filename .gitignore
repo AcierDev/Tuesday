@@ -95,3 +95,4 @@ app/testing/page.css
 
 # Data directory
 /data
+.vercel
