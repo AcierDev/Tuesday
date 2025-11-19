@@ -46,43 +46,44 @@ const STATUS_CONFIG: Record<
 > = {
   [ItemStatus.New]: {
     label: "New",
-    icon: <Archive size={16} />,
+    icon: <Archive size={24} />,
     color: `bg-${STATUS_COLORS[ItemStatus.New]}`,
   },
   [ItemStatus.OnDeck]: {
     label: "On Deck",
-    icon: <RotateCcw size={16} />,
+    icon: <RotateCcw size={24} />,
     color: `bg-${STATUS_COLORS[ItemStatus.OnDeck]}`,
   },
   [ItemStatus.Wip]: {
     label: "WIP",
-    icon: <RotateCcw size={16} />,
+    icon: <RotateCcw size={24} />,
     color: `bg-${STATUS_COLORS[ItemStatus.Wip]}`,
   },
   [ItemStatus.Packaging]: {
     label: "Packaging",
-    icon: <Package size={16} />,
+    icon: <Package size={24} />,
     color: `bg-${STATUS_COLORS[ItemStatus.Packaging]}`,
   },
   [ItemStatus.At_The_Door]: {
     label: "At Door",
-    icon: <Truck size={16} />,
+    icon: <Truck size={24} />,
     color: `bg-${STATUS_COLORS[ItemStatus.At_The_Door]}`,
   },
   [ItemStatus.Done]: {
     label: "Done",
-    icon: <Check size={16} />,
+    icon: <Check size={24} />,
     color: `bg-${STATUS_COLORS[ItemStatus.Done]}`,
   },
   [ItemStatus.Hidden]: {
     label: "Hidden",
-    icon: <Archive size={16} />,
+    icon: <Archive size={24} />,
     color: `bg-${STATUS_COLORS[ItemStatus.Hidden]}`,
   },
 };
 
-const MENU_RADIUS = 120; // Radius of the menu options
+const MENU_RADIUS = 160; // Radius of the menu options
 const TRIGGER_THRESHOLD = 30; // Minimum drag distance to trigger selection
+const SPREAD_ANGLE = 20; // Angle to spread neighbors when an option is active
 
 export const StatusRadialMenu: React.FC<StatusRadialMenuProps> = ({
   currentStatus,
@@ -244,18 +245,37 @@ export const StatusRadialMenu: React.FC<StatusRadialMenuProps> = ({
               <AnimatePresence>
                 {options.map((option) => {
                   const midAngle = (option.angleStart + option.angleEnd) / 2;
-                  const rad = midAngle * (Math.PI / 180);
+                  const isActive = activeOption?.status === option.status;
+
+                  // Calculate spread
+                  let animatedAngle = midAngle;
+                  if (activeOption && !isActive) {
+                    const activeMidAngle =
+                      (activeOption.angleStart + activeOption.angleEnd) / 2;
+
+                    // Determine if this option is "above" (counter-clockwise) or "below" (clockwise) the active one
+                    // In our coordinate system:
+                    // -90 is top, 0 is right, 90 is bottom
+                    // So smaller angle = above/counter-clockwise
+                    // Larger angle = below/clockwise
+
+                    if (midAngle < activeMidAngle) {
+                      animatedAngle -= SPREAD_ANGLE;
+                    } else {
+                      animatedAngle += SPREAD_ANGLE;
+                    }
+                  }
+
+                  const rad = animatedAngle * (Math.PI / 180);
                   const x = Math.cos(rad) * MENU_RADIUS;
                   const y = Math.sin(rad) * MENU_RADIUS;
-
-                  const isActive = activeOption?.status === option.status;
 
                   return (
                     <motion.div
                       key={option.status}
                       initial={{ scale: 0, opacity: 0, x: 0, y: 0 }}
                       animate={{
-                        scale: isActive ? 1.2 : 1,
+                        scale: isActive ? 1.3 : 1,
                         opacity: 1,
                         x: x,
                         y: y,
@@ -267,14 +287,16 @@ export const StatusRadialMenu: React.FC<StatusRadialMenuProps> = ({
                         stiffness: 300,
                       }}
                       className={cn(
-                        "absolute flex flex-col items-center justify-center w-16 h-16 rounded-full shadow-lg -ml-8 -mt-8 border-2 border-white dark:border-gray-900",
+                        "absolute flex flex-col items-center justify-center w-24 h-24 rounded-full shadow-lg -ml-12 -mt-12 border-2 border-white dark:border-gray-900",
                         option.color,
-                        // Add text color contrast handling if needed, assuming white text is fine for these colors
-                        "text-white"
+                        // Handle text color contrast
+                        option.status === ItemStatus.At_The_Door
+                          ? "text-black"
+                          : "text-white"
                       )}
                     >
                       {option.icon}
-                      <span className="text-[10px] font-bold mt-1">
+                      <span className="text-sm font-bold mt-1">
                         {option.label}
                       </span>
                     </motion.div>

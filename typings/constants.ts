@@ -251,6 +251,51 @@ export const AMETHYST_COLORS: Record<number, { hex: string; name: string }> = {
   8: { hex: "#413d6d", name: "Grape Gum" },
 };
 
+export const BRISKET_COLORS: Record<number, { hex: string; name: string }> = {
+  1: { hex: "#F5E0BE", name: "Brisket 1" },
+  2: { hex: "#E7BF95", name: "Brisket 2" },
+  3: { hex: "#D99D6B", name: "Brisket 3" },
+  4: { hex: "#CE8C68", name: "Brisket 4" },
+  5: { hex: "#C37A65", name: "Brisket 5" },
+  6: { hex: "#A46D67", name: "Brisket 6" },
+  7: { hex: "#855F69", name: "Brisket 7" },
+  8: { hex: "#76636F", name: "Brisket 8" },
+  9: { hex: "#666775", name: "Brisket 9" },
+  10: { hex: "#525E6D", name: "Brisket 10" },
+  11: { hex: "#3E5565", name: "Brisket 11" },
+  12: { hex: "#304758", name: "Brisket 12" },
+  13: { hex: "#21394B", name: "Brisket 13" },
+};
+
+export const NEVADA_COLORS: Record<number, { hex: string; name: string }> = {
+  1: { hex: "#F6EEDD", name: "Nevada 1" },
+  2: { hex: "#EDD3B1", name: "Nevada 2" },
+  3: { hex: "#E2A573", name: "Nevada 3" },
+  4: { hex: "#D4743B", name: "Nevada 4" },
+  5: { hex: "#BA5D32", name: "Nevada 5" },
+  6: { hex: "#8D4628", name: "Nevada 6" },
+  7: { hex: "#723B24", name: "Nevada 7" },
+  8: { hex: "#573020", name: "Nevada 8" },
+  9: { hex: "#41281B", name: "Nevada 9" },
+  10: { hex: "#2B1F16", name: "Nevada 10" },
+};
+
+export const MINT_COLORS: Record<number, { hex: string; name: string }> = {
+  1: { hex: "#0C6170", name: "Mint 1" },
+  2: { hex: "#1D9497", name: "Blue Chill" },
+  3: { hex: "#37BEB0", name: "Mint 3" },
+  4: { hex: "#5ACDC4", name: "Downy" },
+  5: { hex: "#81D9D4", name: "Bermuda" },
+  6: { hex: "#ACE6E2", name: "Powder Blue" },
+  7: { hex: "#DBF5F0", name: "Mint 7" },
+  8: { hex: "#ACE6E2", name: "Powder Blue" },
+  9: { hex: "#81D9D4", name: "Bermuda" },
+  10: { hex: "#5ACDC4", name: "Downy" },
+  11: { hex: "#37BEB0", name: "Mint 3" },
+  12: { hex: "#1D9497", name: "Blue Chill" },
+  13: { hex: "#0C6170", name: "Mint 1" },
+};
+
 export const DESIGN_COLORS: Record<
   ItemDesigns,
   Record<number, { hex: string; name: string }>
@@ -276,6 +321,9 @@ export const DESIGN_COLORS: Record<
   [ItemDesigns.Spectrum]: SPECTRUM_COLORS,
   [ItemDesigns.Abyss]: ABYSS_COLORS,
   [ItemDesigns.Amethyst]: AMETHYST_COLORS,
+  [ItemDesigns.Brisket]: BRISKET_COLORS,
+  [ItemDesigns.Nevada]: NEVADA_COLORS,
+  [ItemDesigns.Mint]: MINT_COLORS,
 };
 
 export const DESIGN_COLOR_NAMES: Record<ItemDesigns, (number | string)[]> = {
@@ -306,6 +354,9 @@ export const DESIGN_COLOR_NAMES: Record<ItemDesigns, (number | string)[]> = {
   [ItemDesigns.Spectrum]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
   [ItemDesigns.Mirage]: [1, 2, 3, 4, 5, 6, 7, 8, 9],
   [ItemDesigns.Amethyst]: [1, 2, 3, 4, 5, 6, 7, 8],
+  [ItemDesigns.Brisket]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+  [ItemDesigns.Nevada]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  [ItemDesigns.Mint]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
 };
 
 export const SIZE_MULTIPLIERS: Record<ItemSizes, number> = {
@@ -513,6 +564,9 @@ export const ItemDesignImages: Record<ItemDesigns, string> = {
   [ItemDesigns.Tiled_Timberline]:
     "/images/designs/tiled-timberline.webp?height=300&width=400",
   [ItemDesigns.Amethyst]: "/images/designs/amethyst.webp?height=300&width=400",
+  [ItemDesigns.Brisket]: "/images/designs/brisket.webp?height=300&width=400",
+  [ItemDesigns.Nevada]: "/images/designs/nevada.webp?height=300&width=400",
+  [ItemDesigns.Mint]: "/images/designs/mint.webp?height=300&width=400",
 };
 
 export const DesignBlends: Record<ItemDesigns, string[]> = {
@@ -563,6 +617,11 @@ export const DesignBlends: Record<ItemDesigns, string[]> = {
   [ItemDesigns.Amethyst]: Object.values(AMETHYST_COLORS).map(
     (color) => color.hex
   ),
+  [ItemDesigns.Brisket]: Object.values(BRISKET_COLORS).map(
+    (color) => color.hex
+  ),
+  [ItemDesigns.Nevada]: Object.values(NEVADA_COLORS).map((color) => color.hex),
+  [ItemDesigns.Mint]: Object.values(MINT_COLORS).map((color) => color.hex),
 };
 
 export const EMPLOYEE_INITIALS = ["AM", "BC", "AW", "BS", "TB"] as const;

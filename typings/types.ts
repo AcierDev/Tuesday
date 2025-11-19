@@ -302,6 +302,9 @@ export enum ItemDesigns {
   Aloe = "Aloe",
   Mirage = "Mirage",
   Amethyst = "Amethyst",
+  Brisket = "Brisket",
+  Nevada = "Nevada",
+  Mint = "Mint",
 }
 
 export enum ItemSizes {

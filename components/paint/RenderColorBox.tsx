@@ -3,8 +3,11 @@ import { ItemDesigns } from "@/typings/types";
 import {
   ALOE_COLORS,
   AMBER_COLORS,
+  BRISKET_COLORS,
   COASTAL_COLORS,
   ELEMENTAL_COLORS,
+  MINT_COLORS,
+  NEVADA_COLORS,
   SAPHIRE_COLORS,
   TIMBERLINE_COLORS,
 } from "@/typings/constants";
@@ -20,39 +23,45 @@ export function renderColorBox(
   if (
     design === ItemDesigns.Coastal &&
     typeof color === "string" &&
-    COASTAL_COLORS[color]
+    COASTAL_COLORS[color as any]
   ) {
-    backgroundColor = COASTAL_COLORS[color].hex;
+    backgroundColor = COASTAL_COLORS[color as any]!.hex;
   } else if (
     design === ItemDesigns.Amber &&
     typeof color === "string" &&
-    AMBER_COLORS[color]
+    AMBER_COLORS[color as any]
   ) {
-    backgroundColor = AMBER_COLORS[color].hex;
+    backgroundColor = AMBER_COLORS[color as any]!.hex;
   } else if (
     design === ItemDesigns.Elemental &&
     typeof color === "string" &&
-    ELEMENTAL_COLORS[color]
+    ELEMENTAL_COLORS[color as any]
   ) {
-    backgroundColor = ELEMENTAL_COLORS[color].hex;
+    backgroundColor = ELEMENTAL_COLORS[color as any]!.hex;
   } else if (
-    design === ItemDesigns.Saphire &&
+    design === ItemDesigns.Sapphire &&
     typeof color === "string" &&
-    SAPHIRE_COLORS[color]
+    SAPHIRE_COLORS[color as any]
   ) {
-    backgroundColor = SAPHIRE_COLORS[color].hex;
+    backgroundColor = SAPHIRE_COLORS[color as any]!.hex;
   } else if (
     design === ItemDesigns.Timberline &&
     typeof color === "string" &&
-    TIMBERLINE_COLORS[color]
+    TIMBERLINE_COLORS[color as any]
   ) {
-    backgroundColor = TIMBERLINE_COLORS[color].hex;
+    backgroundColor = TIMBERLINE_COLORS[color as any]!.hex;
   } else if (
     design === ItemDesigns.Aloe &&
     typeof color === "string" &&
-    ALOE_COLORS[color]
+    ALOE_COLORS[color as any]
   ) {
-    backgroundColor = ALOE_COLORS[color].hex;
+    backgroundColor = ALOE_COLORS[color as any]!.hex;
+  } else if (design === ItemDesigns.Brisket && BRISKET_COLORS[color as any]) {
+    backgroundColor = BRISKET_COLORS[color as any]!.hex;
+  } else if (design === ItemDesigns.Nevada && NEVADA_COLORS[color as any]) {
+    backgroundColor = NEVADA_COLORS[color as any]!.hex;
+  } else if (design === ItemDesigns.Mint && MINT_COLORS[color as any]) {
+    backgroundColor = MINT_COLORS[color as any]!.hex;
   } else {
     const hue = typeof color === "number" ? (color * 30) % 360 : 0;
     backgroundColor =
