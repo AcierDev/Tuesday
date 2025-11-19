@@ -48,22 +48,10 @@ export default function OrderManagementPage() {
 
   const handleStartClickToAdd = useCallback((day: DayName, weekKey: string) => {
     setClickToAddTarget({ day, weekKey });
-    toast.info(`Select an item to add to ${day}`, {
-      duration: Infinity,
-      id: "click-to-add-toast",
-      action: {
-        label: "Cancel",
-        onClick: () => {
-          setClickToAddTarget(null);
-          toast.dismiss("click-to-add-toast");
-        },
-      },
-    });
   }, []);
 
   const handleCancelClickToAdd = useCallback(() => {
     setClickToAddTarget(null);
-    toast.dismiss("click-to-add-toast");
   }, []);
 
   const handleItemClick = useCallback(

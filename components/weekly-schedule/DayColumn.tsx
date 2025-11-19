@@ -320,7 +320,7 @@ export function DayColumn({
           </Droppable>
         </CardContent>
         {isTarget ? (
-          <Button
+        <Button
             className="m-2 bg-red-500 hover:bg-red-600 text-white"
             size="sm"
             onClick={() => onStartClickToAdd?.(day, "")} // Passing empty string to signal cancel
@@ -330,8 +330,8 @@ export function DayColumn({
         ) : (
           <SplitButton
             className="m-2 flex dark:bg-gray-600"
-            size="sm"
-            variant="outline"
+          size="sm"
+          variant="outline"
             onMainClick={() =>
               onStartClickToAdd?.(
                 day,
@@ -342,7 +342,7 @@ export function DayColumn({
             mainContent={<MousePointerClick className="h-3 w-3" />}
             splitContent={
               <>
-                <Plus className="mr-1 h-3 w-3" /> Add
+          <Plus className="mr-1 h-3 w-3" /> Add
               </>
             }
             splitButtonClassName="dark:bg-gray-600 w-1/2"
