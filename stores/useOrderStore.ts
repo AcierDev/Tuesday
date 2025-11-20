@@ -16,6 +16,7 @@ interface OrderState {
   hiddenItemsLoaded: boolean;
   items: Item[];
   doneItems: Item[];
+  scheduledItems: Item[];
   doneItemsPage: number;
   hasMoreDoneItems: boolean;
   allItems: Item[];
@@ -46,6 +47,7 @@ interface OrderState {
   removeDoneItems: () => void;
   loadHiddenItems: () => Promise<void>;
   removeHiddenItems: () => void;
+  fetchItemsByIds: (ids: string[]) => Promise<void>;
   markCompleted: (item: Item) => Promise<void>;
   updateIsScheduled: () => void;
   setSearchQuery: (
@@ -106,6 +108,7 @@ export const useOrderStore = create<OrderState>()(
       allItems: [],
       items: [],
       doneItems: [],
+      scheduledItems: [],
       doneItemsPage: 0,
       hasMoreDoneItems: true,
       lastFetched: null,
@@ -159,6 +162,35 @@ export const useOrderStore = create<OrderState>()(
         }
       },
 
+      fetchItemsByIds: async (ids: string[]) => {
+        const { items, doneItems, scheduledItems } = get();
+        // Create a set of known IDs for fast lookup
+        const knownIds = new Set([
+          ...items.map((i) => i.id),
+          ...doneItems.map((i) => i.id),
+          ...scheduledItems.map((i) => i.id),
+        ]);
+
+        // Filter out IDs that we already have
+        const missingIds = ids.filter((id) => !knownIds.has(id));
+
+        if (missingIds.length === 0) return;
+
+        try {
+          const response = await fetch(`/api/items?ids=${missingIds.join(",")}`);
+          if (!response.ok) throw new Error("Failed to fetch items by IDs");
+
+          const newItems = await response.json();
+          const processedItems = newItems.map(ItemUtil.processItem);
+          
+          set((state) => ({
+            scheduledItems: [...state.scheduledItems, ...processedItems],
+          }));
+        } catch (err) {
+          console.error("Failed to fetch items by IDs", err);
+        }
+      },
+
       updateIsScheduled: () => {
         const { items } = get();
         const { schedules } = useWeeklyScheduleStore.getState();
@@ -184,17 +216,24 @@ export const useOrderStore = create<OrderState>()(
         eventSource.onmessage = (event) => {
           try {
             const change = JSON.parse(event.data);
-            const { items, doneItems } = get();
+            const { items, doneItems, scheduledItems } = get();
 
             if (change.type === "update") {
               const updatedItem = ItemUtil.processItem(change.item);
               
               let newItems = [...items];
               let newDoneItems = [...doneItems];
+              let newScheduledItems = [...scheduledItems];
               
               const isDone = updatedItem.status === ItemStatus.Done;
               const isHidden = updatedItem.status === ItemStatus.Hidden;
               
+              // Update scheduledItems if present
+              const scheduledIdx = newScheduledItems.findIndex(i => i.id === updatedItem.id);
+              if (scheduledIdx !== -1) {
+                  newScheduledItems[scheduledIdx] = updatedItem;
+              }
+
               // Remove from old locations if status changed (or just ensure it's not in wrong list)
               // If it's Done, it shouldn't be in items.
               if (isDone) {
@@ -225,12 +264,13 @@ export const useOrderStore = create<OrderState>()(
                   }
               }
 
-              set({ items: newItems, doneItems: newDoneItems });
+              set({ items: newItems, doneItems: newDoneItems, scheduledItems: newScheduledItems });
             }
           } catch (error) {
             console.error("Failed to process change:", error);
           }
         };
+
 
         eventSource.onerror = (error) => {
           console.error("EventSource failed:", error);

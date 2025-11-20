@@ -125,7 +125,7 @@ export function WeeklySchedule({
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
 
-  const { items } = useOrderStore();
+  const { items, scheduledItems, doneItems, fetchItemsByIds } = useOrderStore();
   const {
     schedules,
     markDone,
@@ -135,9 +135,35 @@ export function WeeklySchedule({
     createWeek,
   } = useWeeklyScheduleStore();
 
+  // Combine all known items
+  const allKnownItems = useMemo(() => {
+    const itemMap = new Map<string, Item>();
+    items.forEach((i) => itemMap.set(i.id, i));
+    doneItems.forEach((i) => itemMap.set(i.id, i));
+    scheduledItems.forEach((i) => itemMap.set(i.id, i));
+    return Array.from(itemMap.values());
+  }, [items, doneItems, scheduledItems]);
+
   useEffect(() => {
     setCurrentWeekStart(startOfWeek(new Date()));
   }, []);
+
+  // Fetch missing items
+  useEffect(() => {
+    if (!currentWeekStart) return;
+    const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+    const currentSchedule = schedules.find((s) => s.weekKey === weekKey);
+    
+    if (currentSchedule) {
+      const allScheduledIds = Object.values(currentSchedule.schedule)
+        .flat()
+        .map((i) => i.id);
+      
+      if (allScheduledIds.length > 0) {
+        fetchItemsByIds(allScheduledIds);
+      }
+    }
+  }, [currentWeekStart, schedules, fetchItemsByIds]);
 
   const handleAddItem = useCallback((day: DayName) => {
     setCurrentDay(day);
@@ -296,9 +322,9 @@ export function WeeklySchedule({
                     key={day}
                     day={day as DayName}
                     dayItemIds={dayItems}
-                    items={items}
+                    items={allKnownItems}
                     calculateTotalSquares={(dayItems) =>
-                      calculateTotalSquares(dayItems, items, getItemValue)
+                      calculateTotalSquares(dayItems, allKnownItems, getItemValue)
                     }
                     handleAddItem={handleAddItem}
                     handleRemoveItem={handleRemoveItem}

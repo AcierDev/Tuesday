@@ -558,7 +558,7 @@ const WeeklyPlanner = () => {
     Record<string, Array<{ day: DayName; item: Item }>>
   >({});
 
-  const { items } = useOrderStore();
+  const { items, scheduledItems, doneItems, fetchItemsByIds } = useOrderStore();
   const {
     schedules,
     addItemToDay,
@@ -567,8 +567,31 @@ const WeeklyPlanner = () => {
     updateSchedule: updateWeeklySchedules,
   } = useWeeklyScheduleStore();
 
+  // Combine all known items for looking up scheduled items (which might be done)
+  const allKnownItems = React.useMemo(() => {
+    const itemMap = new Map<string, Item>();
+    items.forEach((i) => itemMap.set(i.id, i));
+    doneItems.forEach((i) => itemMap.set(i.id, i));
+    scheduledItems.forEach((i) => itemMap.set(i.id, i));
+    return Array.from(itemMap.values());
+  }, [items, doneItems, scheduledItems]);
+
+  const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+  const currentSchedule = (schedules.find((s) => s.weekKey === weekKey)
+    ?.schedule || {}) as WeekSchedule;
+
   React.useEffect(() => {
-    const weekKey = format(currentWeekStart, "yyyy-MM-dd");
+    if (!currentSchedule) return;
+    const allScheduledIds = Object.values(currentSchedule)
+      .flat()
+      .map((i) => i.id);
+
+    if (allScheduledIds.length > 0) {
+      fetchItemsByIds(allScheduledIds);
+    }
+  }, [currentSchedule, fetchItemsByIds]);
+
+  React.useEffect(() => {
     setBlockLimits((prev) => {
       // If this week doesn't have limits set yet, initialize them
       if (!prev[weekKey]) {
@@ -609,9 +632,7 @@ const WeeklyPlanner = () => {
     "Wednesday",
     "Thursday",
   ] as DayName[];
-  const weekKey = format(currentWeekStart, "yyyy-MM-dd");
-  const currentSchedule = (schedules.find((s) => s.weekKey === weekKey)
-    ?.schedule || {}) as WeekSchedule;
+
 
   const designs = React.useMemo(
     () => [
@@ -1221,7 +1242,7 @@ const WeeklyPlanner = () => {
             const daySchedule = (currentSchedule[day] || [])
               .map((scheduleItem) => ({
                 day, // Add the day property
-                item: items.find((i) => i.id === scheduleItem.id)!,
+                item: allKnownItems.find((i) => i.id === scheduleItem.id)!,
                 id: scheduleItem.id,
                 done: scheduleItem.done,
               }))
@@ -1273,7 +1294,7 @@ const WeeklyPlanner = () => {
                 getItemValue={getItemValue}
                 useNumber={useNumber}
                 weekKey={weekKey}
-                items={items}
+                items={allKnownItems}
                 onBadgeClick={() => setUseNumber(!useNumber)}
                 currentWeekStart={currentWeekStart}
                 isDarkMode={isDarkMode}

@@ -30,6 +30,8 @@ async function downloadDatabases() {
       { name: "items-production", filename: "items-production.json" },
       { name: "development", filename: "development-boards.json" },
       { name: "production", filename: "production-boards.json" },
+      { name: "trackers-development", filename: "trackers-development.json" },
+      { name: "trackers-production", filename: "trackers-production.json" },
     ];
 
     // Get Downloads directory path with timestamp

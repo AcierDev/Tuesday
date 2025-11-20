@@ -26,6 +26,7 @@ export async function GET(request: Request) {
     // To be safe, I will default to 0 (all) but allow client to specify limit.
     const offset = parseInt(searchParams.get("offset") || "0", 10);
     const search = searchParams.get("search") || "";
+    const ids = searchParams.get("ids");
 
     const client = await clientPromise;
     const db = client.db("react-web-app");
@@ -35,31 +36,41 @@ export async function GET(request: Request) {
 
     const filter: any = { visible: true, deleted: false };
 
-    if (search) {
-      const searchRegex = { $regex: search, $options: "i" };
-      filter.$or = [
-        { customerName: searchRegex },
-        { design: searchRegex },
-        { size: searchRegex },
-        { notes: searchRegex },
-        { id: searchRegex } // Allow searching by ID
-      ];
-    }
-
-    if (!status) {
-      const excludeStatuses = [];
-      if (!includeDone) {
-        excludeStatuses.push("Done");
-      }
-      if (!includeHidden) {
-        excludeStatuses.push("Hidden");
-      }
-
-      if (excludeStatuses.length > 0) {
-        filter.status = { $nin: excludeStatuses };
+    if (ids) {
+      // If IDs are provided, fetch specific items regardless of other filters
+      // except visible/deleted which are base filters
+      const idList = ids.split(",").filter(Boolean);
+      if (idList.length > 0) {
+        filter.id = { $in: idList };
       }
     } else {
-      filter.status = status;
+      // Standard filtering logic
+      if (search) {
+        const searchRegex = { $regex: search, $options: "i" };
+        filter.$or = [
+          { customerName: searchRegex },
+          { design: searchRegex },
+          { size: searchRegex },
+          { notes: searchRegex },
+          { id: searchRegex } // Allow searching by ID
+        ];
+      }
+
+      if (!status) {
+        const excludeStatuses = [];
+        if (!includeDone) {
+          excludeStatuses.push("Done");
+        }
+        if (!includeHidden) {
+          excludeStatuses.push("Hidden");
+        }
+
+        if (excludeStatuses.length > 0) {
+          filter.status = { $nin: excludeStatuses };
+        }
+      } else {
+        filter.status = status;
+      }
     }
 
     let cursor = collection.find(filter);
