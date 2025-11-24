@@ -8,6 +8,8 @@ import { OrderMeta } from "./types";
 import { OrderCard } from "./OrderCard";
 import { cn } from "@/utils/functions";
 
+import { Progress } from "@/components/ui/progress";
+
 interface WeeklyPlannerProps {
   weekKey: string;
   scheduledOrders: ScheduledOrder[];
@@ -15,7 +17,13 @@ interface WeeklyPlannerProps {
   onUnschedule: (itemId: string) => void;
 }
 
-const DAYS: DayName[] = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
+const DAYS: DayName[] = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+];
 
 const dayAbbr: Record<DayName, string> = {
   Sunday: "Sun",
@@ -36,7 +44,10 @@ export function WeeklyPlanner({
   onUnschedule,
 }: WeeklyPlannerProps) {
   const dayGroups = useMemo(() => {
-    const groups: Record<DayName, { orders: ScheduledOrder[]; totalBlocks: number }> = {
+    const groups: Record<
+      DayName,
+      { orders: ScheduledOrder[]; totalBlocks: number }
+    > = {
       Sunday: { orders: [], totalBlocks: 0 },
       Monday: { orders: [], totalBlocks: 0 },
       Tuesday: { orders: [], totalBlocks: 0 },
@@ -65,19 +76,27 @@ export function WeeklyPlanner({
         {DAYS.map((day) => {
           const group = dayGroups[day];
           const isOverCapacity = group.totalBlocks > CAPACITY_BLOCKS;
-          
+          const percentage = (group.totalBlocks / CAPACITY_BLOCKS) * 100;
+
+          let progressColorClass = "[&>div]:bg-green-500";
+          if (percentage > 100) progressColorClass = "[&>div]:bg-red-500";
+          else if (percentage >= 80)
+            progressColorClass = "[&>div]:bg-yellow-500";
+
           return (
             <div key={day} className="flex flex-col">
               <div className="mb-3">
                 <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
                   {dayAbbr[day]}
                 </div>
-                <div className="flex items-baseline gap-1.5">
+                <div className="flex items-baseline gap-1.5 mb-2">
                   <span
                     className={cn(
                       "text-xl font-bold tabular-nums",
                       isOverCapacity
-                        ? "text-orange-600 dark:text-orange-400"
+                        ? "text-red-600 dark:text-red-400"
+                        : percentage >= 80
+                        ? "text-yellow-600 dark:text-yellow-400"
                         : "text-gray-700 dark:text-gray-300"
                     )}
                   >
@@ -87,8 +106,12 @@ export function WeeklyPlanner({
                     / {CAPACITY_BLOCKS.toLocaleString()}
                   </span>
                 </div>
+                <Progress
+                  value={percentage}
+                  className={cn("h-1.5", progressColorClass)}
+                />
               </div>
-              
+
               <div className="flex-1 space-y-2 overflow-y-auto max-h-[600px]">
                 {group.orders.length === 0 ? (
                   <div className="text-xs text-gray-400 dark:text-gray-600 text-center py-8 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
@@ -98,7 +121,7 @@ export function WeeklyPlanner({
                   group.orders.map((scheduled) => {
                     const meta = ordersById.get(scheduled.itemId);
                     if (!meta) return null;
-                    
+
                     return (
                       <OrderCard
                         key={scheduled.itemId}
@@ -118,4 +141,3 @@ export function WeeklyPlanner({
     </div>
   );
 }
-

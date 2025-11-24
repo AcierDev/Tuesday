@@ -29,11 +29,12 @@ import {
   ITEM_DEFAULT_VALUES,
 } from "@/typings/constants";
 import { combineImages, getEmployeeInfoFromInitials } from "@/utils/functions";
+import { useOrderStore } from "@/stores/useOrderStore";
+import { useUser } from "@/contexts/UserContext";
 
 interface DropdownCellProps {
   item: Item;
   columnValue: GenericColumnValue;
-  onUpdate: (updatedItem: Item, changedField: ColumnTitles) => void;
   disableCredit?: boolean;
   disabled?: boolean;
 }
@@ -41,7 +42,6 @@ interface DropdownCellProps {
 export function DropdownCell({
   item,
   columnValue,
-  onUpdate,
   disableCredit = false,
   disabled = false,
 }: DropdownCellProps) {
@@ -49,6 +49,9 @@ export function DropdownCell({
   const [isCreditDialogOpen, setIsCreditDialogOpen] = useState(false);
   const [selectedCredits, setSelectedCredits] = useState<CreditOption[]>([]);
   const [combinedImageUrl, setCombinedImageUrl] = useState<string | null>(null);
+
+  const { updateItem } = useOrderStore();
+  const { user } = useUser();
 
   useEffect(() => {
     if (columnValue.credit && columnValue.credit.length > 0) {
@@ -110,25 +113,19 @@ export function DropdownCell({
              return;
         }
 
-        // Note: Credit updates are complex as they were attached to value objects
-        // If we want to persist credit, we need a place for it on the flat item.
-        // For now, updating the main text value.
-        // We might need `designCredit`, `sizeCredit` etc. on the Item type if this feature is vital.
-        // Assuming for this refactor we prioritize the main value.
-        
         const updatedItem: any = {
           ...item,
           [key]: newValue,
         };
 
-        await onUpdate(updatedItem, columnValue.columnName);
+        await updateItem(updatedItem, columnValue.columnName, user || undefined);
         toast.success("Value updated successfully");
       } catch (err) {
         console.error("Failed to update ColumnValue", err);
         toast.error("Failed to update the value. Please try again.");
       }
     },
-    [item, columnValue.columnName, onUpdate]
+    [item, columnValue.columnName, updateItem, user]
   );
 
   const handleSaveCredits = useCallback(async () => {

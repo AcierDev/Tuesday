@@ -71,23 +71,23 @@ export function OrderCard({
   return (
     <Card
       className={cn(
-        "group relative overflow-hidden border-l-4 transition-all hover:shadow-sm",
+        "group relative overflow-hidden border-l-[3px] transition-all hover:shadow-sm",
         bucketColor,
         "bg-white dark:bg-gray-900 border-y border-r border-gray-200 dark:border-gray-800"
       )}
     >
-      <div className="flex items-center justify-between gap-3 p-3">
+      <div className="flex items-start justify-between gap-2 p-2">
         <div className="flex-1 min-w-0 space-y-1">
-          <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
+          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate leading-tight">
             {parsedCustomerName}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-md">
               {size}
             </div>
             {design && (
               <div
-                className="text-xs px-2 py-0.5 rounded-full text-white font-medium"
+                className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-medium shadow-sm"
                 style={{ background: backgroundStyle }}
               >
                 {design}
@@ -100,7 +100,7 @@ export function OrderCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity -mr-1 -mt-1 text-gray-400 hover:text-red-500"
             onClick={onUnschedule}
           >
             <X className="h-3.5 w-3.5" />
@@ -109,13 +109,13 @@ export function OrderCard({
       </div>
 
       {showScheduleButtons && !isScheduled && onSchedule && (
-        <div className="flex gap-1 px-3 pb-3 border-t border-gray-100 dark:border-gray-800 pt-2">
+        <div className="flex gap-1 px-2 pb-2 border-t border-gray-100 dark:border-gray-800 pt-1.5">
           {workDays.map((day) => (
             <Button
               key={day}
-              variant="outline"
+              variant="secondary"
               size="sm"
-              className="text-xs h-7 flex-1 font-medium"
+              className="text-[10px] h-6 flex-1 font-medium px-0 hover:bg-primary hover:text-primary-foreground transition-colors"
               onClick={() => onSchedule(day)}
             >
               {dayAbbr[day]}

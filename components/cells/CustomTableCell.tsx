@@ -31,7 +31,7 @@ export const CustomTableCell = ({
     boolean | null
   >(null);
 
-  const { updateItem, checkDuplicate } = useOrderStore();
+  const { checkDuplicate } = useOrderStore();
 
   useEffect(() => {
     const checkModification = () => {
@@ -65,7 +65,6 @@ export const CustomTableCell = ({
             <DesignDropdownCell
               item={item}
               columnValue={columnValue}
-              onUpdate={updateItem}
             />
           );
         }
@@ -73,7 +72,6 @@ export const CustomTableCell = ({
           <DropdownCell
             item={item}
             columnValue={columnValue}
-            onUpdate={updateItem}
             disableCredit={disableCredit}
           />
         );
@@ -82,7 +80,6 @@ export const CustomTableCell = ({
           <DateCell
             item={item}
             columnValue={columnValue}
-            onUpdate={updateItem}
           />
         );
       case ColumnTypes.Number:
@@ -90,7 +87,6 @@ export const CustomTableCell = ({
           <NumberCell
             item={item}
             columnValue={columnValue}
-            onUpdate={updateItem}
           />
         );
       case ColumnTypes.Text:
@@ -102,7 +98,6 @@ export const CustomTableCell = ({
             <NotesCell
               item={item}
               columnValue={columnValue}
-              onUpdate={updateItem}
             />
           );
         }
@@ -112,11 +107,7 @@ export const CustomTableCell = ({
           return (
             <NameCell
               item={item}
-              columnValue={columnValue}
-              onUpdate={updateItem}
-              onAddTag={() => {}}
-              onRemoveTag={() => {}}
-              initialTags={[]}
+              columnValue={columnValue as any} // Casting as NameCell expects specific shape but Compatible
               tags={{
                 isDuplicate: isDuplicate,
                 isDifficultCustomer: item.tags?.isDifficultCustomer || false,
@@ -130,7 +121,6 @@ export const CustomTableCell = ({
           <TextCell
             item={item}
             columnValue={columnValue}
-            onUpdate={updateItem}
           />
         );
       default:
@@ -138,7 +128,6 @@ export const CustomTableCell = ({
           <TextCell
             item={item}
             columnValue={columnValue}
-            onUpdate={updateItem}
           />
         );
     }

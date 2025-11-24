@@ -18,6 +18,8 @@ import { boardConfig } from "../../config/boardconfig";
 import { DesignBlends, ItemDesignImages } from "@/typings/constants";
 import { toast } from "sonner";
 import { ColumnTitles, ColumnValue, Item } from "@/typings/types";
+import { useOrderStore } from "@/stores/useOrderStore";
+import { useUser } from "@/contexts/UserContext";
 
 const createBackground = (option: string) => {
   const colors = DesignBlends[option as keyof typeof DesignBlends];
@@ -31,18 +33,19 @@ const createBackground = (option: string) => {
 export const DesignDropdownCell = ({
   item,
   columnValue,
-  onUpdate,
   disabled = false,
 }: {
   item: Item;
   columnValue: ColumnValue;
-  onUpdate: (item: Item, columnName: ColumnTitles) => void;
   disabled?: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredDesign, setHoveredDesign] = useState(null);
   const [showPopover, setShowPopover] = useState(false);
   const hoverTimeoutRef = useRef(null);
+
+  const { updateItem } = useOrderStore();
+  const { user } = useUser();
 
   const handleMouseEnter = useCallback((option) => {
     setHoveredDesign(option);
@@ -73,7 +76,7 @@ export const DesignDropdownCell = ({
         ...item,
         design: newValue,
       };
-      onUpdate(updatedItem, columnValue.columnName);
+      await updateItem(updatedItem, columnValue.columnName, user || undefined);
       toast.success("Design updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);

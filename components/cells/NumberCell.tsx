@@ -12,6 +12,8 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { useUser } from "@/contexts/UserContext";
+
 export const NumberCell = ({
   item,
   columnValue,
@@ -22,6 +24,7 @@ export const NumberCell = ({
   const [ratingValue, setRatingValue] = useState(Number(columnValue.text) || 0);
 
   const { updateItem } = useOrderStore();
+  const { user } = useUser();
 
   const handleUpdate = async (newRating) => {
     setRatingValue(newRating);
@@ -30,7 +33,7 @@ export const NumberCell = ({
         ...item,
         rating: newRating.toString(),
       };
-      await updateItem(updatedItem, columnValue.columnName);
+      await updateItem(updatedItem, columnValue.columnName, user || undefined);
       toast.success("Rating updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);

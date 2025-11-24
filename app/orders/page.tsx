@@ -23,10 +23,10 @@ import { useOrderStore } from "@/stores/useOrderStore";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { ShippingDashboard } from "@/components/shipping/ShippingDashboard";
 import { cn } from "@/utils/functions";
-import { useActivities } from "@/hooks/useActivities";
 import { useOrderFiltering } from "@/hooks/useOrderFiltering";
 import { useOrderStats } from "@/hooks/useOrderStats";
 import { ResponsiveOrdersView } from "@/components/orders/ResponsiveOrdersView";
+import { useUser } from "@/contexts/UserContext";
 
 export default function OrderManagementPage() {
   const setSearchQuery = useOrderStore((state) => state.setSearchQuery);
@@ -45,6 +45,8 @@ export default function OrderManagementPage() {
     day: DayName;
     weekKey: string;
   } | null>(null);
+
+  const { user } = useUser();
 
   const handleStartClickToAdd = useCallback((day: DayName, weekKey: string) => {
     if (weekKey === "") {
@@ -95,8 +97,6 @@ export default function OrderManagementPage() {
   const addNewItem = useOrderStore((state) => state.addNewItem);
   const deleteItem = useOrderStore((state) => state.deleteItem);
 
-  const { logActivity } = useActivities();
-
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -144,24 +144,7 @@ export default function OrderManagementPage() {
         completedAt: Date.now(),
       };
 
-      await updateItem(updatedItem);
-
-      await logActivity(
-        itemToUpdate.id!,
-        "status_change",
-        [
-          {
-            field: "status",
-            oldValue: itemToUpdate.status,
-            newValue: ItemStatus.Done,
-          },
-        ],
-        {
-          customerName: itemToUpdate.customerName,
-          design: itemToUpdate.design,
-          size: itemToUpdate.size,
-        }
-      );
+      await updateItem(updatedItem, undefined, user || undefined);
 
       toast.success("Item marked as completed", {
         style: { background: "#10B981", color: "white" },
@@ -174,7 +157,7 @@ export default function OrderManagementPage() {
       setIsConfirmationOpen(false);
       setItemToComplete(null);
     }
-  }, [items, updateItem, itemToComplete]);
+  }, [items, updateItem, itemToComplete, user]);
 
   const onGetLabel = useCallback((item: Item) => {
     setSelectedItem(item);
@@ -211,25 +194,8 @@ export default function OrderManagementPage() {
           completedAt: undefined,
         };
 
-        await updateItem(restoredItem);
+        await updateItem(restoredItem, undefined, user || undefined);
 
-        await logActivity(
-          item.id!,
-          "status_change",
-          [
-            {
-              field: "status",
-              oldValue: item.status,
-              newValue: previousStatus,
-              isRestore: true,
-            },
-          ],
-          {
-            customerName: item.customerName,
-            design: item.design,
-            size: item.size,
-          }
-        );
       } catch (error) {
         console.error("Failed to undo status change:", error);
         toast.error("Failed to undo status change", {
@@ -237,7 +203,7 @@ export default function OrderManagementPage() {
         });
       }
     },
-    [updateItem, logActivity]
+    [updateItem, user]
   );
 
   const handleStatusChange = useCallback(
@@ -255,24 +221,7 @@ export default function OrderManagementPage() {
           completedAt: newStatus === ItemStatus.Done ? Date.now() : undefined,
         };
 
-        await updateItem(updatedItem);
-
-        await logActivity(
-          item.id!,
-          "status_change",
-          [
-            {
-              field: "status",
-              oldValue: previousStatus,
-              newValue: newStatus,
-            },
-          ],
-          {
-            customerName: item.customerName,
-            design: item.design,
-            size: item.size,
-          }
-        );
+        await updateItem(updatedItem, undefined, user || undefined);
 
         toast.success(getStatusChangeMessage(newStatus), {
           style: { background: "#10B981", color: "white" },
@@ -286,7 +235,7 @@ export default function OrderManagementPage() {
         toast.error("Failed to update status");
       }
     },
-    [items, updateItem, logActivity, undoStatusChange]
+    [items, updateItem, undoStatusChange, user]
   );
 
   const undoItemDeletion = useCallback(
@@ -296,25 +245,7 @@ export default function OrderManagementPage() {
           ...item,
           deleted: false,
         };
-        await updateItem(restoredItem);
-
-        await logActivity(
-          item.id,
-          "restore",
-          [
-            {
-              field: "deleted",
-              oldValue: "true",
-              newValue: "false",
-              isRestore: true,
-            },
-          ],
-          {
-            customerName: item.customerName,
-            design: item.design,
-            size: item.size,
-          }
-        );
+        await updateItem(restoredItem, undefined, user || undefined);
 
         toast.success("Item restored");
       } catch (error) {
@@ -324,7 +255,7 @@ export default function OrderManagementPage() {
         });
       }
     },
-    [updateItem, logActivity]
+    [updateItem, user]
   );
 
   const handleDeleteItem = useCallback(
@@ -335,25 +266,7 @@ export default function OrderManagementPage() {
           return;
         }
 
-        await deleteItem(itemId);
-
-        // Log the deletion
-        await logActivity(
-          itemId,
-          "delete",
-          [
-            {
-              field: "deleted",
-              oldValue: "false",
-              newValue: "true",
-            },
-          ],
-          {
-            customerName: itemToDelete.customerName,
-            design: itemToDelete.design,
-            size: itemToDelete.size,
-          }
-        );
+        await deleteItem(itemId, user || undefined);
 
         toast.success("Item deleted", {
           style: { background: "#10B981", color: "white" },
@@ -368,7 +281,7 @@ export default function OrderManagementPage() {
         });
       }
     },
-    [items, deleteItem, undoItemDeletion]
+    [items, deleteItem, undoItemDeletion, user]
   );
 
   useEffect(() => {
@@ -380,26 +293,8 @@ export default function OrderManagementPage() {
 
   const handleAddNewItem = async (newItem: Partial<Item>) => {
     try {
-      const createdItem = await addNewItem(newItem);
+      const createdItem = await addNewItem(newItem, user || undefined);
 
-      if (createdItem?.id) {
-        await logActivity(
-          createdItem.id,
-          "create",
-          [
-            {
-              field: "status",
-              oldValue: "",
-              newValue: ItemStatus.New,
-            },
-          ],
-          {
-            customerName: createdItem.customerName,
-            design: createdItem.design,
-            size: createdItem.size,
-          }
-        );
-      }
     } catch (error) {
       console.error("Failed to add new item:", error);
       toast.error("Failed to add new item", {

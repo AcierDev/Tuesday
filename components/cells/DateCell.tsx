@@ -19,16 +19,19 @@ import {
   Item,
   ItemStatus,
 } from "@/typings/types";
+import { useOrderStore } from "@/stores/useOrderStore";
+import { useUser } from "@/contexts/UserContext";
 
 interface DateCellProps {
   item: Item;
   columnValue: ColumnValue;
-  onUpdate: (item: Item, columnName: ColumnTitles) => void;
 }
 
-export const DateCell = ({ item, columnValue, onUpdate }: DateCellProps) => {
+export const DateCell = ({ item, columnValue }: DateCellProps) => {
   const [date, setDate] = useState<Date | null>(null);
   const { settings } = useOrderSettings();
+  const { updateItem } = useOrderStore();
+  const { user } = useUser();
 
   useEffect(() => {
     if (columnValue.text) {
@@ -54,7 +57,7 @@ export const DateCell = ({ item, columnValue, onUpdate }: DateCellProps) => {
         ...item,
         dueDate: newValue,
       };
-      await onUpdate(updatedItem, columnValue.columnName);
+      await updateItem(updatedItem, columnValue.columnName, user || undefined);
       toast.success("Date updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);

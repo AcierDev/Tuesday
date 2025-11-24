@@ -4,13 +4,17 @@ import { WeeklyScheduleData } from "@/typings/types";
 
 export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const weekKey = searchParams.get("weekKey");
+
     const client = await clientPromise;
     const db = client.db("react-web-app");
     const collection = db.collection<WeeklyScheduleData>(
       `weeklySchedules-${process.env.NEXT_PUBLIC_MODE}`
     );
 
-    const schedules = await collection.find({}).toArray();
+    const query = weekKey ? { weekKey } : {};
+    const schedules = await collection.find(query).toArray();
     return NextResponse.json(schedules);
   } catch (error) {
     return NextResponse.json(

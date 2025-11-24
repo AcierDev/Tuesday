@@ -39,6 +39,8 @@ import {
 import { cn, isPastDue } from "../../utils/functions";
 import { CustomTableCell } from "../cells/CustomTableCell";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { useUser } from "@/contexts/UserContext";
+
 interface ItemGroupPreviewProps {
   group: Group;
   board: Board;
@@ -55,6 +57,7 @@ export const ItemGroupPreview = ({ group, board }: ItemGroupPreviewProps) => {
   const orderSettingsContext = useOrderSettings();
   const settings = orderSettingsContext.settings || {};
   const { updateItem } = useOrderStore();
+  const { user } = useUser();
 
   useEffect(() => {
     setOrderedItems(group.items);
@@ -94,14 +97,14 @@ export const ItemGroupPreview = ({ group, board }: ItemGroupPreviewProps) => {
 
   const handleItemUpdate = useCallback(
     async (updatedItem: Item, changedField: ColumnTitles) => {
-      await updateItem(updatedItem, changedField);
+      await updateItem(updatedItem, changedField, user || undefined);
       setOrderedItems((prevItems) =>
         prevItems.map((item) =>
           item.id === updatedItem.id ? updatedItem : item
         )
       );
     },
-    [updateItem]
+    [updateItem, user]
   );
 
   const toggleFullscreen = () => {
@@ -156,11 +159,12 @@ export const ItemGroupPreview = ({ group, board }: ItemGroupPreviewProps) => {
                 isPastDue(item) && "relative"
               )}
             >
-              {item.values
-                .filter((value) =>
+              {/* NOTE: item.values is deprecated. This component needs refactoring to use flat item structure. */}
+              {(item as any).values
+                ?.filter((value: any) =>
                   visibleColumns.includes(value.columnName as ColumnTitles)
                 )
-                .map((columnValue, cellIndex) => (
+                .map((columnValue: any, cellIndex: number) => (
                   <TableCell
                     key={`${item.id}-${columnValue.columnName}`}
                     className={cn(

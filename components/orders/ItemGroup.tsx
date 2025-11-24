@@ -41,6 +41,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { LoadMoreSentinel } from "./LoadMoreSentinel";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
+import { useUser } from "@/contexts/UserContext";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
 
@@ -93,6 +94,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
   const { schedules, addItemToDay } = useWeeklyScheduleStore();
+  const { user } = useUser();
 
   const loadDoneItems = useOrderStore((state) => state.loadDoneItems);
   const removeDoneItems = useOrderStore((state) => state.removeDoneItems);
@@ -133,7 +135,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       if (updatedItem) {
         console.log("Saving edited item:", updatedItem);
         try {
-          await updateItem(updatedItem);
+          await updateItem(updatedItem, undefined, user || undefined);
           setEditingItem(null);
           console.log("Item updated successfully");
           toast.success("Item updated successfully", {
@@ -147,7 +149,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
         }
       }
     },
-    [updateItem]
+    [updateItem, user]
   );
 
   const handleDelete = useCallback((item: Item) => {
@@ -245,12 +247,12 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       };
 
       try {
-        await updateItem(updatedItem);
+        await updateItem(updatedItem, undefined, user || undefined);
       } catch (error) {
         console.error("Failed to update due date:", error);
       }
     },
-    [sortedItems, updateItem]
+    [sortedItems, updateItem, user]
   );
 
   const handleGroupClick = useCallback(() => {

@@ -18,6 +18,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { useUser } from "@/contexts/UserContext";
+
 export const NotesCell = ({
   item,
   columnValue,
@@ -28,6 +30,7 @@ export const NotesCell = ({
   const [notesValue, setNotesValue] = useState(columnValue.text || "");
 
   const { updateItem } = useOrderStore();
+  const { user } = useUser();
 
   const handleUpdate = async () => {
     try {
@@ -35,7 +38,7 @@ export const NotesCell = ({
         ...item,
         notes: notesValue,
       };
-      await updateItem(updatedItem, columnValue.columnName);
+      await updateItem(updatedItem, columnValue.columnName, user || undefined);
       toast.success("Notes updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);

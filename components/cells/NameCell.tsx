@@ -17,7 +17,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/utils/functions";
 import React from "react";
-import { Item, ColumnValue, ColumnTitles } from "@/typings/types";
+import { Item, ColumnTitles } from "@/typings/types";
+import { useOrderStore } from "@/stores/useOrderStore";
+import { useUser } from "@/contexts/UserContext";
 
 // // Add this style block right after imports
 // const pulseKeyframes = `
@@ -47,7 +49,6 @@ interface NameCellProps {
     text: string;
     columnName: string;
   };
-  onUpdate: (updatedItem: Item, changedField?: ColumnTitles) => Promise<Item>;
   tags?: {
     isDuplicate: boolean;
     isDifficultCustomer: boolean;
@@ -59,7 +60,6 @@ interface NameCellProps {
 export const NameCell: React.FC<NameCellProps> = ({
   item,
   columnValue,
-  onUpdate,
   tags,
 }) => {
   const [inputValue, setInputValue] = useState(columnValue.text || "");
@@ -67,6 +67,9 @@ export const NameCell: React.FC<NameCellProps> = ({
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
   const previousValueRef = useRef(columnValue.text);
+
+  const { updateItem } = useOrderStore();
+  const { user } = useUser();
 
   useEffect(() => {
     if (columnValue.text !== previousValueRef.current) {
@@ -86,14 +89,18 @@ export const NameCell: React.FC<NameCellProps> = ({
         // or pass a separate metadata object if we really need to track lastModified per field.
         // For now, simple update.
       };
-      await onUpdate(updatedItem, ColumnTitles.Customer_Name);
+      await updateItem(
+        updatedItem,
+        ColumnTitles.Customer_Name,
+        user || undefined
+      );
       toast.success("Name updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
       toast.error("Failed to update the name. Please try again.");
       setInputValue(columnValue.text || "");
     }
-  }, [inputValue, columnValue.text, columnValue.columnName, item, onUpdate]);
+  }, [inputValue, columnValue.text, item, updateItem, user]);
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {

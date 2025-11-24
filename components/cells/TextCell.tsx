@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { ColumnValue, Item } from "@/typings/types";
+import { ColumnValue, Item, ColumnTitles } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { useUser } from "@/contexts/UserContext";
+
 // Helper to map column name to property
 const getPropertyKey = (columnName: string): keyof Item | undefined => {
     const fieldMap: Record<string, keyof Item> = {
@@ -23,6 +25,7 @@ export const TextCell = ({
 }) => {
   const [inputValue, setInputValue] = useState(columnValue.text || "");
   const { updateItem } = useOrderStore();
+  const { user } = useUser();
 
   useEffect(() => {
     setInputValue(columnValue.text || "");
@@ -39,7 +42,7 @@ export const TextCell = ({
                 ...item,
                 [key]: inputValue
              };
-             await updateItem(updatedItem, columnValue.columnName);
+             await updateItem(updatedItem, columnValue.columnName, user || undefined);
         } else {
             // Fallback for unknown columns (shouldn't happen with strict types but safe to keep)
              console.warn("Updating unknown column in TextCell:", columnValue.columnName);
