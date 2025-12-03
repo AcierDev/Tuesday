@@ -55,7 +55,7 @@ export class ItemUtil {
     ) {
       const totalArea = SIZE_MULTIPLIERS[size];
       const colorCount = DESIGN_COLOR_NAMES[design].length;
-      const piecesPerColor = Math.ceil(totalArea / colorCount);
+      const piecesPerColor = totalArea / colorCount;
 
       DESIGN_COLOR_NAMES[design].forEach((color) => {
         if (

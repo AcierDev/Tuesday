@@ -166,6 +166,34 @@ const TEMPLATES = [
     orientation: "portrait",
     type: "pdf",
   },
+  {
+    id: 22,
+    name: "2 Panels (Vertical)",
+    src: "/pdf/vertical-2-panels.pdf",
+    orientation: "portrait",
+    type: "pdf",
+  },
+  {
+    id: 23,
+    name: "3 Panels (Vertical)",
+    src: "/pdf/vertical-3-panels.pdf",
+    orientation: "portrait",
+    type: "pdf",
+  },
+  {
+    id: 24,
+    name: "4 Panels (Vertical)",
+    src: "/pdf/vertical-4-panels.pdf",
+    orientation: "portrait",
+    type: "pdf",
+  },
+  {
+    id: 25,
+    name: "5 Panels (Vertical)",
+    src: "/pdf/vertical-5-panes.pdf",
+    orientation: "portrait",
+    type: "pdf",
+  },
 ];
 
 export default function LabelPrinter() {
@@ -366,25 +394,62 @@ export default function LabelPrinter() {
                 </TabsContent>
 
                 <TabsContent value="pdfs" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    {pdfTemplates.map((template) => (
-                      <motion.div
-                        key={template.id}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${
-                          selectedTemplate === template.id
-                            ? "border-blue-500 shadow-lg"
-                            : "border-gray-200 dark:border-gray-700"
-                        }`}
-                        onClick={() => setSelectedTemplate(template.id)}
-                      >
-                        <FileIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                        <div className="text-center font-medium">
-                          {template.name}
-                        </div>
-                      </motion.div>
-                    ))}
+                  <div className="space-y-8">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-300">
+                        Standard
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        {pdfTemplates
+                          .filter((t) => !t.name.includes("(Vertical)"))
+                          .map((template) => (
+                            <motion.div
+                              key={template.id}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${
+                                selectedTemplate === template.id
+                                  ? "border-blue-500 shadow-lg"
+                                  : "border-gray-200 dark:border-gray-700"
+                              }`}
+                              onClick={() => setSelectedTemplate(template.id)}
+                            >
+                              <FileIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                              <div className="text-center font-medium">
+                                {template.name}
+                              </div>
+                            </motion.div>
+                          ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-300">
+                        Vertical
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        {pdfTemplates
+                          .filter((t) => t.name.includes("(Vertical)"))
+                          .map((template) => (
+                            <motion.div
+                              key={template.id}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${
+                                selectedTemplate === template.id
+                                  ? "border-blue-500 shadow-lg"
+                                  : "border-gray-200 dark:border-gray-700"
+                              }`}
+                              onClick={() => setSelectedTemplate(template.id)}
+                            >
+                              <FileIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                              <div className="text-center font-medium">
+                                {template.name}
+                              </div>
+                            </motion.div>
+                          ))}
+                      </div>
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>
