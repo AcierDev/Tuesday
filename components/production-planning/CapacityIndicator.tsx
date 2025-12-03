@@ -11,11 +11,11 @@ interface CapacityIndicatorProps {
 
 export function CapacityIndicator({ current, max, label }: CapacityIndicatorProps) {
   const percentage = Math.min(100, Math.max(0, (current / max) * 100));
-  const isOverCapacity = current > max;
+  const isTargetMet = current >= max;
   
-  let colorClass = "bg-emerald-500";
-  if (isOverCapacity) colorClass = "bg-red-500";
-  else if (percentage >= 80) colorClass = "bg-amber-500";
+  let colorClass = "bg-red-500";
+  if (isTargetMet) colorClass = "bg-emerald-500";
+  else if (percentage >= 90) colorClass = "bg-amber-500";
 
   return (
     <div className="w-full">
@@ -28,7 +28,7 @@ export function CapacityIndicator({ current, max, label }: CapacityIndicatorProp
         <div className="text-xs tabular-nums">
           <span className={cn(
             "font-semibold",
-            isOverCapacity ? "text-red-600" : percentage >= 80 ? "text-amber-600" : "text-gray-700 dark:text-gray-300"
+            isTargetMet ? "text-emerald-600" : percentage >= 90 ? "text-amber-600" : "text-red-600"
           )}>
             {current}
           </span>
@@ -38,7 +38,7 @@ export function CapacityIndicator({ current, max, label }: CapacityIndicatorProp
       <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
         <div
           className={cn("h-full transition-all duration-500 ease-in-out", colorClass)}
-          style={{ width: `${isOverCapacity ? 100 : percentage}%` }}
+          style={{ width: `${current > max ? 100 : percentage}%` }}
         />
       </div>
     </div>

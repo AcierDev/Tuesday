@@ -2,8 +2,7 @@
 
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DayName } from "@/typings/types";
-import { ScheduledOrder } from "@/stores/useProductionPlanningStore";
+import { DayName, ScheduledOrder } from "@/typings/types";
 import { OrderMeta } from "./types";
 import { OrderCard } from "./OrderCard";
 import { cn } from "@/utils/functions";

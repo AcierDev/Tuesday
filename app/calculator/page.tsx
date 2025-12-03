@@ -45,84 +45,7 @@ const BLOCK_SIZE = 3; // Block size in inches
 const DEFAULT_CARD_WIDTH = 480; // Default card width in pixels (increased from 400)
 const DIAGRAM_PADDING = 40; // Padding around the diagram
 
-const PRICE_DATA_POINTS = [
-  { squares: 67, price: 385.0 },
-  { squares: 98, price: 485.0 },
-  { squares: 160, price: 720.0 },
-  { squares: 200, price: 850.0 },
-  { squares: 240, price: 950.0 },
-  { squares: 288, price: 1125.0 },
-  { squares: 336, price: 1225.0 },
-  { squares: 448, price: 1625.0 },
-  { squares: 512, price: 1825.0 },
-  { squares: 576, price: 2025.0 },
-];
-
-const interpolatePrice = (
-  squares: number,
-  points: typeof PRICE_DATA_POINTS
-): number => {
-  console.log(`Interpolating price for ${squares} squares`);
-
-  // First, check for exact match
-  const exactMatch = points.find((point) => point.squares === squares);
-  if (exactMatch) {
-    console.log(`Found exact match: $${exactMatch.price}`);
-    return exactMatch.price;
-  }
-
-  // If below the smallest size, use the smallest price
-  if (squares < points[0].squares) {
-    return points[0].price;
-  }
-
-  // If above the largest size, calculate based on the last two points
-  if (squares > points[points.length - 1].squares) {
-    const lastPoint = points[points.length - 1];
-    const secondLastPoint = points[points.length - 2];
-
-    // Calculate the price per square for the last two points
-    const lastPricePerSquare = lastPoint.price / lastPoint.squares;
-    const secondLastPricePerSquare =
-      secondLastPoint.price / secondLastPoint.squares;
-
-    // Use the average price per square of the last two points
-    const averagePricePerSquare =
-      (lastPricePerSquare + secondLastPricePerSquare) / 2;
-
-    // Calculate the final price
-    const finalPrice = squares * averagePricePerSquare;
-
-    console.log(`Extrapolated price: $${finalPrice}`);
-    return finalPrice;
-  }
-
-  // For sizes between data points, use linear interpolation
-  for (let i = 1; i < points.length; i++) {
-    const lower = points[i - 1];
-    const upper = points[i];
-    if (!upper || !lower) continue;
-
-    if (squares < upper.squares) {
-      const proportion =
-        (squares - lower.squares) / (upper.squares - lower.squares);
-      const interpolatedPrice =
-        lower.price + proportion * (upper.price - lower.price);
-      console.log(
-        `Interpolated between ${lower.squares} ($${lower.price}) and ${upper.squares} ($${upper.price})`
-      );
-      console.log(
-        `Proportion: ${proportion}, Final price: $${interpolatedPrice}`
-      );
-      return interpolatedPrice;
-    }
-  }
-
-  // Fallback to last price if all else fails
-  const fallbackPrice = points[points.length - 1]?.price ?? 0;
-  console.log(`Using fallback price: $${fallbackPrice}`);
-  return fallbackPrice;
-};
+const FIXED_PRICE_PER_BLOCK = 3.9;
 
 export default function CustomArtRequest() {
   const [formData, setFormData] = useState({
@@ -173,8 +96,8 @@ export default function CustomArtRequest() {
     const weightInGrams = totalBlocks * 96;
     const weightInPounds = weightInGrams / 453.592; // Convert grams to pounds
 
-    // Calculate base price using interpolation
-    const basePrice = interpolatePrice(totalBlocks, PRICE_DATA_POINTS);
+    // Calculate base price using fixed rate
+    const basePrice = totalBlocks * FIXED_PRICE_PER_BLOCK;
 
     // Calculate shipping
     const baseShipping = 0;

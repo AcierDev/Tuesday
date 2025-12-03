@@ -1,9 +1,9 @@
 import { Item, ColumnTitles, ItemDesigns } from "@/typings/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
-import { renderColorBox } from "../paint/RenderColorBox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { ItemUtil } from "@/utils/ItemUtil";
+
 interface PaintRequirementsDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -11,6 +11,35 @@ interface PaintRequirementsDialogProps {
   dayTitle: string;
   getItemValue: (item: Item, columnName: ColumnTitles) => string;
 }
+
+const renderColorBox = (
+  design: ItemDesigns,
+  color: string,
+  pieces: number,
+  isSmall: boolean
+) => {
+  return (
+    <div
+      key={`${design}-${color}`}
+      className="flex flex-col items-center justify-center p-2 border rounded-md bg-white dark:bg-gray-700 shadow-sm"
+    >
+      <div
+        className="w-8 h-8 rounded-full mb-2 border border-gray-200 dark:border-gray-600"
+        style={{ backgroundColor: color.toLowerCase() }}
+        title={color}
+      />
+      <span
+        className="text-sm font-medium text-center truncate w-full"
+        title={color}
+      >
+        {color}
+      </span>
+      <span className="text-xs text-gray-500 dark:text-gray-400">
+        {pieces} pcs
+      </span>
+    </div>
+  );
+};
 
 export function PaintRequirementsDialog({
   isOpen,
@@ -25,8 +54,21 @@ export function PaintRequirementsDialog({
     items,
   });
 
+  // Transform flat requirements to nested structure
+  const nestedRequirements: Record<string, Record<string, number>> = {};
+
+  Object.entries(requirements).forEach(([key, count]) => {
+    const [design, ...colorParts] = key.split("-");
+    const color = colorParts.join("-");
+
+    if (!nestedRequirements[design]) {
+      nestedRequirements[design] = {};
+    }
+    nestedRequirements[design]![color] = count;
+  });
+
   // Filter out empty requirements
-  const filteredRequirements = Object.entries(requirements).filter(
+  const filteredRequirements = Object.entries(nestedRequirements).filter(
     ([_, colors]) => Object.keys(colors).length > 0
   );
 

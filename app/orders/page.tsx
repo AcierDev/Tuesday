@@ -97,6 +97,32 @@ export default function OrderManagementPage() {
   const addNewItem = useOrderStore((state) => state.addNewItem);
   const deleteItem = useOrderStore((state) => state.deleteItem);
 
+  const [sortColumn, setSortColumn] = useState<ColumnTitles | null>(
+    ColumnTitles.Due
+  );
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(
+    "desc"
+  );
+
+  const handleSort = useCallback(
+    (column: ColumnTitles) => {
+      if (sortColumn === column) {
+        if (sortDirection === "asc") {
+          setSortDirection("desc");
+        } else if (sortDirection === "desc") {
+          setSortDirection(null);
+          setSortColumn(null);
+        } else {
+          setSortDirection("asc");
+        }
+      } else {
+        setSortColumn(column);
+        setSortDirection("asc");
+      }
+    },
+    [sortColumn, sortDirection]
+  );
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -350,6 +376,9 @@ export default function OrderManagementPage() {
                 isDoneLoading={isDoneLoading}
                 clickToAddTarget={clickToAddTarget}
                 onItemClick={handleItemClick}
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
               />
             </div>
             <div

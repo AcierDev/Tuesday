@@ -2,8 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { DayName } from "@/typings/types";
-import { ScheduledOrder } from "@/stores/useProductionPlanningStore";
+import { DayName, ScheduledOrder } from "@/typings/types";
 import { OrderMeta } from "./types";
 import { DraggableOrderCard } from "./DraggableOrderCard";
 import { CapacityIndicator } from "./CapacityIndicator";
@@ -17,6 +16,7 @@ interface DroppableDayColumnProps {
   totalBlocks: number;
   capacity: number;
   onUnschedule: (itemId: string) => void;
+  date: Date;
 }
 
 export function DroppableDayColumn({
@@ -27,6 +27,7 @@ export function DroppableDayColumn({
   totalBlocks,
   capacity,
   onUnschedule,
+  date,
 }: DroppableDayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: day,
@@ -72,6 +73,7 @@ export function DroppableDayColumn({
                     isScheduled
                     scheduledDay={day}
                     onUnschedule={() => onUnschedule(order.itemId)}
+                    referenceDate={date}
                   />
                 );
               })}

@@ -11,11 +11,8 @@ import {
 } from "../typings/types";
 import { Badge } from "@/components/ui/badge";
 import {
-  format,
   addDays,
-  isWithinInterval,
   isBefore,
-  isToday,
   isEqual,
   parseISO,
   isAfter,
@@ -390,3 +387,83 @@ export function calculateAmountRequiredPerColor(
 ) {
   return SIZE_MULTIPLIERS[size] / DESIGN_COLOR_NAMES[design]?.length || 1;
 }
+
+export type BadgeStatus = {
+  text: string;
+  classes: string;
+};
+
+export const getDueDateStatus = (
+  dueDate: Date | null,
+  useNumber: boolean,
+  scheduledDate?: Date
+): BadgeStatus => {
+  if (!dueDate) {
+    return {
+      text: "?",
+      classes: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
+    };
+  }
+
+  const referenceDate = scheduledDate || new Date();
+  referenceDate.setHours(0, 0, 0, 0);
+  const dueDateStart = new Date(dueDate);
+  dueDateStart.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.ceil(
+    (dueDateStart.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (diffDays < 0) {
+    return {
+      text: useNumber
+        ? diffDays.toString()
+        : diffDays === -1
+        ? "Yesterday"
+        : diffDays === -2
+        ? "2 days ago"
+        : diffDays > -7 // Less than a week ago
+        ? "3+ days ago"
+        : diffDays > -30 // Less than a month ago
+        ? "Week+ ago"
+        : "Month+ ago",
+      classes: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    };
+  } else if (diffDays === 0) {
+    return {
+      text: useNumber ? "0" : "Today",
+      classes:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    };
+  } else if (diffDays === 1) {
+    return {
+      text: useNumber ? "+1" : "Tomorrow",
+      classes:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    };
+  } else if (diffDays === 2) {
+    return {
+      text: useNumber ? "+2" : "2 days",
+      classes:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    };
+  } else if (diffDays < 7) {
+    return {
+      text: useNumber ? `+${diffDays}` : "3+ days",
+      classes:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    };
+  } else if (diffDays < 30) {
+    return {
+      text: useNumber ? `+${diffDays}` : "Week+",
+      classes:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    };
+  } else {
+    return {
+      text: useNumber ? `+${diffDays}` : "Month+",
+      classes:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    };
+  }
+};

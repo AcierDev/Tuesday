@@ -16,6 +16,12 @@ export type WeeklyTaskSchedule = {
   [day in DayName]: DailyTask[];
 };
 
+export interface ScheduledOrder {
+  itemId: string;
+  weekKey: string;
+  day: DayName;
+}
+
 export interface WeeklyScheduleData {
   _id?: string;
   weekKey: string;

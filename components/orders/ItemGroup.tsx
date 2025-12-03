@@ -62,6 +62,9 @@ interface ItemGroupProps {
   defaultCollapsed?: boolean;
   clickToAddTarget?: { day: DayName; weekKey: string } | null;
   onItemClick?: (item: Item) => Promise<void>;
+  sortColumn: ColumnTitles | null;
+  sortDirection: "asc" | "desc" | null;
+  onSort: (column: ColumnTitles) => void;
 }
 
 export const ItemGroupSection = memo(function ItemGroupSection({
@@ -76,15 +79,14 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   defaultCollapsed = true,
   clickToAddTarget,
   onItemClick,
+  sortColumn,
+  sortDirection,
+  onSort,
   ...props
 }: ItemGroupProps) {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [deletingItem, setDeletingItem] = useState<Item | null>(null);
   const { settings } = useOrderSettings();
-  const [sortColumn, setSortColumn] = useState<ColumnTitles | null>(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(
-    null
-  );
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -165,25 +167,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       setDeletingItem(null);
     }
   }, [deletingItem, onDelete]);
-
-  const handleSort = useCallback(
-    (column: ColumnTitles) => {
-      if (sortColumn === column) {
-        if (sortDirection === "asc") {
-          setSortDirection("desc");
-        } else if (sortDirection === "desc") {
-          setSortDirection(null);
-          setSortColumn(null);
-        } else {
-          setSortDirection("asc");
-        }
-      } else {
-        setSortColumn(column);
-        setSortDirection("asc");
-      }
-    },
-    [sortColumn, sortDirection]
-  );
 
   const handleContextMenu = useCallback((e: React.MouseEvent, item: Item) => {
     e.preventDefault();
@@ -394,7 +377,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                         <Button
                           className="h-8 flex items-center justify-center gap-2 w-full text-gray-900 dark:text-gray-400"
                           variant="ghost"
-                          onClick={() => handleSort(columnName)}
+                          onClick={() => onSort(columnName)}
                         >
                           <span>{columnName}</span>
                           {settings.showSortingIcons ? (
@@ -471,7 +454,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                       <Button
                         className="h-8 flex items-center justify-between w-full"
                         variant="ghost"
-                        onClick={() => handleSort(columnName)}
+                        onClick={() => onSort(columnName)}
                       >
                         {columnName}
                         {settings.showSortingIcons ? (

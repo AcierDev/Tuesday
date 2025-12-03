@@ -1,7 +1,6 @@
 "use client";
-
 import { useEffect, useState, memo } from "react";
-import { ItemStatus, type Group, type Item, DayName } from "@/typings/types";
+import { ItemStatus, type Group, type Item, DayName, ColumnTitles } from "@/typings/types";
 import { ItemGroupSection } from "./ItemGroup";
 import { useUser } from "@/contexts/UserContext";
 import { getUserPermissions } from "@/app/actions/auth";
@@ -19,6 +18,9 @@ interface ItemListProps {
   isDoneLoading: boolean;
   clickToAddTarget?: { day: DayName; weekKey: string } | null;
   onItemClick?: (item: Item) => Promise<void>;
+  sortColumn: ColumnTitles | null;
+  sortDirection: "asc" | "desc" | null;
+  onSort: (column: ColumnTitles) => void;
 }
 
 export const ItemList = memo(function ItemList({
@@ -31,6 +33,9 @@ export const ItemList = memo(function ItemList({
   doneItems,
   clickToAddTarget,
   onItemClick,
+  sortColumn,
+  sortDirection,
+  onSort,
 }: ItemListProps) {
   const { user } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -77,6 +82,9 @@ export const ItemList = memo(function ItemList({
               }
               clickToAddTarget={clickToAddTarget}
               onItemClick={onItemClick}
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={onSort}
             />
           </div>
         ))}
@@ -92,6 +100,9 @@ export const ItemList = memo(function ItemList({
           defaultCollapsed={true}
           clickToAddTarget={clickToAddTarget}
           onItemClick={onItemClick}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSort={onSort}
         />
       </div>
     </div>

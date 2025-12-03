@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   addWeeks,
   subWeeks,
@@ -11,19 +11,18 @@ import {
   startOfDay,
   startOfWeek,
   addDays,
+  parseISO,
 } from "date-fns";
 import { toast } from "sonner";
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
   pointerWithin,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   DragStartEvent,
-  DragOverEvent,
   DragEndEvent,
   defaultDropAnimationSideEffects,
   DropAnimation,
@@ -33,12 +32,11 @@ import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { ProductionPlanningHeader } from "@/components/production-planning/ProductionPlanningHeader";
 import { ProductionPlanningSidebar } from "@/components/production-planning/ProductionPlanningSidebar";
 import { DroppableDayColumn } from "@/components/production-planning/DroppableDayColumn";
-import { DraggableOrderCard } from "@/components/production-planning/DraggableOrderCard";
 import { OrderCard } from "@/components/production-planning/OrderCard";
 import { OrderMeta } from "@/components/production-planning/types";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { useProductionPlanningStore } from "@/stores/useProductionPlanningStore";
-import { DayName } from "@/typings/types";
+import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
+import { DayName, WeeklyScheduleData, ScheduledOrder } from "@/typings/types";
 
 function calculateBlocks(item: { size?: string }): number {
   const sizeStr = item.size || "";
@@ -80,17 +78,35 @@ const dropAnimation: DropAnimation = {
 export default function ProductionPlanningPage() {
   const { items } = useOrderStore();
   const {
-    scheduledOrders,
-    currentWeekKey,
-    scheduleOrder,
-    unscheduleOrder,
+    schedules,
+    currentWeek,
     setCurrentWeek,
-    clearWeek,
-    moveOrder,
-    reorderDay,
-  } = useProductionPlanningStore();
+    updateSchedule,
+    createWeek,
+    removeItemFromDay,
+    fetchSchedules,
+  } = useWeeklyScheduleStore();
 
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Initialize current week if not set
+  useEffect(() => {
+    if (!currentWeek) {
+      const today = new Date();
+      const weekKey = format(startOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
+      setCurrentWeek(weekKey);
+    }
+  }, [currentWeek, setCurrentWeek]);
+
+  // Ensure schedules are fetched
+  useEffect(() => {
+    fetchSchedules();
+  }, [fetchSchedules]);
+
+  const currentWeekKey = useMemo(() => {
+    if (currentWeek) return currentWeek;
+    return format(startOfWeek(new Date(), { weekStartsOn: 0 }), "yyyy-MM-dd");
+  }, [currentWeek]);
 
   const today = useMemo(() => startOfDay(new Date()), []);
   
@@ -100,12 +116,15 @@ export default function ProductionPlanningPage() {
   const todayNextWeekStart = useMemo(() => addWeeks(todayWeekStart, 1), [todayWeekStart]);
   const todayNextWeekEnd = useMemo(() => endOfWeek(todayNextWeekStart, { weekStartsOn: 0 }), [todayNextWeekStart]);
 
-  const currentWeekStart = useMemo(() => startOfWeek(new Date(currentWeekKey), { weekStartsOn: 0 }), [currentWeekKey]);
+  const currentWeekStart = useMemo(() => startOfWeek(parseISO(currentWeekKey), { weekStartsOn: 0 }), [currentWeekKey]);
   const currentWeekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 0 }), [currentWeekStart]);
 
   // Filter orders
   const availableOrders = useMemo(
-    () => items.filter(item => !item.deleted), // Show all non-deleted items for now, or filter by status if needed
+    () => items.filter(item => 
+      !item.deleted && 
+      (item.status === "New" || item.status === "On Deck")
+    ),
     [items]
   );
 
@@ -139,14 +158,22 @@ export default function ProductionPlanningPage() {
     return { metaList, metaById };
   }, [availableOrders, today, todayWeekEnd, todayNextWeekStart, todayNextWeekEnd]);
 
-  // Scheduled items for current week
+  // Get current schedule
+  const currentSchedule = useMemo(() => 
+    schedules.find(s => s.weekKey === currentWeekKey),
+    [schedules, currentWeekKey]
+  );
+
+  // Scheduled items for all weeks
   const scheduledItemIds = useMemo(() => {
     const ids = new Set<string>();
-    scheduledOrders.forEach((order) => {
-      if (order.weekKey === currentWeekKey) ids.add(order.itemId);
+    schedules.forEach((schedule) => {
+      Object.values(schedule.schedule).forEach((dayItems) => {
+        dayItems.forEach((item) => ids.add(item.id));
+      });
     });
     return ids;
-  }, [scheduledOrders, currentWeekKey]);
+  }, [schedules]);
 
   // Unscheduled orders
   const unscheduledOrders = useMemo(
@@ -156,7 +183,7 @@ export default function ProductionPlanningPage() {
 
   // Group scheduled orders by day
   const dayGroups = useMemo(() => {
-    const groups: Record<DayName, { orders: any[]; totalBlocks: number }> = {
+    const groups: Record<DayName, { orders: ScheduledOrder[]; totalBlocks: number }> = {
       Sunday: { orders: [], totalBlocks: 0 },
       Monday: { orders: [], totalBlocks: 0 },
       Tuesday: { orders: [], totalBlocks: 0 },
@@ -166,18 +193,27 @@ export default function ProductionPlanningPage() {
       Saturday: { orders: [], totalBlocks: 0 },
     };
 
-    scheduledOrders.forEach((scheduled) => {
-      if (scheduled.weekKey === currentWeekKey && groups[scheduled.day]) {
-        const meta = baseData.metaById.get(scheduled.itemId);
-        if (meta) {
-          groups[scheduled.day].orders.push(scheduled);
-          groups[scheduled.day].totalBlocks += meta.blocks;
+    if (currentSchedule) {
+      Object.entries(currentSchedule.schedule).forEach(([day, items]) => {
+        const dayName = day as DayName;
+        if (groups[dayName]) {
+          items.forEach(item => {
+            const meta = baseData.metaById.get(item.id);
+            if (meta) {
+              groups[dayName].orders.push({ 
+                itemId: item.id,
+                weekKey: currentWeekKey,
+                day: dayName
+              });
+              groups[dayName].totalBlocks += meta.blocks;
+            }
+          });
         }
-      }
-    });
+      });
+    }
 
     return groups;
-  }, [scheduledOrders, currentWeekKey, baseData.metaById]);
+  }, [currentSchedule, baseData.metaById, currentWeekKey]);
 
   // Stats
   const stats = useMemo(() => {
@@ -216,8 +252,11 @@ export default function ProductionPlanningPage() {
     if (id === "unscheduled") return "unscheduled";
 
     // Check scheduled orders
-    const scheduled = scheduledOrders.find(o => o.itemId === id && o.weekKey === currentWeekKey);
-    if (scheduled) return scheduled.day;
+    if (currentSchedule) {
+      for (const [day, items] of Object.entries(currentSchedule.schedule)) {
+        if (items.find(i => i.id === id)) return day as DayName;
+      }
+    }
 
     // Check if it's a day column ID
     if (DAYS.includes(id as DayName)) return id as DayName;
@@ -229,7 +268,7 @@ export default function ProductionPlanningPage() {
     setActiveId(event.active.id as string);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     const activeId = active.id as string;
     const overId = over?.id as string;
@@ -250,7 +289,7 @@ export default function ProductionPlanningPage() {
     // 1. Drop on Unscheduled (Sidebar)
     if (overContainer === "unscheduled") {
       if (activeContainer !== "unscheduled") {
-        unscheduleOrder(activeId);
+        await removeItemFromDay(currentWeekKey, activeContainer as DayName, activeId);
       }
       setActiveId(null);
       return;
@@ -259,39 +298,74 @@ export default function ProductionPlanningPage() {
     // 2. Drop on a Day Column
     const targetDay = overContainer as DayName;
     
+    // We need to construct the new schedule
+    let newScheduleData: WeeklyScheduleData;
+
+    if (!currentSchedule) {
+      // Initialize if it doesn't exist
+      newScheduleData = {
+        weekKey: currentWeekKey,
+        schedule: {
+          Sunday: [],
+          Monday: [],
+          Tuesday: [],
+          Wednesday: [],
+          Thursday: [],
+          Friday: [],
+          Saturday: [],
+        }
+      };
+      try {
+        await createWeek(currentWeekKey);
+      } catch (e) {
+        console.error("Failed to create week", e);
+        return;
+      }
+    } else {
+      newScheduleData = JSON.parse(JSON.stringify(currentSchedule));
+    }
+
     // Moving from Unscheduled to Day
     if (activeContainer === "unscheduled") {
-      // Calculate index if dropped over a specific item
-      let newIndex = dayGroups[targetDay].orders.length;
+      const newItem = { id: activeId, done: false };
+      
+      // Calculate index
+      let newIndex = newScheduleData.schedule[targetDay].length;
       if (overId !== targetDay) {
-         const overIndex = dayGroups[targetDay].orders.findIndex(o => o.itemId === overId);
+         const overIndex = newScheduleData.schedule[targetDay].findIndex(item => item.id === overId);
          if (overIndex !== -1) newIndex = overIndex;
       }
       
-      moveOrder(activeId, currentWeekKey, targetDay, newIndex);
+      // Insert
+      newScheduleData.schedule[targetDay].splice(newIndex, 0, newItem);
     } 
     // Moving between days or reordering within day
     else {
       const activeDay = activeContainer as DayName;
-      const activeIndex = dayGroups[activeDay].orders.findIndex(o => o.itemId === activeId);
+      const activeIndex = newScheduleData.schedule[activeDay].findIndex(item => item.id === activeId);
       
+      if (activeIndex === -1) return; // Should not happen
+
+      // Remove from old
+      const deletedItems = newScheduleData.schedule[activeDay].splice(activeIndex, 1);
+      const movedItem = deletedItems[0];
+
+      if (!movedItem) return;
+
       let overIndex;
       if (overId === targetDay) {
-        overIndex = dayGroups[targetDay].orders.length;
+        overIndex = newScheduleData.schedule[targetDay].length;
       } else {
-        overIndex = dayGroups[targetDay].orders.findIndex(o => o.itemId === overId);
+        overIndex = newScheduleData.schedule[targetDay].findIndex(item => item.id === overId);
       }
 
-      if (activeDay !== targetDay) {
-        // Move to different day
-        moveOrder(activeId, currentWeekKey, targetDay, overIndex >= 0 ? overIndex : undefined);
-      } else if (activeIndex !== overIndex) {
-        // Reorder within same day
-        const oldOrders = dayGroups[activeDay].orders.map(o => o.itemId);
-        const newOrders = arrayMove(oldOrders, activeIndex, overIndex);
-        reorderDay(currentWeekKey, activeDay, newOrders);
-      }
+      if (overIndex === -1) overIndex = newScheduleData.schedule[targetDay].length;
+
+      // Insert into new
+      newScheduleData.schedule[targetDay].splice(overIndex, 0, movedItem);
     }
+
+    await updateSchedule(currentWeekKey, newScheduleData);
 
     setActiveId(null);
   };
@@ -315,22 +389,36 @@ export default function ProductionPlanningPage() {
             currentWeekStart={currentWeekStart}
             currentWeekEnd={currentWeekEnd}
             isCurrentWeek={currentWeekKey === format(startOfWeek(new Date(), { weekStartsOn: 0 }), "yyyy-MM-dd")}
-            hasScheduledOrders={scheduledOrders.some(o => o.weekKey === currentWeekKey)}
+            hasScheduledOrders={!!currentSchedule}
             stats={stats}
             onPreviousWeek={() => {
-                const prev = subWeeks(new Date(currentWeekKey), 1);
+                const prev = subWeeks(parseISO(currentWeekKey), 1);
                 setCurrentWeek(format(startOfWeek(prev, { weekStartsOn: 0 }), "yyyy-MM-dd"));
             }}
             onNextWeek={() => {
-                const next = addWeeks(new Date(currentWeekKey), 1);
+                const next = addWeeks(parseISO(currentWeekKey), 1);
                 setCurrentWeek(format(startOfWeek(next, { weekStartsOn: 0 }), "yyyy-MM-dd"));
             }}
             onToday={() => {
                 setCurrentWeek(format(startOfWeek(new Date(), { weekStartsOn: 0 }), "yyyy-MM-dd"));
             }}
             onClearWeek={() => {
-                clearWeek();
-                toast.success("Week cleared");
+                if (currentSchedule) {
+                    const clearedSchedule = {
+                        ...currentSchedule,
+                        schedule: {
+                            Sunday: [],
+                            Monday: [],
+                            Tuesday: [],
+                            Wednesday: [],
+                            Thursday: [],
+                            Friday: [],
+                            Saturday: [],
+                        }
+                    };
+                    updateSchedule(currentWeekKey, clearedSchedule);
+                    toast.success("Week cleared");
+                }
             }}
           />
 
@@ -338,9 +426,6 @@ export default function ProductionPlanningPage() {
             <div className="flex gap-4 h-full min-w-[1000px]">
               {DAYS.map((day) => {
                 // Calculate date for this day
-                // Week starts on Sunday (0). Monday is 1.
-                // DAYS array is [Monday, Tuesday...]
-                // So index 0 -> Monday -> +1 day from startOfWeek
                 const dayIndex = DAYS.indexOf(day) + 1;
                 const date = addDays(currentWeekStart, dayIndex);
 
@@ -353,7 +438,8 @@ export default function ProductionPlanningPage() {
                       ordersById={baseData.metaById}
                       totalBlocks={dayGroups[day].totalBlocks}
                       capacity={1000}
-                      onUnschedule={unscheduleOrder}
+                      onUnschedule={(id) => removeItemFromDay(currentWeekKey, day, id)}
+                      date={date}
                     />
                   </div>
                 );
@@ -368,7 +454,7 @@ export default function ProductionPlanningPage() {
           <div className="opacity-80 rotate-2 cursor-grabbing">
             <OrderCard
               meta={activeMeta}
-              isScheduled={true} // Or derive from activeContainer
+              isScheduled={true} 
             />
           </div>
         ) : null}

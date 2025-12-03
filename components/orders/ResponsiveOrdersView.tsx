@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MobileOrderView from "./mobile/MobileOrderView";
 import { ItemList } from "./ItemList";
-import { Group, Item, ItemStatus, DayName } from "@/typings/types";
+import { Group, Item, ItemStatus, DayName, ColumnTitles } from "@/typings/types";
 
 interface ResponsiveOrdersViewProps {
   groups: Group[];
@@ -16,6 +16,9 @@ interface ResponsiveOrdersViewProps {
   isDoneLoading: boolean;
   clickToAddTarget?: { day: DayName; weekKey: string } | null;
   onItemClick?: (item: Item) => Promise<void>;
+  sortColumn: ColumnTitles | null;
+  sortDirection: "asc" | "desc" | null;
+  onSort: (column: ColumnTitles) => void;
 }
 
 export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
@@ -31,6 +34,9 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
   isDoneLoading,
   clickToAddTarget,
   onItemClick,
+  sortColumn,
+  sortDirection,
+  onSort,
 }) => {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -84,6 +90,9 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
           onShip={onShip}
           clickToAddTarget={clickToAddTarget}
           onItemClick={onItemClick}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSort={onSort}
         />
       )}
     </div>

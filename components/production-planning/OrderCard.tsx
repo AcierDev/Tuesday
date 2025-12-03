@@ -4,11 +4,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ColumnTitles, DayName } from "@/typings/types";
 import { OrderMeta, DueBucket } from "./types";
-import { cn } from "@/utils/functions";
+import { cn, getDueDateStatus } from "@/utils/functions";
 import { X } from "lucide-react";
 import { DesignBlends } from "@/typings/constants";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
 import { useTheme } from "next-themes";
+import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 
 interface OrderCardProps {
   meta: OrderMeta;
@@ -17,6 +18,7 @@ interface OrderCardProps {
   onSchedule?: (day: DayName) => void;
   onUnschedule?: () => void;
   showScheduleButtons?: boolean;
+  referenceDate?: Date;
 }
 
 const bucketColors: Record<DueBucket, string> = {
@@ -54,8 +56,10 @@ export function OrderCard({
   onSchedule,
   onUnschedule,
   showScheduleButtons = false,
+  referenceDate,
 }: OrderCardProps) {
   const { theme } = useTheme();
+  const { settings } = useOrderSettings();
   const isDark = theme === "dark";
 
   const size = meta.item.size || "N/A";
@@ -67,6 +71,15 @@ export function OrderCard({
 
   // Parse customer name with Minecraft colors
   const parsedCustomerName = parseMinecraftColors(customerName, isDark);
+
+  // Calculate badge status
+  const badgeStatus = meta.item.dueDate
+    ? getDueDateStatus(
+        new Date(meta.item.dueDate),
+        true, // useNumber
+        referenceDate
+      )
+    : null;
 
   return (
     <Card
@@ -91,6 +104,16 @@ export function OrderCard({
                 style={{ background: backgroundStyle }}
               >
                 {design}
+              </div>
+            )}
+            {badgeStatus && (
+              <div
+                className={cn(
+                  "text-[10px] px-1.5 py-0.5 rounded-full font-medium border",
+                  badgeStatus.classes
+                )}
+              >
+                {badgeStatus.text}
               </div>
             )}
           </div>
@@ -126,4 +149,3 @@ export function OrderCard({
     </Card>
   );
 }
-
