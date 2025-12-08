@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -29,7 +30,7 @@ interface CostBreakdown {
     additionalHeight: number;
     total: number;
   };
-  tax: number;
+
   total: number;
   weight: {
     grams: number;
@@ -61,7 +62,6 @@ export default function CustomArtRequest() {
       additionalHeight: 0,
       total: 0,
     },
-    tax: 0,
     total: 0,
     weight: {
       grams: 0,
@@ -109,12 +109,8 @@ export default function CustomArtRequest() {
     const totalShipping =
       baseShipping + additionalHeightCharge;
 
-    // Calculate tax
-    const taxRate = 0.1;
-    const tax = (basePrice + totalShipping) * taxRate;
-
     // Calculate total
-    const total = basePrice + totalShipping + tax;
+    const total = basePrice + totalShipping;
 
     return {
       basePrice,
@@ -123,7 +119,6 @@ export default function CustomArtRequest() {
         additionalHeight: additionalHeightCharge,
         total: totalShipping,
       },
-      tax,
       total,
       weight: {
         grams: weightInGrams,
@@ -144,7 +139,6 @@ export default function CustomArtRequest() {
       setCostBreakdown({
         basePrice: 0,
         shipping: { base: 0, additionalHeight: 0, total: 0 },
-        tax: 0,
         total: 0,
         weight: { grams: 0, pounds: 0 },
       });
@@ -215,161 +209,218 @@ export default function CustomArtRequest() {
     );
   };
 
+  const standardSizeCosts = React.useMemo(() => {
+    return Object.values(ItemSizes).map((size) => {
+      const [widthBlocks = 0, heightBlocks = 0] = size
+        .split(" x ")
+        .map((s) => parseInt(s));
+      // Note: handleSizeSelect logic implies:
+      // width = first part * BLOCK_SIZE
+      // height = second part * BLOCK_SIZE
+      // calculateCost takes (h, w)
+      const widthInches = widthBlocks * BLOCK_SIZE;
+      const heightInches = heightBlocks * BLOCK_SIZE;
+      
+      // We need to be careful with width vs height mapping.
+      // In handleSizeSelect:
+      // const [width = "0", height = "0"] = size.split(" x ")...
+      // So first number is Width, second is Height.
+      
+      const cost = calculateCost(heightInches, widthInches);
+      
+      const minDim = Math.min(widthInches, heightInches);
+      const maxDim = Math.max(widthInches, heightInches);
+      const maxDimFeet = parseFloat((maxDim / 12).toFixed(2));
+      
+      return {
+        size,
+        cost: cost.total,
+        label: `${minDim}" x ${maxDimFeet} Feet`,
+      };
+    });
+  }, []);
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4">
-      <Card
-        ref={cardRef}
-        className="w-full mx-auto bg-[#1a1f2b]/95 border-gray-800 backdrop-blur-sm"
-        style={{
-          maxWidth: `${DEFAULT_CARD_WIDTH}px`,
-        }}
-      >
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            Custom Art Request
-          </CardTitle>
-          <CardDescription className="text-gray-400">
-            Enter the dimensions for your custom art piece
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid w-full items-center gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="size-select" className="text-gray-300">
-                  Select Size
-                </Label>
-                <Select
-                  value={formData.selectedSize}
-                  onValueChange={handleSizeSelect}
-                >
-                  <SelectTrigger
-                    id="size-select"
-                    className="bg-gray-800 border-gray-700"
+    <div className="min-h-screen w-full flex items-start justify-center p-8 pt-12">
+      <div className="flex flex-col lg:flex-row gap-8 w-full max-w-5xl items-start justify-center">
+        {/* Standard Sizes Sidebar */}
+        <Card className="w-full lg:w-72 bg-[#1a1f2b]/95 border-gray-800 backdrop-blur-sm shrink-0 lg:sticky lg:top-8">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg font-bold text-gray-200">
+              Standard Sizes
+            </CardTitle>
+            <CardDescription className="text-gray-400 text-xs">
+              Quick select a standard configuration
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 lg:grid-cols-1 gap-2.5">
+            {standardSizeCosts.map((item) => (
+              <Button
+                key={item.size}
+                variant="outline"
+                className="justify-start bg-gray-800/50 border-gray-700 hover:bg-gray-700 hover:text-white h-auto py-3 px-4 w-full"
+                onClick={() => handleSizeSelect(item.size)}
+              >
+                <div className="flex flex-col items-start text-left gap-0.5">
+                  <span className="font-semibold text-sm text-gray-200">
+                    {item.size}
+                  </span>
+                  <span className="text-xs text-gray-400 font-normal">
+                    {item.label}
+                  </span>
+                </div>
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card
+          ref={cardRef}
+          className="w-full max-w-xl bg-[#1a1f2b]/95 border-gray-800 backdrop-blur-sm flex-1"
+        >
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              Custom Art Request
+            </CardTitle>
+            <CardDescription className="text-gray-400">
+              Enter the dimensions for your custom art piece
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid w-full items-center gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="size-select" className="text-gray-300">
+                    Select Size
+                  </Label>
+                  <Select
+                    value={formData.selectedSize}
+                    onValueChange={handleSizeSelect}
                   >
-                    <SelectValue placeholder="Choose a size" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
-                    <SelectItem value="custom">Custom</SelectItem>
-                    {Object.values(ItemSizes).map((size) => (
-                      <SelectItem key={size} value={size}>
-                        {size}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="height" className="text-gray-300">
-                    Height
-                  </Label>
-                  <Input
-                    required
-                    id="height"
-                    name="height"
-                    placeholder="Enter height"
-                    type="number"
-                    value={formData.height}
-                    onChange={handleInputChange}
-                    className="bg-gray-800 border-gray-700"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="width" className="text-gray-300">
-                    Width
-                  </Label>
-                  <Input
-                    required
-                    id="width"
-                    name="width"
-                    placeholder="Enter width"
-                    type="number"
-                    value={formData.width}
-                    onChange={handleInputChange}
-                    className="bg-gray-800 border-gray-700"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-gray-300">Unit</Label>
-                <RadioGroup
-                  value={formData.unit}
-                  onValueChange={handleUnitChange}
-                  className="flex space-x-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem id="inches" value="inches" />
-                    <Label
-                      htmlFor="inches"
-                      className="text-gray-300 cursor-pointer"
+                    <SelectTrigger
+                      id="size-select"
+                      className="bg-gray-800 border-gray-700 h-11"
                     >
-                      Inches
+                      <SelectValue placeholder="Choose a size" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="custom">Custom</SelectItem>
+                      {Object.values(ItemSizes).map((size) => (
+                        <SelectItem key={size} value={size}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="height" className="text-gray-300">
+                      Height
                     </Label>
+                    <Input
+                      required
+                      id="height"
+                      name="height"
+                      placeholder="Enter height"
+                      type="number"
+                      value={formData.height}
+                      onChange={handleInputChange}
+                      className="bg-gray-800 border-gray-700 h-11"
+                    />
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem id="feet" value="feet" />
-                    <Label
-                      htmlFor="feet"
-                      className="text-gray-300 cursor-pointer"
-                    >
-                      Feet
+                  <div className="space-y-2">
+                    <Label htmlFor="width" className="text-gray-300">
+                      Width
                     </Label>
+                    <Input
+                      required
+                      id="width"
+                      name="width"
+                      placeholder="Enter width"
+                      type="number"
+                      value={formData.width}
+                      onChange={handleInputChange}
+                      className="bg-gray-800 border-gray-700 h-11"
+                    />
                   </div>
-                </RadioGroup>
-              </div>
-            </div>
-          </form>
-        </CardContent>
-        <CardFooter className="flex flex-col items-start border-t border-gray-800 pt-6">
-          <div className="w-full space-y-2">
-            <div className="mb-4 p-4 bg-gray-900 rounded-md text-sm font-mono">
-              <h4 className="text-gray-400 mb-2">Full breakdown:</h4>
-              {costBreakdown.debug && (
-                <div className="space-y-1 text-gray-300">
-                  <div>
-                    Dimensions: {costBreakdown.debug.dimensions.height}" ×{" "}
-                    {costBreakdown.debug.dimensions.width}"
-                  </div>
-                  <div>
-                    Blocks: {costBreakdown.debug.blocks.height} ×{" "}
-                    {costBreakdown.debug.blocks.width} ={" "}
-                    {costBreakdown.debug.blocks.total} total blocks
-                  </div>
-                  <div>
-                    Weight: {costBreakdown.weight.pounds.toFixed(2)} lb (
-                    {costBreakdown.weight.grams.toLocaleString()} g)
-                  </div>
-                  <div>Base Price: ${costBreakdown.basePrice.toFixed(2)}</div>
-                  <div>
-                    Price per Block: $
-                    {(
-                      costBreakdown.basePrice / costBreakdown.debug.blocks.total
-                    ).toFixed(2)}
-                  </div>
-                  <div className="border-t border-gray-800 pt-2">
-                    <div>
-                      Subtotal (Pre-tax): $
-                      {(
-                        costBreakdown.basePrice + costBreakdown.shipping.total
-                      ).toFixed(2)}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Unit</Label>
+                  <RadioGroup
+                    value={formData.unit}
+                    onValueChange={handleUnitChange}
+                    className="flex space-x-6 p-1"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem id="inches" value="inches" />
+                      <Label
+                        htmlFor="inches"
+                        className="text-gray-300 cursor-pointer"
+                      >
+                        Inches
+                      </Label>
                     </div>
-                    <div>Tax (10%): ${costBreakdown.tax.toFixed(2)}</div>
-                  </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem id="feet" value="feet" />
+                      <Label
+                        htmlFor="feet"
+                        className="text-gray-300 cursor-pointer"
+                      >
+                        Feet
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </div>
-              )}
-            </div>
+              </div>
+            </form>
+          </CardContent>
+          <CardFooter className="flex flex-col items-start border-t border-gray-800 pt-6">
+            <div className="w-full space-y-2">
+              <div className="mb-4 p-5 bg-gray-900/50 rounded-lg text-sm font-mono border border-gray-800">
+                <h4 className="text-gray-400 mb-3 font-semibold uppercase text-xs tracking-wider">
+                  Cost Breakdown
+                </h4>
+                {costBreakdown.debug && (
+                  <div className="space-y-2 text-gray-300">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Dimensions:</span>
+                      <span>
+                        {costBreakdown.debug.dimensions.height}" ×{" "}
+                        {costBreakdown.debug.dimensions.width}"
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Blocks:</span>
+                      <span>
+                        {costBreakdown.debug.blocks.total} blocks
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Weight:</span>
+                      <span>
+                        {costBreakdown.weight.pounds.toFixed(1)} lb
+                      </span>
+                    </div>
+                    <div className="border-t border-gray-800 my-2"></div>
+                  </div>
+                )}
+              </div>
 
-            <div className="flex justify-between items-center">
-              <span className="text-xl font-semibold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                Total Cost: ${costBreakdown.total.toFixed(2)}
-              </span>
+              <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-lg border border-green-500/20 w-full">
+                <span className="text-sm font-medium text-green-400">
+                  Estimated Total
+                </span>
+                <span className="text-2xl font-bold text-green-400">
+                  ${costBreakdown.total.toFixed(2)}
+                </span>
+              </div>
             </div>
-          </div>
-        </CardFooter>
-      </Card>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }
