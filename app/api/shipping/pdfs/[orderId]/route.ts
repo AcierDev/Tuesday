@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
+import { listLabelsForOrder } from "@/lib/s3-client";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
-  try {
-    const { orderId } = await params;
+  const { orderId } = await params;
 
+  try {
     if (!orderId) {
       return NextResponse.json(
         { error: "Order ID is required" },
@@ -14,16 +15,8 @@ export async function GET(
       );
     }
 
-    const response = await fetch(`http://144.172.71.72:3003/pdfs/${orderId}`);
-
-    if (!response.ok) {
-      throw new Error(`PDF service returned status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Ensure we're returning an array
-    return NextResponse.json(Array.isArray(data) ? data : []);
+    const labels = await listLabelsForOrder(orderId);
+    return NextResponse.json(labels);
   } catch (error) {
     console.error(`Failed to fetch PDFs for order ${orderId}:`, error);
     return NextResponse.json(

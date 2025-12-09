@@ -1,25 +1,43 @@
 import { NextResponse } from "next/server";
+import { uploadLabel, getPublicUrl } from "@/lib/s3-client";
 
 export async function POST(request: Request) {
-  const formData = await request.formData();
   const searchParams = new URL(request.url).searchParams;
   const filename = searchParams.get("filename");
 
-  try {
-    const response = await fetch(
-      `http://144.172.71.72:3003/upload-label?filename=${filename}`,
-      {
-        method: "POST",
-        body: formData,
-      }
+  if (!filename) {
+    return NextResponse.json(
+      { error: "Filename is required" },
+      { status: 400 }
     );
+  }
 
-    if (!response.ok) {
-      throw new Error("Upload failed");
+  try {
+    const formData = await request.formData();
+    const file = formData.get("label") as File | null;
+
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true });
+    // Convert File to Buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Upload to S3
+    const url = await uploadLabel(
+      filename,
+      buffer,
+      file.type || "application/pdf"
+    );
+
+    return NextResponse.json({
+      success: true,
+      url,
+      filename,
+    });
   } catch (error) {
+    console.error("Failed to upload PDF to S3:", error);
     return NextResponse.json(
       { error: "Failed to upload PDF" },
       { status: 500 }

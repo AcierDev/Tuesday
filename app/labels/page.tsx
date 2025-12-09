@@ -33,7 +33,7 @@ export default function ShippingLabelUpload() {
 
   const fetchUploadedFiles = async () => {
     try {
-      const response = await fetch("http://144.172.71.72:3003/pdfs");
+      const response = await fetch("/api/shipping/pdfs");
       if (response.ok) {
         const files = await response.json();
         setUploadedFiles(files);
@@ -70,15 +70,20 @@ export default function ShippingLabelUpload() {
       const formData = new FormData();
       formData.append("label", file);
 
+      // Use the original filename for upload
+      const filename = file.name;
+
       try {
-        const response = await fetch("http://144.172.71.72:3003/upload-label", {
-          method: "POST",
-          body: formData,
-        });
+        const response = await fetch(
+          `/api/shipping/upload-label?filename=${encodeURIComponent(filename)}`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
         if (response.ok) {
-          const result = await response.text();
-          toast.success(result);
+          toast.success(`Successfully uploaded ${filename}`);
         } else {
           throw new Error("Upload failed");
         }
@@ -96,7 +101,7 @@ export default function ShippingLabelUpload() {
 
   const handleDownload = async (filename: string) => {
     try {
-      const response = await fetch(`http://144.172.71.72:3003/pdf/${filename}`);
+      const response = await fetch(`/api/shipping/pdf/${filename}`);
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);

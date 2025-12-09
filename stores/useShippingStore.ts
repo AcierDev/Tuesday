@@ -10,6 +10,7 @@ interface ShippingStore {
   startPolling: () => void;
   stopPolling: () => void;
   hasLabel: (orderId: string) => boolean;
+  getLabelUrl: (filename: string) => string;
 }
 
 export const useShippingStore = create<ShippingStore>((set, get) => {
@@ -95,6 +96,11 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
 
     hasLabel: (orderId: string) => {
       return Boolean(get().labels[orderId]?.length);
+    },
+
+    getLabelUrl: (filename: string) => {
+      // Returns the API URL for fetching the label (which redirects to S3)
+      return `/api/shipping/pdf/${filename}`;
     },
   };
 });
