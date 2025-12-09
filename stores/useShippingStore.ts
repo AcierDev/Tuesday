@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 interface ShippingStore {
+  s3Config: { bucket: string; region: string } | null;
   labels: Record<string, string[]>;
   isLoading: boolean;
   error: string | null;
@@ -14,9 +15,10 @@ interface ShippingStore {
 }
 
 export const useShippingStore = create<ShippingStore>((set, get) => {
-  let pollInterval: NodeJS.Timer | null = null;
+  let pollInterval: any = null;
 
   return {
+    s3Config: null,
     labels: {},
     isLoading: false,
     error: null,
@@ -27,7 +29,12 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
         const response = await fetch("/api/shipping/pdfs");
         if (!response.ok) throw new Error("Failed to fetch shipping labels");
 
-        const filenames: string[] = await response.json();
+        const data = await response.json();
+        
+        // Handle both old array format and new object format
+        const filenames: string[] = Array.isArray(data) ? data : data.files;
+        const s3Config = !Array.isArray(data) && data.config ? data.config : get().s3Config;
+
         const labelsByOrder: Record<string, string[]> = {};
 
         // Group filenames by order ID (handling both base and numbered filenames)
@@ -35,14 +42,14 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
           // Extract orderId from filename patterns like:
           // "orderId.pdf" or "orderId-1.pdf" or "orderId-2.pdf"
           const match = filename.match(/^(.+?)(?:-\d+)?\.pdf$/);
-          if (match) {
+          if (match && match[1]) {
             const orderId = match[1];
             labelsByOrder[orderId] = labelsByOrder[orderId] || [];
             labelsByOrder[orderId]!.push(filename);
           }
         });
 
-        set({ labels: labelsByOrder, isLoading: false });
+        set({ labels: labelsByOrder, s3Config, isLoading: false });
       } catch (error) {
         set({
           error: error instanceof Error ? error.message : "Unknown error",
@@ -100,7 +107,13 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
 
     getLabelUrl: (filename: string) => {
       // Returns the API URL for fetching the label (which redirects to S3)
-      return `/api/shipping/pdf/${filename}`;
+      // Returns the direct S3 URL using the stored config
+      const { s3Config } = get();
+      if (!s3Config) {
+        console.warn("S3 config not loaded, falling back to proxy");
+        return `/api/shipping/pdf/${filename}`;
+      }
+      return `https://${s3Config.bucket}.s3.${s3Config.region}.amazonaws.com/${filename}`;
     },
   };
 });

@@ -36,12 +36,10 @@ export function ViewLabel({
   orderId: string;
   onClose?: () => void;
 }) {
-  const [pdfExists, setPdfExists] = useState<boolean | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
-  const [pdfUrls, setPdfUrls] = useState<string[]>([]);
   const [currentPdfIndex, setCurrentPdfIndex] = useState(0);
   const [manualTracking, setManualTracking] = useState<ManualTrackingInput>({
     fileIndex: -1,
@@ -52,51 +50,15 @@ export function ViewLabel({
   const [manualCarrier, setManualCarrier] =
     useState<TrackingInfo["carrier"]>("UPS");
   const { addTrackingInfo } = useTrackingStore();
-  const [pdfFilenames, setPdfFilenames] = useState<string[]>([]);
   const { updateFileProgress, markFileComplete } = useUploadProgressStore();
-  const { removeLabel, addLabel } = useShippingStore();
+  const { labels, fetchAllLabels, removeLabel, addLabel, getLabelUrl, isLoading } = useShippingStore();
+  const orderLabels = labels[orderId] || [];
+  const pdfExists = orderLabels.length > 0;
 
   useEffect(() => {
-    const checkPdfExists = async () => {
-      try {
-        const { labels, fetchAllLabels } = useShippingStore.getState();
-        fetchAllLabels();
-
-        const orderLabels = labels[orderId] || [];
-        setPdfExists(orderLabels.length > 0);
-
-        if (orderLabels.length > 0) {
-          setPdfFilenames(orderLabels);
-          const urls = await Promise.all(
-            orderLabels.map(async (pdfName: string) => {
-              const pdfResponse = await fetch(`/api/shipping/pdf/${pdfName}`);
-              const blob = await pdfResponse.blob();
-              return URL.createObjectURL(blob);
-            })
-          );
-          setPdfUrls(urls);
-        }
-      } catch (error) {
-        console.error("Error checking PDF existence:", error);
-        setPdfExists(false);
-      }
-    };
-
-    checkPdfExists();
-
-    // Cleanup function to revoke object URLs
-    return () => {
-      pdfUrls.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [orderId]); // Add pdfUrls to dependencies if you want to cleanup whenever they change
-
-  useEffect(() => {
-    // Cleanup function to revoke object URLs when component unmounts
-    // or when pdfUrls change
-    return () => {
-      pdfUrls.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [pdfUrls]);
+    // Refresh labels when orderId changes
+    fetchAllLabels();
+  }, [orderId]);
 
   const handleFiles = useCallback((newFiles: FileList) => {
     const pdfFiles = Array.from(newFiles).filter(
@@ -426,8 +388,6 @@ export function ViewLabel({
         }
       }
 
-      setPdfExists(true);
-      await fetchPdfs();
       setFiles([]);
     } catch (error) {
       console.error("Upload error:", error);
@@ -453,41 +413,11 @@ export function ViewLabel({
     return pattern?.test(cleaned) ?? false;
   };
 
-  const fetchPdfs = async () => {
-    try {
-      const response = await fetch(`/api/shipping/pdfs/${orderId}`);
-      if (response.ok) {
-        const pdfList = await response.json();
-        setPdfFilenames(pdfList);
-        if (pdfList.length > 0) {
-          setPdfExists(true);
-          const urls = await Promise.all(
-            pdfList.map(async (pdfName: string) => {
-              const pdfResponse = await fetch(`/api/shipping/pdf/${pdfName}`);
-              if (!pdfResponse.ok) {
-                throw new Error(`Failed to fetch PDF: ${pdfName}`);
-              }
-              const blob = await pdfResponse.blob();
-              return URL.createObjectURL(blob);
-            })
-          );
-          setPdfUrls(urls);
-        } else {
-          setPdfExists(false);
-        }
-      } else {
-        throw new Error("Failed to fetch PDFs list");
-      }
-    } catch (error) {
-      console.error("Error fetching PDFs:", error);
-      setError("Failed to load the PDFs. Please try again.");
-      setPdfExists(false);
-    }
-  };
+
 
   const handleDelete = async (index: number) => {
     try {
-      const filename = pdfFilenames[index];
+      const filename = orderLabels[index];
       console.log("Deleting file:", filename, "for order:", orderId);
 
       const response = await fetch(`/api/shipping/pdf/${filename}`, {
@@ -498,27 +428,10 @@ export function ViewLabel({
         console.log("Delete successful, updating store and state");
         removeLabel(orderId, filename);
 
-        // Update local state
-        const newUrls = [...pdfUrls];
-        newUrls.splice(index, 1);
-        setPdfUrls(newUrls);
-
-        const newFilenames = [...pdfFilenames];
-        newFilenames.splice(index, 1);
-        setPdfFilenames(newFilenames);
-
-        // Update PDF existence state
-        if (newUrls.length === 0) {
-          setPdfExists(false);
-        }
-
         // Update current index if needed
-        if (currentPdfIndex >= newUrls.length) {
-          setCurrentPdfIndex(Math.max(0, newUrls.length - 1));
+        if (currentPdfIndex >= orderLabels.length - 1) {
+          setCurrentPdfIndex(Math.max(0, orderLabels.length - 2));
         }
-
-        // Revoke the old URL to free up memory
-        URL.revokeObjectURL(pdfUrls[index]);
       } else {
         throw new Error("Delete failed");
       }
@@ -528,7 +441,7 @@ export function ViewLabel({
     }
   };
 
-  if (pdfExists === null) {
+  if (isLoading && orderLabels.length === 0) {
     return (
       <Card className="w-full max-w-3xl mx-auto bg-background dark:bg-gray-800">
         <CardContent className="pt-6">
@@ -556,7 +469,7 @@ export function ViewLabel({
             <TabsTrigger value="manage">Manage Labels</TabsTrigger>
           </TabsList>
           <TabsContent value="view">
-            {pdfExists && pdfUrls.length > 0 ? (
+            {pdfExists && orderLabels.length > 0 ? (
               <div className="space-y-4">
                 <div
                   className="border rounded-lg overflow-hidden dark:border-gray-700"
@@ -566,7 +479,7 @@ export function ViewLabel({
                   }}
                 >
                   <iframe
-                    src={pdfUrls[currentPdfIndex]}
+                    src={getLabelUrl(orderLabels[currentPdfIndex])}
                     width="100%"
                     height="100%"
                     className="border-0"
@@ -585,15 +498,15 @@ export function ViewLabel({
                     <ChevronLeft className="mr-2 h-4 w-4" /> Previous
                   </Button>
                   <span className="text-sm font-medium text-foreground dark:text-gray-300">
-                    Label {currentPdfIndex + 1} of {pdfUrls.length}
+                    Label {currentPdfIndex + 1} of {orderLabels.length}
                   </span>
                   <Button
                     onClick={() =>
                       setCurrentPdfIndex((prev) =>
-                        Math.min(pdfUrls.length - 1, prev + 1)
+                        Math.min(orderLabels.length - 1, prev + 1)
                       )
                     }
-                    disabled={currentPdfIndex === pdfUrls.length - 1}
+                    disabled={currentPdfIndex === orderLabels.length - 1}
                   >
                     Next <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -612,10 +525,10 @@ export function ViewLabel({
           </TabsContent>
           <TabsContent value="manage">
             <div className="space-y-4">
-              {pdfUrls.length > 0 && (
+              {orderLabels.length > 0 && (
                 <ScrollArea className="h-[200px] overflow-y-auto">
                   <div className="space-y-4">
-                    {pdfUrls.map((url, index) => (
+                    {orderLabels.map((filename: string, index: number) => (
                       <div
                         key={index}
                         className="flex justify-between items-center p-4 border rounded-lg dark:border-gray-700"
@@ -627,7 +540,9 @@ export function ViewLabel({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(url, "_blank")}
+                            onClick={() =>
+                              window.open(getLabelUrl(filename), "_blank")
+                            }
                           >
                             <Download className="mr-2 h-4 w-4" /> Download
                           </Button>

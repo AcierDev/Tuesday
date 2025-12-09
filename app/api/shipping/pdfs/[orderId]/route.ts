@@ -16,7 +16,13 @@ export async function GET(
     }
 
     const labels = await listLabelsForOrder(orderId);
-    return NextResponse.json(labels);
+    return NextResponse.json({
+      files: labels,
+      config: {
+        bucket: process.env.AWS_S3_BUCKET || "",
+        region: process.env.AWS_REGION || "us-east-1",
+      },
+    });
   } catch (error) {
     console.error(`Failed to fetch PDFs for order ${orderId}:`, error);
     return NextResponse.json(
