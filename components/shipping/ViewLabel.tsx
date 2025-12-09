@@ -173,8 +173,13 @@ export function ViewLabel({
 
     try {
       const existingLabels = await fetch(`/api/shipping/pdfs/${orderId}`);
-      const existingLabelsList = await existingLabels.json();
-      console.log("Existing labels:", existingLabelsList);
+      const responseData = await existingLabels.json();
+      console.log("Existing labels:", responseData);
+      
+      // Handle new response format { files: string[], config: ... }
+      const existingLabelsList: string[] = Array.isArray(responseData) 
+        ? responseData 
+        : (responseData.files || []);
 
       // Modified logic for filename generation
       const getNextFilename = (existingFiles: string[]) => {
@@ -185,6 +190,7 @@ export function ViewLabel({
 
         // Find the highest number suffix
         const suffixes = existingFiles.map((filename) => {
+          if (!filename) return -1;
           // Base filename without suffix should be considered as index 0
           if (filename === `${orderId}.pdf`) {
             return 0;
@@ -418,6 +424,8 @@ export function ViewLabel({
   const handleDelete = async (index: number) => {
     try {
       const filename = orderLabels[index];
+      if (!filename) throw new Error("File not found");
+      
       console.log("Deleting file:", filename, "for order:", orderId);
 
       const response = await fetch(`/api/shipping/pdf/${filename}`, {
@@ -479,7 +487,7 @@ export function ViewLabel({
                   }}
                 >
                   <iframe
-                    src={getLabelUrl(orderLabels[currentPdfIndex])}
+                    src={getLabelUrl(orderLabels[currentPdfIndex] || "")}
                     width="100%"
                     height="100%"
                     className="border-0"
