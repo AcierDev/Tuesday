@@ -16,6 +16,7 @@ import { UserProvider } from "@/contexts/UserContext";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UploadProgressToast } from "@/components/shipping/UploadProgress";
+import { MobileBottomNav } from "@/components/ui/MobileBottomNav";
 
 // Load custom fonts
 const geistSans = localFont({
@@ -55,11 +56,12 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <div
           className={`${
             sidebarOpen ? "lg:ml-64" : "lg:ml-16"
-          } mt-14 lg:mt-0 transition-[margin] duration-300`}
+          } mt-14 lg:mt-0 transition-[margin] duration-300 pb-16 lg:pb-0`}
         >
           <main className="w-full px-4 sm:px-6 lg:px-8">{children}</main>
         </div>
       </div>
+      <MobileBottomNav />
       {isSettingsOpen && (
         <SettingsPanel
           onClose={handleCloseSettings}
