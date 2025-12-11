@@ -347,6 +347,8 @@ const DayCard = ({
                   "relative transition-all duration-200 hover:shadow-md p-3 rounded-lg group/item",
                   scheduleItem.done || item.status === "Done"
                     ? "bg-gradient-to-r from-green-100/90 to-green-50/80 dark:from-green-800/30 dark:to-green-900/20 border border-green-200/50 dark:border-green-800/30"
+                    : item.status === ItemStatus.Wip
+                    ? "bg-orange-100 dark:bg-orange-500/20 border border-orange-200 dark:border-orange-800/30"
                     : "bg-gradient-to-r from-gray-50/80 to-gray-100/30 dark:from-gray-800/30 dark:to-gray-700/20"
                 )}
               >

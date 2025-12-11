@@ -139,6 +139,8 @@ export function DayColumn({
                             "p-2 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 text-xs",
                             scheduleItem.done || item.status === ItemStatus.Done
                               ? "bg-green-100 dark:bg-green-500/30"
+                              : item.status === ItemStatus.Wip
+                              ? "bg-orange-100 dark:bg-orange-500/30"
                               : "bg-muted dark:bg-gray-600"
                           )}
                         >
