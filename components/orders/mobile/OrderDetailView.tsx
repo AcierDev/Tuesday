@@ -30,6 +30,9 @@ import { useOrderStore } from "@/stores/useOrderStore";
 import { cn } from "@/utils/functions";
 import { getStatusColor } from "../ItemGroup";
 
+import { parseMinecraftColors } from "@/parseMinecraftColors";
+import { useTheme } from "next-themes";
+
 interface OrderDetailViewProps {
   orderId: string;
   onClose: () => void;
@@ -48,6 +51,8 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   onShip,
   onMarkCompleted,
 }) => {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const { items } = useOrderStore();
   const item = items.find((o) => o.id === orderId);
   if (!item) return null;
@@ -55,6 +60,12 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
 
   const daysRemaining = getDaysRemaining(processedItem.dueDate || "");
   const isPastDue = daysRemaining < 0;
+
+  // Parse customer name with Minecraft colors
+  const parsedCustomerName = parseMinecraftColors(
+    processedItem.customerName || "N/A",
+    isDark
+  );
 
   const renderColumnValue = (columnName: ColumnTitles) => {
     const fieldMap: Record<string, keyof Item> = {
@@ -124,7 +135,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
               <CardTitle className="text-base">Customer</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm">{processedItem.customerName || "N/A"}</p>
+              <p className="text-sm">{parsedCustomerName}</p>
             </CardContent>
           </Card>
 
