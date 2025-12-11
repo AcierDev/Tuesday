@@ -15,6 +15,24 @@ import {
 import { toast } from "sonner";
 import { UserIdentificationMenu } from "@/components/identification/identificationMenu";
 
+// Hook to detect mobile devices
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024); // lg breakpoint
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  return isMobile;
+}
+
 type Permission = "read" | "write" | "admin";
 
 type UserContextType = {
@@ -37,6 +55,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<EmployeeNames | null>(EmployeeNames.Alex);
   const [isAdmin, setIsAdmin] = useState(false);
   const { theme, setTheme } = useTheme();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     // Check for existing user session on component mount
@@ -123,11 +142,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         className={`${theme} min-h-screen bg-background text-foreground dark:bg-gray-900`}
       >
         {children}
-        <UserIdentificationMenu
-          currentUser={user}
-          onLogin={login}
-          onLogout={handleLogout}
-        />
+        {!isMobile && (
+          <UserIdentificationMenu
+            currentUser={user}
+            onLogin={login}
+            onLogout={handleLogout}
+          />
+        )}
       </div>
     </UserContext.Provider>
   );

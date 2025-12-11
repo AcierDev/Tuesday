@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import {
   addWeeks,
   subWeeks,
@@ -76,7 +76,7 @@ const dropAnimation: DropAnimation = {
 };
 
 export default function ProductionPlanningPage() {
-  const { items } = useOrderStore();
+  const { items, doneItems, scheduledItems, fetchItemsByIds } = useOrderStore();
   const {
     schedules,
     currentWeek,
@@ -88,20 +88,33 @@ export default function ProductionPlanningPage() {
   } = useWeeklyScheduleStore();
 
   const [activeId, setActiveId] = useState<string | null>(null);
-
-  // Initialize current week if not set
-  useEffect(() => {
-    if (!currentWeek) {
-      const today = new Date();
-      const weekKey = format(startOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
-      setCurrentWeek(weekKey);
-    }
-  }, [currentWeek, setCurrentWeek]);
+  const hasInitializedWeek = useRef(false);
 
   // Ensure schedules are fetched
   useEffect(() => {
     fetchSchedules();
   }, [fetchSchedules]);
+
+  // Always initialize to the current week on page load
+  // This ensures we override the store's init() which sets it to the most recent scheduled week
+  useEffect(() => {
+    const today = new Date();
+    const currentWeekKey = format(
+      startOfWeek(today, { weekStartsOn: 0 }),
+      "yyyy-MM-dd"
+    );
+
+    // Set immediately on mount
+    setCurrentWeek(currentWeekKey);
+
+    // Also set it after a delay to ensure it overrides init() if it runs asynchronously
+    const timeoutId = setTimeout(() => {
+      setCurrentWeek(currentWeekKey);
+      hasInitializedWeek.current = true;
+    }, 200);
+
+    return () => clearTimeout(timeoutId);
+  }, [setCurrentWeek]); // Only run once on mount
 
   const currentWeekKey = useMemo(() => {
     if (currentWeek) return currentWeek;
@@ -109,22 +122,41 @@ export default function ProductionPlanningPage() {
   }, [currentWeek]);
 
   const today = useMemo(() => startOfDay(new Date()), []);
-  
-  // Calculate week boundaries
-  const todayWeekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 0 }), [today]);
-  const todayWeekEnd = useMemo(() => endOfWeek(todayWeekStart, { weekStartsOn: 0 }), [todayWeekStart]);
-  const todayNextWeekStart = useMemo(() => addWeeks(todayWeekStart, 1), [todayWeekStart]);
-  const todayNextWeekEnd = useMemo(() => endOfWeek(todayNextWeekStart, { weekStartsOn: 0 }), [todayNextWeekStart]);
 
-  const currentWeekStart = useMemo(() => startOfWeek(parseISO(currentWeekKey), { weekStartsOn: 0 }), [currentWeekKey]);
-  const currentWeekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 0 }), [currentWeekStart]);
+  // Calculate week boundaries
+  const todayWeekStart = useMemo(
+    () => startOfWeek(today, { weekStartsOn: 0 }),
+    [today]
+  );
+  const todayWeekEnd = useMemo(
+    () => endOfWeek(todayWeekStart, { weekStartsOn: 0 }),
+    [todayWeekStart]
+  );
+  const todayNextWeekStart = useMemo(
+    () => addWeeks(todayWeekStart, 1),
+    [todayWeekStart]
+  );
+  const todayNextWeekEnd = useMemo(
+    () => endOfWeek(todayNextWeekStart, { weekStartsOn: 0 }),
+    [todayNextWeekStart]
+  );
+
+  const currentWeekStart = useMemo(
+    () => startOfWeek(parseISO(currentWeekKey), { weekStartsOn: 0 }),
+    [currentWeekKey]
+  );
+  const currentWeekEnd = useMemo(
+    () => endOfWeek(currentWeekStart, { weekStartsOn: 0 }),
+    [currentWeekStart]
+  );
 
   // Filter orders
   const availableOrders = useMemo(
-    () => items.filter(item => 
-      !item.deleted && 
-      (item.status === "New" || item.status === "On Deck")
-    ),
+    () =>
+      items.filter(
+        (item) =>
+          !item.deleted && (item.status === "New" || item.status === "On Deck")
+      ),
     [items]
   );
 
@@ -137,15 +169,25 @@ export default function ProductionPlanningPage() {
       const blocks = calculateBlocks(item);
       const dueValue = item.dueDate;
       let dueDate: Date | null = null;
-      let bucket: "overdue" | "thisWeek" | "nextWeek" | "future" | "noDue" = "noDue";
+      let bucket: "overdue" | "thisWeek" | "nextWeek" | "future" | "noDue" =
+        "noDue";
 
       if (dueValue) {
         const parsed = new Date(dueValue);
         if (!Number.isNaN(parsed.getTime())) {
           dueDate = startOfDay(parsed);
           if (isBefore(dueDate, today)) bucket = "overdue";
-          else if (isWithinInterval(dueDate, { start: today, end: todayWeekEnd })) bucket = "thisWeek";
-          else if (isWithinInterval(dueDate, { start: todayNextWeekStart, end: todayNextWeekEnd })) bucket = "nextWeek";
+          else if (
+            isWithinInterval(dueDate, { start: today, end: todayWeekEnd })
+          )
+            bucket = "thisWeek";
+          else if (
+            isWithinInterval(dueDate, {
+              start: todayNextWeekStart,
+              end: todayNextWeekEnd,
+            })
+          )
+            bucket = "nextWeek";
           else bucket = "future";
         }
       }
@@ -156,13 +198,40 @@ export default function ProductionPlanningPage() {
     });
 
     return { metaList, metaById };
-  }, [availableOrders, today, todayWeekEnd, todayNextWeekStart, todayNextWeekEnd]);
+  }, [
+    availableOrders,
+    today,
+    todayWeekEnd,
+    todayNextWeekStart,
+    todayNextWeekEnd,
+  ]);
 
   // Get current schedule
-  const currentSchedule = useMemo(() => 
-    schedules.find(s => s.weekKey === currentWeekKey),
+  const currentSchedule = useMemo(
+    () => schedules.find((s) => s.weekKey === currentWeekKey),
     [schedules, currentWeekKey]
   );
+
+  // Fetch done orders from DB if they're not in the store (similar to weekly-planner)
+  useEffect(() => {
+    if (!currentSchedule) return;
+    const allScheduledIds = Object.values(currentSchedule.schedule)
+      .flat()
+      .map((i) => i.id);
+
+    if (allScheduledIds.length > 0) {
+      fetchItemsByIds(allScheduledIds);
+    }
+  }, [currentSchedule, fetchItemsByIds]);
+
+  // Combine all known items for looking up scheduled items (which might be done)
+  const allKnownItems = useMemo(() => {
+    const itemMap = new Map<string, (typeof items)[0]>();
+    items.forEach((i) => itemMap.set(i.id, i));
+    doneItems.forEach((i) => itemMap.set(i.id, i));
+    scheduledItems.forEach((i) => itemMap.set(i.id, i));
+    return Array.from(itemMap.values());
+  }, [items, doneItems, scheduledItems]);
 
   // Scheduled items for all weeks
   const scheduledItemIds = useMemo(() => {
@@ -181,9 +250,68 @@ export default function ProductionPlanningPage() {
     [baseData.metaList, scheduledItemIds]
   );
 
+  // Create a combined ordersById map that includes all items (including done ones)
+  const allOrdersById = useMemo(() => {
+    const combined = new Map<string, OrderMeta>(baseData.metaById);
+
+    // Add metas for all known items that aren't already in baseData
+    allKnownItems.forEach((item) => {
+      if (!combined.has(item.id)) {
+        const blocks = calculateBlocks(item);
+        const dueValue = item.dueDate;
+        let dueDate: Date | null = null;
+        let bucket: "overdue" | "thisWeek" | "nextWeek" | "future" | "noDue" =
+          "noDue";
+
+        if (dueValue) {
+          const parsed = new Date(dueValue);
+          if (!Number.isNaN(parsed.getTime())) {
+            dueDate = startOfDay(parsed);
+            if (isBefore(dueDate, today)) bucket = "overdue";
+            else if (
+              isWithinInterval(dueDate, {
+                start: today,
+                end: todayWeekEnd,
+              })
+            )
+              bucket = "thisWeek";
+            else if (
+              isWithinInterval(dueDate, {
+                start: todayNextWeekStart,
+                end: todayNextWeekEnd,
+              })
+            )
+              bucket = "nextWeek";
+            else bucket = "future";
+          }
+        }
+
+        combined.set(item.id, {
+          id: item.id,
+          item,
+          blocks,
+          dueDate,
+          bucket,
+        });
+      }
+    });
+
+    return combined;
+  }, [
+    baseData.metaById,
+    allKnownItems,
+    today,
+    todayWeekEnd,
+    todayNextWeekStart,
+    todayNextWeekEnd,
+  ]);
+
   // Group scheduled orders by day
   const dayGroups = useMemo(() => {
-    const groups: Record<DayName, { orders: ScheduledOrder[]; totalBlocks: number }> = {
+    const groups: Record<
+      DayName,
+      { orders: ScheduledOrder[]; totalBlocks: number }
+    > = {
       Sunday: { orders: [], totalBlocks: 0 },
       Monday: { orders: [], totalBlocks: 0 },
       Tuesday: { orders: [], totalBlocks: 0 },
@@ -197,13 +325,13 @@ export default function ProductionPlanningPage() {
       Object.entries(currentSchedule.schedule).forEach(([day, items]) => {
         const dayName = day as DayName;
         if (groups[dayName]) {
-          items.forEach(item => {
-            const meta = baseData.metaById.get(item.id);
+          items.forEach((item) => {
+            const meta = allOrdersById.get(item.id);
             if (meta) {
-              groups[dayName].orders.push({ 
+              groups[dayName].orders.push({
                 itemId: item.id,
                 weekKey: currentWeekKey,
-                day: dayName
+                day: dayName,
               });
               groups[dayName].totalBlocks += meta.blocks;
             }
@@ -213,20 +341,30 @@ export default function ProductionPlanningPage() {
     }
 
     return groups;
-  }, [currentSchedule, baseData.metaById, currentWeekKey]);
+  }, [currentSchedule, allOrdersById, currentWeekKey]);
 
   // Stats
   const stats = useMemo(() => {
-    let overdueBlocks = 0, overdueOrders = 0;
-    let thisWeekBlocks = 0, thisWeekOrders = 0;
-    let nextWeekBlocks = 0, nextWeekOrders = 0;
+    let overdueBlocks = 0,
+      overdueOrders = 0;
+    let thisWeekBlocks = 0,
+      thisWeekOrders = 0;
+    let nextWeekBlocks = 0,
+      nextWeekOrders = 0;
     let totalBlocks = 0;
 
     unscheduledOrders.forEach((meta) => {
       totalBlocks += meta.blocks;
-      if (meta.bucket === "overdue") { overdueBlocks += meta.blocks; overdueOrders++; }
-      else if (meta.bucket === "thisWeek") { thisWeekBlocks += meta.blocks; thisWeekOrders++; }
-      else if (meta.bucket === "nextWeek") { nextWeekBlocks += meta.blocks; nextWeekOrders++; }
+      if (meta.bucket === "overdue") {
+        overdueBlocks += meta.blocks;
+        overdueOrders++;
+      } else if (meta.bucket === "thisWeek") {
+        thisWeekBlocks += meta.blocks;
+        thisWeekOrders++;
+      } else if (meta.bucket === "nextWeek") {
+        nextWeekBlocks += meta.blocks;
+        nextWeekOrders++;
+      }
     });
 
     return {
@@ -248,13 +386,13 @@ export default function ProductionPlanningPage() {
   );
 
   const findContainer = (id: string) => {
-    if (unscheduledOrders.find(o => o.id === id)) return "unscheduled";
+    if (unscheduledOrders.find((o) => o.id === id)) return "unscheduled";
     if (id === "unscheduled") return "unscheduled";
 
     // Check scheduled orders
     if (currentSchedule) {
       for (const [day, items] of Object.entries(currentSchedule.schedule)) {
-        if (items.find(i => i.id === id)) return day as DayName;
+        if (items.find((i) => i.id === id)) return day as DayName;
       }
     }
 
@@ -289,7 +427,11 @@ export default function ProductionPlanningPage() {
     // 1. Drop on Unscheduled (Sidebar)
     if (overContainer === "unscheduled") {
       if (activeContainer !== "unscheduled") {
-        await removeItemFromDay(currentWeekKey, activeContainer as DayName, activeId);
+        await removeItemFromDay(
+          currentWeekKey,
+          activeContainer as DayName,
+          activeId
+        );
       }
       setActiveId(null);
       return;
@@ -297,7 +439,7 @@ export default function ProductionPlanningPage() {
 
     // 2. Drop on a Day Column
     const targetDay = overContainer as DayName;
-    
+
     // We need to construct the new schedule
     let newScheduleData: WeeklyScheduleData;
 
@@ -313,7 +455,7 @@ export default function ProductionPlanningPage() {
           Thursday: [],
           Friday: [],
           Saturday: [],
-        }
+        },
       };
       try {
         await createWeek(currentWeekKey);
@@ -328,26 +470,33 @@ export default function ProductionPlanningPage() {
     // Moving from Unscheduled to Day
     if (activeContainer === "unscheduled") {
       const newItem = { id: activeId, done: false };
-      
+
       // Calculate index
       let newIndex = newScheduleData.schedule[targetDay].length;
       if (overId !== targetDay) {
-         const overIndex = newScheduleData.schedule[targetDay].findIndex(item => item.id === overId);
-         if (overIndex !== -1) newIndex = overIndex;
+        const overIndex = newScheduleData.schedule[targetDay].findIndex(
+          (item) => item.id === overId
+        );
+        if (overIndex !== -1) newIndex = overIndex;
       }
-      
+
       // Insert
       newScheduleData.schedule[targetDay].splice(newIndex, 0, newItem);
-    } 
+    }
     // Moving between days or reordering within day
     else {
       const activeDay = activeContainer as DayName;
-      const activeIndex = newScheduleData.schedule[activeDay].findIndex(item => item.id === activeId);
-      
+      const activeIndex = newScheduleData.schedule[activeDay].findIndex(
+        (item) => item.id === activeId
+      );
+
       if (activeIndex === -1) return; // Should not happen
 
       // Remove from old
-      const deletedItems = newScheduleData.schedule[activeDay].splice(activeIndex, 1);
+      const deletedItems = newScheduleData.schedule[activeDay].splice(
+        activeIndex,
+        1
+      );
       const movedItem = deletedItems[0];
 
       if (!movedItem) return;
@@ -356,10 +505,13 @@ export default function ProductionPlanningPage() {
       if (overId === targetDay) {
         overIndex = newScheduleData.schedule[targetDay].length;
       } else {
-        overIndex = newScheduleData.schedule[targetDay].findIndex(item => item.id === overId);
+        overIndex = newScheduleData.schedule[targetDay].findIndex(
+          (item) => item.id === overId
+        );
       }
 
-      if (overIndex === -1) overIndex = newScheduleData.schedule[targetDay].length;
+      if (overIndex === -1)
+        overIndex = newScheduleData.schedule[targetDay].length;
 
       // Insert into new
       newScheduleData.schedule[targetDay].splice(overIndex, 0, movedItem);
@@ -370,7 +522,10 @@ export default function ProductionPlanningPage() {
     setActiveId(null);
   };
 
-  const activeMeta = useMemo(() => baseData.metaById.get(activeId || ""), [activeId, baseData.metaById]);
+  const activeMeta = useMemo(() => {
+    if (!activeId) return undefined;
+    return allOrdersById.get(activeId);
+  }, [activeId, allOrdersById]);
 
   return (
     <DndContext
@@ -388,37 +543,49 @@ export default function ProductionPlanningPage() {
           <ProductionPlanningHeader
             currentWeekStart={currentWeekStart}
             currentWeekEnd={currentWeekEnd}
-            isCurrentWeek={currentWeekKey === format(startOfWeek(new Date(), { weekStartsOn: 0 }), "yyyy-MM-dd")}
+            isCurrentWeek={
+              currentWeekKey ===
+              format(startOfWeek(new Date(), { weekStartsOn: 0 }), "yyyy-MM-dd")
+            }
             hasScheduledOrders={!!currentSchedule}
             stats={stats}
             onPreviousWeek={() => {
-                const prev = subWeeks(parseISO(currentWeekKey), 1);
-                setCurrentWeek(format(startOfWeek(prev, { weekStartsOn: 0 }), "yyyy-MM-dd"));
+              const prev = subWeeks(parseISO(currentWeekKey), 1);
+              setCurrentWeek(
+                format(startOfWeek(prev, { weekStartsOn: 0 }), "yyyy-MM-dd")
+              );
             }}
             onNextWeek={() => {
-                const next = addWeeks(parseISO(currentWeekKey), 1);
-                setCurrentWeek(format(startOfWeek(next, { weekStartsOn: 0 }), "yyyy-MM-dd"));
+              const next = addWeeks(parseISO(currentWeekKey), 1);
+              setCurrentWeek(
+                format(startOfWeek(next, { weekStartsOn: 0 }), "yyyy-MM-dd")
+              );
             }}
             onToday={() => {
-                setCurrentWeek(format(startOfWeek(new Date(), { weekStartsOn: 0 }), "yyyy-MM-dd"));
+              setCurrentWeek(
+                format(
+                  startOfWeek(new Date(), { weekStartsOn: 0 }),
+                  "yyyy-MM-dd"
+                )
+              );
             }}
             onClearWeek={() => {
-                if (currentSchedule) {
-                    const clearedSchedule = {
-                        ...currentSchedule,
-                        schedule: {
-                            Sunday: [],
-                            Monday: [],
-                            Tuesday: [],
-                            Wednesday: [],
-                            Thursday: [],
-                            Friday: [],
-                            Saturday: [],
-                        }
-                    };
-                    updateSchedule(currentWeekKey, clearedSchedule);
-                    toast.success("Week cleared");
-                }
+              if (currentSchedule) {
+                const clearedSchedule = {
+                  ...currentSchedule,
+                  schedule: {
+                    Sunday: [],
+                    Monday: [],
+                    Tuesday: [],
+                    Wednesday: [],
+                    Thursday: [],
+                    Friday: [],
+                    Saturday: [],
+                  },
+                };
+                updateSchedule(currentWeekKey, clearedSchedule);
+                toast.success("Week cleared");
+              }
             }}
           />
 
@@ -435,10 +602,12 @@ export default function ProductionPlanningPage() {
                       day={day}
                       dateLabel={format(date, "MMM d")}
                       orders={dayGroups[day].orders}
-                      ordersById={baseData.metaById}
+                      ordersById={allOrdersById}
                       totalBlocks={dayGroups[day].totalBlocks}
                       capacity={1000}
-                      onUnschedule={(id) => removeItemFromDay(currentWeekKey, day, id)}
+                      onUnschedule={(id) =>
+                        removeItemFromDay(currentWeekKey, day, id)
+                      }
                       date={date}
                     />
                   </div>
@@ -452,10 +621,7 @@ export default function ProductionPlanningPage() {
       <DragOverlay dropAnimation={dropAnimation}>
         {activeId && activeMeta ? (
           <div className="opacity-80 rotate-2 cursor-grabbing">
-            <OrderCard
-              meta={activeMeta}
-              isScheduled={true} 
-            />
+            <OrderCard meta={activeMeta} isScheduled={true} />
           </div>
         ) : null}
       </DragOverlay>
