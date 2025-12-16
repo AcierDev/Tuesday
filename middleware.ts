@@ -10,7 +10,7 @@ export function middleware(request: NextRequest) {
 
   // Handle root path redirect
   if (request.nextUrl.pathname === "/") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/orders", request.url));
   }
 
   // For all other paths, continue with your existing logic
