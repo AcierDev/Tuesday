@@ -85,7 +85,12 @@ export async function POST(request: Request) {
       });
 
       clients.forEach((client) => {
-        client.enqueue(`data: ${message}\n\n`);
+        try {
+          client.enqueue(`data: ${message}\n\n`);
+        } catch (error) {
+          console.error("Failed to send SSE update, removing client:", error);
+          clients.delete(client);
+        }
       });
 
       return NextResponse.json({ status: "success" }, { status: 200 });

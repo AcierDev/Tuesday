@@ -6,18 +6,17 @@ import {
   ArrowUpRightSquare,
   MessageSquare,
 } from "lucide-react";
-import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/utils/functions";
 import { ItemStatus, DayName } from "@/typings/types";
-import { STATUS_BORDER_COLORS, STATUS_COLORS } from "@/typings/constants";
+import { STATUS_BORDER_COLORS } from "@/typings/constants";
 import {
   OrderItem,
   getDaysRemaining,
   formatDate,
   createBackground,
 } from "../utils/orderUtils";
-import { ShippingStatusIcon } from "../ShippingStatusIcon";
 
 import { parseMinecraftColors } from "@/parseMinecraftColors";
 import { useTheme } from "next-themes";
@@ -32,7 +31,7 @@ export const OrderCard: React.FC<OrderCardProps> = React.memo(
   ({ item, onSelect, clickToAddTarget }) => {
     const { theme } = useTheme();
     const isDark = theme === "dark";
-    
+
     // Parse customer name with Minecraft colors
     const parsedCustomerName = parseMinecraftColors(
       item.customerName || "Unknown Customer",
@@ -41,132 +40,100 @@ export const OrderCard: React.FC<OrderCardProps> = React.memo(
 
     const daysRemaining = getDaysRemaining(item.dueDate || "");
     const isPastDue = daysRemaining < 0;
-    const isNearDue = daysRemaining >= 0 && daysRemaining <= 7;
 
     const tags = [];
     if (item.tags?.isDifficultCustomer)
       tags.push({
         icon: AlertTriangle,
         text: "Difficult",
-        color: "text-red-500 dark:text-red-400",
+        color: "text-red-500",
       });
     if (item.tags?.isVertical)
       tags.push({
         icon: ArrowUpRightSquare,
         text: "Vertical",
-        color: "text-blue-500 dark:text-blue-400",
+        color: "text-blue-500",
       });
     if (item.tags?.hasCustomerMessage)
       tags.push({
         icon: MessageSquare,
         text: "Message",
-        color: "text-green-500 dark:text-green-400",
+        color: "text-green-500",
       });
 
     return (
       <motion.div
-        initial={{ opacity: 0, y: 15 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -15 }}
-        transition={{ duration: 0.25 }}
-        whileTap={{ scale: 0.97 }}
-        whileHover={{ scale: 1.02, transition: { duration: 0.1 } }}
+        exit={{ opacity: 0, y: -10 }}
+        whileTap={{ scale: 0.98 }}
         onClick={() => onSelect(item)}
         className={cn(
-          "mb-3 cursor-pointer",
+          "mb-3 px-1",
           clickToAddTarget && "ring-2 ring-primary ring-offset-2 rounded-lg"
         )}
       >
-        <Card
+        <Card 
           className={cn(
-            "overflow-hidden dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-sm transition-shadow duration-200 hover:shadow-md",
+            "overflow-hidden bg-[#1c1c1e] border-0 text-white shadow-lg rounded-xl dark:bg-gray-800",
             "border-l-4",
             STATUS_BORDER_COLORS[item.status] ?? "border-l-transparent"
           )}
         >
-          <CardHeader className="p-3 pb-2 flex flex-row items-start justify-between space-x-2">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="flex-1 min-w-0">
-                <CardTitle className="text-sm font-medium truncate leading-tight flex items-center">
-                  {parsedCustomerName}
-                </CardTitle>
-                <div className="flex items-center gap-1.5 mt-0.5 mt-2">
-                  {item.design && (
-                    <div
-                      className="inline-flex items-center justify-center px-2.5 h-5 min-h-0 text-[10px] font-medium text-white rounded-full"
-                      style={{ background: createBackground(item.design) }}
+          <div className="p-3">
+            {/* Header Line */}
+            <div className="text-sm font-medium mb-2 text-gray-200 truncate">
+              {parsedCustomerName}
+            </div>
+
+            <div className="flex gap-3">
+              {/* Thumbnail Image Placeholder */}
+              <div
+                className="w-20 h-20 flex-shrink-0 rounded-md shadow-inner"
+                style={{
+                    background: createBackground(item.design),
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                }}
+              />
+
+              {/* Content Column */}
+              <div className="flex-1 flex flex-col justify-between min-w-0">
+                <div className="space-y-0.5">
+                    <div className="text-sm text-gray-400">
+                        Design: <span className="text-white">"{item.design || "N/A"}"</span>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                        Size: <span className="text-white">{item.size || "N/A"}</span>
+                    </div>
+                    <div className={cn("text-sm", isPastDue ? "text-red-400 font-medium" : "text-gray-400")}>
+                        Due: <span className={cn(isPastDue ? "text-red-400" : "text-white")}>{item.dueDate ? formatDate(item.dueDate) : "N/A"}</span>
+                    </div>
+                </div>
+
+                {/* Status Badge & Tags */}
+                <div className="flex justify-between items-end mt-1">
+                    <div className="flex gap-1">
+                        {tags.map((tag, i) => (
+                            <tag.icon key={i} className={cn("w-4 h-4", tag.color)} />
+                        ))}
+                    </div>
+                    <Badge
+                        className={cn(
+                            "px-2 py-0.5 text-xs font-semibold rounded pointer-events-none",
+                            item.status === ItemStatus.New ? "bg-blue-600 hover:bg-blue-600 text-white" :
+                            item.status === ItemStatus.Wip ? "bg-orange-500 hover:bg-orange-500 text-white" :
+                            "bg-gray-700 hover:bg-gray-700 text-gray-200"
+                        )}
                     >
-                      {item.design}
-                    </div>
-                  )}
-                  {item.size && (
-                    <div className="inline-flex items-center justify-center px-2.5 h-5 min-h-0 text-[10px] font-medium text-white rounded-full bg-blue-500 dark:bg-blue-600">
-                      {item.size}
-                    </div>
-                  )}
+                        {item.status === ItemStatus.New ? "New" : 
+                         item.status === ItemStatus.Wip ? "Processing" : 
+                         item.status}
+                    </Badge>
                 </div>
               </div>
             </div>
-
-            <Badge
-              className={cn(
-                "text-xs px-2 py-0.5 flex-shrink-0 border bg-transparent",
-                "text-white"
-              )}
-            >
-              {item.status}
-            </Badge>
-          </CardHeader>
-
-          <CardFooter className="p-3 pt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-2 overflow-hidden">
-              {/* <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 border dark:border-gray-600">
-                <ShippingStatusIcon orderId={item.id} />
-              </div> */}
-              {tags.length > 0 ? (
-                tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    title={tag.text}
-                    className={`flex items-center gap-1 ${tag.color}`}
-                  >
-                    <tag.icon className="h-3 w-3" />
-                  </span>
-                ))
-              ) : (
-                <span className="italic text-gray-400 dark:text-gray-500"></span>
-              )}
-            </div>
-
-            <div
-              className={cn(
-                "flex items-center gap-1 whitespace-nowrap",
-                item.status === ItemStatus.Done
-                  ? "text-white dark:text-white"
-                  : isPastDue
-                  ? "text-red-500 dark:text-red-400 font-medium"
-                  : isNearDue
-                  ? "text-amber-500 dark:text-amber-800 font-medium"
-                  : ""
-              )}
-            >
-              {isPastDue && item.status !== ItemStatus.Done && item.dueDate ? (
-                <Badge
-                  variant="destructive"
-                  className="text-[10px] px-1.5 py-0.5 h-auto ml-1"
-                >
-                  {`${Math.abs(daysRemaining)}d late`}
-                </Badge>
-              ) : (
-                <>
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span className="font-medium">
-                    {item.dueDate ? formatDate(item.dueDate) : "No date"}
-                  </span>
-                </>
-              )}
-            </div>
-          </CardFooter>
+          </div>
         </Card>
       </motion.div>
     );
