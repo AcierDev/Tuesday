@@ -98,20 +98,20 @@ export const AMBER_COLORS: Record<number, { hex: string; name: string }> = {
 };
 
 export const FOREST_COLORS: Record<number, { hex: string; name: string }> = {
-  14: { hex: "#FFFFFF", name: "White" },
-  13: { hex: "#E3E5E5", name: "Mercury" },
-  12: { hex: "#C6CACA", name: "Pumice" },
-  11: { hex: "#B3B8B9", name: "Bombay" },
-  10: { hex: "#A0A5A7", name: "Edward" },
-  9: { hex: "#A5ADA6", name: "Edward" },
-  8: { hex: "#A9B4A5", name: "Bud" },
-  7: { hex: "#7B8476", name: "Friar Gray" },
-  6: { hex: "#4D5346", name: "Gray Asparagus" },
-  5: { hex: "#414035", name: "Armadillo" },
-  4: { hex: "#342D24", name: "Birch" },
-  3: { hex: "#281A13", name: "Oil" },
-  2: { hex: "#1A110D", name: "Crowshead" },
-  1: { hex: "#000000", name: "Black" },
+  1: { hex: "#FFFFFF", name: "White" },
+  2: { hex: "#E3E5E5", name: "Mercury" },
+  3: { hex: "#C6CACA", name: "Pumice" },
+  4: { hex: "#B3B8B9", name: "Bombay" },
+  5: { hex: "#A0A5A7", name: "Edward" },
+  6: { hex: "#A5ADA6", name: "Edward" },
+  7: { hex: "#A9B4A5", name: "Bud" },
+  8: { hex: "#7B8476", name: "Friar Gray" },
+  9: { hex: "#4D5346", name: "Gray Asparagus" },
+  10: { hex: "#414035", name: "Armadillo" },
+  11: { hex: "#342D24", name: "Birch" },
+  12: { hex: "#281A13", name: "Oil" },
+  13: { hex: "#1A110D", name: "Crowshead" },
+  14: { hex: "#000000", name: "Black" },
 };
 
 export const ELEMENTAL_COLORS: Record<number, { hex: string; name: string }> = {
