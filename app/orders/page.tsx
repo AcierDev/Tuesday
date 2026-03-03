@@ -336,7 +336,7 @@ export default function OrderManagementPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-white dark:bg-gray-900 text-black dark:text-white">
+    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-black dark:text-white">
       <Toaster position="top-center" />
       {!isMobile && (
         <Header
