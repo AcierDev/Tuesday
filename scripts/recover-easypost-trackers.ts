@@ -59,11 +59,11 @@ async function recoverEasyPostTrackers() {
 
       for (const tracker of trackers) {
         try {
-          // if (tracker.tracking_details && tracker.tracking_details.length > 1) {
-          //   // console.log(`  -> Tracker ${tracker.id} has > 1 details. Skipping.`);
-          //   updatedTrackers.push(tracker);
-          //   continue;
-          // }
+          if (tracker.tracking_details && tracker.tracking_details.length > 1) {
+            // console.log(`  -> Tracker ${tracker.id} has > 1 details. Skipping.`);
+            updatedTrackers.push(tracker);
+            continue;
+          }
 
             // @ts-ignore
           const remoteTracker = await easyPost.Tracker.retrieve(tracker.id);
