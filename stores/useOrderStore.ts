@@ -209,6 +209,11 @@ export const useOrderStore = create<OrderState>()(
       },
 
       startWatchingChanges: () => {
+        // Ensure this only runs in the browser where EventSource is available
+        if (typeof window === "undefined" || typeof EventSource === "undefined") {
+          return;
+        }
+
         // Clean up existing connection if any
         get().stopWatchingChanges();
 
@@ -847,8 +852,15 @@ export const useOrderStore = create<OrderState>()(
   })
 );
 
-// Initialize the store after creation
-useOrderStore.getState().init().catch(console.error);
+// Initialize the store after creation on the client only
+if (typeof window !== "undefined") {
+  useOrderStore
+    .getState()
+    .init()
+    .catch((error) => {
+      console.error("Failed to initialize order store", error);
+    });
+}
 
 // Helper function for automatron rules
 function applyAutomatronRules(

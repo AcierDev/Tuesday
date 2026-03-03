@@ -291,5 +291,12 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
   )
 );
 
-// Initialize the store after creation
-useWeeklyScheduleStore.getState().init().catch(console.error);
+// Initialize the store after creation on the client only
+if (typeof window !== "undefined") {
+  useWeeklyScheduleStore
+    .getState()
+    .init()
+    .catch((error) => {
+      console.error("Failed to initialize weekly schedule store", error);
+    });
+}

@@ -27,6 +27,11 @@ export const useTrackingStore = create<TrackingState>()(
       eventSource: null,
 
       startWatchingChanges: () => {
+        // Ensure this only runs in the browser where EventSource is available
+        if (typeof window === "undefined" || typeof EventSource === "undefined") {
+          return;
+        }
+
         const eventSource = new EventSource("/api/webhooks/easypost");
 
         eventSource.onmessage = (event) => {
@@ -148,5 +153,12 @@ export const useTrackingStore = create<TrackingState>()(
   )
 );
 
-// Initialize the store after creation
-useTrackingStore.getState().init().catch(console.error);
+// Initialize the store after creation on the client only
+if (typeof window !== "undefined") {
+  useTrackingStore
+    .getState()
+    .init()
+    .catch((error) => {
+      console.error("Failed to initialize tracking store", error);
+    });
+}
