@@ -114,11 +114,13 @@ export default function PaintSchedulePage() {
       const designValue = item.design || "";
       const matchesDesign =
         filterDesign === "all" || designValue === filterDesign;
-      
+
       const searchText = searchTerm.toLowerCase();
-      const matchesSearch = item.searchText 
-          ? item.searchText.includes(searchText)
-          : [item.customerName, item.design, item.size, item.notes].some(val => val?.toLowerCase().includes(searchText));
+      const matchesSearch = item.searchText
+        ? item.searchText.includes(searchText)
+        : [item.customerName, item.design, item.size, item.notes].some((val) =>
+            val?.toLowerCase().includes(searchText)
+          );
 
       return matchesDesign && matchesSearch;
     });
