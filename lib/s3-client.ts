@@ -69,6 +69,26 @@ export async function listLabelsForOrder(orderId: string): Promise<string[]> {
   );
 }
 
+export async function getNextLabelFilename(orderId: string): Promise<string> {
+  const existingLabels = await listLabelsForOrder(orderId);
+
+  if (!existingLabels.length) {
+    return `${orderId}.pdf`;
+  }
+
+  const suffixes = existingLabels.map((filename) => {
+    if (filename === `${orderId}.pdf`) {
+      return 0;
+    }
+
+    const match = filename.match(/-(\d+)\.pdf$/);
+    return match ? Number(match[1]) : -1;
+  });
+
+  const maxSuffix = Math.max(...suffixes);
+  return maxSuffix <= 0 ? `${orderId}-1.pdf` : `${orderId}-${maxSuffix + 1}.pdf`;
+}
+
 /**
  * Upload a PDF file to S3
  */

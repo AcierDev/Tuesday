@@ -92,6 +92,7 @@ export type Item = {
   };
   isScheduled?: boolean;
   searchText?: string;
+  purchasedShipment?: PurchasedShipment;
 };
 
 export type ShippingDetails = {
@@ -108,6 +109,69 @@ export type ShippingDetails = {
   residential: boolean;
   addressVerified: string;
   buyer_email?: string;
+};
+
+export type ShippingAddressInput = {
+  name: string;
+  company?: string;
+  phone?: string;
+  email?: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  residential?: boolean;
+};
+
+export type ShippingPackagePreset = {
+  id: string;
+  label?: string;
+  length: number;
+  width: number;
+  height: number;
+  weight: number;
+};
+
+export type ShippingPurchaseDefaults = {
+  pickupType: string;
+  packagingType: string;
+  labelStockType: string;
+  signatureOption: string;
+};
+
+export type ShippingSettings = {
+  _id?: string;
+  packagePresetsBySize: Record<ItemSizes, ShippingPackagePreset[]>;
+  shipFrom: ShippingAddressInput;
+  purchaseDefaults: ShippingPurchaseDefaults;
+  updatedAt?: number;
+};
+
+export type FedExRateQuote = {
+  serviceType: string;
+  serviceName: string;
+  totalNetCharge: number;
+  currency: string;
+  estimatedDeliveryDate?: string;
+  transitTime?: string;
+};
+
+export type PurchasedShipment = {
+  orderId: string;
+  carrier: "FedEx";
+  serviceType: string;
+  serviceName: string;
+  trackingNumber: string;
+  labelFilename: string;
+  labelUrl: string;
+  totalNetCharge: number;
+  currency: string;
+  packages: ShippingPackagePreset[];
+  shipFrom: ShippingAddressInput;
+  shipTo: ShippingAddressInput;
+  purchasedAt: number;
 };
 
 export type OrderTrackingInfo = {

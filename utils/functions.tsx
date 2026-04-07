@@ -18,6 +18,7 @@ import {
   isAfter,
 } from "date-fns";
 import { boardConfig } from "../config/boardconfig";
+import { DEFAULT_PACKAGE_PRESETS_BY_SIZE } from "@/config/shipping-defaults";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Box } from "@/typings/interfaces";
@@ -105,53 +106,18 @@ export const isPastDue = (item: Item) => {
 };
 
 export function getBoxData(size: ItemSizes): Box[] {
-  const [width, length] = size.split(" x ").map(Number);
+  const configurations = DEFAULT_PACKAGE_PRESETS_BY_SIZE[size];
 
-  const dimensionConfigs: { [key: string]: any } = {
-    "14 x 7": [{ length: 44, width: 22, height: 4, weight: 12 }],
-    "16 x 6": [{ length: 54, width: 22, height: 4, weight: 15 }],
-    "16 x 10": [{ length: 39, width: 35, height: 7, weight: 40 }],
-    "19 x 10": [{ length: 39, width: 35, height: 7, weight: 50 }],
-    "22 x 10": [{ length: 39, width: 35, height: 7, weight: 60 }],
-    "19 x 11": [{ length: 39, width: 35, height: 7, weight: 50 }],
-    "22 x 11": [{ length: 41.5, width: 37, height: 6, weight: 65 }],
-    "27 x 11": [
-      { length: 39, width: 35, height: 7, weight: 50 },
-      { length: 41, width: 32, height: 4, weight: 25 },
-    ],
-    "27 x 15": [
-      { length: 54, width: 32, height: 5, weight: 35 },
-      { length: 54, width: 32, height: 5, weight: 35 },
-      { length: 54, width: 32, height: 5, weight: 35 },
-    ],
-    "31 x 15": [
-      { length: 54, width: 32, height: 5, weight: 35 },
-      { length: 54, width: 32, height: 5, weight: 35 },
-      { length: 54, width: 26, height: 7, weight: 55 },
-    ],
-    "36 x 15": [
-      { length: 54, width: 32, height: 5, weight: 35 },
-      { length: 54, width: 32, height: 5, weight: 35 },
-      { length: 54, width: 32, height: 5, weight: 35 },
-      { length: 54, width: 32, height: 5, weight: 35 },
-    ],
-  };
-
-  const key = `${width} x ${length}`;
-  const configurations = dimensionConfigs[key];
-
-  if (!configurations) {
-    return [
-      {
-        length: "0",
-        width: "0",
-        height: "0",
-        weight: "0",
-      },
-    ];
-  } else {
-    return configurations;
+  if (!configurations?.length) {
+    return [{ length: "0", width: "0", height: "0", weight: "0" }];
   }
+
+  return configurations.map((configuration) => ({
+    length: configuration.length.toString(),
+    width: configuration.width.toString(),
+    height: configuration.height.toString(),
+    weight: configuration.weight.toString(),
+  }));
 }
 
 export const getInputTypeForField = (field: string) => {
@@ -293,7 +259,7 @@ export const calculateTotalSquares = (
   // Deprecated getItemValue for compatibility
   getItemValue: (item: Item, columnName: ColumnTitles) => string
 ): { count: number; hasIndeterminate: boolean } => {
-  return dayItems.reduce(
+  return dayItems.reduce<{ count: number; hasIndeterminate: boolean }>(
     (acc, scheduleItem) => {
       const item = items.find((i) => i.id === scheduleItem.id);
       if (item) {
@@ -362,7 +328,7 @@ export const calculateTotalSquares = (
 
         for (const field of fieldsToCheck) {
           const match = field.match(additionalBlocksPattern);
-          if (match) {
+          if (match?.[1]) {
             additionalBlocks += parseInt(match[1], 10);
           }
         }

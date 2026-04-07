@@ -10,6 +10,7 @@ import {
   Group,
   Edit,
   UserCircle,
+  Truck,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -24,6 +25,7 @@ import { DueBadgeSettings } from "./DueBadgeSettings";
 import { RecentEditsSettings } from "./RecentEditsSettings";
 import { GroupingSettings } from "./GroupSettings";
 import { IdentificationMenuSettings } from "./IdentificationMenuSettings";
+import { ShippingSettingsEditor } from "./ShippingSettingsEditor";
 
 import { OrderSettings } from "@/typings/types";
 
@@ -41,6 +43,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState("automatron");
 
   useEffect(() => {
     setMounted(true);
@@ -93,7 +96,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         ref={dialogRef}
         className="bg-background text-foreground rounded-lg shadow-lg w-full max-w-4xl h-[90vh] overflow-hidden flex flex-col dark:bg-gray-800"
       >
-        <Tabs defaultValue="automatron" className="flex flex-col h-full">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex flex-col h-full"
+        >
           <div className="flex flex-grow overflow-hidden">
             <TabsList className="h-full w-64 flex-shrink-0 flex flex-col items-stretch space-y-1 rounded-tl-lg border-r bg-muted p-4 dark:bg-gray-900">
               <TabsTrigger
@@ -138,6 +145,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 <UserCircle className="w-4 h-4 mr-2" />
                 Identification Menu
               </TabsTrigger>
+              <TabsTrigger
+                value="shipping"
+                className="justify-start py-2 px-3 text-sm font-medium rounded-md transition-colors hover:bg-primary/10 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+              >
+                <Truck className="w-4 h-4 mr-2" />
+                Shipping
+              </TabsTrigger>
             </TabsList>
             <div className="flex-grow overflow-y-auto p-6">
               <div className="flex justify-between items-center mb-6">
@@ -180,7 +194,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       columnVisibility: {
                         ...settings.columnVisibility,
                         [group]: {
-                          ...settings.columnVisibility[group],
+                          ...settings.columnVisibility[
+                            group as keyof typeof settings.columnVisibility
+                          ],
                           [field]: isVisible,
                         },
                       },
@@ -217,22 +233,33 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   updateSettings={updateSettings}
                 />
               </TabsContent>
+              <TabsContent value="shipping">
+                <ShippingSettingsEditor />
+              </TabsContent>
             </div>
           </div>
-          <div className="border-t mt-auto p-4 bg-muted dark:bg-gray-700 flex justify-between items-center">
-            <Button
-              variant="ghost"
-              onClick={() => console.log("Restore defaults")}
-            >
-              Restore Defaults
-            </Button>
-            <div className="space-x-2">
+          {activeTab === "shipping" ? (
+            <div className="border-t mt-auto p-4 bg-muted dark:bg-gray-700 flex justify-end items-center">
               <Button variant="ghost" onClick={onClose}>
-                Cancel
+                Close
               </Button>
-              <Button onClick={saveSettings}>Save Changes</Button>
             </div>
-          </div>
+          ) : (
+            <div className="border-t mt-auto p-4 bg-muted dark:bg-gray-700 flex justify-between items-center">
+              <Button
+                variant="ghost"
+                onClick={() => console.log("Restore defaults")}
+              >
+                Restore Defaults
+              </Button>
+              <div className="space-x-2">
+                <Button variant="ghost" onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button onClick={saveSettings}>Save Changes</Button>
+              </div>
+            </div>
+          )}
         </Tabs>
       </div>
     </div>

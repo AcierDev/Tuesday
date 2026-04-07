@@ -132,7 +132,12 @@ export const useTrackingStore = create<TrackingState>()(
           }
 
           set((state) => ({
-            trackingInfo: [...state.trackingInfo, tracking],
+            trackingInfo: [
+              ...state.trackingInfo.filter(
+                (existing) => existing.orderId !== tracking.orderId
+              ),
+              tracking,
+            ],
           }));
           toast.success("Tracking information added successfully");
         } catch (error) {
