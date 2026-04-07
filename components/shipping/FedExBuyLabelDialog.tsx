@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -236,6 +236,20 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
     () => rates.find((rate) => rate.serviceType === selectedServiceType),
     [rates, selectedServiceType]
   );
+
+  const liveRatesSectionRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (rates.length === 0 || isFetchingRates) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      liveRatesSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [rates, isFetchingRates]);
 
   useEffect(() => {
     if (open) {
@@ -804,7 +818,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                 </div>
 
                 {rates.length ? (
-                  <>
+                  <div ref={liveRatesSectionRef}>
                     <Separator />
                     <section className="space-y-4">
                       <div>
@@ -890,7 +904,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                         })}
                       </div>
                     </section>
-                  </>
+                  </div>
                 ) : null}
               </>
             ) : null}
