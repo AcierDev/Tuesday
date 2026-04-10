@@ -21,7 +21,7 @@ export const DEFAULT_SHIP_FROM_ADDRESS: ShippingAddressInput = {
 };
 
 export const DEFAULT_SHIPPING_PURCHASE_DEFAULTS: ShippingPurchaseDefaults = {
-  pickupType: "USE_SCHEDULED_PICKUP",
+  pickupType: "DROPOFF_AT_FEDEX_LOCATION",
   packagingType: "YOUR_PACKAGING",
   labelStockType: "PAPER_4X6",
   signatureOption: "NO_SIGNATURE_REQUIRED",

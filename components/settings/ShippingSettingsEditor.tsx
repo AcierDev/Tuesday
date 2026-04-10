@@ -27,6 +27,10 @@ import {
   type ShippingPackagePreset,
   type ShippingSettings,
 } from "@/typings/types";
+import {
+  formatPackageNumberForInput,
+  parsePackageNumericInput,
+} from "@/utils/shipping-package-input";
 
 const signatureOptions = [
   { value: "NO_SIGNATURE_REQUIRED", label: "No signature" },
@@ -141,7 +145,9 @@ export function ShippingSettingsEditor() {
               ? {
                   ...preset,
                   [field]:
-                    field === "label" ? value : Number(value),
+                    field === "label"
+                      ? value
+                      : parsePackageNumericInput(value),
                 }
               : preset
           ),
@@ -446,7 +452,11 @@ export function ShippingSettingsEditor() {
                           type="number"
                           min="0"
                           step="0.1"
-                          value={preset[field as keyof ShippingPackagePreset] || 0}
+                          value={formatPackageNumberForInput(
+                            preset[
+                              field as keyof ShippingPackagePreset
+                            ] as number
+                          )}
                           onChange={(event) =>
                             updatePreset(size, preset.id, field as keyof ShippingPackagePreset, event.target.value)
                           }

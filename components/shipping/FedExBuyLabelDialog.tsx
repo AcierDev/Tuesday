@@ -36,6 +36,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/utils/functions";
+import {
+  formatPackageNumberForInput,
+  parsePackageNumericInput,
+} from "@/utils/shipping-package-input";
 import { normalizeShippingSettings } from "@/config/shipping-defaults";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useShippingSettingsStore } from "@/stores/useShippingSettingsStore";
@@ -331,7 +335,10 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
               pkg.id === packageId
                 ? {
                     ...pkg,
-                    [field]: field === "label" ? value : Number(value),
+                    [field]:
+                      field === "label"
+                        ? value
+                        : parsePackageNumericInput(value),
                   }
                 : pkg
             ),
@@ -704,7 +711,11 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                                 type="number"
                                 min="0"
                                 step="0.1"
-                                value={pkg[field as keyof ShippingPackagePreset] || 0}
+                                value={formatPackageNumberForInput(
+                                  pkg[
+                                    field as keyof ShippingPackagePreset
+                                  ] as number
+                                )}
                                 onChange={(event) =>
                                   updatePackage(
                                     pkg.id,
