@@ -40,6 +40,12 @@ import {
   formatPackageNumberForInput,
   parsePackageNumericInput,
 } from "@/utils/shipping-package-input";
+import {
+  clearFedExShipmentDraft,
+  loadFedExShipmentDraft,
+  saveFedExShipmentDraft,
+  type FedExShipmentDraft,
+} from "@/utils/fedex-shipment-draft-storage";
 import { normalizeShippingSettings } from "@/config/shipping-defaults";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useShippingSettingsStore } from "@/stores/useShippingSettingsStore";
@@ -54,12 +60,7 @@ import {
   type ShippingPurchaseDefaults,
 } from "@/typings/types";
 
-type ShipmentDraft = {
-  shipFrom: ShippingAddressInput;
-  shipTo: ShippingAddressInput;
-  packages: ShippingPackagePreset[];
-  purchaseDefaults: ShippingPurchaseDefaults;
-};
+type ShipmentDraft = FedExShipmentDraft;
 
 const signatureOptions = [
   { value: "NO_SIGNATURE_REQUIRED", label: "No signature" },
@@ -242,6 +243,9 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
   );
 
   const liveRatesSectionRef = useRef<HTMLDivElement | null>(null);
+  /** One init per dialog open so shippingSettings refetches do not wipe edits or cache */
+  const initializedForOpenRef = useRef(false);
+  const prevOpenRef = useRef(open);
 
   useEffect(() => {
     if (rates.length === 0 || isFetchingRates) {
@@ -262,20 +266,48 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
   }, [open, fetchShippingSettings]);
 
   useEffect(() => {
-    if (open && shippingSettings) {
-      const nextDraft = initializeDraft(
-        item,
-        normalizeShippingSettings(shippingSettings)
-      );
-      setDraft(nextDraft);
-      const shipFromOk = isShipFromSectionComplete(nextDraft.shipFrom);
-      const recipientOk = isRecipientSectionComplete(nextDraft.shipTo);
-      setAddressSectionsOpen(!(shipFromOk && recipientOk));
-      setRates([]);
-      setSelectedServiceType("");
-      setError(null);
+    if (!open) {
+      initializedForOpenRef.current = false;
+      return;
     }
-  }, [open, shippingSettings, item]);
+    if (!shippingSettings) {
+      return;
+    }
+    if (initializedForOpenRef.current) {
+      return;
+    }
+    initializedForOpenRef.current = true;
+
+    const normalized = normalizeShippingSettings(shippingSettings);
+    const base = initializeDraft(item, normalized);
+    const cached = loadFedExShipmentDraft(item.id);
+    const nextDraft = cached ?? base;
+    setDraft(nextDraft);
+    const shipFromOk = isShipFromSectionComplete(nextDraft.shipFrom);
+    const recipientOk = isRecipientSectionComplete(nextDraft.shipTo);
+    setAddressSectionsOpen(!(shipFromOk && recipientOk));
+    setRates([]);
+    setSelectedServiceType("");
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- item is current row; keyed by item.id
+  }, [open, shippingSettings, item.id]);
+
+  useEffect(() => {
+    if (!open || !draft) {
+      return;
+    }
+    const t = window.setTimeout(() => {
+      saveFedExShipmentDraft(item.id, draft);
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [draft, open, item.id]);
+
+  useEffect(() => {
+    if (prevOpenRef.current && !open && draft) {
+      saveFedExShipmentDraft(item.id, draft);
+    }
+    prevOpenRef.current = open;
+  }, [open, draft, item.id]);
 
   useEffect(() => {
     if (!draft) return;
@@ -438,6 +470,10 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
 
       await Promise.all([fetchAllLabels(), fetchTrackingInfo(), loadItems()]);
       toast.success(`FedEx label purchased for order ${item.id}`);
+      clearFedExShipmentDraft(item.id);
+      setDraft(null);
+      setRates([]);
+      setSelectedServiceType("");
       setOpen(false);
     } catch (purchaseError) {
       setError(
