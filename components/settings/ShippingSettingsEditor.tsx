@@ -5,7 +5,14 @@ import { Loader2, Plus, Save, Truck, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -58,8 +65,13 @@ const packagingTypeOptions = [
 const settingsInputClassName =
   "border-gray-200 bg-white dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400";
 
+/** Wide enough for sidebar layout; allow two-line labels if needed */
 const settingsSelectTriggerClassName =
-  "border-gray-200 bg-white dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 focus:ring-blue-500 dark:focus:ring-blue-400";
+  "min-w-0 w-full border-gray-200 bg-white text-left dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 focus:ring-blue-500 dark:focus:ring-blue-400 [&>span]:line-clamp-2 [&>span]:whitespace-normal";
+
+function formatItemSizeTitle(size: string) {
+  return size.replace(/\s+x\s+/i, " × ");
+}
 
 function createPackagePreset(index: number): ShippingPackagePreset {
   return {
@@ -310,12 +322,12 @@ export function ShippingSettingsEditor() {
       <Card className="dark:bg-gray-900">
         <CardHeader>
           <CardTitle>Purchase Defaults</CardTitle>
-          <CardDescription>
-            Defaults used when the shipping-column FedEx dialog opens.
+          <CardDescription className="text-muted-foreground">
+            Applied when you open the FedEx label dialog from the shipping column.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <div className="space-y-2">
+        <CardContent className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="min-w-0 space-y-2">
             <Label>Pickup Type</Label>
             <Select
               value={draft.purchaseDefaults.pickupType}
@@ -333,7 +345,7 @@ export function ShippingSettingsEditor() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label>Signature</Label>
             <Select
               value={draft.purchaseDefaults.signatureOption}
@@ -353,7 +365,7 @@ export function ShippingSettingsEditor() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label>Packaging Type</Label>
             <Select
               value={draft.purchaseDefaults.packagingType}
@@ -371,7 +383,7 @@ export function ShippingSettingsEditor() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label>Label Stock</Label>
             <Select
               value={draft.purchaseDefaults.labelStockType}
@@ -394,79 +406,102 @@ export function ShippingSettingsEditor() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {Object.values(ItemSizes).map((size) => (
-          <Card key={size} className="dark:bg-gray-900">
-            <CardHeader>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <CardTitle>{size}</CardTitle>
-                  <CardDescription>
-                    Default packages loaded into the FedEx purchase dialog.
-                  </CardDescription>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => addPreset(size)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Package
-                </Button>
-              </div>
+          <Card key={size} className="flex flex-col overflow-hidden dark:bg-gray-900">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">
+                <span className="text-muted-foreground">Template size</span>{" "}
+                <span className="font-semibold tracking-tight text-foreground">
+                  {formatItemSizeTitle(size)}
+                </span>
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Orders with this item size get these package rows prefilled in the FedEx
+                dialog.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {draft.packagePresetsBySize[size].map((preset, index) => (
-                <div
-                  key={preset.id}
-                  className="rounded-lg border border-border p-4"
-                >
-                  <div className="mb-4 flex items-center justify-between gap-4">
-                    <div className="font-medium">Package {index + 1}</div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removePreset(size, preset.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="space-y-2 md:col-span-2">
-                      <Label>Label</Label>
-                      <Input
-                        className={settingsInputClassName}
-                        value={preset.label || ""}
-                        onChange={(event) =>
-                          updatePreset(size, preset.id, "label", event.target.value)
-                        }
-                        placeholder="Main carton, hardware box, panel box..."
-                      />
+            <CardContent className="flex flex-1 flex-col p-0">
+              <div className="divide-y divide-border">
+                {draft.packagePresetsBySize[size].map((preset, index) => (
+                  <div
+                    key={preset.id}
+                    className="bg-muted/20 px-4 py-4 dark:bg-muted/10"
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-foreground">
+                        Package {index + 1}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                        onClick={() => removePreset(size, preset.id)}
+                        aria-label={`Remove package ${index + 1}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                    {[
-                      ["length", "Length"],
-                      ["width", "Width"],
-                      ["height", "Height"],
-                      ["weight", "Weight (lb)"],
-                    ].map(([field, label]) => (
-                      <div key={field} className="space-y-2">
-                        <Label>{label}</Label>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label className="text-foreground/90">Label</Label>
                         <Input
                           className={settingsInputClassName}
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          value={formatPackageNumberForInput(
-                            preset[
-                              field as keyof ShippingPackagePreset
-                            ] as number
-                          )}
+                          value={preset.label || ""}
                           onChange={(event) =>
-                            updatePreset(size, preset.id, field as keyof ShippingPackagePreset, event.target.value)
+                            updatePreset(size, preset.id, "label", event.target.value)
                           }
+                          placeholder="e.g. Main carton, hardware box"
                         />
                       </div>
-                    ))}
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {[
+                          ["length", "Length"],
+                          ["width", "Width"],
+                          ["height", "Height"],
+                          ["weight", "Weight"],
+                        ].map(([field, label]) => (
+                          <div key={field} className="min-w-0 space-y-2">
+                            <Label className="text-foreground/90">{label}</Label>
+                            <Input
+                              className={settingsInputClassName}
+                              type="number"
+                              min="0"
+                              step="0.1"
+                              value={formatPackageNumberForInput(
+                                preset[
+                                  field as keyof ShippingPackagePreset
+                                ] as number
+                              )}
+                              onChange={(event) =>
+                                updatePreset(
+                                  size,
+                                  preset.id,
+                                  field as keyof ShippingPackagePreset,
+                                  event.target.value
+                                )
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </CardContent>
+            <CardFooter className="mt-auto flex-col gap-2 border-t border-border bg-muted/30 px-4 py-3 dark:bg-muted/15">
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full gap-2 sm:w-auto sm:self-end"
+                onClick={() => addPreset(size)}
+              >
+                <Plus className="h-4 w-4" />
+                Add package
+              </Button>
+            </CardFooter>
           </Card>
         ))}
       </div>

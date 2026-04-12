@@ -205,6 +205,38 @@ function parseRateQuote(detail: any): FedExRateQuote | null {
   };
 }
 
+function formatFedExApiFailure(path: string, status: number, errorText: string): string {
+  let parsed: FedExApiErrorPayload | null = null;
+  try {
+    parsed = JSON.parse(errorText) as FedExApiErrorPayload;
+  } catch {
+    // keep raw body below
+  }
+
+  const first = parsed?.errors?.[0];
+  const code = first?.code;
+  const fedexMessage = first?.message;
+  const transactionId = parsed?.transactionId;
+  const ref = transactionId ? ` Reference: ${transactionId}.` : "";
+
+  if (code === "FORBIDDEN.ERROR" && path.includes("/ship/")) {
+    return (
+      "FedEx denied label creation (FORBIDDEN). Your API key can authenticate and Rate often works " +
+      "before Ship is enabled: in the FedEx Developer Portal, open your project and ensure the Ship API " +
+      "(create shipment / labels) is added and enabled for these credentials, and that your FedEx account " +
+      "is linked to the project. If Ship is already enabled, contact FedEx support with this error." +
+      (fedexMessage ? ` FedEx said: ${fedexMessage}` : "") +
+      ref
+    );
+  }
+
+  if (code === "FORBIDDEN.ERROR") {
+    return `FedEx denied this request: ${fedexMessage ?? errorText}.${ref}`;
+  }
+
+  return `FedEx request failed (${status}): ${errorText}`;
+}
+
 async function getAccessToken() {
   if (cachedToken && cachedToken.expiresAt > Date.now() + 30_000) {
     return cachedToken.accessToken;
@@ -287,7 +319,7 @@ async function fedexFetch<T>(path: string, body: unknown): Promise<T> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`FedEx request failed: ${errorText}`);
+    throw new Error(formatFedExApiFailure(path, response.status, errorText));
   }
 
   return response.json() as Promise<T>;

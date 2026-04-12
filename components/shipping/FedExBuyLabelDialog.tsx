@@ -702,7 +702,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                             ["length", "Length"],
                             ["width", "Width"],
                             ["height", "Height"],
-                            ["weight", "Weight (lb)"],
+                            ["weight", "Weight"],
                           ].map(([field, label]) => (
                             <div key={field} className="space-y-2">
                               <Label>{label}</Label>
