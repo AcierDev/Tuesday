@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ItemStatus, ColumnTitles } from "@/typings/types";
+import { FRONTEND_HIDDEN_COLUMN_TITLES } from "@/typings/constants";
 import { Settings, Columns, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ColumnVisibilitySettingsProps {
@@ -131,10 +132,22 @@ export function ColumnVisibilitySettings({
                           >
                             <div className="p-4 bg-card dark:bg-gray-700">
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                {/*
+                                  FRONTEND-ONLY HIDE: columns listed in
+                                  FRONTEND_HIDDEN_COLUMN_TITLES (Painted,
+                                  Backboard, Boxes, Glued, Notes, Rating) are
+                                  filtered out so users cannot toggle them
+                                  here. The underlying data/types are
+                                  unchanged for backwards compatibility.
+                                */}
                                 {[
                                   "Shipping",
                                   ...Object.values(ColumnTitles).filter(
-                                    (field) => field !== "Shipping"
+                                    (field) =>
+                                      field !== "Shipping" &&
+                                      !FRONTEND_HIDDEN_COLUMN_TITLES.has(
+                                        field as ColumnTitles
+                                      )
                                   ),
                                 ].map((field) => (
                                   <div

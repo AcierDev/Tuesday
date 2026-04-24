@@ -745,6 +745,26 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   [ColumnTitles.Due]: true,
 };
 
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🚫 FRONTEND-HIDDEN COLUMNS                                            ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+// These columns are hidden ONLY on the frontend. Backwards compatibility is
+// preserved: the underlying ColumnTitles enum, ITEM_DEFAULT_VALUES, store
+// fields, and any persisted user/server data remain intact. They are simply
+// filtered out of:
+//   1. The Settings → Table Configuration toggle UI (ColumnVisibilitySettings)
+//   2. The rendered Orders page columns (ItemGroup / ItemGroupPreview)
+//   3. The mobile orders view (MobileOrderView)
+// To re-enable any of these on the frontend, remove it from this list.
+export const FRONTEND_HIDDEN_COLUMN_TITLES: ReadonlySet<ColumnTitles> = new Set([
+  ColumnTitles.Painted,
+  ColumnTitles.Backboard,
+  ColumnTitles.Boxes,
+  ColumnTitles.Glued,
+  ColumnTitles.Notes,
+  ColumnTitles.Rating,
+]);
+
 export const ITEM_DEFAULT_VALUES: Record<ColumnTitles, GenericColumnValue> = {
   [ColumnTitles.Customer_Name]: {
     columnName: ColumnTitles.Customer_Name,

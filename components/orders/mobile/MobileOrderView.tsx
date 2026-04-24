@@ -66,17 +66,22 @@ export const MobileOrderView = ({
     return [...active, ...(doneItems || [])];
   }, [externalItems, storeData.items, doneItems]);
 
+  // FRONTEND-ONLY HIDE: Painted, Backboard, Glued, Boxes, Notes, and Rating
+  // are force-hidden in the mobile view to match the desktop behavior driven
+  // by FRONTEND_HIDDEN_COLUMN_TITLES. The underlying item data and types are
+  // unchanged (backwards compatible) — only the visible column flags are
+  // set to false here.
   const columnVisibility = {
     "Customer Name": true,
     Design: true,
     Size: true,
     "Due Date": true,
-    Painted: true,
-    Backboard: true,
-    Glued: true,
+    Painted: false,
+    Backboard: false,
+    Glued: false,
     Packaging: true,
-    Boxes: true,
-    Notes: true,
+    Boxes: false,
+    Notes: false,
   };
 
   // Process items to OrderItems

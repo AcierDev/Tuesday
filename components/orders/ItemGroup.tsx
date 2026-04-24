@@ -36,7 +36,11 @@ import { ItemActions } from "./ItemActions";
 import { BorderedTable } from "./BoarderedTable";
 import { ItemTableRow } from "./ItemTableRow";
 import { PreviewTableRow } from "./PreviewTableRow";
-import { DEFAULT_COLUMN_VISIBILITY, STATUS_COLORS } from "@/typings/constants";
+import {
+  DEFAULT_COLUMN_VISIBILITY,
+  FRONTEND_HIDDEN_COLUMN_TITLES,
+  STATUS_COLORS,
+} from "@/typings/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { LoadMoreSentinel } from "./LoadMoreSentinel";
@@ -196,12 +200,16 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     };
   }, [closeContextMenu]);
 
+  // FRONTEND-ONLY HIDE: columns in FRONTEND_HIDDEN_COLUMN_TITLES (Painted,
+  // Backboard, Boxes, Glued, Notes, Rating) are force-hidden regardless of
+  // any persisted columnVisibility settings. Backend/data is untouched.
   const visibleColumns = Object.entries(
     settings.columnVisibility[group.title as ItemStatus] ||
       DEFAULT_COLUMN_VISIBILITY
   )
     .filter(([_, isVisible]) => isVisible)
-    .map(([columnName]) => columnName as ColumnTitles);
+    .map(([columnName]) => columnName as ColumnTitles)
+    .filter((columnName) => !FRONTEND_HIDDEN_COLUMN_TITLES.has(columnName));
 
   const sortedItems = useMemo(() => {
     let items = [...group.items];

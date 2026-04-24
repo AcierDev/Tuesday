@@ -38,6 +38,7 @@ import {
 } from "../../typings/types";
 import { cn, isPastDue } from "../../utils/functions";
 import { CustomTableCell } from "../cells/CustomTableCell";
+import { FRONTEND_HIDDEN_COLUMN_TITLES } from "@/typings/constants";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useUser } from "@/contexts/UserContext";
 
@@ -82,11 +83,15 @@ export const ItemGroupPreview = ({ group, board }: ItemGroupPreviewProps) => {
     [sortColumn, sortDirection]
   );
 
+  // FRONTEND-ONLY HIDE: columns in FRONTEND_HIDDEN_COLUMN_TITLES (Painted,
+  // Backboard, Boxes, Glued, Notes, Rating) are force-hidden regardless of
+  // any persisted columnVisibility settings. Backend/data is untouched.
   const visibleColumns = Object.entries(
     settings.columnVisibility[group.title] || {}
   )
     .filter(([_, isVisible]) => isVisible)
-    .map(([columnName]) => columnName as ColumnTitles);
+    .map(([columnName]) => columnName as ColumnTitles)
+    .filter((columnName) => !FRONTEND_HIDDEN_COLUMN_TITLES.has(columnName));
 
   const sortedItems = useMemo(() => {
     if (sortColumn && sortDirection && itemSortFuncs[sortColumn]) {
