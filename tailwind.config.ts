@@ -52,6 +52,10 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./typings/**/*.{js,ts,jsx,tsx,mdx}",
+    // Required: getDueBadge() in utils/functions.tsx renders Tailwind
+    // classes (bg-red-500, hover:bg-yellow-500, min-w-[2.25rem], etc.)
+    // that would otherwise be purged in production.
+    "./utils/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
