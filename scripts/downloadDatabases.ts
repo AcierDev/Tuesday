@@ -34,12 +34,26 @@ async function downloadDatabases() {
       { name: "trackers-production", filename: "trackers-production.json" },
     ];
 
-    // Get Downloads directory path with timestamp
+    // Get Downloads directory path with Pacific-time timestamp
     const downloadsDir = path.join(os.homedir(), "Downloads");
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[:.]/g, "-")
-      .slice(0, 19);
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Los_Angeles",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZoneName: "short",
+    })
+      .formatToParts(new Date())
+      .reduce<Record<string, string>>((acc, p) => {
+        acc[p.type] = p.value;
+        return acc;
+      }, {});
+    const tzAbbr = parts.timeZoneName.replace(/\s+/g, "");
+    const timestamp = `${parts.year}-${parts.month}-${parts.day}_${parts.hour}-${parts.minute}-${parts.second}-${tzAbbr}`;
     const outputDir = path.join(
       downloadsDir,
       `everwood-database-backup-${timestamp}`
