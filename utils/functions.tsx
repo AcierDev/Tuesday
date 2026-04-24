@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   addDays,
+  differenceInCalendarDays,
   isBefore,
   isEqual,
   parseISO,
@@ -83,17 +84,44 @@ export function getEmployeeInfoFromInitials(initials: CreditOption) {
   };
 }
 
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 📅 DUE-DATE DELTA BADGE                                              ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+// Renders a small solid pill on the right of the due date showing the
+// signed delta in calendar days (e.g. "+2", "-3", "0"):
+//   • delta < 0          → red    ( -N — past due)
+//   • delta === 0        → yellow ( 0  — due today, treated as warning)
+//   • 0 < delta ≤ range  → yellow (+N  — within the configurable warning window)
+//   • delta > range      → green  (+N  — comfortably ahead)
+// The `range` arg is `OrderSettings.dueBadgeDays` (set in Settings →
+// Due Badge Settings). Signature is preserved for backwards compatibility
+// with existing callers.
 export const getDueBadge = (dateString: string, range: number) => {
   const dueDate = parseISO(dateString);
-  const now = new Date();
-  const daysFromNow = addDays(now, range);
+  const today = new Date();
+  const delta = differenceInCalendarDays(dueDate, today);
 
-  if (isBefore(dueDate, now) || isEqual(dueDate, now)) {
-    return <Badge variant="destructive">Overdue</Badge>;
-  } else if (isAfter(dueDate, now) && isBefore(dueDate, daysFromNow)) {
-    return <Badge variant="destructive">Due</Badge>;
+  let colorClasses: string;
+  if (delta < 0) {
+    colorClasses = "bg-red-500 hover:bg-red-500 text-white";
+  } else if (delta === 0 || delta <= range) {
+    colorClasses = "bg-yellow-500 hover:bg-yellow-500 text-white";
+  } else {
+    colorClasses = "bg-green-500 hover:bg-green-500 text-white";
   }
-  return null;
+
+  const label = delta === 0 ? "0" : delta > 0 ? `+${delta}` : `${delta}`;
+
+  return (
+    <Badge
+      className={cn(
+        "border-transparent tabular-nums px-2 py-0.5 min-w-[2.25rem] justify-center",
+        colorClasses
+      )}
+    >
+      {label}
+    </Badge>
+  );
 };
 
 export const isPastDue = (item: Item) => {

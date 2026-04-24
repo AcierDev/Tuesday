@@ -23,7 +23,7 @@ export const DueBadgeSettings = ({
           <Clock className="mr-2 h-5 w-5" />
           Due Badge Settings
         </CardTitle>
-        <CardDescription>Set how many days in advance to show the "Due" badge</CardDescription>
+        <CardDescription>Set how many days before the due date the day-counter badge turns yellow</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -48,7 +48,7 @@ export const DueBadgeSettings = ({
             </div>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            The "Due" badge will appear {dueBadgeDays} days before the due date.
+            The day-counter badge will turn yellow when an item is within {dueBadgeDays} days of its due date.
           </p>
         </div>
       </CardContent>
