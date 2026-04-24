@@ -500,9 +500,7 @@ export function UserIdentificationMenu() {
         } flex items-center space-x-3 rounded-full shadow-lg z-40 transition-colors duration-200 ${
           currentUser
             ? CREDIT_COLORS[INITIALS_MAP[currentUser]]
-            : theme === "dark"
-            ? "bg-gray-800 hover:bg-gray-700"
-            : "bg-white hover:bg-gray-100"
+            : "bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700"
         }`}
         style={{
           minWidth: isMobile ? "auto" : "200px",
@@ -523,19 +521,11 @@ export function UserIdentificationMenu() {
               </AvatarFallback>
             </Avatar>
             {isMobile ? (
-              <span
-                className={`font-medium ${
-                  theme === "dark" ? "text-white" : "text-gray-800"
-                }`}
-              >
+              <span className="font-medium text-gray-800 dark:text-white">
                 {currentUser.split(" ")[0]}
               </span>
             ) : (
-              <span
-                className={`font-medium text-lg ${
-                  theme === "dark" ? "text-white" : "text-gray-800"
-                }`}
-              >
+              <span className="font-medium text-lg text-gray-800 dark:text-white">
                 {currentUser}
               </span>
             )}
@@ -543,14 +533,14 @@ export function UserIdentificationMenu() {
         ) : (
           <>
             <User
-              className={`${isMobile ? "w-5 h-5" : "w-6 h-6"} ${
-                theme === "dark" ? "text-white" : "text-gray-800"
-              }`}
+              className={`${
+                isMobile ? "w-5 h-5" : "w-6 h-6"
+              } text-gray-800 dark:text-white`}
             />
             <span
-              className={`font-medium ${isMobile ? "" : "text-lg"} ${
-                theme === "dark" ? "text-white" : "text-gray-800"
-              }`}
+              className={`font-medium ${
+                isMobile ? "" : "text-lg"
+              } text-gray-800 dark:text-white`}
             >
               {isMobile ? "Login" : "No user logged in"}
             </span>
