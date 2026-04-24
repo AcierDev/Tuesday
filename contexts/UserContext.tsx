@@ -139,7 +139,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   return (
     <UserContext.Provider value={value}>
       <div
-        className={`${theme} min-h-screen bg-background text-foreground dark:bg-gray-900`}
+        className="min-h-screen bg-background text-foreground dark:bg-gray-900"
       >
         {children}
         {!isMobile && (

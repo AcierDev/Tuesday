@@ -124,6 +124,11 @@ export function Navbar({
   const pathname = usePathname();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(pathname);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setActiveTab(pathname);
@@ -285,13 +290,13 @@ export function Navbar({
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className="flex-shrink-0"
               >
-                {theme === "dark" ? (
+                {mounted && theme === "dark" ? (
                   <Sun className="h-5 w-5" />
                 ) : (
                   <Moon className="h-5 w-5" />
                 )}
                 <span className="sr-only">
-                  {theme === "dark"
+                  {mounted && theme === "dark"
                     ? "Switch to light theme"
                     : "Switch to dark theme"}
                 </span>
@@ -337,13 +342,13 @@ export function Navbar({
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="w-10 h-10 flex items-center justify-center"
             >
-              {theme === "dark" ? (
+              {mounted && theme === "dark" ? (
                 <Sun className="h-5 w-5" />
               ) : (
                 <Moon className="h-5 w-5" />
               )}
               <span className="sr-only">
-                {theme === "dark"
+                {mounted && theme === "dark"
                   ? "Switch to light theme"
                   : "Switch to dark theme"}
               </span>

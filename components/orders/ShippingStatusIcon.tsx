@@ -81,7 +81,9 @@ export function ShippingStatusIcon({ orderId }: ShippingStatusIconProps) {
 
   return (
     <Tooltip>
-      <TooltipTrigger>{icon}</TooltipTrigger>
+      <TooltipTrigger asChild>
+        <span className="inline-flex">{icon}</span>
+      </TooltipTrigger>
       <TooltipContent>
         <p>{text}</p>
         {orderTracking?.trackers?.[0]?.carrier && (
