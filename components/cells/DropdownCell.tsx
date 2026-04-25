@@ -161,9 +161,9 @@ export function DropdownCell({
 
   const buttonStyle =
     columnValue.columnName === "Design" || columnValue.columnName === "Size"
-      ? `inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-full hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-colors ${
+      ? `inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-[10px] hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-colors border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(0,0,0,0.10)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_48%)] ${
           columnValue.columnName === "Size"
-            ? "bg-sky-500 dark:bg-sky-600 hover:bg-sky-600 dark:hover:bg-sky-700 focus-visible:ring-sky-600 dark:focus-visible:ring-sky-500"
+            ? "bg-sky-500/80 dark:bg-sky-600/80 hover:bg-sky-500/80 dark:hover:bg-sky-600/80 focus-visible:ring-sky-600 dark:focus-visible:ring-sky-500"
             : "bg-primary"
         }`
       : "w-full h-full justify-center p-2 text-foreground";

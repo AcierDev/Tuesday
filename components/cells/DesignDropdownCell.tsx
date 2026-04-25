@@ -21,13 +21,32 @@ import { ColumnTitles, ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useUser } from "@/contexts/UserContext";
 
-const createBackground = (option: string) => {
+const DESIGN_TAG_ALPHA = 0.8;
+
+const hexToRgba = (hex: string, alpha: number) => {
+  const normalized = hex.replace("#", "");
+  const full =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : normalized;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const createBackground = (option: string, alpha = 1) => {
   const colors = DesignBlends[option as keyof typeof DesignBlends];
   if (colors && colors.length > 0) {
-    return `linear-gradient(to right, ${colors.join(", ")})`;
+    const stops =
+      alpha < 1 ? colors.map((c) => hexToRgba(c, alpha)) : colors;
+    return `linear-gradient(to right, ${stops.join(", ")})`;
   }
   // Fallback to a solid color if no gradient is found
-  return "#000000";
+  return alpha < 1 ? `rgba(0, 0, 0, ${alpha})` : "#000000";
 };
 
 export const DesignDropdownCell = ({
@@ -85,7 +104,7 @@ export const DesignDropdownCell = ({
   };
 
   const currentDesign = columnValue.text as keyof typeof DesignBlends;
-  const backgroundStyle = createBackground(currentDesign);
+  const backgroundStyle = createBackground(currentDesign, DESIGN_TAG_ALPHA);
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -99,7 +118,7 @@ export const DesignDropdownCell = ({
         onPointerDown={(e) => e.preventDefault()}
       >
         <Button
-          className="inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-full hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 transition-colors"
+          className="inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-[10px] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 transition-colors border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(0,0,0,0.10)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_48%)]"
           style={{ background: backgroundStyle }}
         >
           {columnValue.text || "Select Design"}
