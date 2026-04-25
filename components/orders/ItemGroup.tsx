@@ -317,7 +317,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   return (
     <div
       className={cn(
-        "mb-6 bg-white dark:bg-gray-900 rounded-lg overflow-visible"
+        "mb-6 overflow-visible"
       )}
     >
       <div
