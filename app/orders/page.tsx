@@ -95,6 +95,11 @@ export default function OrderManagementPage() {
   const updateItem = useOrderStore((state) => state.updateItem);
   const addNewItem = useOrderStore((state) => state.addNewItem);
   const deleteItem = useOrderStore((state) => state.deleteItem);
+  const loadItems = useOrderStore((state) => state.loadItems);
+
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
 
   useAutoPromoteByDueDate(items);
 
