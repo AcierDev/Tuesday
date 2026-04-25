@@ -10,6 +10,17 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -428,7 +439,7 @@ export function ShippingSettingsEditor() {
               const presets = draft.packagePresetsBySize[size];
               return (
                 <AccordionItem key={size} value={size} className="border-b last:border-b-0 px-4">
-                  <AccordionTrigger className="text-left">
+                  <AccordionTrigger className="rounded-md border border-transparent px-2 text-left hover:no-underline hover:border-border">
                     <div className="flex flex-1 items-center justify-between gap-3 pr-3">
                       <span className="font-semibold tracking-tight text-foreground">
                         {formatItemSizeTitle(size)}
@@ -449,16 +460,38 @@ export function ShippingSettingsEditor() {
                             <span className="text-sm font-semibold text-foreground">
                               Package {index + 1}
                             </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                              onClick={() => removePreset(size, preset.id)}
-                              aria-label={`Remove package ${index + 1}`}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                                  aria-label={`Remove package ${index + 1}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Remove package {index + 1}?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This package preset for{" "}
+                                    {formatItemSizeTitle(size)} will be deleted.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => removePreset(size, preset.id)}
+                                  >
+                                    Remove
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                           <div className="space-y-3">
                             <div className="space-y-2">
