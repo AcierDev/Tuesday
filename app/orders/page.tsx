@@ -19,12 +19,14 @@ import {
   ColumnTitles,
   DayName,
 } from "@/typings/types";
+import { STATUS_COLORS } from "@/typings/constants";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { ShippingDashboard } from "@/components/shipping/ShippingDashboard";
 import { cn } from "@/utils/functions";
 import { useOrderFiltering } from "@/hooks/useOrderFiltering";
 import { useOrderStats } from "@/hooks/useOrderStats";
+import { useAutoPromoteByDueDate } from "@/hooks/useAutoPromoteByDueDate";
 import { ResponsiveOrdersView } from "@/components/orders/ResponsiveOrdersView";
 import { useUser } from "@/contexts/UserContext";
 
@@ -97,6 +99,8 @@ export default function OrderManagementPage() {
   const addNewItem = useOrderStore((state) => state.addNewItem);
   const deleteItem = useOrderStore((state) => state.deleteItem);
 
+  useAutoPromoteByDueDate(items, user || undefined);
+
   const [sortColumn, setSortColumn] = useState<ColumnTitles | null>(
     ColumnTitles.Due
   );
@@ -140,6 +144,19 @@ export default function OrderManagementPage() {
     searchTerm,
     currentMode,
   });
+
+  const statusCounts = useMemo(() => {
+    const counts = {} as Record<ItemStatus, number>;
+    for (const status of Object.values(ItemStatus)) {
+      counts[status] = 0;
+    }
+    for (const item of items || []) {
+      if (counts[item.status] !== undefined) {
+        counts[item.status] += 1;
+      }
+    }
+    return counts;
+  }, [items]);
 
   const shipItem = useCallback(async (itemId: string) => {
     toast.success("Item marked as shipped", {
@@ -215,6 +232,7 @@ export default function OrderManagementPage() {
         const restoredItem = {
           ...item,
           status: previousStatus,
+          prevStatus: undefined,
           completedAt: undefined,
         };
 
@@ -242,6 +260,7 @@ export default function OrderManagementPage() {
         const updatedItem = {
           ...item,
           status: newStatus,
+          prevStatus: undefined,
           completedAt: newStatus === ItemStatus.Done ? Date.now() : undefined,
         };
 
@@ -347,10 +366,44 @@ export default function OrderManagementPage() {
           dueCounts={dueCounts}
         />
       )}
+      {!isMobile && (
+        <aside className="fixed left-20 top-[5.5rem] z-20 flex flex-col gap-2">
+          {Object.values(ItemStatus)
+            .filter((status) => status !== ItemStatus.Done)
+            .map((status) => {
+              const color =
+                status === ItemStatus.Hidden
+                  ? "gray-500"
+                  : STATUS_COLORS[status] || "gray-400";
+              const count = statusCounts[status] ?? 0;
+              return (
+                <div
+                  key={status}
+                  className={cn(
+                    "flex flex-col items-center justify-center w-16 h-16 rounded-xl px-1",
+                    "bg-white/25 dark:bg-gray-900/25 backdrop-blur-md backdrop-saturate-150",
+                    "border border-white/30 dark:border-white/10",
+                    "shadow-[0_1px_2px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.5)]",
+                    "dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.05)]",
+                    `text-${color} dark:text-${color}`
+                  )}
+                  title={`${status}: ${count}`}
+                >
+                  <span className="text-xl font-bold leading-none">
+                    {count}
+                  </span>
+                  <span className="mt-0.5 w-full truncate text-center text-[9px] font-medium uppercase tracking-wide opacity-80">
+                    {status}
+                  </span>
+                </div>
+              );
+            })}
+        </aside>
+      )}
       <div className="flex-grow">
         <div
-          className={`h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 ${
-            isMobile ? "pt-1" : "py-8"
+          className={`h-full max-w-full mx-auto pr-4 sm:pr-6 lg:pr-8 ${
+            isMobile ? "pl-4 pt-1" : "pl-24 py-8"
           }`}
         >
           <div className="flex h-full relative">
