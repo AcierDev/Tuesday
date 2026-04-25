@@ -115,7 +115,7 @@ export const getDueBadge = (dateString: string, range: number) => {
   return (
     <Badge
       className={cn(
-        "border-transparent tabular-nums px-2 py-0.5 min-w-[2.25rem] justify-center",
+        "border-transparent tabular-nums text-[13.8px] px-2 py-0.5 min-w-[2.25rem] justify-center",
         colorClasses
       )}
     >

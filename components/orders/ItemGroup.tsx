@@ -322,7 +322,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     >
       <div
         className={cn(
-          `w-full p-4`,
+          "group relative w-full p-4 transition-all duration-200 ease-out",
           `text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           } dark:text-${
@@ -330,19 +330,30 @@ export const ItemGroupSection = memo(function ItemGroupSection({
           }`,
           "sticky top-[73px] z-30 bg-white dark:bg-gray-900",
           isCollapsible &&
-            "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800",
+            "cursor-pointer hover:bg-gray-50/80 dark:hover:bg-gray-800/40",
           isCollapsed && "bg-gray-50 dark:bg-blue-900/10 rounded-lg"
         )}
         onClick={handleGroupClick}
       >
+        {isCollapsible && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-0 top-2 bottom-2 w-1 rounded-r bg-current opacity-0 scale-y-50 transition-all duration-200 ease-out group-hover:opacity-100 group-hover:scale-y-100"
+          />
+        )}
         <div className="flex items-center justify-between">
-          <span className="font-semibold text-lg sticky top-0 z-10">
+          <span className="font-semibold text-lg sticky top-0 z-10 transition-transform duration-200 ease-out group-hover:translate-x-2">
             {group.title}
+            {isCollapsible && isCollapsed && (
+              <span className="ml-2 font-normal text-sm opacity-70">
+                ({group.items.length} hidden)
+              </span>
+            )}
           </span>
           {isCollapsible && (
             <ChevronDown
               className={cn(
-                "h-5 w-5 transition-transform duration-200",
+                "h-5 w-5 transition-all duration-200 ease-out group-hover:scale-110",
                 !isCollapsed && "transform rotate-180"
               )}
             />
