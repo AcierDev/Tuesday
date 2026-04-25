@@ -345,7 +345,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
           <span className="font-semibold text-lg sticky top-0 z-10 transition-transform duration-200 ease-out group-hover:translate-x-2">
             {group.title}
             {isCollapsible && isCollapsed && (
-              <span className="ml-2 font-normal text-sm opacity-70">
+              <span className="ml-2 font-normal text-[15.4px] opacity-70">
                 ({group.items.length} hidden)
               </span>
             )}
