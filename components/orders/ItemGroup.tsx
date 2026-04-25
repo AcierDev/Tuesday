@@ -327,7 +327,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     >
       <div
         className={cn(
-          "group relative w-full p-4 transition-all duration-200 ease-out rounded-md",
+          "group relative w-[96%] mx-auto p-4 transition-all duration-200 ease-out rounded-md",
           `text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           } dark:text-${
@@ -344,7 +344,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
             className="pointer-events-none absolute left-0 top-2 bottom-2 w-1 rounded-r bg-current opacity-0 scale-y-50 transition-all duration-200 ease-out group-hover:opacity-100 group-hover:scale-y-100"
           />
         )}
-        <div className="flex items-center justify-between mx-[2%]">
+        <div className="flex items-center justify-between">
           <span className="font-semibold text-lg sticky top-0 z-10 transition-transform duration-200 ease-out group-hover:translate-x-2">
             {group.title}
             {isCollapsible && isCollapsed && group.title !== ItemStatus.Done && (
