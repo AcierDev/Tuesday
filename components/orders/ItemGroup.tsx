@@ -371,7 +371,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
         {(!isCollapsible || !isCollapsed) && (
           <motion.div
             key="group-content"
-            initial={{ height: 0, opacity: 0 }}
+            initial={{ height: 0, opacity: 0, overflow: "hidden" }}
             animate={{
               height: "auto",
               opacity: 1,
@@ -382,7 +382,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
               height: { duration: 0.28, ease: [0.32, 0.72, 0, 1] },
               opacity: { duration: 0.18, ease: "easeOut" },
             }}
-            style={{ overflow: "hidden" }}
             className="relative"
           >
             <div className="relative overflow-visible">
