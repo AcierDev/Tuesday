@@ -317,12 +317,12 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   return (
     <div
       className={cn(
-        "mb-6 w-[96%] mx-auto bg-white dark:bg-gray-900 rounded-lg overflow-visible"
+        "mb-6 bg-white dark:bg-gray-900 rounded-lg overflow-visible"
       )}
     >
       <div
         className={cn(
-          "group relative w-full p-4 transition-all duration-200 ease-out rounded-md",
+          "group relative w-[96%] mx-auto p-4 transition-all duration-200 ease-out rounded-md",
           `text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           } dark:text-${
