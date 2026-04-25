@@ -42,8 +42,6 @@ const defaultSettings: OrderSettings = {
     "Working On It": "bg-yellow-100",
     New: "bg-blue-100",
   },
-  groupingField: "Status",
-  showCompletedOrders: true,
   showSortingIcons: false,
   recentEditHours: undefined,
   idleTimeout: 30000,

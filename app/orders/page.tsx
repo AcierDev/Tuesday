@@ -139,8 +139,6 @@ export default function OrderManagementPage() {
     items,
     searchTerm,
     currentMode,
-    groupingField: settings.groupingField,
-    showCompletedOrders: settings.showCompletedOrders,
   });
 
   const shipItem = useCallback(async (itemId: string) => {

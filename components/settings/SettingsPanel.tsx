@@ -7,7 +7,6 @@ import {
   Settings,
   Columns,
   Clock,
-  Group,
   Edit,
   UserCircle,
   Truck,
@@ -23,7 +22,6 @@ import { AutomatronSettings } from "./AutomatronSettings";
 import { ColumnVisibilitySettings } from "./ColumnVisibilitySettings";
 import { DueBadgeSettings } from "./DueBadgeSettings";
 import { RecentEditsSettings } from "./RecentEditsSettings";
-import { GroupingSettings } from "./GroupSettings";
 import { IdentificationMenuSettings } from "./IdentificationMenuSettings";
 import { ShippingSettingsEditor } from "./ShippingSettingsEditor";
 
@@ -94,7 +92,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
         ref={dialogRef}
-        className="bg-background text-foreground rounded-lg shadow-lg w-full max-w-4xl h-[90vh] overflow-hidden flex flex-col dark:bg-gray-800"
+        className="bg-background text-foreground rounded-lg shadow-lg w-full max-w-[1120px] h-[90vh] overflow-hidden flex flex-col dark:bg-gray-800"
       >
         <Tabs
           value={activeTab}
@@ -123,13 +121,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               >
                 <Clock className="w-4 h-4 mr-2" />
                 Due Badge
-              </TabsTrigger>
-              <TabsTrigger
-                value="grouping"
-                className="justify-start py-2 px-3 text-sm font-medium rounded-md transition-colors hover:bg-primary/10 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
-              >
-                <Group className="w-4 h-4 mr-2" />
-                Grouping
               </TabsTrigger>
               <TabsTrigger
                 value="recent-edits"
@@ -207,13 +198,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <TabsContent value="due-badge">
                 <DueBadgeSettings
                   dueBadgeDays={settings.dueBadgeDays}
-                  updateSettings={updateSettings}
-                />
-              </TabsContent>
-              <TabsContent value="grouping">
-                <GroupingSettings
-                  groupingField={settings.groupingField}
-                  showCompletedOrders={settings.showCompletedOrders}
                   updateSettings={updateSettings}
                 />
               </TabsContent>

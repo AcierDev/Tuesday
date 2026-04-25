@@ -446,8 +446,6 @@ export type OrderSettings = {
   columnVisibility: ColumnVisibilitySettings;
   dueBadgeDays: number;
   statusColors: StatusColors;
-  groupingField: string;
-  showCompletedOrders: boolean;
   showSortingIcons: boolean;
   recentEditHours?: number;
   idleTimeout: number;
