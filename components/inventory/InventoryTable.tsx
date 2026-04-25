@@ -9,10 +9,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import InventoryHistoryChart from "@/components/inventory/InventoryHistoryChart"
 import { Trash2, Lock } from "lucide-react"
-import { useUser } from "@/contexts/UserContext";
-import { toast } from "sonner"
 import { CountFrequency, InventoryCategory, InventoryItem, LockedInventory } from "@/typings/types";
-import { AdminActionHandler } from "../auth/AdminActionHandler";
+import { DeleteConfirmationDialog } from "@/components/ui/DeleteConfirmationDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface InventoryTableProps {
   filteredInventory: InventoryItem[]
@@ -22,11 +28,8 @@ interface InventoryTableProps {
 
 export function InventoryTable({ filteredInventory, updateItem, deleteItem }: InventoryTableProps) {
   const [localQuantities, setLocalQuantities] = useState<Record<string, number>>({});
-  const { user } = useUser();
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [itemToEdit, setItemToEdit] = useState<{ id: number, field: string, value: string | number } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+  const [pendingLockedEdit, setPendingLockedEdit] = useState<{ id: number, field: string, value: string | number } | null>(null);
 
   const isLockedItem = (item: InventoryItem) => {
     return Object.values(LockedInventory).includes(item.name as LockedInventory);
@@ -35,16 +38,28 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
   const handleUpdateItem = (itemId: number, field: string, value: string | number) => {
     const item = filteredInventory.find(i => i._id === itemId);
     if (item && isLockedItem(item)) {
-      setItemToEdit({ id: itemId, field, value });
-      setEditDialogOpen(true);
+      setPendingLockedEdit({ id: itemId, field, value });
     } else {
       updateItem(itemId, field, value);
     }
   };
 
-  const handleDeleteClick = (itemId: number) => {
-    setItemToDelete(itemId);
-    setDeleteDialogOpen(true);
+  const handleDeleteClick = (item: InventoryItem) => {
+    setItemToDelete(item);
+  };
+
+  const handleConfirmDelete = () => {
+    if (itemToDelete) {
+      deleteItem(itemToDelete._id);
+      setItemToDelete(null);
+    }
+  };
+
+  const handleConfirmLockedEdit = () => {
+    if (pendingLockedEdit) {
+      updateItem(pendingLockedEdit.id, pendingLockedEdit.field, pendingLockedEdit.value);
+      setPendingLockedEdit(null);
+    }
   };
 
   return (
@@ -69,8 +84,8 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
               const quantity = latestCount ? latestCount.quantity : 0;
               const isLocked = isLockedItem(item);
               return (
-                <TableRow 
-                  key={item._id} 
+                <TableRow
+                  key={item._id}
                   className={index % 2 === 0 ? 'bg-gray-100 dark:bg-gray-800' : 'bg-white dark:bg-gray-700'}
                 >
                   <TableCell className="font-medium">
@@ -130,8 +145,8 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
                     />
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Select 
-                      value={item.countFrequency} 
+                    <Select
+                      value={item.countFrequency}
                       onValueChange={(value: CountFrequency) => handleUpdateItem(item._id, 'countFrequency', value)}
                     >
                       <SelectTrigger className="bg-transparent border-none">
@@ -145,8 +160,8 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
                     </Select>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Select 
-                      value={item.category} 
+                    <Select
+                      value={item.category}
                       onValueChange={(value: InventoryCategory) => handleUpdateItem(item._id, 'category', value)}
                     >
                       <SelectTrigger className="bg-transparent border-none">
@@ -163,30 +178,16 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
                     <InventoryHistoryChart item={item} />
                   </TableCell>
                   <TableCell>
-                    <AdminActionHandler
-                      user={user}
-                      callback={() => deleteItem(item._id)}
-                      mode="nonAdminWithPassword"
-                      actionName={`Delete ${item.name}`}
-                      isOpen={deleteDialogOpen && itemToDelete === item._id}
-                      onOpenChange={(open) => {
-                        setDeleteDialogOpen(open);
-                        if (!open) setItemToDelete(null);
-                      }}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteClick(item)}
+                      className="hover:bg-destructive hover:text-destructive-foreground"
+                      disabled={isLocked}
                     >
-                      {({ onClick }) => (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteClick(item._id)}
-                          className="hover:bg-destructive hover:text-destructive-foreground"
-                          disabled={isLocked}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete {item.name}</span>
-                        </Button>
-                      )}
-                    </AdminActionHandler>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete {item.name}</span>
+                    </Button>
                   </TableCell>
                 </TableRow>
               )
@@ -194,24 +195,32 @@ export function InventoryTable({ filteredInventory, updateItem, deleteItem }: In
           </TableBody>
         </Table>
       </CardContent>
-      <AdminActionHandler
-        user={user}
-        callback={() => {
-          console.log('callback')
-          if (itemToEdit) {
-            updateItem(itemToEdit.id, itemToEdit.field, itemToEdit.value);
-          }
-        }}
-        mode="nonAdminWithPassword"
-        actionName="Edit Locked Item"
-        isOpen={editDialogOpen}
-        onOpenChange={(open) => {
-          setEditDialogOpen(open);
-          if (!open) setItemToEdit(null);
-        }}
-      >
-        {({ onClick, disabled }) => null}
-      </AdminActionHandler>
+
+      <DeleteConfirmationDialog
+        isOpen={Boolean(itemToDelete)}
+        itemName={itemToDelete?.name || ""}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <Dialog open={Boolean(pendingLockedEdit)} onOpenChange={(open) => !open && setPendingLockedEdit(null)}>
+        <DialogContent className="sm:max-w-[425px] dark:bg-gray-800">
+          <DialogHeader>
+            <DialogTitle>Edit Locked Item</DialogTitle>
+            <DialogDescription>
+              This item is locked. Are you sure you want to edit it?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingLockedEdit(null)} className="dark:bg-gray-700 dark:text-white">
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmLockedEdit} className="dark:bg-blue-600 dark:hover:bg-blue-700">
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

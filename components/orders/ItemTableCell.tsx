@@ -36,7 +36,6 @@ interface ItemTableCellProps {
   columnValue: ColumnValue;
   columnName: ColumnTitles;
   cellIndex: number;
-  schedules: any;
   onDaySelect: (itemId: string, date: Date) => void;
   onAddToSchedule: (
     weekKey: string,
@@ -51,7 +50,6 @@ export function ItemTableCell({
   columnValue,
   columnName,
   cellIndex,
-  schedules,
   onDaySelect,
   onAddToSchedule,
   onScheduleUpdate,
@@ -138,7 +136,7 @@ export function ItemTableCell({
     <TableCell
       key={`${item.id}-${columnName}`}
       className={cn(
-        "border border-gray-200 dark:border-gray-600 p-2 relative",
+        "border border-gray-200 dark:border-gray-600 p-2 relative group",
         cellIndex === 0 ? "w-1/3" : "",
         columnName === ColumnTitles.Labels ? "w-8 flex-shrink-0" : "",
         getStatusColor(columnValue)
@@ -164,7 +162,6 @@ export function ItemTableCell({
             columnValue={columnValue}
             isNameColumn={false}
             item={item}
-            disableCredit={true}
           />
           {showPreviewTooltip && (
             <Portal>
@@ -231,7 +228,6 @@ export function ItemTableCell({
                         setHoveredColumn(null);
                       }}
                       item={item}
-                      schedules={schedules}
                       onAddToSchedule={onAddToSchedule}
                       onScheduleUpdate={onScheduleUpdate}
                     />

@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  Moon,
-  Sun,
   Logs,
   PaintbrushVertical,
   PackageOpen,
@@ -23,8 +21,11 @@ import {
   Scissors,
   BarChart3,
   CalendarDays,
+  Clock,
+  Edit,
+  UserCircle,
+  Truck,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -84,10 +85,21 @@ const mainNavItems: NavItem[] = [
 ];
 
 interface NavbarProps {
-  onOpenSettings: () => void;
+  onOpenSettings: (tab?: string) => void;
   sidebarOpen: boolean;
   onSidebarOpenChange: (open: boolean) => void;
 }
+
+const settingsTabs: {
+  value: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { value: "due-badge", label: "Due Badge", icon: Clock },
+  { value: "recent-edits", label: "Recent Edits", icon: Edit },
+  { value: "identification", label: "Identification Menu", icon: UserCircle },
+  { value: "shipping", label: "Shipping", icon: Truck },
+];
 
 interface NavLinkProps {
   href: string;
@@ -120,15 +132,10 @@ export function Navbar({
   sidebarOpen,
   onSidebarOpenChange,
 }: NavbarProps) {
-  const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(pathname);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [settingsHovered, setSettingsHovered] = useState(false);
 
   useEffect(() => {
     setActiveTab(pathname);
@@ -280,36 +287,70 @@ export function Navbar({
           </div>
           <div className="p-3 border-t dark:border-gray-600">
             <div
-              className={`${
-                sidebarOpen ? "flex gap-2" : "flex flex-col gap-2"
-              }`}
+              className="relative"
+              onMouseEnter={() => setSettingsHovered(true)}
+              onMouseLeave={() => setSettingsHovered(false)}
             >
               <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="flex-shrink-0"
-              >
-                {mounted && theme === "dark" ? (
-                  <Sun className="h-5 w-5" />
-                ) : (
-                  <Moon className="h-5 w-5" />
-                )}
-                <span className="sr-only">
-                  {mounted && theme === "dark"
-                    ? "Switch to light theme"
-                    : "Switch to dark theme"}
-                </span>
-              </Button>
-              <Button
-                className={`flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 ${
-                  sidebarOpen ? "flex-1" : ""
-                }`}
-                onClick={onOpenSettings}
+                className="flex w-full items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => onOpenSettings()}
               >
                 <Settings className="h-5 w-5 flex-shrink-0" />
                 {sidebarOpen && <span className="ml-2">Settings</span>}
               </Button>
+              <motion.div
+                className={`absolute left-full bottom-0 pl-2 z-50 ${
+                  settingsHovered ? "" : "pointer-events-none"
+                }`}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{
+                  opacity: settingsHovered ? 1 : 0,
+                  x: settingsHovered ? 0 : -8,
+                }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
+                <motion.div
+                  className="flex flex-col gap-2 min-w-[200px]"
+                  initial="hidden"
+                  animate={settingsHovered ? "visible" : "hidden"}
+                  style={{ perspective: 800 }}
+                  variants={{
+                    hidden: {
+                      transition: {
+                        staggerChildren: 0.04,
+                        staggerDirection: 1,
+                      },
+                    },
+                    visible: {
+                      transition: {
+                        staggerChildren: 0.07,
+                        staggerDirection: -1,
+                        delayChildren: 0.12,
+                      },
+                    },
+                  }}
+                >
+                  {settingsTabs.map(({ value, label, icon: Icon }) => (
+                    <motion.button
+                      key={value}
+                      variants={{
+                        hidden: { opacity: 0, rotateX: -90, y: 4 },
+                        visible: { opacity: 1, rotateX: 0, y: 0 },
+                      }}
+                      transition={{ duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }}
+                      style={{
+                        transformOrigin: "bottom center",
+                        transformPerspective: 800,
+                      }}
+                      onClick={() => onOpenSettings(value)}
+                      className="flex items-center px-3 py-2.5 text-sm text-foreground bg-gray-800 border border-gray-700 rounded-lg shadow-lg hover:bg-primary/20 hover:text-primary hover:border-primary/40 transition-colors text-left"
+                    >
+                      <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
+                      {label}
+                    </motion.button>
+                  ))}
+                </motion.div>
+              </motion.div>
             </div>
           </div>
         </div>
@@ -336,23 +377,6 @@ export function Navbar({
               Tuesday
             </span>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="w-10 h-10 flex items-center justify-center"
-            >
-              {mounted && theme === "dark" ? (
-                <Sun className="h-5 w-5" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-              <span className="sr-only">
-                {mounted && theme === "dark"
-                  ? "Switch to light theme"
-                  : "Switch to dark theme"}
-              </span>
-            </Button>
 
             <SheetContent
               side="left"
@@ -420,7 +444,7 @@ export function Navbar({
                   <div className="flex gap-2">
                     <Button
                       className="flex-1 flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-base"
-                      onClick={onOpenSettings}
+                      onClick={() => onOpenSettings()}
                     >
                       <Settings className="mr-2 h-5 w-5" />
                       Settings

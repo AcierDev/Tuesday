@@ -10,17 +10,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
-import { cn, getDueBadge } from "../../utils/functions";
-import { useOrderSettings } from "../../contexts/OrderSettingsContext";
+import { cn } from "../../utils/functions";
 import { toast } from "sonner";
-import {
-  ColumnTitles,
-  ColumnValue,
-  Item,
-  ItemStatus,
-} from "@/typings/types";
+import { ColumnTitles, ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { useUser } from "@/contexts/UserContext";
 
 interface DateCellProps {
   item: Item;
@@ -29,9 +22,7 @@ interface DateCellProps {
 
 export const DateCell = ({ item, columnValue }: DateCellProps) => {
   const [date, setDate] = useState<Date | null>(null);
-  const { settings } = useOrderSettings();
   const { updateItem } = useOrderStore();
-  const { user } = useUser();
 
   useEffect(() => {
     if (columnValue.text) {
@@ -57,7 +48,7 @@ export const DateCell = ({ item, columnValue }: DateCellProps) => {
         ...item,
         dueDate: newValue,
       };
-      await updateItem(updatedItem, columnValue.columnName, user || undefined);
+      await updateItem(updatedItem, columnValue.columnName);
       toast.success("Date updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
@@ -100,10 +91,6 @@ export const DateCell = ({ item, columnValue }: DateCellProps) => {
           />
         </PopoverContent>
       </Popover>
-      {date &&
-        isValid(date) &&
-        item.status !== ItemStatus.Done &&
-        getDueBadge(date.toISOString(), settings.dueBadgeDays)}
     </div>
   );
 };

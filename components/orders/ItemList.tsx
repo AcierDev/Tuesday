@@ -1,9 +1,7 @@
 "use client";
-import { useEffect, useState, memo } from "react";
+import { memo } from "react";
 import { ItemStatus, type Group, type Item, DayName, ColumnTitles } from "@/typings/types";
 import { ItemGroupSection } from "./ItemGroup";
-import { useUser } from "@/contexts/UserContext";
-import { getUserPermissions } from "@/app/actions/auth";
 
 interface ItemListProps {
   groups: Group[];
@@ -37,22 +35,6 @@ export const ItemList = memo(function ItemList({
   sortDirection,
   onSort,
 }: ItemListProps) {
-  const { user } = useUser();
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const fetchPermissions = async () => {
-      if (user) {
-        const permissions = await getUserPermissions(user);
-        setIsAdmin(permissions.includes("admin"));
-      } else {
-        setIsAdmin(false);
-      }
-    };
-
-    fetchPermissions();
-  }, [user]);
-
   const doneGroup: Group = {
     id: "done-group",
     title: ItemStatus.Done,
@@ -62,10 +44,7 @@ export const ItemList = memo(function ItemList({
   return (
     <div className="flex-grow">
       {groups
-        .filter((group) =>
-          (isAdmin ? true : group.title !== ItemStatus.Hidden) &&
-          group.title !== ItemStatus.Done
-        )
+        .filter((group) => group.title !== ItemStatus.Done)
         .map((group) => (
           <div key={group.id} className="min-h-[50px]">
             <ItemGroupSection
@@ -78,7 +57,8 @@ export const ItemList = memo(function ItemList({
               onShip={onShip}
               isCollapsible={true}
               defaultCollapsed={
-                group.title === ItemStatus.Hidden
+                group.title === ItemStatus.Hidden ||
+                group.title === ItemStatus.New
               }
               clickToAddTarget={clickToAddTarget}
               onItemClick={onItemClick}

@@ -14,7 +14,6 @@ import { EditItemDialog } from "../EditItemDialog";
 import { toast } from "sonner";
 import { cn } from "@/utils/functions";
 import { STATUS_COLORS } from "@/typings/constants";
-import { useUser } from "@/contexts/UserContext";
 
 // Import extracted components
 import { OrderItem, processItem, STATUS_ORDER } from "../utils/orderUtils";
@@ -58,7 +57,6 @@ export const MobileOrderView = ({
 
   // Get data from stores
   const storeData = useOrderStore();
-  const { user } = useUser();
 
   // Use either external items or fallback to store items, merged with doneItems
   const allItems = useMemo(() => {
@@ -218,7 +216,7 @@ export const MobileOrderView = ({
     async (updatedItem: Item) => {
       if (updatedItem) {
         try {
-          await storeData.updateItem(updatedItem, undefined, user || undefined);
+          await storeData.updateItem(updatedItem);
           setEditingItem(null);
           toast.success("Item updated successfully");
         } catch (error) {
@@ -227,7 +225,7 @@ export const MobileOrderView = ({
         }
       }
     },
-    [storeData.updateItem, user]
+    [storeData.updateItem]
   );
 
   // Handle deleting item
@@ -243,7 +241,7 @@ export const MobileOrderView = ({
         if (externalHandleDelete) {
           await externalHandleDelete(deletingItem.id);
         } else {
-          await storeData.deleteItem(deletingItem.id, user || undefined);
+          await storeData.deleteItem(deletingItem.id);
         }
         setDeletingItem(null);
         toast.success("Item deleted successfully");
@@ -252,7 +250,7 @@ export const MobileOrderView = ({
         toast.error("Failed to delete item. Please try again.");
       }
     }
-  }, [deletingItem, externalHandleDelete, storeData, user]);
+  }, [deletingItem, externalHandleDelete, storeData]);
 
   // Handle shipping item
   const handleShip = useCallback(

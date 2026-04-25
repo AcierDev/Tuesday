@@ -30,6 +30,47 @@ interface TextSegment {
   color: string;
 }
 
+const fractionRegex = /\((\d+)\/(\d+)\)/g;
+
+const renderColoredText = (
+  text: string,
+  color: string,
+  keyPrefix: string
+): React.ReactNode[] => {
+  const out: React.ReactNode[] = [];
+  fractionRegex.lastIndex = 0;
+  let lastIdx = 0;
+  let i = 0;
+  let m: RegExpExecArray | null;
+  while ((m = fractionRegex.exec(text)) !== null) {
+    if (m.index > lastIdx) {
+      out.push(
+        <span key={`${keyPrefix}-t-${i}`} style={{ color }}>
+          {text.slice(lastIdx, m.index)}
+        </span>
+      );
+    }
+    out.push(
+      <span
+        key={`${keyPrefix}-f-${i}`}
+        className="inline-flex h-5 items-center justify-center rounded-md bg-violet-500 px-1.5 mx-0.5 text-xs font-bold leading-none text-black tabular-nums"
+      >
+        {m[1]}/{m[2]}
+      </span>
+    );
+    lastIdx = m.index + m[0].length;
+    i++;
+  }
+  if (lastIdx < text.length) {
+    out.push(
+      <span key={`${keyPrefix}-t-${i}`} style={{ color }}>
+        {text.slice(lastIdx)}
+      </span>
+    );
+  }
+  return out;
+};
+
 export const parseMinecraftColors = (
   input: string,
   darkMode: boolean
@@ -83,7 +124,6 @@ export const parseMinecraftColors = (
         const parts = text.split("[EW]");
         parts.forEach((part, partIdx) => {
           if (partIdx > 0) {
-            // Add animated E component before this part
             elements.push(
               <AnimatedLetterE
                 key={`${idx}-e-${partIdx}`}
@@ -94,12 +134,11 @@ export const parseMinecraftColors = (
           }
           if (part) {
             elements.push(
-              <span
-                key={`${idx}-text-${partIdx}`}
-                style={{ color: segment.color }}
-              >
-                {part}
-              </span>
+              ...renderColoredText(
+                part,
+                segment.color,
+                `${idx}-text-${partIdx}`
+              )
             );
           }
         });
@@ -107,7 +146,6 @@ export const parseMinecraftColors = (
         const parts = text.split("[WF]");
         parts.forEach((part, partIdx) => {
           if (partIdx > 0) {
-            // Add animated WF component before this part
             elements.push(
               <AnimatedLetterWF
                 key={`${idx}-wf-${partIdx}`}
@@ -118,12 +156,11 @@ export const parseMinecraftColors = (
           }
           if (part) {
             elements.push(
-              <span
-                key={`${idx}-text-${partIdx}`}
-                style={{ color: segment.color }}
-              >
-                {part}
-              </span>
+              ...renderColoredText(
+                part,
+                segment.color,
+                `${idx}-text-${partIdx}`
+              )
             );
           }
         });
@@ -131,7 +168,6 @@ export const parseMinecraftColors = (
         const parts = text.split("[SH]");
         parts.forEach((part, partIdx) => {
           if (partIdx > 0) {
-            // Add animated SH component before this part
             elements.push(
               <AnimatedLetterSH
                 key={`${idx}-sh-${partIdx}`}
@@ -142,22 +178,16 @@ export const parseMinecraftColors = (
           }
           if (part) {
             elements.push(
-              <span
-                key={`${idx}-text-${partIdx}`}
-                style={{ color: segment.color }}
-              >
-                {part}
-              </span>
+              ...renderColoredText(
+                part,
+                segment.color,
+                `${idx}-text-${partIdx}`
+              )
             );
           }
         });
       } else {
-        // No prefix, just add the regular text span
-        elements.push(
-          <span key={idx} style={{ color: segment.color }}>
-            {text}
-          </span>
-        );
+        elements.push(...renderColoredText(text, segment.color, `${idx}`));
       }
     });
 

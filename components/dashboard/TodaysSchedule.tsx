@@ -10,11 +10,7 @@ import { useState } from "react";
 import { formatDateSafely } from "@/utils/dateUtils";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 
-interface TodaysScheduleProps {
-  selectedEmployee: string | null;
-}
-
-export function TodaysSchedule({ selectedEmployee }: TodaysScheduleProps) {
+export function TodaysSchedule() {
   const [showDone, setShowDone] = useState(true);
 
   // Get today's date and determine the day name

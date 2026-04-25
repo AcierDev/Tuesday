@@ -12,7 +12,6 @@ export async function logActivity(
     itemId: string;
     type: ActivityType;
     changes: ActivityChange[];
-    userName?: string;
     metadata?: Activity["metadata"];
   }
 ) {
@@ -23,7 +22,6 @@ export async function logActivity(
       itemId: activityData.itemId,
       type: activityData.type,
       timestamp: Date.now(),
-      userName: activityData.userName,
       changes: activityData.changes,
       metadata: activityData.metadata,
     };

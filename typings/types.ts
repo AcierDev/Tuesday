@@ -81,6 +81,7 @@ export type Item = {
   createdAt: number;
   completedAt?: number;
   status: ItemStatus;
+  prevStatus?: ItemStatus;
   visible: boolean;
   deleted: boolean;
   index: number;
@@ -291,7 +292,6 @@ export type ColorColumnValue = {
   type: ColumnTypes.Dropdown;
   columnName: ColumnTitles.Design;
   lastModifiedTimestamp?: number;
-  credit?: EmployeeNames[];
 };
 
 export type GenericColumnValue = {
@@ -299,15 +299,7 @@ export type GenericColumnValue = {
   type: ColumnTypes;
   columnName: ColumnTitles;
   lastModifiedTimestamp?: number;
-  credit?: EmployeeNames[];
 };
-
-export enum EmployeeNames {
-  Alex = "Alex Morrell",
-  Bentzi = "Ben Steele",
-  Akiva = "Akiva Weil",
-  Tyler = "Tyler Blancett",
-}
 
 export enum ItemStatus {
   Hidden = "Hidden",
@@ -445,12 +437,10 @@ export type OrderSettings = {
   isAutomatronActive: boolean;
   columnVisibility: ColumnVisibilitySettings;
   dueBadgeDays: number;
+  onDeckMinCount: number;
   statusColors: StatusColors;
   showSortingIcons: boolean;
   recentEditHours?: number;
-  idleTimeout: number;
-  isIdleTimeoutEnabled: boolean;
-  showIdentificationMenuForAdmins: boolean;
 };
 
 export type ShippingStatus =
@@ -822,7 +812,6 @@ export interface BaseActivity {
   itemId: string;
   timestamp: number;
   type: ActivityType;
-  userName?: string;
   changes: ActivityChange[];
   metadata?: {
     customerName?: string;

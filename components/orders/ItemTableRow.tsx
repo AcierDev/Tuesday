@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ShippingCell } from "../cells/ShippingCell";
 import { ItemTableCell } from "./ItemTableCell";
@@ -20,7 +20,6 @@ interface ItemTableRowProps {
   item: Item;
   index: number;
   visibleColumns: ColumnTitles[];
-  schedules: any;
   onContextMenu: (e: React.MouseEvent, item: Item) => void;
   onDaySelect: (itemId: string, date: Date) => void;
   onAddToSchedule: (
@@ -43,7 +42,6 @@ export const ItemTableRow = memo(function ItemTableRow({
   item,
   index,
   visibleColumns,
-  schedules,
   onContextMenu,
   onDaySelect,
   onAddToSchedule,
@@ -57,6 +55,8 @@ export const ItemTableRow = memo(function ItemTableRow({
   clickToAddTarget,
   onItemClick,
 }: ItemTableRowProps) {
+  const pastDue = useMemo(() => isPastDue(item), [item.dueDate]);
+
   if (!item.id) {
     console.warn("Item missing id:", item);
     return null;
@@ -68,7 +68,7 @@ export const ItemTableRow = memo(function ItemTableRow({
         index % 2 === 0
           ? "bg-gray-200 dark:bg-gray-800"
           : "bg-gray-100 dark:bg-gray-700",
-        isPastDue(item) &&
+        pastDue &&
           item.status !== ItemStatus.Done &&
           "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]",
         clickToAddTarget &&
@@ -141,7 +141,6 @@ export const ItemTableRow = memo(function ItemTableRow({
               columnValue={columnValue}
               columnName={columnName}
               cellIndex={cellIndex}
-              schedules={schedules}
               onDaySelect={onDaySelect}
               onAddToSchedule={onAddToSchedule}
               onScheduleUpdate={onScheduleUpdate}

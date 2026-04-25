@@ -2,7 +2,6 @@ import {
   ColumnTitles,
   ColumnTypes,
   ColumnVisibility,
-  EmployeeNames,
   GenericColumnValue,
   ItemDesigns,
   ItemSizes,
@@ -624,41 +623,6 @@ export const DesignBlends: Record<ItemDesigns, string[]> = {
   [ItemDesigns.Mint]: Object.values(MINT_COLORS).map((color) => color.hex),
 };
 
-export const EMPLOYEE_INITIALS = ["AM", "BC", "AW", "BS", "TB"] as const;
-export type EmployeeOption = (typeof EMPLOYEE_INITIALS)[number];
-export const CREDIT_OPTIONS = ["AM", "BC", "AW"] as const;
-export type CreditOption = (typeof CREDIT_OPTIONS)[number];
-
-export const OPTION_IMAGES: Record<EmployeeOption, string> = {
-  AM: "/images/pfp/alex.png",
-  BC: "/images/pfp/chungus.jpeg",
-  AW: "/images/pfp/akiva2-3.png",
-  BS: "/images/pfp/bentzi.png",
-  TB: "/images/pfp/stewie.png",
-};
-
-export const EMPLOYEE_MAP: Record<EmployeeOption, EmployeeNames> = {
-  AM: EmployeeNames.Alex,
-  BS: EmployeeNames.Bentzi,
-  AW: EmployeeNames.Akiva,
-  TB: EmployeeNames.Tyler,
-};
-
-export const INITIALS_MAP: Record<EmployeeNames, EmployeeOption> = {
-  [EmployeeNames.Akiva]: "AW",
-  [EmployeeNames.Alex]: "AM",
-  [EmployeeNames.Bentzi]: "BS",
-  [EmployeeNames.Tyler]: "TB",
-};
-
-export const CREDIT_COLORS: Record<EmployeeOption, string> = {
-  AW: "bg-orange-500",
-  AM: "bg-blue-500",
-  BC: "bg-green-500",
-  BS: "bg-red-500",
-  TB: "bg-yellow-500",
-};
-
 export const STATUS_COLORS: Record<ItemStatus, string> = {
   [ItemStatus.New]: "gray-400", // Placeholder
   [ItemStatus.OnDeck]: "yellow-500",
@@ -763,6 +727,7 @@ export const FRONTEND_HIDDEN_COLUMN_TITLES: ReadonlySet<ColumnTitles> = new Set(
   ColumnTitles.Glued,
   ColumnTitles.Notes,
   ColumnTitles.Rating,
+  ColumnTitles.Packaging,
 ]);
 
 export const ITEM_DEFAULT_VALUES: Record<ColumnTitles, GenericColumnValue> = {

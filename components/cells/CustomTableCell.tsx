@@ -19,12 +19,10 @@ export const CustomTableCell = ({
   item,
   columnValue,
   isNameColumn = false,
-  disableCredit = false,
 }: {
   item: Item;
   columnValue: ColumnValue;
   isNameColumn?: boolean;
-  disableCredit?: boolean;
 }) => {
   const { settings } = useOrderSettings();
   const [showNotification, setShowNotification] = React.useState<
@@ -72,7 +70,6 @@ export const CustomTableCell = ({
           <DropdownCell
             item={item}
             columnValue={columnValue}
-            disableCredit={disableCredit}
           />
         );
       case ColumnTypes.Date:

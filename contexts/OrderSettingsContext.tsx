@@ -6,6 +6,7 @@ import React, {
   useReducer,
   useEffect,
   useState,
+  useRef,
 } from "react";
 import {
   ColumnTitles,
@@ -36,6 +37,7 @@ const defaultSettings: OrderSettings = {
   isAutomatronActive: true,
   columnVisibility: defaultColumnVisibility,
   dueBadgeDays: 3,
+  onDeckMinCount: 12,
   statusColors: {
     Done: "bg-green-100",
     Stuck: "bg-red-100",
@@ -44,10 +46,9 @@ const defaultSettings: OrderSettings = {
   },
   showSortingIcons: false,
   recentEditHours: undefined,
-  idleTimeout: 30000,
-  isIdleTimeoutEnabled: true,
-  showIdentificationMenuForAdmins: false,
 };
+
+const SHARED_SETTINGS_PATCH_DEBOUNCE_MS = 300;
 
 function orderSettingsReducer(
   state: OrderSettings,
@@ -101,34 +102,106 @@ export function OrderSettingsProvider({
     defaultSettings
   );
   const [isInitialized, setIsInitialized] = useState(false);
+  const serverSyncedRef = useRef(false);
+  const lastPatchedSharedRef = useRef<{
+    dueBadgeDays: number | null;
+    onDeckMinCount: number | null;
+  }>({ dueBadgeDays: null, onDeckMinCount: null });
 
+  //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+  //║ 📦 LOAD: localStorage first, then overlay server-synced fields       ║
+  //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
   useEffect(() => {
-    if (!isInitialized) {
-      const loadSettings = () => {
-        const savedSettings = localStorage.getItem("orderSettings");
-        if (savedSettings) {
-          try {
-            const parsedSettings = JSON.parse(savedSettings);
-            // Merge saved settings with default settings to ensure all properties exist
-            const mergedSettings = { ...defaultSettings, ...parsedSettings };
-            dispatch({ type: "SET_SETTINGS", payload: mergedSettings });
-          } catch (error) {
-            dispatch({ type: "SET_SETTINGS", payload: defaultSettings });
-          }
-        } else {
-          dispatch({ type: "SET_SETTINGS", payload: defaultSettings });
-        }
-        setIsInitialized(true);
-      };
-      loadSettings();
+    if (isInitialized) return;
+
+    const savedSettings = localStorage.getItem("orderSettings");
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        dispatch({
+          type: "SET_SETTINGS",
+          payload: { ...defaultSettings, ...parsed },
+        });
+      } catch {
+        dispatch({ type: "SET_SETTINGS", payload: defaultSettings });
+      }
+    } else {
+      dispatch({ type: "SET_SETTINGS", payload: defaultSettings });
     }
+    setIsInitialized(true);
   }, [isInitialized]);
 
+  useEffect(() => {
+    if (!isInitialized || serverSyncedRef.current) return;
+
+    let cancelled = false;
+    fetch("/api/settings")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        const overlay: Partial<OrderSettings> = {};
+        if (typeof data.dueBadgeDays === "number") {
+          lastPatchedSharedRef.current.dueBadgeDays = data.dueBadgeDays;
+          overlay.dueBadgeDays = data.dueBadgeDays;
+        }
+        if (typeof data.onDeckMinCount === "number") {
+          lastPatchedSharedRef.current.onDeckMinCount = data.onDeckMinCount;
+          overlay.onDeckMinCount = data.onDeckMinCount;
+        }
+        if (Object.keys(overlay).length > 0) {
+          dispatch({ type: "UPDATE_SETTINGS", payload: overlay });
+        }
+        serverSyncedRef.current = true;
+      })
+      .catch((err) => {
+        console.error("Failed to load shared settings:", err);
+        serverSyncedRef.current = true;
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isInitialized]);
+
+  //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+  //║ 💾 SAVE: localStorage cache + debounced server PATCH for shared      ║
+  //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
   useEffect(() => {
     if (isInitialized) {
       localStorage.setItem("orderSettings", JSON.stringify(settings));
     }
   }, [settings, isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized || !serverSyncedRef.current) return;
+
+    const changed: Partial<Pick<OrderSettings, "dueBadgeDays" | "onDeckMinCount">> = {};
+    if (settings.dueBadgeDays !== lastPatchedSharedRef.current.dueBadgeDays) {
+      changed.dueBadgeDays = settings.dueBadgeDays;
+    }
+    if (settings.onDeckMinCount !== lastPatchedSharedRef.current.onDeckMinCount) {
+      changed.onDeckMinCount = settings.onDeckMinCount;
+    }
+    if (Object.keys(changed).length === 0) return;
+
+    const handle = setTimeout(() => {
+      if (changed.dueBadgeDays !== undefined) {
+        lastPatchedSharedRef.current.dueBadgeDays = changed.dueBadgeDays;
+      }
+      if (changed.onDeckMinCount !== undefined) {
+        lastPatchedSharedRef.current.onDeckMinCount = changed.onDeckMinCount;
+      }
+      fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changed),
+      }).catch((err) => {
+        console.error("Failed to persist shared settings:", err);
+      });
+    }, SHARED_SETTINGS_PATCH_DEBOUNCE_MS);
+
+    return () => clearTimeout(handle);
+  }, [settings.dueBadgeDays, settings.onDeckMinCount, isInitialized]);
 
   const updateSettings = (newSettings: Partial<OrderSettings>) => {
     dispatch({ type: "UPDATE_SETTINGS", payload: newSettings });

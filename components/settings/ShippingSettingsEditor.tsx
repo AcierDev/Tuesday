@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Plus, Truck, X } from "lucide-react";
+import { Check, ChevronDown, Loader2, Plus, Truck, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -29,6 +29,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -301,51 +306,67 @@ export function ShippingSettingsEditor() {
       </Card>
 
       <Card className="dark:bg-gray-900">
-        <CardHeader>
-          <CardTitle>Ship From</CardTitle>
-          <CardDescription>
-            Default sender details for FedEx label purchases.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {[
-            ["name", "Name"],
-            ["company", "Company"],
-            ["phone", "Phone"],
-            ["email", "Email"],
-            ["line1", "Address Line 1"],
-            ["line2", "Address Line 2"],
-            ["city", "City"],
-            ["state", "State"],
-            ["postalCode", "Postal Code"],
-            ["country", "Country"],
-          ].map(([field, label]) => (
-            <div key={field} className="space-y-2">
-              <Label htmlFor={`ship-from-${field}`}>{label}</Label>
-              <Input
-                id={`ship-from-${field}`}
-                className={settingsInputClassName}
-                value={(draft.shipFrom[field as keyof ShippingAddressInput] as string) || ""}
-                onChange={(event) =>
-                  updateShipFrom(
-                    field as keyof ShippingAddressInput,
-                    event.target.value
-                  )
-                }
-              />
-            </div>
-          ))}
-        </CardContent>
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="group cursor-pointer flex flex-row items-center justify-between gap-3 hover:bg-muted/40 transition-colors rounded-t-lg">
+              <div>
+                <CardTitle>Ship From</CardTitle>
+                <CardDescription>
+                  Default sender details for FedEx label purchases.
+                </CardDescription>
+              </div>
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {[
+                ["name", "Name"],
+                ["company", "Company"],
+                ["phone", "Phone"],
+                ["email", "Email"],
+                ["line1", "Address Line 1"],
+                ["line2", "Address Line 2"],
+                ["city", "City"],
+                ["state", "State"],
+                ["postalCode", "Postal Code"],
+                ["country", "Country"],
+              ].map(([field, label]) => (
+                <div key={field} className="space-y-2">
+                  <Label htmlFor={`ship-from-${field}`}>{label}</Label>
+                  <Input
+                    id={`ship-from-${field}`}
+                    className={settingsInputClassName}
+                    value={(draft.shipFrom[field as keyof ShippingAddressInput] as string) || ""}
+                    onChange={(event) =>
+                      updateShipFrom(
+                        field as keyof ShippingAddressInput,
+                        event.target.value
+                      )
+                    }
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
 
       <Card className="dark:bg-gray-900">
-        <CardHeader>
-          <CardTitle>Purchase Defaults</CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Applied when you open the FedEx label dialog from the shipping column.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="group cursor-pointer flex flex-row items-center justify-between gap-3 hover:bg-muted/40 transition-colors rounded-t-lg">
+              <div>
+                <CardTitle>Purchase Defaults</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Applied when you open the FedEx label dialog from the shipping column.
+                </CardDescription>
+              </div>
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="min-w-0 space-y-2">
             <Label>Pickup Type</Label>
             <Select
@@ -422,7 +443,9 @@ export function ShippingSettingsEditor() {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
 
       <Card className="dark:bg-gray-900">

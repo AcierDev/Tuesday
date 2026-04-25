@@ -12,7 +12,6 @@ import {
 } from "@/contexts/OrderSettingsContext";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
-import { UserProvider } from "@/contexts/UserContext";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UploadProgressToast } from "@/components/shipping/UploadProgress";
@@ -39,10 +38,16 @@ const metadata: Metadata = {
 // Create a wrapper component that uses the context
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<
+    string | undefined
+  >(undefined);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { settings, updateSettings } = useOrderSettings();
 
-  const handleOpenSettings = () => setIsSettingsOpen(true);
+  const handleOpenSettings = (tab?: string) => {
+    setSettingsInitialTab(tab);
+    setIsSettingsOpen(true);
+  };
   const handleCloseSettings = () => setIsSettingsOpen(false);
 
   return (
@@ -67,6 +72,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           onClose={handleCloseSettings}
           settings={settings}
           updateSettings={updateSettings}
+          initialTab={settingsInitialTab}
         />
       )}
     </div>
@@ -83,13 +89,11 @@ export default function RootLayout({
     <html className={`${geistSans.variable} ${geistMono.variable}`} lang="en" suppressHydrationWarning>
       <body className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <TooltipProvider>
-          <ThemeProvider enableSystem attribute="class" defaultTheme="dark">
+          <ThemeProvider attribute="class" forcedTheme="dark">
             <OrderSettingsProvider>
-              <UserProvider>
-                <Toaster position="top-center" />
-                <LayoutContent>{children}</LayoutContent>
-                <UploadProgressToast />
-              </UserProvider>
+              <Toaster position="top-center" />
+              <LayoutContent>{children}</LayoutContent>
+              <UploadProgressToast />
             </OrderSettingsProvider>
           </ThemeProvider>
         </TooltipProvider>

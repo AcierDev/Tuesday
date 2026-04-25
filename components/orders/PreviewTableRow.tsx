@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ShippingStatusIcon } from "./ShippingStatusIcon";
 import { PreviewTableCell } from "./PreviewTableCell";
@@ -17,7 +18,6 @@ interface PreviewTableRowProps {
   item: Item;
   index: number;
   visibleColumns: ColumnTitles[];
-  schedules: any;
   onDaySelect: (itemId: string, date: Date) => void;
   onAddToSchedule: (
     weekKey: string,
@@ -31,11 +31,11 @@ export function PreviewTableRow({
   item,
   index,
   visibleColumns,
-  schedules,
   onDaySelect,
   onAddToSchedule,
   onScheduleUpdate,
 }: PreviewTableRowProps) {
+  const pastDue = useMemo(() => isPastDue(item), [item.dueDate]);
 
   // Map column names to flat keys
   const fieldMap: Record<string, keyof Item> = {
@@ -61,7 +61,7 @@ export function PreviewTableRow({
         index % 2 === 0
           ? "bg-gray-200 dark:bg-gray-800"
           : "bg-gray-100 dark:bg-gray-700",
-        isPastDue(item) &&
+        pastDue &&
           item.status !== ItemStatus.Done &&
           "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]"
       )}
@@ -89,7 +89,6 @@ export function PreviewTableRow({
               columnValue={columnValue}
               columnName={columnName}
               cellIndex={cellIndex}
-              schedules={schedules}
               onDaySelect={onDaySelect}
               onAddToSchedule={onAddToSchedule}
               onScheduleUpdate={onScheduleUpdate}

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { format } from "date-fns";
+import { addMonths, endOfMonth, format, startOfMonth } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar as CalendarIcon,
@@ -20,6 +20,11 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -463,41 +468,47 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
                     Due Date
                   </Label>
                   <div className="col-span-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal dark:bg-gray-700",
-                        !dueDate && "text-muted-foreground"
-                      )}
-                      onClick={() => setShowCalendar(!showCalendar)}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dueDate ? format(dueDate, "PPP") : "Select date"}
-                    </Button>
+                    <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal dark:bg-gray-700",
+                            !dueDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dueDate ? format(dueDate, "PPP") : "Select date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        side="right"
+                        align="start"
+                        sideOffset={12}
+                        className="w-auto p-0"
+                      >
+                        <Calendar
+                          mode="single"
+                          selected={dueDate}
+                          onSelect={(date) => {
+                            setDueDate(date);
+                            setShowCalendar(false);
+                          }}
+                          defaultMonth={startOfMonth(new Date())}
+                          fromMonth={startOfMonth(new Date())}
+                          toMonth={startOfMonth(addMonths(new Date(), 1))}
+                          disabled={{
+                            before: new Date(),
+                            after: endOfMonth(addMonths(new Date(), 1)),
+                          }}
+                          numberOfMonths={2}
+                          className="rounded-md border"
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
-
-                <AnimatePresence>
-                  {showCalendar && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={dueDate}
-                        onSelect={(date) => {
-                          setDueDate(date);
-                          setShowCalendar(false);
-                        }}
-                        className="rounded-md border"
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </motion.div>
 
               <motion.button

@@ -19,7 +19,6 @@ import { DesignBlends, ItemDesignImages } from "@/typings/constants";
 import { toast } from "sonner";
 import { ColumnTitles, ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { useUser } from "@/contexts/UserContext";
 
 const DESIGN_TAG_ALPHA = 0.8;
 
@@ -64,7 +63,6 @@ export const DesignDropdownCell = ({
   const hoverTimeoutRef = useRef(null);
 
   const { updateItem } = useOrderStore();
-  const { user } = useUser();
 
   const handleMouseEnter = useCallback((option) => {
     setHoveredDesign(option);
@@ -95,7 +93,7 @@ export const DesignDropdownCell = ({
         ...item,
         design: newValue,
       };
-      await updateItem(updatedItem, columnValue.columnName, user || undefined);
+      await updateItem(updatedItem, columnValue.columnName);
       toast.success("Design updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
@@ -118,7 +116,7 @@ export const DesignDropdownCell = ({
         onPointerDown={(e) => e.preventDefault()}
       >
         <Button
-          className="inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-[10px] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 transition-colors border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(0,0,0,0.10)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_48%)]"
+          className="inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-[10px] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 transition-colors border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.05)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_24%)]"
           style={{ background: backgroundStyle }}
         >
           {columnValue.text || "Select Design"}

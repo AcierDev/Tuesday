@@ -40,7 +40,6 @@ import { cn, isPastDue } from "../../utils/functions";
 import { CustomTableCell } from "../cells/CustomTableCell";
 import { FRONTEND_HIDDEN_COLUMN_TITLES } from "@/typings/constants";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { useUser } from "@/contexts/UserContext";
 
 interface ItemGroupPreviewProps {
   group: Group;
@@ -58,7 +57,6 @@ export const ItemGroupPreview = ({ group, board }: ItemGroupPreviewProps) => {
   const orderSettingsContext = useOrderSettings();
   const settings = orderSettingsContext.settings || {};
   const { updateItem } = useOrderStore();
-  const { user } = useUser();
 
   useEffect(() => {
     setOrderedItems(group.items);
@@ -102,14 +100,14 @@ export const ItemGroupPreview = ({ group, board }: ItemGroupPreviewProps) => {
 
   const handleItemUpdate = useCallback(
     async (updatedItem: Item, changedField: ColumnTitles) => {
-      await updateItem(updatedItem, changedField, user || undefined);
+      await updateItem(updatedItem, changedField);
       setOrderedItems((prevItems) =>
         prevItems.map((item) =>
           item.id === updatedItem.id ? updatedItem : item
         )
       );
     },
-    [updateItem, user]
+    [updateItem]
   );
 
   const toggleFullscreen = () => {

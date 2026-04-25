@@ -15,7 +15,9 @@ export function useOrderFiltering({
   const filteredGroups = useMemo(() => {
     if (!items) return [];
 
-    const groupValues: string[] = Object.values(ItemStatus);
+    const groupValues: string[] = Object.values(ItemStatus).filter(
+      (status) => status !== ItemStatus.Hidden
+    );
 
     const groups = groupValues.map((value) => ({
       id: value,

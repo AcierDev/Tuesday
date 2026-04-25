@@ -1,9 +1,6 @@
 import { Activity, BaseActivity } from "@/typings/types";
-import { useUser } from "@/contexts/UserContext";
 
 export function useActivities() {
-  const { user } = useUser();
-
   const logActivity = async (
     itemId: string,
     type: Activity["type"],
@@ -14,7 +11,6 @@ export function useActivities() {
       itemId,
       type,
       timestamp: Date.now(),
-      userName: user || "",
       changes,
       metadata,
     };

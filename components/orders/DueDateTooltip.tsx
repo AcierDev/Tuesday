@@ -8,14 +8,14 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { isSameDay, addDays } from "date-fns";
 import { cn } from "@/utils/functions";
 import { toast } from "sonner";
-import { DayName, Item, WeeklyScheduleData } from "@/typings/types";
+import { DayName, Item } from "@/typings/types";
+import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 
 interface DueDateTooltipProps {
   onSelectDay: (date: Date) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
   item: Item;
-  schedules: WeeklyScheduleData[];
   onAddToSchedule?: (
     weekKey: string,
     day: DayName,
@@ -37,10 +37,10 @@ export function DueDateTooltip({
   onMouseEnter,
   onMouseLeave,
   item,
-  schedules,
   onAddToSchedule,
   onScheduleUpdate,
 }: DueDateTooltipProps) {
+  const schedules = useWeeklyScheduleStore((s) => s.schedules);
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
 
   useEffect(() => {

@@ -24,17 +24,16 @@ interface OrderState {
   searchResults: Item[];
   // Actions
   loadItems: () => Promise<void>;
-  updateItem: (updatedItem: Item, changedField?: ColumnTitles, user?: string) => Promise<Item>;
-  addNewItem: (newItem: Partial<Item>, user?: string) => Promise<Item>;
-  deleteItem: (itemId: string, user?: string) => Promise<Item>;
+  updateItem: (updatedItem: Item, changedField?: ColumnTitles) => Promise<Item>;
+  addNewItem: (newItem: Partial<Item>) => Promise<Item>;
+  deleteItem: (itemId: string) => Promise<Item>;
   startWatchingChanges: () => void;
   stopWatchingChanges: () => void;
   reorderItems: (
     itemId: string,
     sourceStatus: ItemStatus,
     destinationStatus: ItemStatus,
-    destinationIndex: number,
-    user?: string
+    destinationIndex: number
   ) => Promise<void>;
   updateItemScheduleStatus: (
     boardId: string,
@@ -49,7 +48,7 @@ interface OrderState {
   loadHiddenItems: () => Promise<void>;
   removeHiddenItems: () => void;
   fetchItemsByIds: (ids: string[]) => Promise<void>;
-  markCompleted: (item: Item, user?: string) => Promise<void>;
+  markCompleted: (item: Item) => Promise<void>;
   updateIsScheduled: () => void;
   setSearchQuery: (
     query: string,
@@ -299,7 +298,7 @@ export const useOrderStore = create<OrderState>()(
         }
       },
 
-      updateItem: async (updatedItem, changedField, user) => {
+      updateItem: async (updatedItem, changedField) => {
         const { items } = get();
         if (!items) return;
 
@@ -356,7 +355,6 @@ export const useOrderStore = create<OrderState>()(
             body: JSON.stringify({
               id: updatedItem.id,
               updates: itemToUpdate,
-              user,
             }),
           });
 
@@ -408,7 +406,7 @@ export const useOrderStore = create<OrderState>()(
         }
       },
 
-      addNewItem: async (newItem, user) => {
+      addNewItem: async (newItem) => {
         const { items } = get();
         if (!items) return;
 
@@ -450,7 +448,7 @@ export const useOrderStore = create<OrderState>()(
           const response = await fetch("/api/items", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...fullNewItem, user }),
+            body: JSON.stringify(fullNewItem),
           });
 
           if (!response.ok) throw new Error("Failed to add item");
@@ -466,7 +464,7 @@ export const useOrderStore = create<OrderState>()(
         }
       },
 
-      deleteItem: async (itemId, user) => {
+      deleteItem: async (itemId) => {
         const { items } = get();
         if (!items) return;
 
@@ -477,7 +475,6 @@ export const useOrderStore = create<OrderState>()(
             body: JSON.stringify({
               id: itemId,
               updates: { deleted: true },
-              user,
             }),
           });
 
@@ -501,8 +498,7 @@ export const useOrderStore = create<OrderState>()(
         itemId,
         sourceStatus,
         destinationStatus,
-        destinationIndex,
-        user
+        destinationIndex
       ) => {
         const { items } = get();
         if (!items) {
@@ -576,7 +572,6 @@ export const useOrderStore = create<OrderState>()(
                     ? Date.now()
                     : undefined,
               },
-              user,
             }),
           });
 
@@ -704,7 +699,7 @@ export const useOrderStore = create<OrderState>()(
         }
       },
 
-      markCompleted: async (item: Item, user?: string) => {
+      markCompleted: async (item: Item) => {
         // Implementation of markCompleted using updateItem logic internally or separately
         // Actually, in the UI page.tsx, markItemCompleted calls updateItem manually.
         // But if we want it in store, we should implement it here.
@@ -732,7 +727,7 @@ export const useOrderStore = create<OrderState>()(
              ...item,
              status: ItemStatus.Done,
              completedAt: Date.now()
-        }, undefined, user).then(() => {});
+        }).then(() => {});
       },
 
       updateItemScheduleStatus: async (

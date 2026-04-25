@@ -15,7 +15,6 @@ interface PreviewTableCellProps {
   columnValue: ColumnValue;
   columnName: ColumnTitles;
   cellIndex: number;
-  schedules: any;
   onDaySelect: (itemId: string, date: Date) => void;
   onAddToSchedule: (
     weekKey: string,
@@ -30,7 +29,6 @@ export function PreviewTableCell({
   columnValue,
   columnName,
   cellIndex,
-  schedules,
   onDaySelect,
   onAddToSchedule,
   onScheduleUpdate,
@@ -222,7 +220,6 @@ export function PreviewTableCell({
                         setHoveredColumn(null);
                       }}
                       item={item}
-                      schedules={schedules}
                       onAddToSchedule={onAddToSchedule}
                       onScheduleUpdate={onScheduleUpdate}
                     />

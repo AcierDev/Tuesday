@@ -1,13 +1,10 @@
 'use client'
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CountFrequency, EmployeeNames } from "@/typings/types"
+import { CountFrequency } from "@/typings/types"
 import { Plus, Search } from "lucide-react"
-import { useUser } from "@/contexts/UserContext"
-import { AdminActionHandler } from "../auth/AdminActionHandler"
 
 interface SearchAndFilterProps {
   countFilter: "All" | CountFrequency
@@ -24,10 +21,7 @@ export function SearchAndFilter({
   setSearchTerm,
   setShowAddItemDialog
 }: SearchAndFilterProps) {
-  const { user } = useUser()
-  const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false)
-
-  const handleAddItem = async () => {
+  const handleAddItem = () => {
     setShowAddItemDialog(true)
   }
 
@@ -55,24 +49,12 @@ export function SearchAndFilter({
           />
         </div>
       </div>
-      <AdminActionHandler
-        user={user as EmployeeNames | null}
-        callback={handleAddItem}
-        mode="nonAdminWithPassword"
-        actionName="Add New Item"
-        isOpen={isAddItemDialogOpen}
-        onOpenChange={setIsAddItemDialogOpen}
+      <Button
+        onClick={handleAddItem}
+        className="bg-gray-600 text-primary-foreground hover:bg-primary/90 dark:bg-gray-700 dark:text-white w-full sm:w-auto"
       >
-        {({ onClick, disabled }) => (
-          <Button
-            onClick={onClick}
-            disabled={disabled}
-            className="bg-gray-600 text-primary-foreground hover:bg-primary/90 dark:bg-gray-700 dark:text-white w-full sm:w-auto"
-          >
-            <Plus className="h-4 w-4 mr-2" /> Add Item
-          </Button>
-        )}
-      </AdminActionHandler>
+        <Plus className="h-4 w-4 mr-2" /> Add Item
+      </Button>
     </div>
   )
 }

@@ -45,7 +45,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { LoadMoreSentinel } from "./LoadMoreSentinel";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
-import { useUser } from "@/contexts/UserContext";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
 
@@ -99,8 +98,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
-  const { schedules, addItemToDay } = useWeeklyScheduleStore();
-  const { user } = useUser();
+  const addItemToDay = useWeeklyScheduleStore((s) => s.addItemToDay);
 
   const loadDoneItems = useOrderStore((state) => state.loadDoneItems);
   const removeDoneItems = useOrderStore((state) => state.removeDoneItems);
@@ -141,7 +139,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       if (updatedItem) {
         console.log("Saving edited item:", updatedItem);
         try {
-          await updateItem(updatedItem, undefined, user || undefined);
+          await updateItem(updatedItem);
           setEditingItem(null);
           console.log("Item updated successfully");
           toast.success("Item updated successfully", {
@@ -155,7 +153,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
         }
       }
     },
-    [updateItem, user]
+    [updateItem]
   );
 
   const handleDelete = useCallback((item: Item) => {
@@ -238,12 +236,12 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       };
 
       try {
-        await updateItem(updatedItem, undefined, user || undefined);
+        await updateItem(updatedItem);
       } catch (error) {
         console.error("Failed to update due date:", error);
       }
     },
-    [sortedItems, updateItem, user]
+    [sortedItems, updateItem]
   );
 
   const handleGroupClick = useCallback(() => {
@@ -322,13 +320,13 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     >
       <div
         className={cn(
-          "group relative w-[96%] mx-auto p-4 transition-all duration-200 ease-out rounded-md",
+          "group relative w-[98%] mx-auto p-4 transition-colors duration-200 ease-out rounded-xl",
           `text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           } dark:text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           }`,
-          "sticky top-[73px] z-30 bg-white dark:bg-gray-900",
+          "sticky top-[73px] z-30 bg-white/25 dark:bg-gray-900/25 backdrop-blur-md backdrop-saturate-150 border border-white/30 dark:border-white/10 shadow-[0_1px_2px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.05)] will-change-transform",
           isCollapsible && "cursor-pointer"
         )}
         onClick={handleGroupClick}
@@ -366,7 +364,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                 GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
               }`}
             >
-              <TableHeader className="sticky top-[132px] z-20 bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_6px_-1px_rgba(255,255,255,0.1),0_2px_4px_-2px_rgba(255,255,255,0.1)]">
+              <TableHeader className="bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_6px_-1px_rgba(255,255,255,0.1),0_2px_4px_-2px_rgba(255,255,255,0.1)]">
                 <TableRow>
                   <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center" />
                   {visibleColumns.includes("Shipping" as ColumnTitles) && (
@@ -425,7 +423,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                         item={item}
                         index={index}
                         visibleColumns={visibleColumns}
-                        schedules={schedules}
                         onContextMenu={handleContextMenu}
                         onDaySelect={handleDaySelect}
                         onAddToSchedule={addItemToDay}
@@ -448,7 +445,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                 GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
               }`}
             >
-              <TableHeader className="sticky top-[132px] z-20 bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)]">
+              <TableHeader className="bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)]">
                 <TableRow>
                   <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center w-12">
                     Status
@@ -499,7 +496,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                         item={item}
                         index={index}
                         visibleColumns={visibleColumns}
-                        schedules={schedules}
                         onDaySelect={handleDaySelect}
                         onAddToSchedule={addItemToDay}
                         onScheduleUpdate={handleScheduleUpdate}

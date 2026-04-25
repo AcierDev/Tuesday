@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  GripVertical,
+  ListTree,
   Check,
   RotateCcw,
   ArrowRight,
@@ -226,7 +226,7 @@ export const StatusRadialMenu: React.FC<StatusRadialMenuProps> = ({
         onPointerDown={handlePointerDown}
         className="cursor-grab active:cursor-grabbing p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
       >
-        <GripVertical className="text-gray-400" />
+        <ListTree className="text-gray-400" />
       </div>
 
       {isDragging &&

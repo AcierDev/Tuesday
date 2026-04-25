@@ -14,12 +14,14 @@ import {
   FileWarning,
   MessageCircleWarning,
   MoveVertical,
+  Printer,
 } from "lucide-react";
-import { cn } from "@/utils/functions";
+import { parseISO, isValid } from "date-fns";
+import { cn, getDueBadge } from "@/utils/functions";
 import React from "react";
-import { Item, ColumnTitles } from "@/typings/types";
+import { Item, ColumnTitles, ItemStatus } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { useUser } from "@/contexts/UserContext";
+import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 
 // // Add this style block right after imports
 // const pulseKeyframes = `
@@ -69,7 +71,7 @@ export const NameCell: React.FC<NameCellProps> = ({
   const previousValueRef = useRef(columnValue.text);
 
   const { updateItem } = useOrderStore();
-  const { user } = useUser();
+  const { settings } = useOrderSettings();
 
   useEffect(() => {
     if (columnValue.text !== previousValueRef.current) {
@@ -89,18 +91,14 @@ export const NameCell: React.FC<NameCellProps> = ({
         // or pass a separate metadata object if we really need to track lastModified per field.
         // For now, simple update.
       };
-      await updateItem(
-        updatedItem,
-        ColumnTitles.Customer_Name,
-        user || undefined
-      );
+      await updateItem(updatedItem, ColumnTitles.Customer_Name);
       toast.success("Name updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
       toast.error("Failed to update the name. Please try again.");
       setInputValue(columnValue.text || "");
     }
-  }, [inputValue, columnValue.text, item, updateItem, user]);
+  }, [inputValue, columnValue.text, item, updateItem]);
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,6 +133,32 @@ export const NameCell: React.FC<NameCellProps> = ({
     setIsEditing(true);
   }, []);
 
+  const parsedDueDate = item.dueDate ? parseISO(item.dueDate) : null;
+  const dueBadge =
+    parsedDueDate &&
+    isValid(parsedDueDate) &&
+    item.status !== ItemStatus.Done
+      ? getDueBadge(item.dueDate!, settings.dueBadgeDays)
+      : null;
+
+  const isPrintMarker = inputValue.trim().toLowerCase() === "print";
+
+  const verticalIcon = tags?.isVertical && (
+    <Tooltip>
+      <TooltipTrigger>
+        <span className="inline-flex items-center justify-center rounded-md bg-blue-500 p-0.5">
+          <MoveVertical
+            className="h-4 w-4 text-black"
+            strokeWidth={2.42}
+          />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Vertical Order</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+
   return (
     <div className="flex items-center w-full h-full relative group">
       <div className="flex items-center space-x-2 w-full pl-2">
@@ -164,16 +188,6 @@ export const NameCell: React.FC<NameCellProps> = ({
             </TooltipContent>
           </Tooltip>
         )}
-        {tags?.isVertical && (
-          <Tooltip>
-            <TooltipTrigger>
-              <MoveVertical className="h-4 w-4 text-blue-500" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Vertical Order</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
         {tags?.hasCustomerMessage && (
           <Tooltip>
             <TooltipTrigger>
@@ -186,38 +200,58 @@ export const NameCell: React.FC<NameCellProps> = ({
         )}
 
         {isEditing ? (
-          <input
-            type="text"
-            value={inputValue}
-            onChange={handleInputChange}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            className={cn(
-              "min-w-0 flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-              "font-medium text-center break-words",
-              "transition-shadow duration-200",
-              "rounded-md",
-              "bg-background border border-input"
-            )}
-            autoFocus
-          />
+          <div className="flex flex-1 min-w-0 items-center justify-start gap-2">
+            {dueBadge}
+            {verticalIcon}
+            <input
+              type="text"
+              value={inputValue}
+              onChange={handleInputChange}
+              onBlur={handleBlur}
+              onKeyDown={handleKeyDown}
+              className={cn(
+                "min-w-0 flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                "font-medium text-left break-words",
+                "transition-shadow duration-200",
+                "rounded-md",
+                "bg-background border border-input"
+              )}
+              autoFocus
+            />
+          </div>
         ) : (
           <div
             className={cn(
               "min-w-0 flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-              "font-medium text-center break-words",
-              "cursor-text select-text",
+              "font-medium text-left break-words",
+              "select-text",
               "transition-shadow duration-200",
-              "hover:ring-1 hover:ring-ring/50",
+              "group-hover:ring-1 group-hover:ring-ring/50",
               "rounded-md",
-              "flex items-center justify-center"
+              "flex items-center justify-start gap-2"
             )}
             onClick={() => {
               console.log("clicked");
               handleFocus();
             }}
           >
-            {parseMinecraftColors(inputValue, isDarkMode)}
+            {dueBadge}
+            {verticalIcon}
+            {isPrintMarker ? (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5",
+                  "bg-amber-100 text-amber-900 ring-1 ring-amber-300",
+                  "dark:bg-amber-500/20 dark:text-amber-200 dark:ring-amber-400/40",
+                  "text-xs font-bold uppercase tracking-wider"
+                )}
+              >
+                <Printer className="h-3.5 w-3.5" strokeWidth={2.5} />
+                Print
+              </span>
+            ) : (
+              parseMinecraftColors(inputValue, isDarkMode)
+            )}
           </div>
         )}
       </div>

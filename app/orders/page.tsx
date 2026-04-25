@@ -28,7 +28,6 @@ import { useOrderFiltering } from "@/hooks/useOrderFiltering";
 import { useOrderStats } from "@/hooks/useOrderStats";
 import { useAutoPromoteByDueDate } from "@/hooks/useAutoPromoteByDueDate";
 import { ResponsiveOrdersView } from "@/components/orders/ResponsiveOrdersView";
-import { useUser } from "@/contexts/UserContext";
 
 export default function OrderManagementPage() {
   const setSearchQuery = useOrderStore((state) => state.setSearchQuery);
@@ -47,8 +46,6 @@ export default function OrderManagementPage() {
     day: DayName;
     weekKey: string;
   } | null>(null);
-
-  const { user } = useUser();
 
   const handleStartClickToAdd = useCallback((day: DayName, weekKey: string) => {
     if (weekKey === "") {
@@ -99,7 +96,7 @@ export default function OrderManagementPage() {
   const addNewItem = useOrderStore((state) => state.addNewItem);
   const deleteItem = useOrderStore((state) => state.deleteItem);
 
-  useAutoPromoteByDueDate(items, user || undefined);
+  useAutoPromoteByDueDate(items);
 
   const [sortColumn, setSortColumn] = useState<ColumnTitles | null>(
     ColumnTitles.Due
@@ -185,7 +182,7 @@ export default function OrderManagementPage() {
         completedAt: Date.now(),
       };
 
-      await updateItem(updatedItem, undefined, user || undefined);
+      await updateItem(updatedItem);
 
       toast.success("Item marked as completed", {
         style: { background: "#10B981", color: "white" },
@@ -198,7 +195,7 @@ export default function OrderManagementPage() {
       setIsConfirmationOpen(false);
       setItemToComplete(null);
     }
-  }, [items, updateItem, itemToComplete, user]);
+  }, [items, updateItem, itemToComplete]);
 
   const onGetLabel = useCallback((item: Item) => {
     setSelectedItem(item);
@@ -236,7 +233,7 @@ export default function OrderManagementPage() {
           completedAt: undefined,
         };
 
-        await updateItem(restoredItem, undefined, user || undefined);
+        await updateItem(restoredItem);
 
       } catch (error) {
         console.error("Failed to undo status change:", error);
@@ -245,7 +242,7 @@ export default function OrderManagementPage() {
         });
       }
     },
-    [updateItem, user]
+    [updateItem]
   );
 
   const handleStatusChange = useCallback(
@@ -264,7 +261,7 @@ export default function OrderManagementPage() {
           completedAt: newStatus === ItemStatus.Done ? Date.now() : undefined,
         };
 
-        await updateItem(updatedItem, undefined, user || undefined);
+        await updateItem(updatedItem);
 
         toast.success(getStatusChangeMessage(newStatus), {
           style: { background: "#10B981", color: "white" },
@@ -278,7 +275,7 @@ export default function OrderManagementPage() {
         toast.error("Failed to update status");
       }
     },
-    [items, updateItem, undoStatusChange, user]
+    [items, updateItem, undoStatusChange]
   );
 
   const undoItemDeletion = useCallback(
@@ -288,7 +285,7 @@ export default function OrderManagementPage() {
           ...item,
           deleted: false,
         };
-        await updateItem(restoredItem, undefined, user || undefined);
+        await updateItem(restoredItem);
 
         toast.success("Item restored");
       } catch (error) {
@@ -298,7 +295,7 @@ export default function OrderManagementPage() {
         });
       }
     },
-    [updateItem, user]
+    [updateItem]
   );
 
   const handleDeleteItem = useCallback(
@@ -309,7 +306,7 @@ export default function OrderManagementPage() {
           return;
         }
 
-        await deleteItem(itemId, user || undefined);
+        await deleteItem(itemId);
 
         toast.success("Item deleted", {
           style: { background: "#10B981", color: "white" },
@@ -324,7 +321,7 @@ export default function OrderManagementPage() {
         });
       }
     },
-    [items, deleteItem, undoItemDeletion, user]
+    [items, deleteItem, undoItemDeletion]
   );
 
   useEffect(() => {
@@ -336,7 +333,7 @@ export default function OrderManagementPage() {
 
   const handleAddNewItem = async (newItem: Partial<Item>) => {
     try {
-      const createdItem = await addNewItem(newItem, user || undefined);
+      const createdItem = await addNewItem(newItem);
 
     } catch (error) {
       console.error("Failed to add new item:", error);
@@ -369,7 +366,10 @@ export default function OrderManagementPage() {
       {!isMobile && (
         <aside className="fixed left-20 top-[5.5rem] z-20 flex flex-col gap-2">
           {Object.values(ItemStatus)
-            .filter((status) => status !== ItemStatus.Done)
+            .filter(
+              (status) =>
+                status !== ItemStatus.Done && status !== ItemStatus.Hidden
+            )
             .map((status) => {
               const color =
                 status === ItemStatus.Hidden

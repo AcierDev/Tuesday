@@ -5,11 +5,7 @@ import { useActivities } from "@/hooks/useActivities";
 import { useEffect, useState, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export function RecentActivityFeed({
-  selectedEmployee,
-}: {
-  selectedEmployee: string | null;
-}) {
+export function RecentActivityFeed() {
   const getStatusBadgeStyle = (status: string) => {
     return status.toLowerCase() === "done"
       ? "text-green-600 dark:text-green-300 font-medium " +
@@ -207,16 +203,9 @@ export function RecentActivityFeed({
     // Sort all activities by timestamp first
     filtered = filtered.sort((a, b) => b.timestamp - a.timestamp);
 
-    // Then apply employee filter if selected
-    if (selectedEmployee) {
-      filtered = filtered.filter(
-        (activity) => activity.userName === selectedEmployee
-      );
-    }
-
     // Finally take the first 10 items
     return filtered.slice(0, 10);
-  }, [activities, activeTab, selectedEmployee]);
+  }, [activities, activeTab]);
 
   if (isLoading) {
     return (
@@ -254,10 +243,6 @@ export function RecentActivityFeed({
               {getActivityDescription(activity)}
             </p>
             <div className="flex items-center gap-1.5 mt-1">
-              <p className="text-xs text-gray-400">
-                {activity.userName ? activity.userName : "Unknown User"}
-              </p>
-              <span className="text-gray-400">●</span>
               <p className="text-xs text-gray-400">
                 {new Date(activity.timestamp).toLocaleString()}
               </p>

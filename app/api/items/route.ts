@@ -144,7 +144,7 @@ export async function PATCH(request: Request) {
       `items-${process.env.NEXT_PUBLIC_MODE}`
     );
 
-    const { id, updates, user } = await request.json();
+    const { id, updates } = await request.json();
     const { _id, ...updatesWithoutId } = updates;
 
     // Fetch the item before updating to compare changes
@@ -262,7 +262,6 @@ export async function PATCH(request: Request) {
         itemId: id,
         type: activityType,
         changes,
-        userName: user, // Passed from client
         metadata: {
           customerName:
             updatesWithoutId.customerName || currentItem.customerName,
@@ -292,9 +291,7 @@ export async function POST(request: Request) {
       `items-${process.env.NEXT_PUBLIC_MODE}`
     );
 
-    const body = await request.json();
-    const { user, ...newItemData } = body;
-    const newItem = newItemData as Item;
+    const newItem = (await request.json()) as Item;
 
     const result = await collection.insertOne(newItem);
 
@@ -318,7 +315,6 @@ export async function POST(request: Request) {
             newValue: newItem.status || ItemStatus.New,
           },
         ],
-        userName: user,
         metadata: {
           customerName: newItem.customerName,
           design: newItem.design,
