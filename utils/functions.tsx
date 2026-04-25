@@ -103,11 +103,11 @@ export const getDueBadge = (dateString: string, range: number) => {
 
   let colorClasses: string;
   if (delta < 0) {
-    colorClasses = "bg-red-500 hover:bg-red-500 text-white";
+    colorClasses = "bg-red-500/69 hover:bg-red-500/69 text-white";
   } else if (delta === 0 || delta <= range) {
-    colorClasses = "bg-yellow-500 hover:bg-yellow-500 text-white";
+    colorClasses = "bg-yellow-500/69 hover:bg-yellow-500/69 text-white";
   } else {
-    colorClasses = "bg-green-500 hover:bg-green-500 text-white";
+    colorClasses = "bg-green-500/69 hover:bg-green-500/69 text-white";
   }
 
   const label = delta === 0 ? "0" : delta > 0 ? `+${delta}` : `${delta}`;
@@ -115,7 +115,7 @@ export const getDueBadge = (dateString: string, range: number) => {
   return (
     <Badge
       className={cn(
-        "border-transparent tabular-nums text-[15.18px] px-2 py-0.5 min-w-[2.475rem] justify-center [text-shadow:_0_1px_2px_rgb(0_0_0_/_60%)]",
+        "tabular-nums text-[12.9px] px-2 py-0.5 min-w-[2.475rem] justify-center rounded-[10px] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.15)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_70%)]",
         colorClasses
       )}
     >
