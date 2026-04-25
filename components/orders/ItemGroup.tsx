@@ -382,7 +382,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                         className={cn(
                           "border border-gray-200 dark:border-gray-600 p-2 text-center",
                           columnName === ColumnTitles.Customer_Name
-                            ? "w-1/2"
+                            ? "w-[37.5%]"
                             : "",
                           columnName === ColumnTitles.Labels
                             ? "w-8 flex-shrink-0"
@@ -459,7 +459,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                       className={cn(
                         "border border-gray-200 dark:border-gray-600 p-2 text-center",
                         columnName === ColumnTitles.Customer_Name
-                          ? "w-1/2"
+                          ? "w-[37.5%]"
                           : "",
                         columnName === ColumnTitles.Labels
                           ? "w-8 flex-shrink-0"
