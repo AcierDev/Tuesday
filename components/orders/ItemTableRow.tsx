@@ -88,7 +88,7 @@ export const ItemTableRow = memo(function ItemTableRow({
         onContextMenu(e, item);
       }}
     >
-      <TableCell className="border border-gray-200 dark:border-gray-600 p-2 relative">
+      <TableCell className="border border-gray-200 dark:border-gray-600 py-2 pl-4 pr-2 relative">
         <div className="flex items-center justify-center">
           <StatusRadialMenu
             currentStatus={item.status}
