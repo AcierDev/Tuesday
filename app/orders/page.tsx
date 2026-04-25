@@ -376,6 +376,11 @@ export default function OrderManagementPage() {
                   ? "gray-500"
                   : STATUS_COLORS[status] || "gray-400";
               const count = statusCounts[status] ?? 0;
+              const STATUS_SHORT_LABELS: Partial<Record<ItemStatus, string>> = {
+                [ItemStatus.Packaging]: "Pack",
+                [ItemStatus.At_The_Door]: "Door",
+              };
+              const label = STATUS_SHORT_LABELS[status] ?? status;
               return (
                 <div
                   key={status}
@@ -393,7 +398,7 @@ export default function OrderManagementPage() {
                     {count}
                   </span>
                   <span className="mt-0.5 w-full truncate text-center text-[9px] font-medium uppercase tracking-wide opacity-80">
-                    {status}
+                    {label}
                   </span>
                 </div>
               );
