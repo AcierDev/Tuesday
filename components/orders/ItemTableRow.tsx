@@ -149,7 +149,7 @@ export const ItemTableRow = memo(function ItemTableRow({
           );
         })}
 
-      <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+      <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center w-[160px]">
         <ItemActions
           item={item}
           onDelete={onDelete}
