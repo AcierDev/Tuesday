@@ -115,7 +115,7 @@ export const getDueBadge = (dateString: string, range: number) => {
   return (
     <Badge
       className={cn(
-        "tabular-nums text-[12.9px] px-2 py-0.5 min-w-[2.475rem] justify-center rounded-[10px] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.15)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_70%)]",
+        "tabular-nums text-[12.9px] px-2 py-0.5 min-w-[2.475rem] justify-center rounded-[10px] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_-1px_0_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.12)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_56%)]",
         colorClasses
       )}
     >
