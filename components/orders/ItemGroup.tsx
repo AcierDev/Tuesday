@@ -328,10 +328,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
           } dark:text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           }`,
-          "sticky top-[73px] z-30",
-          "bg-gradient-to-b from-slate-50 to-white dark:from-gray-800 dark:to-gray-900",
-          "ring-1 ring-slate-200/70 dark:ring-slate-700/50",
-          "shadow-sm hover:shadow transition-shadow",
+          "sticky top-[73px] z-30 bg-slate-50 dark:bg-gray-800/60",
           isCollapsible && "cursor-pointer"
         )}
         onClick={handleGroupClick}
