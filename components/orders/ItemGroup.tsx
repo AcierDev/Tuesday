@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -246,6 +247,8 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     [sortedItems, updateItem, user]
   );
 
+  const COLLAPSE_ANIMATION_MS = 280;
+
   const handleGroupClick = useCallback(() => {
     if (!isCollapsible) return;
 
@@ -254,13 +257,15 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       if (isCollapsed) {
         loadDoneItems(true);
       } else {
-        removeDoneItems();
+        // Defer unload until the exit animation finishes so the height
+        // transition has content to shrink from.
+        setTimeout(() => removeDoneItems(), COLLAPSE_ANIMATION_MS);
       }
     } else if (group.title === "Hidden") {
       if (isCollapsed) {
         loadHiddenItems();
       } else {
-        removeHiddenItems();
+        setTimeout(() => removeHiddenItems(), COLLAPSE_ANIMATION_MS);
       }
     }
   }, [
@@ -358,8 +363,25 @@ export const ItemGroupSection = memo(function ItemGroupSection({
           )}
         </div>
       </div>
-      {(!isCollapsible || !isCollapsed) && (
-        <div className="relative overflow-visible">
+      <AnimatePresence initial={false}>
+        {(!isCollapsible || !isCollapsed) && (
+          <motion.div
+            key="group-content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{
+              height: "auto",
+              opacity: 1,
+              transitionEnd: { overflow: "visible" },
+            }}
+            exit={{ height: 0, opacity: 0, overflow: "hidden" }}
+            transition={{
+              height: { duration: 0.28, ease: [0.32, 0.72, 0, 1] },
+              opacity: { duration: 0.18, ease: "easeOut" },
+            }}
+            style={{ overflow: "hidden" }}
+            className="relative"
+          >
+            <div className="relative overflow-visible">
           {!isPreview ? (
             <BorderedTable
               borderColor={`bg-${
@@ -515,8 +537,10 @@ export const ItemGroupSection = memo(function ItemGroupSection({
               onLoadMore={() => loadDoneItems(false)}
             />
           )}
-        </div>
-      )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <EditItemDialog
         editingItem={editingItem}
         handleSaveEdit={handleSaveEdit}
