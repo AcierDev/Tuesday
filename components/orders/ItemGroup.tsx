@@ -322,16 +322,14 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     >
       <div
         className={cn(
-          "group relative w-full p-4 transition-all duration-200 ease-out",
+          "group relative w-full p-4 transition-all duration-200 ease-out rounded-md",
           `text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           } dark:text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           }`,
           "sticky top-[73px] z-30 bg-white dark:bg-gray-900",
-          isCollapsible &&
-            "cursor-pointer hover:bg-gray-50/80 dark:hover:bg-gray-800/40",
-          isCollapsed && "bg-gray-50 dark:bg-blue-900/10 rounded-lg"
+          isCollapsible && "cursor-pointer"
         )}
         onClick={handleGroupClick}
       >
@@ -386,7 +384,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                         className={cn(
                           "border border-gray-200 dark:border-gray-600 p-2 text-center",
                           columnName === ColumnTitles.Customer_Name
-                            ? "w-1/3"
+                            ? "w-1/2"
                             : "",
                           columnName === ColumnTitles.Labels
                             ? "w-8 flex-shrink-0"
@@ -463,7 +461,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                       className={cn(
                         "border border-gray-200 dark:border-gray-600 p-2 text-center",
                         columnName === ColumnTitles.Customer_Name
-                          ? "w-1/3"
+                          ? "w-1/2"
                           : "",
                         columnName === ColumnTitles.Labels
                           ? "w-8 flex-shrink-0"
