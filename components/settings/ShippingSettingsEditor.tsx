@@ -1,15 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Save, Truck, Undo2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Loader2, Plus, Truck, X } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -23,10 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  createDefaultShippingSettings,
-  normalizeShippingSettings,
-} from "@/config/shipping-defaults";
+import { normalizeShippingSettings } from "@/config/shipping-defaults";
 import { useShippingSettingsStore } from "@/stores/useShippingSettingsStore";
 import {
   ItemSizes,
@@ -92,22 +94,51 @@ function isDirty(a: ShippingSettings | null, b: ShippingSettings | null) {
   return JSON.stringify(a) !== JSON.stringify(b);
 }
 
+const AUTO_SAVE_DEBOUNCE_MS = 600;
+
 export function ShippingSettingsEditor() {
   const { settings, isLoading, isSaving, error, fetchSettings, saveSettings } =
     useShippingSettingsStore();
   const [draft, setDraft] = useState<ShippingSettings | null>(null);
+  const initialSyncDoneRef = useRef(false);
 
   useEffect(() => {
     fetchSettings().catch(() => undefined);
   }, [fetchSettings]);
 
+  // Sync draft from server only on initial load — otherwise post-save settings
+  // updates would clobber edits the user made while the request was in flight.
   useEffect(() => {
-    if (settings) {
+    if (settings && !initialSyncDoneRef.current) {
       setDraft(normalizeShippingSettings(settings));
+      initialSyncDoneRef.current = true;
     }
   }, [settings]);
 
   const dirty = useMemo(() => isDirty(draft, settings), [draft, settings]);
+
+  const persistDraft = (value: ShippingSettings) => {
+    saveSettings(normalizeShippingSettings(value)).catch((saveError) => {
+      toast.error(
+        saveError instanceof Error
+          ? saveError.message
+          : "Failed to save shipping settings"
+      );
+    });
+  };
+
+  useEffect(() => {
+    if (!draft || !dirty || isSaving) return;
+
+    const handle = setTimeout(() => persistDraft(draft), AUTO_SAVE_DEBOUNCE_MS);
+
+    return () => clearTimeout(handle);
+  }, [draft, dirty, isSaving, saveSettings]);
+
+  const handleBlurFlush = () => {
+    if (!draft || !dirty || isSaving) return;
+    persistDraft(draft);
+  };
 
   const updateShipFrom = (field: keyof ShippingAddressInput, value: string | boolean) => {
     setDraft((current) =>
@@ -207,28 +238,6 @@ export function ShippingSettingsEditor() {
     });
   };
 
-  const handleReset = () => {
-    setDraft(settings ? normalizeShippingSettings(settings) : createDefaultShippingSettings());
-  };
-
-  const handleSave = async () => {
-    if (!draft) {
-      return;
-    }
-
-    try {
-      const saved = await saveSettings(normalizeShippingSettings(draft));
-      setDraft(saved);
-      toast.success("Shipping settings saved");
-    } catch (saveError) {
-      toast.error(
-        saveError instanceof Error
-          ? saveError.message
-          : "Failed to save shipping settings"
-      );
-    }
-  };
-
   if (isLoading && !draft) {
     return (
       <div className="space-y-4">
@@ -250,7 +259,7 @@ export function ShippingSettingsEditor() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" onBlurCapture={handleBlurFlush}>
       <Card className="border-none shadow-none dark:bg-transparent">
         <CardHeader className="px-0">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -263,19 +272,18 @@ export function ShippingSettingsEditor() {
                 FedEx ship-from defaults and editable package presets by item size.
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleReset} disabled={!dirty || isSaving}>
-                <Undo2 className="mr-2 h-4 w-4" />
-                Reset
-              </Button>
-              <Button onClick={handleSave} disabled={!dirty || isSaving}>
-                {isSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Save Shipping Settings
-              </Button>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {dirty || isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Saving…</span>
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <span>Saved</span>
+                </>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -406,105 +414,117 @@ export function ShippingSettingsEditor() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        {Object.values(ItemSizes).map((size) => (
-          <Card key={size} className="flex flex-col overflow-hidden dark:bg-gray-900">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">
-                <span className="text-muted-foreground">Template size</span>{" "}
-                <span className="font-semibold tracking-tight text-foreground">
-                  {formatItemSizeTitle(size)}
-                </span>
-              </CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Orders with this item size get these package rows prefilled in the FedEx
-                dialog.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-1 flex-col p-0">
-              <div className="divide-y divide-border">
-                {draft.packagePresetsBySize[size].map((preset, index) => (
-                  <div
-                    key={preset.id}
-                    className="bg-muted/20 px-4 py-4 dark:bg-muted/10"
-                  >
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-foreground">
-                        Package {index + 1}
+      <Card className="dark:bg-gray-900">
+        <CardHeader>
+          <CardTitle>Package Presets by Size</CardTitle>
+          <CardDescription>
+            Orders with a given item size get these package rows prefilled in the FedEx
+            dialog.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Accordion type="multiple" className="w-full">
+            {Object.values(ItemSizes).map((size) => {
+              const presets = draft.packagePresetsBySize[size];
+              return (
+                <AccordionItem key={size} value={size} className="border-b last:border-b-0 px-4">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex flex-1 items-center justify-between gap-3 pr-3">
+                      <span className="font-semibold tracking-tight text-foreground">
+                        {formatItemSizeTitle(size)}
                       </span>
+                      <span className="text-xs text-muted-foreground">
+                        {presets.length} {presets.length === 1 ? "package" : "packages"}
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4">
+                    <div className="divide-y divide-border rounded-md border border-border overflow-hidden">
+                      {presets.map((preset, index) => (
+                        <div
+                          key={preset.id}
+                          className="bg-muted/20 px-4 py-4 dark:bg-muted/10"
+                        >
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <span className="text-sm font-semibold text-foreground">
+                              Package {index + 1}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                              onClick={() => removePreset(size, preset.id)}
+                              aria-label={`Remove package ${index + 1}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="space-y-2">
+                              <Label className="text-foreground/90">Label</Label>
+                              <Input
+                                className={settingsInputClassName}
+                                value={preset.label || ""}
+                                onChange={(event) =>
+                                  updatePreset(size, preset.id, "label", event.target.value)
+                                }
+                                placeholder="e.g. Main carton, hardware box"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                              {[
+                                ["length", "Length"],
+                                ["width", "Width"],
+                                ["height", "Height"],
+                                ["weight", "Weight"],
+                              ].map(([field, label]) => (
+                                <div key={field} className="min-w-0 space-y-2">
+                                  <Label className="text-foreground/90">{label}</Label>
+                                  <Input
+                                    className={settingsInputClassName}
+                                    type="number"
+                                    min="0"
+                                    step="0.1"
+                                    value={formatPackageNumberForInput(
+                                      preset[
+                                        field as keyof ShippingPackagePreset
+                                      ] as number
+                                    )}
+                                    onChange={(event) =>
+                                      updatePreset(
+                                        size,
+                                        preset.id,
+                                        field as keyof ShippingPackagePreset,
+                                        event.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex justify-end">
                       <Button
                         type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                        onClick={() => removePreset(size, preset.id)}
-                        aria-label={`Remove package ${index + 1}`}
+                        variant="secondary"
+                        className="gap-2"
+                        onClick={() => addPreset(size)}
                       >
-                        <X className="h-4 w-4" />
+                        <Plus className="h-4 w-4" />
+                        Add package
                       </Button>
                     </div>
-                    <div className="space-y-3">
-                      <div className="space-y-2">
-                        <Label className="text-foreground/90">Label</Label>
-                        <Input
-                          className={settingsInputClassName}
-                          value={preset.label || ""}
-                          onChange={(event) =>
-                            updatePreset(size, preset.id, "label", event.target.value)
-                          }
-                          placeholder="e.g. Main carton, hardware box"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        {[
-                          ["length", "Length"],
-                          ["width", "Width"],
-                          ["height", "Height"],
-                          ["weight", "Weight"],
-                        ].map(([field, label]) => (
-                          <div key={field} className="min-w-0 space-y-2">
-                            <Label className="text-foreground/90">{label}</Label>
-                            <Input
-                              className={settingsInputClassName}
-                              type="number"
-                              min="0"
-                              step="0.1"
-                              value={formatPackageNumberForInput(
-                                preset[
-                                  field as keyof ShippingPackagePreset
-                                ] as number
-                              )}
-                              onChange={(event) =>
-                                updatePreset(
-                                  size,
-                                  preset.id,
-                                  field as keyof ShippingPackagePreset,
-                                  event.target.value
-                                )
-                              }
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-            <CardFooter className="mt-auto flex-col gap-2 border-t border-border bg-muted/30 px-4 py-3 dark:bg-muted/15">
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full gap-2 sm:w-auto sm:self-end"
-                onClick={() => addPreset(size)}
-              >
-                <Plus className="h-4 w-4" />
-                Add package
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
+        </CardContent>
+      </Card>
     </div>
   );
 }
