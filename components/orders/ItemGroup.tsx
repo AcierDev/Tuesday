@@ -317,7 +317,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   return (
     <div
       className={cn(
-        "mb-6 bg-slate-50 dark:bg-gray-800 rounded-lg overflow-visible"
+        "mb-6 bg-white dark:bg-gray-900 rounded-lg overflow-visible"
       )}
     >
       <div
@@ -328,7 +328,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
           } dark:text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           }`,
-          "sticky top-[73px] z-30 bg-slate-50 dark:bg-gray-800",
+          "sticky top-[73px] z-30 bg-slate-100 dark:bg-gray-700",
           isCollapsible && "cursor-pointer"
         )}
         onClick={handleGroupClick}
