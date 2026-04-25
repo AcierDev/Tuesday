@@ -439,7 +439,7 @@ export function ShippingSettingsEditor() {
               const presets = draft.packagePresetsBySize[size];
               return (
                 <AccordionItem key={size} value={size} className="border-b last:border-b-0 px-4">
-                  <AccordionTrigger className="rounded-md border border-transparent px-2 text-left hover:no-underline hover:border-border">
+                  <AccordionTrigger className="mx-2 my-1 rounded-md border border-transparent px-3 text-left hover:no-underline hover:border-border">
                     <div className="flex flex-1 items-center justify-between gap-3 pr-3">
                       <span className="font-semibold tracking-tight text-foreground">
                         {formatItemSizeTitle(size)}
