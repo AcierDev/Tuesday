@@ -103,11 +103,11 @@ export const getDueBadge = (dateString: string, range: number) => {
 
   let colorClasses: string;
   if (delta < 0) {
-    colorClasses = "bg-red-500 hover:bg-red-500 text-black";
+    colorClasses = "bg-red-500 hover:bg-red-500 text-gray-800";
   } else if (delta === 0 || delta <= range) {
-    colorClasses = "bg-yellow-500 hover:bg-yellow-500 text-black";
+    colorClasses = "bg-yellow-500 hover:bg-yellow-500 text-gray-800";
   } else {
-    colorClasses = "bg-green-500 hover:bg-green-500 text-black";
+    colorClasses = "bg-green-500 hover:bg-green-500 text-gray-800";
   }
 
   const label = delta === 0 ? "0" : delta > 0 ? `+${delta}` : `${delta}`;
