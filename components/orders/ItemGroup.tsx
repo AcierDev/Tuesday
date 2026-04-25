@@ -322,7 +322,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     >
       <div
         className={cn(
-          "group relative w-full p-4 transition-all duration-200 ease-out rounded-md",
+          "group relative w-[90%] mx-auto p-4 transition-all duration-200 ease-out rounded-md",
           `text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           } dark:text-${
@@ -342,7 +342,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
         <div className="flex items-center justify-between">
           <span className="font-semibold text-lg sticky top-0 z-10 transition-transform duration-200 ease-out group-hover:translate-x-2">
             {group.title}
-            {isCollapsible && isCollapsed && (
+            {isCollapsible && isCollapsed && group.title !== ItemStatus.Done && (
               <span className="ml-2 font-normal text-[15.4px] opacity-70">
                 ({group.items.length} hidden)
               </span>
@@ -368,9 +368,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
             >
               <TableHeader className="sticky top-[132px] z-20 bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_6px_-1px_rgba(255,255,255,0.1),0_2px_4px_-2px_rgba(255,255,255,0.1)]">
                 <TableRow>
-                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center">
-                    Order
-                  </TableHead>
+                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center" />
                   {visibleColumns.includes("Shipping" as ColumnTitles) && (
                     <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center w-12">
                       Shipping
