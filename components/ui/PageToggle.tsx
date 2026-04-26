@@ -18,9 +18,10 @@ const PAGE_TOGGLE_LABEL: Record<PageToggleValue, string> = {
   planner: "Planner",
 };
 
-// Delay router.push until the slide animation has had time to play. Tuned to
-// feel snappy without truncating the spring.
-const NAV_DELAY_MS = 220;
+// Delay router.push until the pill spring has had time to start. Kept short
+// because the destination page also animates in via app/template.tsx — total
+// felt-time = NAV_DELAY_MS + page slide-in.
+const NAV_DELAY_MS = 150;
 
 // After the current page settles, warm up the other page's bundle and run its
 // module-level side effects (e.g. WeeklyScheduleStore auto-init firing
