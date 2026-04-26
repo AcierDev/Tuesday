@@ -124,26 +124,20 @@ function resolveMergedShippingState(args: {
           action: "openTracking",
           tooltip: "In Transit",
         };
-      case "pre_transit":
-        return {
-          icon: "truck-blue",
-          action: "openTracking",
-          tooltip: "Label Created",
-        };
-      default:
-        return {
-          icon: "truck-blue",
-          action: "openTracking",
-          tooltip: "Picked Up",
-        };
+      // pre_transit, undefined, or anything else: not yet picked up.
+      // Fall through to the label-state icons.
     }
   }
 
-  if (status === ItemStatus.At_The_Door && hasLabel) {
+  if (
+    (status === ItemStatus.At_The_Door || status === ItemStatus.Done) &&
+    hasLabel
+  ) {
     return {
       icon: "package-yellow",
       action: "openLabel",
-      tooltip: "At The Door",
+      tooltip:
+        status === ItemStatus.Done ? "Awaiting Pickup" : "At The Door",
     };
   }
 
