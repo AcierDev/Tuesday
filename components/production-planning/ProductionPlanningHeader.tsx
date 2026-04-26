@@ -88,7 +88,7 @@ export function ProductionPlanningHeader({
           <div className="inline-flex items-stretch rounded-md border border-primary/40 overflow-hidden">
             <span className="flex items-center gap-1.5 px-3 text-sm font-medium text-primary bg-primary/5">
               <Wand2 className="h-4 w-4" />
-              Auto-fill
+              Auto-plan
             </span>
             <Button
               variant="ghost"
