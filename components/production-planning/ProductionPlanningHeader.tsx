@@ -27,7 +27,7 @@ export function ProductionPlanningHeader({
           <div className="flex items-center gap-4 sm:flex-shrink-0">
             <div className="flex items-center gap-3 sm:min-w-[220px]">
               <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
-              <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+              <h1 className="text-lg sm:text-xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent">
                 Production Planner
               </h1>
             </div>
@@ -35,37 +35,42 @@ export function ProductionPlanningHeader({
             <PageToggle currentPage="planner" />
 
 
-            {/* Week toggle — sits in the left group, right after the page slider. */}
-            <button
-              type="button"
-              onClick={onToggleWeek}
-              aria-label={
-                viewingNextWeek ? "Switch to This Week" : "Switch to Next Week"
-              }
-              className="group flex items-center gap-2 h-10 bg-gray-100 dark:bg-gray-800/60 rounded-full pl-4 pr-1.5 text-sm font-semibold ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60 transition-colors"
-            >
-              <span className="relative inline-block w-[80px] h-5 overflow-hidden text-left">
-                <AnimatePresence initial={false} mode="popLayout">
-                  <motion.span
-                    key={viewingNextWeek ? "next" : "this"}
-                    initial={{ y: viewingNextWeek ? 16 : -16, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: viewingNextWeek ? -16 : 16, opacity: 0 }}
-                    transition={{ duration: 0.22, ease: "easeOut" }}
-                    className="absolute inset-0"
-                  >
-                    {viewingNextWeek ? "Next Week" : "This Week"}
-                  </motion.span>
-                </AnimatePresence>
-              </span>
-              <motion.span
-                animate={{ rotate: viewingNextWeek ? 180 : 0 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-                className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-gray-700 shadow-sm"
+            {/* Week toggle — outer ring matches PageToggle's wrapper exactly
+                (p-1 + inner h-8 = 40px) so both sit at the same level. */}
+            <div className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60">
+              <button
+                type="button"
+                onClick={onToggleWeek}
+                aria-label={
+                  viewingNextWeek
+                    ? "Switch to This Week"
+                    : "Switch to Next Week"
+                }
+                className="group flex items-center gap-1.5 h-8 pl-3 pr-1 rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white/70 dark:hover:bg-gray-700/50 transition-colors"
               >
-                <ChevronRight className="h-4 w-4" />
-              </motion.span>
-            </button>
+                <span className="relative inline-block w-[72px] h-5 overflow-hidden text-left">
+                  <AnimatePresence initial={false} mode="popLayout">
+                    <motion.span
+                      key={viewingNextWeek ? "next" : "this"}
+                      initial={{ y: viewingNextWeek ? 16 : -16, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: viewingNextWeek ? -16 : 16, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: "easeOut" }}
+                      className="absolute inset-0"
+                    >
+                      {viewingNextWeek ? "Next Week" : "This Week"}
+                    </motion.span>
+                  </AnimatePresence>
+                </span>
+                <motion.span
+                  animate={{ rotate: viewingNextWeek ? 180 : 0 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-gray-700 shadow-sm"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </motion.span>
+              </button>
+            </div>
           </div>
 
           {/* Right group: action buttons */}
