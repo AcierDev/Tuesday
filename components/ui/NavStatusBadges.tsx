@@ -43,7 +43,7 @@ const BACKLOG_ROUND_TO = 100;
 
 function formatSquaresK(squares: number): string {
   if (squares < 1000) return squares.toString();
-  return (squares / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+  return (squares / 1000).toFixed(1) + "k";
 }
 
 export function NavSectionCounters() {
