@@ -51,7 +51,7 @@ const ICON_CONFIG: Record<
 > = {
   "barcode-gray": {
     Icon: Barcode,
-    className: "text-gray-500 dark:text-gray-400",
+    className: "text-muted-foreground",
   },
   "barcode-yellow": {
     Icon: Barcode,
@@ -190,7 +190,7 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
   const iconConfig = isLoading
     ? {
         Icon: Barcode,
-        className: "text-gray-300 dark:text-gray-600",
+        className: "text-muted-foreground/40",
       }
     : ICON_CONFIG[icon];
   const { Icon, className: iconClassName } = iconConfig;
@@ -219,7 +219,7 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
             <TooltipContent>
               <p>{tooltip}</p>
               {orderTracking?.trackers?.[0]?.carrier && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   {orderTracking.trackers[0].carrier}
                 </p>
               )}
@@ -230,7 +230,7 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
 
       {action === "openLabel" && (
         <Dialog open={isLabelOpen} onOpenChange={setIsLabelOpen}>
-          <DialogContent className="max-w-4xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+          <DialogContent className="max-w-4xl bg-card text-card-foreground border-border">
             <DialogHeader>
               <DialogTitle>Shipping Label</DialogTitle>
             </DialogHeader>
@@ -245,7 +245,7 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
 
       {action === "openTracking" && (
         <Dialog open={isTrackingOpen} onOpenChange={setIsTrackingOpen}>
-          <DialogContent className="max-w-2xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+          <DialogContent className="max-w-2xl bg-card text-card-foreground border-border">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold">
                 Tracking History

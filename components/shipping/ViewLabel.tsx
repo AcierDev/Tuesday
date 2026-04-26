@@ -611,7 +611,7 @@ export function ViewLabel({
 
   if (isLoading && orderLabels.length === 0) {
     return (
-      <Card className="w-full max-w-3xl mx-auto bg-background dark:bg-gray-800">
+      <Card className="w-full max-w-3xl mx-auto bg-card border-border">
         <CardContent className="pt-6">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
@@ -622,10 +622,10 @@ export function ViewLabel({
   }
 
   return (
-    <Card className="w-full max-w-3xl mx-auto bg-background dark:bg-gray-800 dark:border-gray-700">
+    <Card className="w-full max-w-3xl mx-auto bg-card border-border">
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
-          <CardTitle className="text-2xl font-bold text-foreground dark:text-gray-100">
+          <CardTitle className="text-2xl font-bold text-foreground">
             Shipping Labels for Order {orderId}
           </CardTitle>
           {item && <FedExBuyLabelDialog item={item} />}
@@ -633,7 +633,7 @@ export function ViewLabel({
       </CardHeader>
       <CardContent className="p-4">
         <Tabs defaultValue={pdfExists ? "view" : "manage"} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4 dark:bg-gray-700">
+          <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted">
             <TabsTrigger value="view" disabled={!pdfExists}>
               View Labels
             </TabsTrigger>
@@ -643,7 +643,7 @@ export function ViewLabel({
             {pdfExists && orderLabels.length > 0 ? (
               <div className="space-y-4">
                 <div
-                  className="border rounded-lg overflow-hidden dark:border-gray-700"
+                  className="border border-border rounded-lg overflow-hidden"
                   style={{
                     height: "calc(100vh - 300px)",
                     minHeight: "400px",
@@ -668,7 +668,7 @@ export function ViewLabel({
                   >
                     <ChevronLeft className="mr-2 h-4 w-4" /> Previous
                   </Button>
-                  <span className="text-sm font-medium text-foreground dark:text-gray-300">
+                  <span className="text-sm font-medium text-foreground">
                     Label {currentPdfIndex + 1} of {orderLabels.length}
                   </span>
                   <Button
@@ -702,9 +702,9 @@ export function ViewLabel({
                     {orderLabels.map((filename: string, index: number) => (
                       <div
                         key={index}
-                        className="flex justify-between items-center p-4 border rounded-lg dark:border-gray-700"
+                        className="flex justify-between items-center p-4 border border-border rounded-lg"
                       >
-                        <span className="font-medium text-foreground dark:text-gray-200">
+                        <span className="font-medium text-foreground">
                           Label {index + 1}
                         </span>
                         <div className="space-x-2">
@@ -754,8 +754,8 @@ export function ViewLabel({
               <div
                 className={`border-2 border-dashed rounded-lg p-8 text-center ${
                   dragActive
-                    ? "border-primary bg-primary/10 dark:bg-primary/5"
-                    : "border-muted-foreground/25 dark:border-gray-600"
+                    ? "border-primary bg-primary/10"
+                    : "border-muted-foreground/25"
                 }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -773,10 +773,10 @@ export function ViewLabel({
                 <Label htmlFor="pdf-upload" className="cursor-pointer">
                   <div className="flex flex-col items-center">
                     <FileIcon className="h-16 w-16 text-muted-foreground mb-4" />
-                    <p className="text-lg font-semibold mb-2 text-foreground dark:text-gray-200">
+                    <p className="text-lg font-semibold mb-2 text-foreground">
                       Drag & Drop your PDF files here
                     </p>
-                    <p className="text-sm text-muted-foreground mb-4 dark:text-gray-400">
+                    <p className="text-sm text-muted-foreground mb-4">
                       or click to select files
                     </p>
                     {files.length > 0 && (
@@ -833,7 +833,7 @@ export function ViewLabel({
                   onChange={(e) =>
                     setManualCarrier(e.target.value as TrackingInfo["carrier"])
                   }
-                  className="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-700"
+                  className="w-full p-2 border border-border bg-background text-foreground rounded-md"
                 >
                   <option value="UPS">UPS</option>
                   <option value="FedEx">FedEx</option>

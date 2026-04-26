@@ -29,7 +29,7 @@ export function ShippingStatusIcon({ orderId }: ShippingStatusIconProps) {
   const { icon, text } = useMemo(() => {
     if (!orderTracking || orderTracking.trackers.length === 0) {
       return {
-        icon: <Package className="h-4 w-4 text-gray-400" />,
+        icon: <Package className="h-4 w-4 text-muted-foreground" />,
         text: "No tracking information",
       };
     }
@@ -73,7 +73,7 @@ export function ShippingStatusIcon({ orderId }: ShippingStatusIconProps) {
         };
       default:
         return {
-          icon: <Package className="h-4 w-4 text-gray-400" />,
+          icon: <Package className="h-4 w-4 text-muted-foreground" />,
           text: latestTracker?.status || "Unknown",
         };
     }
@@ -87,7 +87,7 @@ export function ShippingStatusIcon({ orderId }: ShippingStatusIconProps) {
       <TooltipContent>
         <p>{text}</p>
         {orderTracking?.trackers?.[0]?.carrier && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             {orderTracking.trackers[0].carrier}
           </p>
         )}

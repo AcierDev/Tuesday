@@ -26,7 +26,7 @@ export const LabelCell = ({ item }: { item: Item }) => {
       <Dialog open={isLabelDialogOpen} onOpenChange={setIsLabelDialogOpen}>
         <DialogTrigger asChild>
           <Button
-            className="w-[1.21rem] h-8 p-0 text-gray-900 dark:text-gray-100"
+            className="w-[1.21rem] h-8 p-0 text-foreground"
             variant="ghost"
             onClick={() => setIsLabelDialogOpen(true)}
             disabled={isLoading}
@@ -34,15 +34,15 @@ export const LabelCell = ({ item }: { item: Item }) => {
             <Barcode
               className={`h-[1.1rem] w-[1.1rem] ${
                 isLoading
-                  ? "text-gray-300"
+                  ? "text-muted-foreground/40"
                   : hasLabel
                   ? "text-yellow-500"
-                  : "text-gray-500 dark:text-gray-400"
+                  : "text-muted-foreground"
               }`}
             />
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-4xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+        <DialogContent className="max-w-4xl bg-card text-card-foreground border-border">
           <DialogHeader>
             <DialogTitle>Shipping Label</DialogTitle>
           </DialogHeader>

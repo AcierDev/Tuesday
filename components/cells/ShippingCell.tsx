@@ -52,7 +52,7 @@ export function ShippingCell({ item }: ShippingCellProps) {
 
       {hasLabel ? (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogContent className="max-w-2xl bg-white dark:bg-gray-800">
+          <DialogContent className="max-w-2xl bg-card text-card-foreground border-border">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold">
                 Tracking History

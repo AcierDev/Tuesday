@@ -38,8 +38,10 @@ export function TrackingHistory({ tracking }: TrackingHistoryProps) {
   if (!tracking || !tracking.trackers.length) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
-        <Package className="h-16 w-16 text-gray-400 mb-4" />
-        <p className="text-gray-500">No tracking information available</p>
+        <Package className="h-16 w-16 text-muted-foreground/50 mb-4" />
+        <p className="text-muted-foreground">
+          No tracking information available
+        </p>
       </div>
     );
   }
@@ -58,27 +60,27 @@ export function TrackingHistory({ tracking }: TrackingHistoryProps) {
       className="space-y-6 p-4 max-h-[80vh] overflow-y-auto"
     >
       {/* Current Status Card */}
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-6 shadow-sm border border-blue-100 dark:border-blue-900/30">
+      <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-lg p-6 shadow-sm border border-blue-500/20">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-full">
-              <Truck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 bg-blue-500/15 rounded-full">
+              <Truck className="h-5 w-5 text-blue-500 dark:text-blue-400" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+              <h3 className="text-lg font-medium text-foreground">
                 {latestTracker.carrier}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 {latestTracker.tracking_code}
               </p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <p className="text-sm font-medium text-foreground">
                 Estimated Delivery
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 {latestTracker.est_delivery_date
                   ? format(
                       new Date(latestTracker.est_delivery_date),
@@ -105,39 +107,37 @@ export function TrackingHistory({ tracking }: TrackingHistoryProps) {
               <div className="flex-shrink-0 relative z-10">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    index === 0
-                      ? "bg-blue-100 dark:bg-blue-900/50"
-                      : "bg-gray-100 dark:bg-gray-800"
+                    index === 0 ? "bg-blue-500/15" : "bg-muted"
                   }`}
                 >
                   {index === 0 ? (
                     <Truck
                       className={`h-4 w-4 ${
                         index === 0
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-gray-500 dark:text-gray-400"
+                          ? "text-blue-500 dark:text-blue-400"
+                          : "text-muted-foreground"
                       }`}
                     />
                   ) : (
                     <MapPin
                       className={`h-4 w-4 ${
                         index === 0
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-gray-500 dark:text-gray-400"
+                          ? "text-blue-500 dark:text-blue-400"
+                          : "text-muted-foreground"
                       }`}
                     />
                   )}
                 </div>
               </div>
 
-              <div className="flex-grow bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+              <div className="flex-grow bg-muted/40 rounded-lg p-4 shadow-sm border border-border">
                 <div className="flex flex-col space-y-2">
                   <div className="flex justify-between items-start">
                     <p
                       className={`font-medium ${
                         index === 0
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-gray-900 dark:text-gray-100"
+                          ? "text-blue-500 dark:text-blue-400"
+                          : "text-foreground"
                       }`}
                     >
                       {detail.message}
@@ -145,7 +145,7 @@ export function TrackingHistory({ tracking }: TrackingHistoryProps) {
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                       {detail.tracking_location && (
                         <span>
                           {detail.tracking_location.city}
@@ -155,7 +155,7 @@ export function TrackingHistory({ tracking }: TrackingHistoryProps) {
                       )}
                     </div>
 
-                    <div className="flex items-center space-x-3 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center space-x-3 text-sm text-muted-foreground">
                       <div className="flex items-center space-x-1">
                         <Calendar className="h-3.5 w-3.5" />
                         <span>
@@ -185,13 +185,13 @@ export function TrackingHistory({ tracking }: TrackingHistoryProps) {
           >
             <button
               onClick={handleShowMoreClick}
-              className="sticky bottom-0 w-full mt-4 py-3 px-4 bg-gray-50 dark:bg-gray-800/50 
-                hover:bg-gray-100 dark:hover:bg-gray-800 
-                text-gray-600 dark:text-gray-300 
+              className="sticky bottom-0 w-full mt-4 py-3 px-4 bg-muted/60
+                hover:bg-muted
+                text-muted-foreground
                 rounded-lg transition-colors duration-200
                 flex items-center justify-center space-x-2
-                border border-gray-200 dark:border-gray-700
-                backdrop-blur-sm bg-opacity-90"
+                border border-border
+                backdrop-blur-sm"
             >
               <span>
                 {showAll
