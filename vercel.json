@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/debt-snapshots/cron",
+      "schedule": "30 8 * * *"
+    },
+    {
+      "path": "/api/health-snapshots/cron",
+      "schedule": "30 8 * * *"
+    }
+  ]
+}

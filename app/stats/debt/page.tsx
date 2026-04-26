@@ -1,0 +1,457 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+import { useOrderStore } from "@/stores/useOrderStore";
+import { Item, ItemStatus } from "@/typings/types";
+import { STATUS_COLORS } from "@/typings/constants";
+import {
+  computeDebtBreakdown,
+  dayDiffKeys,
+  laDayKey,
+} from "@/lib/debt-metrics";
+import {
+  ChartPoint,
+  DEFAULT_RANGE,
+  RANGE_OPTIONS,
+  RangeKey,
+  RangeSelector,
+  StatTile,
+  TimeSeriesChart,
+} from "@/lib/stats-shared";
+import { cn } from "@/utils/functions";
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ ⚙️ CONFIG                                                            ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+const RECENT_VELOCITY_DAYS = 7;
+const DEBT_CHART_COLOR = "rgb(248 113 113)";
+
+const STATUS_LABELS: Record<ItemStatus, string> = {
+  [ItemStatus.New]: "New",
+  [ItemStatus.OnDeck]: "On Deck",
+  [ItemStatus.Wip]: "WIP",
+  [ItemStatus.Packaging]: "Packaging",
+  [ItemStatus.At_The_Door]: "At The Door",
+  [ItemStatus.Done]: "Done",
+  [ItemStatus.Hidden]: "Hidden",
+};
+
+type SeriesPoint = { date: string; totalDebt: number; recorded?: boolean };
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 📊 STATS                                                             ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+interface SeriesStats {
+  peak: number;
+  trough: number;
+  average: number;
+  median: number;
+  startValue: number;
+  endValue: number;
+  deltaFromStart: number;
+  daysInDebt: number;
+  daysDebtFree: number;
+  recordedDays: number;
+  longestDebtStreak: number;
+  biggestJump: number;
+  biggestDrop: number;
+  recentAverage: number;
+  priorAverage: number;
+}
+
+function summarizeSeries(series: SeriesPoint[]): SeriesStats {
+  // Stats only consider days with real recorded snapshots — carry-forward
+  // gap-fillers don't represent observed state.
+  const recorded = series.filter((p) => p.recorded !== false);
+  if (recorded.length === 0) {
+    return {
+      peak: 0,
+      trough: 0,
+      average: 0,
+      median: 0,
+      startValue: 0,
+      endValue: 0,
+      deltaFromStart: 0,
+      daysInDebt: 0,
+      daysDebtFree: 0,
+      recordedDays: 0,
+      longestDebtStreak: 0,
+      biggestJump: 0,
+      biggestDrop: 0,
+      recentAverage: 0,
+      priorAverage: 0,
+    };
+  }
+  const values = recorded.map((p) => p.totalDebt);
+  const peak = Math.max(...values);
+  const trough = Math.min(...values);
+  const average = values.reduce((s, v) => s + v, 0) / values.length;
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median =
+    sorted.length % 2 === 0
+      ? ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2
+      : sorted[mid] ?? 0;
+
+  const startValue = values[0] ?? 0;
+  const endValue = values[values.length - 1] ?? 0;
+  const deltaFromStart = endValue - startValue;
+
+  let daysInDebt = 0;
+  let daysDebtFree = 0;
+  let currentStreak = 0;
+  let longestDebtStreak = 0;
+  for (const v of values) {
+    if (v > 0) {
+      daysInDebt += 1;
+      currentStreak += 1;
+      if (currentStreak > longestDebtStreak) longestDebtStreak = currentStreak;
+    } else {
+      daysDebtFree += 1;
+      currentStreak = 0;
+    }
+  }
+
+  let biggestJump = 0;
+  let biggestDrop = 0;
+  for (let i = 1; i < values.length; i++) {
+    const a = values[i - 1] ?? 0;
+    const b = values[i] ?? 0;
+    const diff = b - a;
+    if (diff > biggestJump) biggestJump = diff;
+    if (diff < biggestDrop) biggestDrop = diff;
+  }
+
+  const recentSlice = values.slice(-RECENT_VELOCITY_DAYS);
+  const priorSlice = values.slice(
+    -RECENT_VELOCITY_DAYS * 2,
+    -RECENT_VELOCITY_DAYS
+  );
+  const recentAverage = recentSlice.length
+    ? recentSlice.reduce((s, v) => s + v, 0) / recentSlice.length
+    : 0;
+  const priorAverage = priorSlice.length
+    ? priorSlice.reduce((s, v) => s + v, 0) / priorSlice.length
+    : recentAverage;
+
+  return {
+    peak,
+    trough,
+    average,
+    median,
+    startValue,
+    endValue,
+    deltaFromStart,
+    daysInDebt,
+    daysDebtFree,
+    recordedDays: recorded.length,
+    longestDebtStreak,
+    biggestJump,
+    biggestDrop,
+    recentAverage,
+    priorAverage,
+  };
+}
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🧩 PAGE                                                              ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+export default function DebtPage() {
+  const items = useOrderStore((state) => state.items);
+  const loadItems = useOrderStore((state) => state.loadItems);
+  const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
+  const [seriesByRange, setSeriesByRange] = useState<
+    Partial<Record<RangeKey, SeriesPoint[]>>
+  >({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
+
+  useEffect(() => {
+    if (seriesByRange[range]) return;
+    let cancelled = false;
+    setLoading(true);
+    const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
+    (async () => {
+      try {
+        const res = await fetch(`/api/debt-snapshots?days=${days}`);
+        if (!res.ok) return;
+        const json = (await res.json()) as { series: SeriesPoint[] };
+        if (cancelled) return;
+        setSeriesByRange((prev) => ({ ...prev, [range]: json.series }));
+      } catch (err) {
+        console.error("Failed to load debt snapshots", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [range, seriesByRange]);
+
+  const series = seriesByRange[range] ?? [];
+  const chartSeries = useMemo<ChartPoint[]>(
+    () => series.map((p) => ({ date: p.date, value: p.totalDebt })),
+    [series]
+  );
+
+  const activeItems = useMemo(
+    () =>
+      (items ?? []).filter(
+        (i) => i.status !== ItemStatus.Done && i.status !== ItemStatus.Hidden
+      ),
+    [items]
+  );
+
+  const { total: totalDebt, byStatus } = useMemo(
+    () => computeDebtBreakdown(activeItems),
+    [activeItems]
+  );
+
+  const overdueItems = useMemo(() => {
+    const today = laDayKey();
+    type Row = { item: Item; daysOverdue: number };
+    const rows: Row[] = [];
+    for (const item of activeItems) {
+      const due = item.dueDate?.slice(0, 10);
+      if (!due || due.length !== 10) continue;
+      const diff = dayDiffKeys(due, today);
+      if (diff > 0) rows.push({ item, daysOverdue: diff });
+    }
+    rows.sort((a, b) => b.daysOverdue - a.daysOverdue);
+    return rows;
+  }, [activeItems]);
+
+  const stats = useMemo(() => summarizeSeries(series), [series]);
+  const rangeLabel = RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+  const debtFreePct = stats.recordedDays
+    ? Math.round((stats.daysDebtFree / stats.recordedDays) * 100)
+    : 0;
+  const velocityDelta = stats.recentAverage - stats.priorAverage;
+  const velocityTone: "good" | "bad" | "neutral" =
+    velocityDelta < -0.5 ? "good" : velocityDelta > 0.5 ? "bad" : "neutral";
+  const startTone: "good" | "bad" | "neutral" =
+    stats.deltaFromStart < 0
+      ? "good"
+      : stats.deltaFromStart > 0
+        ? "bad"
+        : "neutral";
+
+  return (
+    <>
+      <header className="flex flex-wrap items-end justify-between gap-6 mb-6">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+            Total overdue debt
+          </p>
+          <div
+            className={cn(
+              "mt-1 text-6xl font-bold tabular-nums leading-none",
+              totalDebt > 0
+                ? "text-red-500 dark:text-red-400"
+                : "text-emerald-500 dark:text-emerald-400"
+            )}
+          >
+            {totalDebt > 0 ? `−${totalDebt}` : "0"}
+            <span className="text-2xl font-medium ml-2 text-slate-400">
+              day{totalDebt === 1 ? "" : "s"}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-400">
+            Across {overdueItems.length} overdue item
+            {overdueItems.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <RangeSelector value={range} onChange={setRange} />
+      </header>
+
+      <section className="rounded-2xl glass-surface p-5 mb-6">
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+            {rangeLabel} trend
+          </h2>
+          {loading && (
+            <span className="text-xs text-slate-400">Loading…</span>
+          )}
+        </div>
+        <TimeSeriesChart
+          series={chartSeries}
+          color={DEBT_CHART_COLOR}
+          gradientId="debt-area"
+          formatValue={(v) => `${v}`}
+          emptyLabel="No debt history yet — check back tomorrow."
+          showWeekBoundaries={range === "30d" || range === "90d"}
+        />
+      </section>
+
+      <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
+        <StatTile
+          label={`${rangeLabel} peak`}
+          value={stats.peak}
+          sublabel="worst day"
+        />
+        <StatTile
+          label={`${rangeLabel} avg`}
+          value={Math.round(stats.average)}
+          sublabel={`median ${Math.round(stats.median)}`}
+        />
+        <StatTile
+          label="Δ vs start"
+          value={`${stats.deltaFromStart > 0 ? "+" : stats.deltaFromStart < 0 ? "−" : ""}${Math.abs(stats.deltaFromStart)}`}
+          sublabel={`from ${stats.startValue}`}
+          tone={startTone}
+        />
+        <StatTile
+          label="7-day velocity"
+          value={`${velocityDelta > 0 ? "+" : velocityDelta < 0 ? "−" : ""}${Math.abs(Math.round(velocityDelta))}`}
+          sublabel={`vs prior 7d`}
+          tone={velocityTone}
+        />
+        <StatTile
+          label="Debt-free days"
+          value={stats.daysDebtFree}
+          sublabel={`${debtFreePct}% of ${stats.recordedDays} tracked`}
+          tone={debtFreePct > 0 ? "good" : "neutral"}
+        />
+        <StatTile
+          label="Days in debt"
+          value={stats.daysInDebt}
+          sublabel={`${100 - debtFreePct}% of ${stats.recordedDays} tracked`}
+          tone={stats.daysInDebt > 0 ? "bad" : "neutral"}
+        />
+        <StatTile
+          label="Longest debt streak"
+          value={stats.longestDebtStreak}
+          sublabel="consecutive days"
+          tone={stats.longestDebtStreak > 0 ? "bad" : "neutral"}
+        />
+        <StatTile
+          label="Biggest swings"
+          value={`+${stats.biggestJump} / −${Math.abs(stats.biggestDrop)}`}
+          sublabel="day-over-day"
+        />
+      </section>
+
+      <section className="rounded-2xl glass-surface p-5 mb-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
+          By status (today)
+        </h2>
+        {totalDebt === 0 ? (
+          <p className="text-sm text-slate-400">
+            No overdue items. Nice work.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {Object.entries(byStatus)
+              .sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))
+              .map(([status, days]) => {
+                const s = status as ItemStatus;
+                const color = STATUS_COLORS[s];
+                const share = totalDebt
+                  ? Math.round(((days ?? 0) / totalDebt) * 100)
+                  : 0;
+                return (
+                  <div
+                    key={status}
+                    className="rounded-xl px-3 py-3 bg-white/5 border border-white/10 flex flex-col items-start"
+                  >
+                    <span
+                      className={cn(
+                        "text-[10px] font-semibold uppercase tracking-wide",
+                        `text-${color}`
+                      )}
+                    >
+                      {STATUS_LABELS[s]}
+                    </span>
+                    <span className="mt-1 text-2xl font-bold tabular-nums leading-none">
+                      −{days}
+                    </span>
+                    <span className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">
+                      days · {share}%
+                    </span>
+                    <div className="mt-2 w-full h-1 rounded-full bg-white/5 overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-full", `bg-${color}`)}
+                        style={{ width: `${share}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl glass-surface p-5">
+        <div className="flex items-baseline justify-between mb-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+            Overdue items
+          </h2>
+          <span className="text-xs text-slate-400">
+            {overdueItems.length} item
+            {overdueItems.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        {overdueItems.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            No overdue items right now.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-2 font-medium">Customer</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Due</th>
+                  <th className="px-3 py-2 font-medium text-right">
+                    Days overdue
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {overdueItems.map(({ item, daysOverdue }) => {
+                  const color = STATUS_COLORS[item.status];
+                  return (
+                    <tr
+                      key={item.id}
+                      className="border-t border-white/5 hover:bg-white/5 transition"
+                    >
+                      <td className="px-3 py-2 font-medium">
+                        {item.customerName || "—"}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={cn(
+                            "inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wide bg-white/5",
+                            `text-${color}`
+                          )}
+                        >
+                          {STATUS_LABELS[item.status]}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 tabular-nums text-slate-400">
+                        {item.dueDate?.slice(0, 10) ?? "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-red-500 dark:text-red-400">
+                        −{daysOverdue}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
+  );
+}

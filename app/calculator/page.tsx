@@ -38,15 +38,20 @@ interface CostBreakdown {
   };
   debug?: {
     dimensions: { height: number; width: number };
-    blocks: { height: number; width: number; total: number };
+    squares: { height: number; width: number; total: number };
   };
 }
 
-const BLOCK_SIZE = 3; // Block size in inches
+const SQUARE_SIZE = 3; // Square size in inches
 const DEFAULT_CARD_WIDTH = 480; // Default card width in pixels (increased from 400)
 const DIAGRAM_PADDING = 40; // Padding around the diagram
 
-const FIXED_PRICE_PER_BLOCK = 3.9;
+const FIXED_PRICE_PER_SQUARE = 4.2;
+
+const CALCULATOR_SIZES: string[] = [
+  ...Object.values(ItemSizes),
+  "40 x 16",
+];
 
 export default function CustomArtRequest() {
   const [formData, setFormData] = useState({
@@ -78,26 +83,26 @@ export default function CustomArtRequest() {
     h: number,
     w: number
   ): CostBreakdown => {
-    // Convert dimensions to blocks (3 inches per block)
-    const heightInBlocks = Math.round(h / BLOCK_SIZE);
-    const widthInBlocks = Math.round(w / BLOCK_SIZE);
-    const totalBlocks = heightInBlocks * widthInBlocks;
+    // Convert dimensions to squares (3 inches per square)
+    const heightInSquares = Math.round(h / SQUARE_SIZE);
+    const widthInSquares = Math.round(w / SQUARE_SIZE);
+    const totalSquares = heightInSquares * widthInSquares;
 
     const debugInfo = {
       dimensions: { height: h, width: w },
-      blocks: {
-        height: heightInBlocks,
-        width: widthInBlocks,
-        total: totalBlocks,
+      squares: {
+        height: heightInSquares,
+        width: widthInSquares,
+        total: totalSquares,
       },
     };
 
     // Calculate weight
-    const weightInGrams = totalBlocks * 96;
+    const weightInGrams = totalSquares * 96;
     const weightInPounds = weightInGrams / 453.592; // Convert grams to pounds
 
     // Calculate base price using fixed rate
-    const basePrice = totalBlocks * FIXED_PRICE_PER_BLOCK;
+    const basePrice = totalSquares * FIXED_PRICE_PER_SQUARE;
 
     // Calculate shipping
     const baseShipping = 0;
@@ -175,16 +180,16 @@ export default function CustomArtRequest() {
     updateCostBreakdown(newHeight, newWidth);
   };
 
-  const handleSizeSelect = (size: ItemSizes | "custom") => {
+  const handleSizeSelect = (size: string) => {
     if (size !== "custom") {
       const [width = "0", height = "0"] = size
         .split(" x ")
-        .map((s) => parseInt(s) * BLOCK_SIZE);
+        .map((s) => parseInt(s) * SQUARE_SIZE);
       const newWidth = width.toString();
       const newHeight = height.toString();
       setFormData((prev) => ({
         ...prev,
-        selectedSize: size,
+        selectedSize: size as ItemSizes | "custom",
         width: newWidth,
         height: newHeight,
         unit: "inches",
@@ -210,16 +215,16 @@ export default function CustomArtRequest() {
   };
 
   const standardSizeCosts = React.useMemo(() => {
-    return Object.values(ItemSizes).map((size) => {
-      const [widthBlocks = 0, heightBlocks = 0] = size
+    return CALCULATOR_SIZES.map((size) => {
+      const [widthSquares = 0, heightSquares = 0] = size
         .split(" x ")
         .map((s) => parseInt(s));
       // Note: handleSizeSelect logic implies:
-      // width = first part * BLOCK_SIZE
-      // height = second part * BLOCK_SIZE
+      // width = first part * SQUARE_SIZE
+      // height = second part * SQUARE_SIZE
       // calculateCost takes (h, w)
-      const widthInches = widthBlocks * BLOCK_SIZE;
-      const heightInches = heightBlocks * BLOCK_SIZE;
+      const widthInches = widthSquares * SQUARE_SIZE;
+      const heightInches = heightSquares * SQUARE_SIZE;
       
       // We need to be careful with width vs height mapping.
       // In handleSizeSelect:
@@ -305,7 +310,7 @@ export default function CustomArtRequest() {
                     </SelectTrigger>
                     <SelectContent className="bg-gray-800 border-gray-700">
                       <SelectItem value="custom">Custom</SelectItem>
-                      {Object.values(ItemSizes).map((size) => (
+                      {CALCULATOR_SIZES.map((size) => (
                         <SelectItem key={size} value={size}>
                           {size}
                         </SelectItem>
@@ -393,9 +398,9 @@ export default function CustomArtRequest() {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Blocks:</span>
+                      <span className="text-gray-500">Squares:</span>
                       <span>
-                        {costBreakdown.debug.blocks.total} blocks
+                        {costBreakdown.debug.squares.total} squares
                       </span>
                     </div>
                     <div className="flex justify-between">

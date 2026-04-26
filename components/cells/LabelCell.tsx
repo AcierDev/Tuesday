@@ -22,17 +22,17 @@ export const LabelCell = ({ item }: { item: Item }) => {
   });
 
   return (
-    <div className="!w-8 flex-shrink-0 flex items-center justify-center max-w-8 min-w-8">
+    <div className="!w-[1.21rem] flex-shrink-0 flex items-center justify-center max-w-[1.21rem] min-w-[1.21rem]">
       <Dialog open={isLabelDialogOpen} onOpenChange={setIsLabelDialogOpen}>
         <DialogTrigger asChild>
           <Button
-            className="w-8 h-8 p-0 text-gray-900 dark:text-gray-100"
+            className="w-[1.21rem] h-8 p-0 text-gray-900 dark:text-gray-100"
             variant="ghost"
             onClick={() => setIsLabelDialogOpen(true)}
             disabled={isLoading}
           >
             <Barcode
-              className={`h-4 w-4 ${
+              className={`h-[1.1rem] w-[1.1rem] ${
                 isLoading
                   ? "text-gray-300"
                   : hasLabel

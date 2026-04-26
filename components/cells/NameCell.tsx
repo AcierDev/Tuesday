@@ -17,11 +17,12 @@ import {
   Printer,
 } from "lucide-react";
 import { parseISO, isValid } from "date-fns";
-import { cn, getDueBadge } from "@/utils/functions";
+import { cn } from "@/utils/functions";
 import React from "react";
 import { Item, ColumnTitles, ItemStatus } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
+import { DueBadge } from "./DueBadge";
 
 // // Add this style block right after imports
 // const pulseKeyframes = `
@@ -137,9 +138,9 @@ export const NameCell: React.FC<NameCellProps> = ({
   const dueBadge =
     parsedDueDate &&
     isValid(parsedDueDate) &&
-    item.status !== ItemStatus.Done
-      ? getDueBadge(item.dueDate!, settings.dueBadgeDays)
-      : null;
+    item.status !== ItemStatus.Done ? (
+      <DueBadge item={item} range={settings.dueBadgeDays} />
+    ) : null;
 
   const isPrintMarker = inputValue.trim().toLowerCase() === "print";
 
@@ -161,7 +162,7 @@ export const NameCell: React.FC<NameCellProps> = ({
 
   return (
     <div className="flex items-center w-full h-full relative group">
-      <div className="flex items-center space-x-2 w-full pl-2">
+      <div className="flex items-center space-x-2 w-full">
         {tags?.isDuplicate && (
           <Tooltip>
             <TooltipTrigger>
@@ -210,7 +211,7 @@ export const NameCell: React.FC<NameCellProps> = ({
               onBlur={handleBlur}
               onKeyDown={handleKeyDown}
               className={cn(
-                "min-w-0 flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                "min-w-0 flex-1 py-2 pr-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                 "font-medium text-left break-words",
                 "transition-shadow duration-200",
                 "rounded-md",
@@ -222,7 +223,7 @@ export const NameCell: React.FC<NameCellProps> = ({
         ) : (
           <div
             className={cn(
-              "min-w-0 flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+              "min-w-0 flex-1 py-2 pr-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
               "font-medium text-left break-words",
               "select-text",
               "transition-shadow duration-200",

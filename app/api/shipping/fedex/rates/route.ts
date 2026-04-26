@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { fetchFedExRates } from "@/lib/fedex-api";
 import { normalizeShippingSettings } from "@/config/shipping-defaults";
-import { type ShippingAddressInput, type ShippingPackagePreset } from "@/typings/types";
+import { type ShippingAddressInput, type ShippingBoxPreset } from "@/typings/types";
 
 export const runtime = "nodejs";
 
-function hasInvalidPackage(packages: ShippingPackagePreset[]) {
+function hasInvalidPackage(packages: ShippingBoxPreset[]) {
   return packages.some(
     (pkg) =>
       !pkg.length ||
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const payload = await request.json();
     const shipFrom = payload.shipFrom as ShippingAddressInput;
     const shipTo = payload.shipTo as ShippingAddressInput;
-    const packages = payload.packages as ShippingPackagePreset[];
+    const packages = payload.packages as ShippingBoxPreset[];
     const purchaseDefaults = normalizeShippingSettings({
       purchaseDefaults: payload.purchaseDefaults,
     }).purchaseDefaults;

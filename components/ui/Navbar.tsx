@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
-  Logs,
   PaintbrushVertical,
   PackageOpen,
   Layers3,
@@ -11,8 +11,6 @@ import {
   Power,
   Accessibility,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   Menu,
   ClipboardList,
   SprayCan,
@@ -33,6 +31,11 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { motion } from "framer-motion";
+import { OrdersIcon } from "@/components/icons/OrdersIcon";
+import {
+  NavSectionCounters,
+  NavMetricsBadges,
+} from "@/components/ui/NavStatusBadges";
 
 type NavItemBase = {
   hotkey?: string;
@@ -52,7 +55,7 @@ type DividerItem = NavItemBase & {
 type NavItem = NavLinkItem | DividerItem;
 
 const mainNavItems: NavItem[] = [
-  { href: "/orders", icon: Logs, label: "Orders", hotkey: "1" },
+  { href: "/orders", icon: OrdersIcon, label: "Orders", hotkey: "1" },
   { href: "/weekly-planner", icon: ClipboardList, label: "Weekly Planner" },
   {
     href: "/production-planning",
@@ -97,7 +100,6 @@ const settingsTabs: {
 }[] = [
   { value: "due-badge", label: "Due Badge", icon: Clock },
   { value: "recent-edits", label: "Recent Edits", icon: Edit },
-  { value: "identification", label: "Identification Menu", icon: UserCircle },
   { value: "shipping", label: "Shipping", icon: Truck },
 ];
 
@@ -136,6 +138,25 @@ export function Navbar({
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(pathname);
   const [settingsHovered, setSettingsHovered] = useState(false);
+  const settingsLeaveTimerRef = useRef<number | null>(null);
+
+  const openSettingsHover = useCallback(() => {
+    if (settingsLeaveTimerRef.current !== null) {
+      window.clearTimeout(settingsLeaveTimerRef.current);
+      settingsLeaveTimerRef.current = null;
+    }
+    setSettingsHovered(true);
+  }, []);
+
+  const closeSettingsHover = useCallback(() => {
+    if (settingsLeaveTimerRef.current !== null) {
+      window.clearTimeout(settingsLeaveTimerRef.current);
+    }
+    settingsLeaveTimerRef.current = window.setTimeout(() => {
+      setSettingsHovered(false);
+      settingsLeaveTimerRef.current = null;
+    }, 300);
+  }, []);
 
   useEffect(() => {
     setActiveTab(pathname);
@@ -184,52 +205,107 @@ export function Navbar({
     };
   }, [handleHotkey]);
 
-  const toggleSidebar = () => onSidebarOpenChange(!sidebarOpen);
-
   const NavLink = ({ href, icon: Icon, label }: NavLinkProps) => {
     if (!href) return null;
 
     const isMobile = useMediaQuery("(max-width: 1023px)");
     const isActive = activeTab === href;
+    const isCollapsed = !sidebarOpen && !isMobile;
+    const [hovered, setHovered] = useState(false);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+    const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+      setMounted(true);
+    }, []);
+
+    useEffect(() => {
+      if (hovered && isCollapsed && wrapperRef.current) {
+        const iconEl = wrapperRef.current.querySelector<HTMLElement>(
+          "[data-nav-icon]"
+        );
+        const iconRect = (iconEl ?? wrapperRef.current).getBoundingClientRect();
+        const wrapperRect = wrapperRef.current.getBoundingClientRect();
+        setTooltipPos({
+          top: iconRect.top + iconRect.height / 2,
+          left: wrapperRect.right + 8,
+        });
+      }
+    }, [hovered, isCollapsed]);
 
     return (
-      <Link
-        href={href}
-        className={`flex items-center rounded-lg text-sm font-medium 
-          ${
-            isMobile
-              ? "px-4 py-4"
-              : `px-3 py-4 ${!sidebarOpen ? "justify-center" : ""}`
-          }
-          ${
-            isActive
-              ? "bg-secondary text-secondary-foreground dark:bg-blue-900/30 dark:text-blue-200"
-              : "text-muted-foreground hover:bg-muted hover:text-primary dark:hover:bg-gray-800/50"
-          }
-          transition-all duration-200 relative`}
+      <div
+        ref={wrapperRef}
+        className={`relative ${isCollapsed ? "py-1 -my-1" : ""}`}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
-        {typeof Icon === "string" ? (
-          <Image
-            src={Icon}
-            alt={label}
-            width={20}
-            height={20}
-            className={`${!sidebarOpen && !isMobile ? "mr-0" : "mr-3"} ${
-              theme === "dark" ? "invert" : "text-black"
-            }`}
-          />
-        ) : (
-          <Icon
-            className={`${isMobile ? "h-5 w-5" : "h-5 w-5 flex-shrink-0"} ${
-              !sidebarOpen && !isMobile ? "mr-0" : "mr-3"
-            }`}
-          />
-        )}
-        {(sidebarOpen || isMobile) && <span>{label}</span>}
-        {isActive && (
-          <span className="absolute inset-y-0 left-0 w-1 bg-blue-500 rounded-r-full" />
-        )}
-      </Link>
+        <motion.div
+          animate={{ x: isCollapsed && hovered ? 4 : 0 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        >
+          <Link
+            href={href}
+            className={`flex items-center w-full rounded-lg text-sm font-medium
+              ${
+                isMobile
+                  ? "px-4 py-4"
+                  : `px-3 py-3 ${isCollapsed ? "justify-center" : ""}`
+              }
+              ${
+                isActive
+                  ? "bg-secondary text-secondary-foreground dark:bg-blue-900/30 dark:text-blue-200"
+                  : "text-muted-foreground hover:bg-muted hover:text-primary dark:hover:bg-gray-800/50"
+              }
+              transition-colors duration-200 relative`}
+          >
+            {typeof Icon === "string" ? (
+              <Image
+                data-nav-icon
+                src={Icon}
+                alt={label}
+                width={20}
+                height={20}
+                className={`${isCollapsed ? "mr-0" : "mr-3"}`}
+              />
+            ) : (
+              <Icon
+                data-nav-icon
+                className={`${isMobile ? "h-5 w-5" : "h-5 w-5 flex-shrink-0"} ${
+                  isCollapsed ? "mr-0" : "mr-3"
+                }`}
+              />
+            )}
+            {(sidebarOpen || isMobile) && <span>{label}</span>}
+            {isActive && (
+              <span className="absolute inset-y-0 left-0 w-1 bg-blue-500 rounded-r-full" />
+            )}
+          </Link>
+        </motion.div>
+        {isCollapsed &&
+          mounted &&
+          createPortal(
+            <div
+              className="fixed -translate-y-1/2 z-[100] pointer-events-none"
+              style={{ top: tooltipPos.top, left: tooltipPos.left }}
+            >
+              <motion.div
+                initial={false}
+                animate={{
+                  opacity: hovered ? 1 : 0,
+                  x: hovered ? 0 : -8,
+                }}
+                transition={{ duration: 0.12, ease: "easeOut" }}
+              >
+                <div className="px-3 py-2 text-sm font-medium leading-none text-foreground bg-gray-900/90 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg whitespace-nowrap scale-[1.15] origin-left">
+                  {label}
+                </div>
+              </motion.div>
+            </div>,
+            document.body
+          )}
+      </div>
     );
   };
 
@@ -239,34 +315,11 @@ export function Navbar({
       <aside
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } fixed h-screen transition-all duration-300 ease-in-out border-r bg-gradient-to-b from-gray-800 to-gray-600 hidden lg:block z-30`}
+        } fixed h-screen transition-all duration-300 ease-in-out bg-[#0d1a3a] hidden lg:block z-30`}
       >
-        <div className="h-16 flex items-center justify-between px-4 bg-gray-950">
-          {sidebarOpen && (
-            <span
-              className="text-lg font-bold cursor-pointer text-foreground hover:text-primary transition-colors"
-              onClick={() => router.push("/dashboard")}
-            >
-              Tuesday
-            </span>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className={sidebarOpen ? "" : "mx-auto"}
-          >
-            {sidebarOpen ? (
-              <ChevronLeft className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-            <span className="sr-only">Toggle sidebar</span>
-          </Button>
-        </div>
-        <div className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-gray-950/90 to-gray-950/70">
-          <div className="flex-1 overflow-y-auto no-scrollbar px-3">
-            <div className="flex flex-col space-y-1 py-2">
+        <div className="h-screen flex flex-col bg-[#0d1a3a]">
+          <div className="flex-1 overflow-y-auto no-scrollbar">
+            <div className="flex flex-col space-y-1 pt-6 px-3">
               {mainNavItems.map((item, index) =>
                 item.type === "divider" ? (
                   <Separator
@@ -284,21 +337,29 @@ export function Navbar({
                 )
               )}
             </div>
+            <Separator
+              className="mt-3 mb-1 mx-3 bg-white/15 dark:bg-white/15"
+              decorative
+            />
+            <NavSectionCounters />
           </div>
+          <NavMetricsBadges />
           <div className="p-3 border-t dark:border-gray-600">
             <div
               className="relative"
-              onMouseEnter={() => setSettingsHovered(true)}
-              onMouseLeave={() => setSettingsHovered(false)}
+              onMouseEnter={openSettingsHover}
+              onMouseLeave={closeSettingsHover}
             >
               <Button
                 className="flex w-full items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => onOpenSettings()}
+                type="button"
               >
                 <Settings className="h-5 w-5 flex-shrink-0" />
                 {sidebarOpen && <span className="ml-2">Settings</span>}
               </Button>
               <motion.div
+                onMouseEnter={openSettingsHover}
+                onMouseLeave={closeSettingsHover}
                 className={`absolute left-full bottom-0 pl-2 z-50 ${
                   settingsHovered ? "" : "pointer-events-none"
                 }`}
@@ -307,25 +368,24 @@ export function Navbar({
                   opacity: settingsHovered ? 1 : 0,
                   x: settingsHovered ? 0 : -8,
                 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
+                transition={{ duration: 0.1, ease: "easeOut" }}
               >
                 <motion.div
                   className="flex flex-col gap-2 min-w-[200px]"
                   initial="hidden"
                   animate={settingsHovered ? "visible" : "hidden"}
-                  style={{ perspective: 800 }}
                   variants={{
                     hidden: {
                       transition: {
-                        staggerChildren: 0.04,
+                        staggerChildren: 0.02,
                         staggerDirection: 1,
                       },
                     },
                     visible: {
                       transition: {
-                        staggerChildren: 0.07,
+                        staggerChildren: 0.03,
                         staggerDirection: -1,
-                        delayChildren: 0.12,
+                        delayChildren: 0.04,
                       },
                     },
                   }}
@@ -334,16 +394,12 @@ export function Navbar({
                     <motion.button
                       key={value}
                       variants={{
-                        hidden: { opacity: 0, rotateX: -90, y: 4 },
-                        visible: { opacity: 1, rotateX: 0, y: 0 },
+                        hidden: { opacity: 0, y: 4 },
+                        visible: { opacity: 1, y: 0 },
                       }}
-                      transition={{ duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }}
-                      style={{
-                        transformOrigin: "bottom center",
-                        transformPerspective: 800,
-                      }}
+                      transition={{ duration: 0.12, ease: "easeOut" }}
                       onClick={() => onOpenSettings(value)}
-                      className="flex items-center px-3 py-2.5 text-sm text-foreground bg-gray-800 border border-gray-700 rounded-lg shadow-lg hover:bg-primary/20 hover:text-primary hover:border-primary/40 transition-colors text-left"
+                      className="flex items-center px-3 py-2.5 text-sm text-foreground bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition text-left"
                     >
                       <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
                       {label}
@@ -370,12 +426,7 @@ export function Navbar({
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <span
-              className="text-xl font-bold cursor-pointer text-foreground hover:text-primary transition-colors"
-              onClick={() => router.push("/dashboard")}
-            >
-              Tuesday
-            </span>
+            <span className="text-xl font-bold text-foreground">Tuesday</span>
 
 
             <SheetContent

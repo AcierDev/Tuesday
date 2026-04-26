@@ -326,7 +326,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
           } dark:text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           }`,
-          "sticky top-[73px] z-30 bg-white/25 dark:bg-gray-900/25 backdrop-blur-md backdrop-saturate-150 border border-white/30 dark:border-white/10 shadow-[0_1px_2px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.05)] will-change-transform",
+          "sticky top-[73px] z-30 glass-surface will-change-transform select-none",
           isCollapsible && "cursor-pointer"
         )}
         onClick={handleGroupClick}
@@ -360,16 +360,19 @@ export const ItemGroupSection = memo(function ItemGroupSection({
         <div className="relative overflow-visible">
           {!isPreview ? (
             <BorderedTable
+              className="table-fixed"
               borderColor={`bg-${
                 GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
               }`}
             >
-              <TableHeader className="bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_6px_-1px_rgba(255,255,255,0.1),0_2px_4px_-2px_rgba(255,255,255,0.1)]">
+              <TableHeader className="bg-gray-100 dark:bg-gray-700 shadow-table-header dark:shadow-table-header-dark select-none">
                 <TableRow>
-                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center" />
+                  <TableHead className="border border-gray-200 dark:border-gray-600 p-0 text-center w-[3.125rem]">
+                    <span className="sr-only">Move</span>
+                  </TableHead>
                   {visibleColumns.includes("Shipping" as ColumnTitles) && (
-                    <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center w-12">
-                      Shipping
+                    <TableHead className="border border-gray-200 dark:border-gray-600 p-0 text-center w-[3.125rem]">
+                      <span className="sr-only">Shipping</span>
                     </TableHead>
                   )}
                   {visibleColumns
@@ -380,10 +383,16 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                         className={cn(
                           "border border-gray-200 dark:border-gray-600 p-2 text-center",
                           columnName === ColumnTitles.Customer_Name
-                            ? "w-[37.5%]"
+                            ? "w-auto"
+                            : "",
+                          columnName === ColumnTitles.Design
+                            ? "w-[23.38875%]"
+                            : "",
+                          columnName === ColumnTitles.Size
+                            ? "w-[15.4836%]"
                             : "",
                           columnName === ColumnTitles.Labels
-                            ? "w-8 flex-shrink-0"
+                            ? "w-[1.94734375rem] flex-shrink-0 overflow-hidden p-0"
                             : ""
                         )}
                       >
@@ -392,7 +401,9 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                           variant="ghost"
                           onClick={() => onSort(columnName)}
                         >
-                          <span>{columnName}</span>
+                          {columnName === ColumnTitles.Labels ? null : (
+                            <span>{columnName}</span>
+                          )}
                           {settings.showSortingIcons ? (
                             sortColumn === columnName ? (
                               sortDirection === "asc" ? (
@@ -409,8 +420,8 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                         </Button>
                       </TableHead>
                     ))}
-                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center w-[160px]">
-                    Actions
+                  <TableHead className="border border-gray-200 dark:border-gray-600 p-0 text-center w-6">
+                    <span className="sr-only">Actions</span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -441,11 +452,12 @@ export const ItemGroupSection = memo(function ItemGroupSection({
             </BorderedTable>
           ) : (
             <BorderedTable
+              className="table-fixed"
               borderColor={`bg-${
                 GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
               }`}
             >
-              <TableHeader className="bg-gray-100 dark:bg-gray-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)]">
+              <TableHeader className="bg-gray-100 dark:bg-gray-700 shadow-table-header dark:shadow-table-header-dark select-none">
                 <TableRow>
                   <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center w-12">
                     Status
@@ -456,10 +468,12 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                       className={cn(
                         "border border-gray-200 dark:border-gray-600 p-2 text-center",
                         columnName === ColumnTitles.Customer_Name
-                          ? "w-[37.5%]"
+                          ? "w-auto"
                           : "",
+                        columnName === ColumnTitles.Design ? "w-[23.38875%]" : "",
+                        columnName === ColumnTitles.Size ? "w-[15.4836%]" : "",
                         columnName === ColumnTitles.Labels
-                          ? "w-8 flex-shrink-0"
+                          ? "w-[1.94734375rem] flex-shrink-0 overflow-hidden p-0"
                           : ""
                       )}
                     >
@@ -468,7 +482,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                         variant="ghost"
                         onClick={() => onSort(columnName)}
                       >
-                        {columnName}
+                        {columnName === ColumnTitles.Labels ? null : columnName}
                         {settings.showSortingIcons ? (
                           sortColumn === columnName ? (
                             sortDirection === "asc" ? (

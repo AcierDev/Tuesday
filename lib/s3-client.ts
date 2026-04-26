@@ -4,6 +4,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
 
 // Initialize the S3 client with credentials from environment variables
@@ -107,6 +108,25 @@ export async function uploadLabel(
   await s3Client.send(command);
 
   return getPublicUrl(filename);
+}
+
+/**
+ * Download a PDF file from S3 as a Buffer
+ */
+export async function getLabel(filename: string): Promise<Buffer> {
+  const command = new GetObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: filename,
+  });
+
+  const response = await s3Client.send(command);
+
+  if (!response.Body) {
+    throw new Error(`Label ${filename} not found`);
+  }
+
+  const bytes = await response.Body.transformToByteArray();
+  return Buffer.from(bytes);
 }
 
 /**

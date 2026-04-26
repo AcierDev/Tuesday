@@ -1,22 +1,22 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  ListTree,
-  Check,
-  RotateCcw,
-  ArrowRight,
-  Archive,
-  Truck,
-  Package,
-  Hammer,
-  ScrollText,
-} from "lucide-react";
 import { ItemStatus } from "@/typings/types";
-import { STATUS_COLORS } from "@/typings/constants";
 import { cn } from "@/utils/functions";
+import { OrdersIcon } from "@/components/icons/OrdersIcon";
+import { STATUS_COLORS } from "@/typings/constants";
+
+const STATUS_LABELS: Record<ItemStatus, string> = {
+  [ItemStatus.New]: "New",
+  [ItemStatus.OnDeck]: "On Deck",
+  [ItemStatus.Wip]: "WIP",
+  [ItemStatus.Packaging]: "Packaging",
+  [ItemStatus.At_The_Door]: "At The Door",
+  [ItemStatus.Done]: "Done",
+  [ItemStatus.Hidden]: "Hidden",
+};
 
 const ORDERED_STATUSES = [
   ItemStatus.New,
@@ -27,6 +27,23 @@ const ORDERED_STATUSES = [
   ItemStatus.Done,
 ];
 
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 📐 LAYOUT CONFIG                                                     ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+const RECT_WIDTH = 158;
+const RECT_HEIGHT = 46;
+const RECT_GAP = 10;
+const ROW_PITCH = RECT_HEIGHT + RECT_GAP;
+const MENU_OFFSET_X = 22; // gap from icon center to left edge of rectangles
+const INITIAL_X = -RECT_WIDTH / 2; // start collapsed at icon center
+const HOVER_NUDGE_X = 10; // hovered option slides slightly further right
+const HOVER_LOCKOUT_MS = 60; // wait for entrance to finish before enabling hover
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🧩 COMPONENT                                                         ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
 interface StatusRadialMenuProps {
   currentStatus: ItemStatus;
   onStatusSelect: (status: ItemStatus) => void;
@@ -36,293 +53,193 @@ interface StatusRadialMenuProps {
 interface MenuOption {
   status: ItemStatus;
   label: string;
-  icon: React.ReactNode;
-  angleStart: number;
-  angleEnd: number;
-  color: string;
+  textColor: string;
+  y: number; // final y offset relative to icon center
 }
-
-const STATUS_CONFIG: Record<
-  ItemStatus,
-  { label: string; icon: React.ReactNode; color: string }
-> = {
-  [ItemStatus.New]: {
-    label: "New",
-    icon: <Archive size={24} />,
-    color: `bg-${STATUS_COLORS[ItemStatus.New]}`,
-  },
-  [ItemStatus.OnDeck]: {
-    label: "On Deck",
-    icon: <ScrollText size={24} />,
-    color: `bg-${STATUS_COLORS[ItemStatus.OnDeck]}`,
-  },
-  [ItemStatus.Wip]: {
-    label: "WIP",
-    icon: <Hammer size={24} />,
-    color: `bg-${STATUS_COLORS[ItemStatus.Wip]}`,
-  },
-  [ItemStatus.Packaging]: {
-    label: "Packaging",
-    icon: <Package size={24} />,
-    color: `bg-${STATUS_COLORS[ItemStatus.Packaging]}`,
-  },
-  [ItemStatus.At_The_Door]: {
-    label: "At Door",
-    icon: <Truck size={24} />,
-    color: `bg-${STATUS_COLORS[ItemStatus.At_The_Door]}`,
-  },
-  [ItemStatus.Done]: {
-    label: "Done",
-    icon: <Check size={24} />,
-    color: `bg-${STATUS_COLORS[ItemStatus.Done]}`,
-  },
-  [ItemStatus.Hidden]: {
-    label: "Hidden",
-    icon: <Archive size={24} />,
-    color: `bg-${STATUS_COLORS[ItemStatus.Hidden]}`,
-  },
-};
-
-const MENU_RADIUS = 160; // Radius of the menu options
-const TRIGGER_THRESHOLD = 30; // Minimum drag distance to trigger selection
-const SPREAD_ANGLE = 20; // Angle to spread neighbors when an option is active
 
 export const StatusRadialMenu: React.FC<StatusRadialMenuProps> = ({
   currentStatus,
   onStatusSelect,
   className,
 }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(
+  const [isOpen, setIsOpen] = useState(false);
+  const [originPos, setOriginPos] = useState<{ x: number; y: number } | null>(
     null
   );
-  const [currentPos, setCurrentPos] = useState<{ x: number; y: number } | null>(
-    null
-  );
+  const [hoverEnabled, setHoverEnabled] = useState(false);
+  const [hoveredStatus, setHoveredStatus] = useState<ItemStatus | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
 
-  const currentIndex = ORDERED_STATUSES.indexOf(currentStatus);
+  const visibleStatuses = ORDERED_STATUSES.filter((s) => s !== currentStatus);
+  const middle = (visibleStatuses.length - 1) / 2;
 
-  // Calculate options based on current status
-  const options: MenuOption[] = [];
+  const options: MenuOption[] = visibleStatuses.map((status, i) => ({
+    status,
+    label: STATUS_LABELS[status],
+    textColor: STATUS_COLORS[status],
+    y: (i - middle) * ROW_PITCH,
+  }));
 
-  // Helper to add options
-  const addOption = (status: ItemStatus, start: number, end: number) => {
-    const config = STATUS_CONFIG[status];
-    options.push({
-      status,
-      label: config.label,
-      icon: config.icon,
-      angleStart: start,
-      angleEnd: end,
-      color: config.color,
-    });
-  };
-
-  // 1. Next Status (Right, -20 to 20)
-  if (currentIndex < ORDERED_STATUSES.length - 1) {
-    const nextStatus = ORDERED_STATUSES[currentIndex + 1];
-    if (nextStatus) {
-      addOption(nextStatus, -20, 20);
+  const openMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isOpen) {
+      setIsOpen(false);
+      return;
     }
-  }
-
-  // 2. Future Statuses (Bottom Right, 20 to 90)
-  const futureStatuses = ORDERED_STATUSES.slice(currentIndex + 2);
-  if (futureStatuses.length > 0) {
-    const step = 70 / futureStatuses.length; // Spread over 70 degrees (20 to 90)
-    futureStatuses.forEach((status, i) => {
-      addOption(status, 20 + step * i, 20 + step * (i + 1));
-    });
-  }
-
-  // 3. Previous Statuses (Top Right, -20 to -90)
-  // We want the immediate previous to be closest to center (closest to -20)
-  const prevStatuses = ORDERED_STATUSES.slice(0, currentIndex).reverse();
-  if (prevStatuses.length > 0) {
-    const step = 70 / prevStatuses.length; // Spread over 70 degrees (-20 to -90)
-    prevStatuses.forEach((status, i) => {
-      // Start from -20 and go more negative
-      addOption(status, -20 - step * (i + 1), -20 - step * i);
-    });
-  }
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    e.preventDefault(); // Prevent text selection
     const rect = triggerRef.current?.getBoundingClientRect();
     if (rect) {
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      setStartPos({ x: centerX, y: centerY });
-      setCurrentPos({ x: e.clientX, y: e.clientY });
-      setIsDragging(true);
+      setOriginPos({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      });
+      setIsOpen(true);
     }
   };
 
-  const getSelection = useCallback(
-    (currentP: { x: number; y: number }, startP: { x: number; y: number }) => {
-      const dx = currentP.x - startP.x;
-      const dy = currentP.y - startP.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+  const selectOption = (status: ItemStatus) => {
+    onStatusSelect(status);
+    setIsOpen(false);
+  };
 
-      if (distance < TRIGGER_THRESHOLD) return null;
-
-      let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-      // atan2 returns -180 to 180.
-      // Right is 0, Down is 90, Up is -90.
-
-      // Find matching option
-      return options.find((opt) => {
-        // Handle wrapping if needed (not needed for -90 to 90 range)
-        return angle >= opt.angleStart && angle < opt.angleEnd;
-      });
-    },
-    [options]
-  );
-
-  const activeOption =
-    isDragging && startPos && currentPos
-      ? getSelection(currentPos, startPos)
-      : null;
-
+  // Hover lockout — disable hover-driven nudge until the entrance animation
+  // settles. Otherwise the bubble that spawns under the cursor gets stuck in
+  // hover state because pointerleave never fires for a stationary cursor.
   useEffect(() => {
-    const handlePointerMove = (e: PointerEvent) => {
-      if (isDragging) {
-        setCurrentPos({ x: e.clientX, y: e.clientY });
-      }
-    };
-
-    const handlePointerUp = (e: PointerEvent) => {
-      if (isDragging) {
-        if (activeOption) {
-          onStatusSelect(activeOption.status);
-        }
-        setIsDragging(false);
-        setStartPos(null);
-        setCurrentPos(null);
-      }
-    };
-
-    if (isDragging) {
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerUp);
+    if (!isOpen) {
+      setHoverEnabled(false);
+      setHoveredStatus(null);
+      return;
     }
+    const id = window.setTimeout(
+      () => setHoverEnabled(true),
+      HOVER_LOCKOUT_MS
+    );
+    return () => window.clearTimeout(id);
+  }, [isOpen]);
+
+  // Close on outside click or Escape
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleDocPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      // Pills live in the portal — they handle their own click and close
+      // the menu themselves. Anything else is "outside".
+      const portalRoot = document.getElementById(
+        "status-radial-menu-portal"
+      );
+      if (portalRoot?.contains(target)) return;
+      setIsOpen(false);
+    };
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+
+    // Defer attaching the outside-click handler so the same click that
+    // opened the menu doesn't immediately close it.
+    const id = window.setTimeout(() => {
+      document.addEventListener("pointerdown", handleDocPointerDown);
+    }, 0);
+    document.addEventListener("keydown", handleKey);
 
     return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
+      window.clearTimeout(id);
+      document.removeEventListener("pointerdown", handleDocPointerDown);
+      document.removeEventListener("keydown", handleKey);
     };
-  }, [isDragging, activeOption, onStatusSelect]);
+  }, [isOpen]);
 
   return (
     <div
       className={cn(
-        "relative inline-flex items-center justify-center touch-none",
+        "relative inline-flex items-center justify-center",
         className
       )}
     >
       <div
         ref={triggerRef}
-        onPointerDown={handlePointerDown}
-        className="cursor-grab active:cursor-grabbing p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+        onClick={openMenu}
+        className="cursor-pointer p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
       >
-        <ListTree className="text-gray-400" />
+        <OrdersIcon className="w-5 h-5 text-gray-400" />
       </div>
 
-      {isDragging &&
-        startPos &&
+      {isOpen &&
+        originPos &&
         createPortal(
-          <div className="fixed inset-0 z-[9999] pointer-events-none">
-            {/* Dim background slightly to focus attention */}
-            {/* <div className="absolute inset-0 bg-black/10" /> */}
-
-            {/* Menu Origin */}
+          <div
+            id="status-radial-menu-portal"
+            className="fixed inset-0 z-[9999] pointer-events-none"
+          >
             <div
               className="absolute"
               style={{
-                left: startPos.x,
-                top: startPos.y,
+                left: originPos.x,
+                top: originPos.y,
               }}
             >
               <AnimatePresence>
                 {options.map((option) => {
-                  const midAngle = (option.angleStart + option.angleEnd) / 2;
-                  const isActive = activeOption?.status === option.status;
-
-                  // Calculate spread
-                  let animatedAngle = midAngle;
-                  if (activeOption && !isActive) {
-                    const activeMidAngle =
-                      (activeOption.angleStart + activeOption.angleEnd) / 2;
-
-                    // Determine if this option is "above" (counter-clockwise) or "below" (clockwise) the active one
-                    // In our coordinate system:
-                    // -90 is top, 0 is right, 90 is bottom
-                    // So smaller angle = above/counter-clockwise
-                    // Larger angle = below/clockwise
-
-                    if (midAngle < activeMidAngle) {
-                      animatedAngle -= SPREAD_ANGLE;
-                    } else {
-                      animatedAngle += SPREAD_ANGLE;
-                    }
-                  }
-
-                  const rad = animatedAngle * (Math.PI / 180);
-                  const x = Math.cos(rad) * MENU_RADIUS;
-                  const y = Math.sin(rad) * MENU_RADIUS;
-
+                  const isHovered =
+                    hoverEnabled && hoveredStatus === option.status;
                   return (
-                    <motion.div
-                      key={option.status}
-                      initial={{ scale: 0, opacity: 0, x: 0, y: 0 }}
-                      animate={{
-                        scale: isActive ? 1.3 : 1,
-                        opacity: 1,
-                        x: x,
-                        y: y,
-                      }}
-                      exit={{ scale: 0, opacity: 0 }}
-                      transition={{
-                        type: "spring",
-                        damping: 20,
-                        stiffness: 300,
-                      }}
-                      className={cn(
-                        "absolute flex flex-col items-center justify-center w-24 h-24 rounded-full shadow-lg -ml-12 -mt-12 border-2 border-white dark:border-gray-900",
-                        option.color,
-                        // Handle text color contrast
-                        option.status === ItemStatus.At_The_Door
-                          ? "text-black"
-                          : "text-white"
-                      )}
-                    >
-                      {option.icon}
-                      <span className="text-sm font-bold mt-1">
-                        {option.label}
-                      </span>
-                    </motion.div>
+                  <motion.button
+                    key={option.status}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectOption(option.status);
+                    }}
+                    onMouseEnter={() => {
+                      if (hoverEnabled) setHoveredStatus(option.status);
+                    }}
+                    onMouseLeave={() => {
+                      if (hoverEnabled) setHoveredStatus(null);
+                    }}
+                    initial={{
+                      x: INITIAL_X,
+                      y: 0,
+                      scaleX: 0.08,
+                      scaleY: 0.2,
+                      opacity: 0,
+                    }}
+                    animate={{
+                      x: MENU_OFFSET_X + (isHovered ? HOVER_NUDGE_X : 0),
+                      y: option.y,
+                      scaleX: isHovered ? 1.04 : 1,
+                      scaleY: isHovered ? 1.04 : 1,
+                      opacity: 1,
+                    }}
+                    exit={{
+                      x: INITIAL_X,
+                      y: 0,
+                      scaleX: 0.08,
+                      scaleY: 0.2,
+                      opacity: 0,
+                    }}
+                    transition={{
+                      type: "tween",
+                      duration: 0.0675,
+                      ease: [0.2, 0.8, 0.3, 1],
+                    }}
+                    style={{
+                      width: RECT_WIDTH,
+                      height: RECT_HEIGHT,
+                      marginTop: -RECT_HEIGHT / 2,
+                    }}
+                    className={cn(
+                      "pointer-events-auto absolute left-0 top-0 flex items-center justify-center px-5 rounded-xl text-sm font-semibold tracking-wide cursor-pointer glass-surface transition",
+                      `text-${option.textColor} dark:text-${option.textColor}`
+                    )}
+                  >
+                    {option.label}
+                  </motion.button>
                   );
                 })}
               </AnimatePresence>
-
-              {/* Drag Line Indicator */}
-              <svg
-                className="absolute top-0 left-0 overflow-visible"
-                style={{ pointerEvents: "none" }}
-              >
-                {currentPos && (
-                  <line
-                    x1={0}
-                    y1={0}
-                    x2={currentPos.x - startPos.x}
-                    y2={currentPos.y - startPos.y}
-                    stroke="rgba(0,0,0,0.2)"
-                    strokeWidth="2"
-                    strokeDasharray="4"
-                  />
-                )}
-              </svg>
             </div>
           </div>,
           document.body

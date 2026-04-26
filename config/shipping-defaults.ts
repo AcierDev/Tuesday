@@ -1,7 +1,7 @@
 import {
   ItemSizes,
   type ShippingAddressInput,
-  type ShippingPackagePreset,
+  type ShippingBoxPreset,
   type ShippingPurchaseDefaults,
   type ShippingSettings,
 } from "@/typings/types";
@@ -27,9 +27,9 @@ export const DEFAULT_SHIPPING_PURCHASE_DEFAULTS: ShippingPurchaseDefaults = {
   signatureOption: "NO_SIGNATURE_REQUIRED",
 };
 
-export const DEFAULT_PACKAGE_PRESETS_BY_SIZE: Record<
+export const DEFAULT_BOX_PRESETS_BY_SIZE: Record<
   ItemSizes,
-  ShippingPackagePreset[]
+  ShippingBoxPreset[]
 > = {
   [ItemSizes.Fourteen_By_Seven]: [
     { id: "pkg-1", label: "Main carton", length: 44, width: 22, height: 4, weight: 12 },
@@ -74,10 +74,10 @@ export const DEFAULT_PACKAGE_PRESETS_BY_SIZE: Record<
   ],
 };
 
-function clonePackagePreset(
-  preset: ShippingPackagePreset,
+function cloneBoxPreset(
+  preset: ShippingBoxPreset,
   index: number
-): ShippingPackagePreset {
+): ShippingBoxPreset {
   return {
     ...preset,
     id: preset.id || `pkg-${index + 1}`,
@@ -87,12 +87,12 @@ function clonePackagePreset(
 export function createDefaultShippingSettings(): ShippingSettings {
   return {
     _id: "shipping",
-    packagePresetsBySize: Object.fromEntries(
-      Object.entries(DEFAULT_PACKAGE_PRESETS_BY_SIZE).map(([size, presets]) => [
+    boxPresetsBySize: Object.fromEntries(
+      Object.entries(DEFAULT_BOX_PRESETS_BY_SIZE).map(([size, presets]) => [
         size,
-        presets.map(clonePackagePreset),
+        presets.map(cloneBoxPreset),
       ])
-    ) as Record<ItemSizes, ShippingPackagePreset[]>,
+    ) as Record<ItemSizes, ShippingBoxPreset[]>,
     shipFrom: { ...DEFAULT_SHIP_FROM_ADDRESS },
     purchaseDefaults: { ...DEFAULT_SHIPPING_PURCHASE_DEFAULTS },
     updatedAt: Date.now(),
@@ -103,18 +103,24 @@ export function normalizeShippingSettings(
   input?: Partial<ShippingSettings> | null
 ): ShippingSettings {
   const defaults = createDefaultShippingSettings();
-  const packagePresetsBySize = { ...defaults.packagePresetsBySize };
+  const boxPresetsBySize = { ...defaults.boxPresetsBySize };
+
+  // Read either the new field or the legacy `packagePresetsBySize` field so
+  // existing DB documents written before the rename keep loading. Once a doc
+  // is saved through this normalizer it gets the new field name on disk.
+  const legacyPresets = (input as { packagePresetsBySize?: Record<ItemSizes, ShippingBoxPreset[]> } | null | undefined)?.packagePresetsBySize;
+  const inputPresets = input?.boxPresetsBySize ?? legacyPresets;
 
   for (const size of Object.values(ItemSizes)) {
-    const existingPresets = input?.packagePresetsBySize?.[size];
+    const existingPresets = inputPresets?.[size];
     if (existingPresets?.length) {
-      packagePresetsBySize[size] = existingPresets.map(clonePackagePreset);
+      boxPresetsBySize[size] = existingPresets.map(cloneBoxPreset);
     }
   }
 
   return {
     _id: input?._id || defaults._id,
-    packagePresetsBySize,
+    boxPresetsBySize,
     shipFrom: {
       ...defaults.shipFrom,
       ...input?.shipFrom,

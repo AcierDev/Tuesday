@@ -8,12 +8,12 @@ import {
   type Item,
   type PurchasedShipment,
   type ShippingAddressInput,
-  type ShippingPackagePreset,
+  type ShippingBoxPreset,
 } from "@/typings/types";
 
 export const runtime = "nodejs";
 
-function hasInvalidPackage(packages: ShippingPackagePreset[]) {
+function hasInvalidPackage(packages: ShippingBoxPreset[]) {
   return packages.some(
     (pkg) =>
       !pkg.length ||
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const orderId = payload.orderId as string;
     const shipFrom = payload.shipFrom as ShippingAddressInput;
     const shipTo = payload.shipTo as ShippingAddressInput;
-    const packages = payload.packages as ShippingPackagePreset[];
+    const packages = payload.packages as ShippingBoxPreset[];
     const serviceType = payload.serviceType as string;
     const purchaseDefaults = normalizeShippingSettings({
       purchaseDefaults: payload.purchaseDefaults,

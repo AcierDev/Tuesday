@@ -9,10 +9,11 @@ import {
   AlertCircle,
   Download,
   Upload,
-  File,
+  File as FileIcon,
   Trash2,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +23,7 @@ import { useTrackingStore } from "@/stores/useTrackingStore";
 import { useUploadProgressStore } from "@/stores/useUploadProgressStore";
 import { useShippingStore } from "@/stores/useShippingStore";
 import { UploadStep, TrackingInfo, FileProgress } from "@/types/shipping";
+import { toast } from "sonner";
 
 type ManualTrackingInput = {
   fileIndex: number;
@@ -49,6 +51,7 @@ export function ViewLabel({
   const [manualTrackingNumber, setManualTrackingNumber] = useState("");
   const [manualCarrier, setManualCarrier] =
     useState<TrackingInfo["carrier"]>("UPS");
+  const [retryingFiles, setRetryingFiles] = useState<Set<string>>(new Set());
   const { addTrackingInfo } = useTrackingStore();
   const { updateFileProgress, markFileComplete } = useUploadProgressStore();
   const { labels, fetchAllLabels, removeLabel, addLabel, getLabelUrl, isLoading } = useShippingStore();
@@ -156,6 +159,160 @@ export function ViewLabel({
           ? error.message
           : "Failed to process tracking number"
       );
+    }
+  };
+
+  const handleRetryExtraction = async (filename: string, index: number) => {
+    if (retryingFiles.has(filename)) return;
+
+    setRetryingFiles((prev) => new Set(prev).add(filename));
+    setError(null);
+
+    // Close the dialog so the user can see the progress overlay
+    onClose?.();
+
+    let initialProgress: FileProgress | null = null;
+
+    try {
+      const pdfResponse = await fetch(`/api/shipping/pdf/${filename}`);
+      if (!pdfResponse.ok) throw new Error("Failed to fetch label PDF");
+      const pdfBlob = await pdfResponse.blob();
+      const pdfFile = new globalThis.File([pdfBlob], filename, {
+        type: "application/pdf",
+      });
+
+      // Mirror handleUpload's progress so the UI looks identical to a fresh
+      // upload — except the "upload" step is already complete since the file
+      // is already in S3.
+      initialProgress = {
+        file: pdfFile,
+        currentStep: "extraction",
+        progress: 25,
+        steps: [
+          { id: "upload", label: "Uploading label", status: "complete" },
+          {
+            id: "extraction",
+            label: "Extracting tracking info",
+            status: "processing",
+          },
+          {
+            id: "tracking",
+            label: "Fetching tracking details",
+            status: "waiting",
+          },
+          { id: "database", label: "Updating database", status: "waiting" },
+        ],
+      };
+
+      updateFileProgress(filename, initialProgress);
+
+      const trackingFormData = new FormData();
+      trackingFormData.append("label", pdfFile);
+
+      const trackingResponse = await fetch("/api/shipping/extract-tracking", {
+        method: "POST",
+        body: trackingFormData,
+      });
+
+      if (!trackingResponse.ok) {
+        throw new Error("Failed to extract tracking info");
+      }
+
+      const trackingInfo: TrackingInfo = await trackingResponse.json();
+
+      if (!validateTrackingNumber(trackingInfo)) {
+        updateFileProgress(filename, {
+          ...initialProgress,
+          progress: 100,
+          steps: initialProgress.steps.map((step) =>
+            step.id === "extraction"
+              ? {
+                  ...step,
+                  status: "error",
+                  message: "AI couldn't read tracking — enter manually",
+                }
+              : step
+          ),
+        });
+        setManualTracking({ fileIndex: index, fileName: filename, show: true });
+        return;
+      }
+
+      updateFileProgress(filename, {
+        ...initialProgress,
+        currentStep: "tracking",
+        progress: 60,
+        trackingInfo,
+        steps: initialProgress.steps.map((step) =>
+          step.id === "extraction"
+            ? { ...step, status: "complete" }
+            : step.id === "tracking"
+            ? { ...step, status: "processing" }
+            : step
+        ),
+      });
+
+      const trackerResponse = await fetch(
+        `/api/shipping/tracker/${trackingInfo.trackingNumber}?carrier=${trackingInfo.carrier}`
+      );
+      if (!trackerResponse.ok) {
+        throw new Error("Failed to validate tracking number");
+      }
+
+      const tracker: Tracker = await trackerResponse.json();
+
+      updateFileProgress(filename, {
+        ...initialProgress,
+        currentStep: "database",
+        progress: 85,
+        trackingInfo,
+        steps: initialProgress.steps.map((step) =>
+          step.id === "extraction" || step.id === "tracking"
+            ? { ...step, status: "complete" }
+            : step.id === "database"
+            ? { ...step, status: "processing" }
+            : step
+        ),
+      });
+
+      await saveTrackingInfo(tracker);
+
+      updateFileProgress(filename, {
+        ...initialProgress,
+        currentStep: "database",
+        progress: 100,
+        trackingInfo,
+        steps: initialProgress.steps.map((step) => ({
+          ...step,
+          status: "complete",
+        })),
+      });
+
+      setTimeout(() => {
+        markFileComplete(filename);
+      }, 1000);
+    } catch (err) {
+      console.error("Retry extraction failed:", err);
+      const msg =
+        err instanceof Error ? err.message : "Failed to retry extraction";
+      setError(msg);
+      if (initialProgress) {
+        updateFileProgress(filename, {
+          ...initialProgress,
+          progress: 100,
+          steps: initialProgress.steps.map((step) =>
+            step.status === "complete"
+              ? step
+              : { ...step, status: "error", message: msg }
+          ),
+        });
+      }
+    } finally {
+      setRetryingFiles((prev) => {
+        const next = new Set(prev);
+        next.delete(filename);
+        return next;
+      });
     }
   };
 
@@ -549,6 +706,25 @@ export function ViewLabel({
                             variant="outline"
                             size="sm"
                             onClick={() =>
+                              handleRetryExtraction(filename, index)
+                            }
+                            disabled={retryingFiles.has(filename)}
+                          >
+                            <RefreshCw
+                              className={`mr-2 h-4 w-4 ${
+                                retryingFiles.has(filename)
+                                  ? "animate-spin"
+                                  : ""
+                              }`}
+                            />
+                            {retryingFiles.has(filename)
+                              ? "Reading…"
+                              : "Retry AI Read"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
                               window.open(getLabelUrl(filename), "_blank")
                             }
                           >
@@ -590,7 +766,7 @@ export function ViewLabel({
                 />
                 <Label htmlFor="pdf-upload" className="cursor-pointer">
                   <div className="flex flex-col items-center">
-                    <File className="h-16 w-16 text-muted-foreground mb-4" />
+                    <FileIcon className="h-16 w-16 text-muted-foreground mb-4" />
                     <p className="text-lg font-semibold mb-2 text-foreground dark:text-gray-200">
                       Drag & Drop your PDF files here
                     </p>

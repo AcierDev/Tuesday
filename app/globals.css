@@ -74,14 +74,25 @@
   }
 }
 
+@layer components {
+  .glass-surface {
+    @apply bg-white/25 dark:bg-gray-900/25 backdrop-blur-md backdrop-saturate-150 border border-white/30 dark:border-white/10 shadow-glass dark:shadow-glass-dark;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
 
   .no-scrollbar {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none !important; /* IE and Edge */
+    scrollbar-width: none !important; /* Firefox */
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
   }
 
   .scrollbar-hide {

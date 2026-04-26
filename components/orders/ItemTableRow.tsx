@@ -88,7 +88,7 @@ export const ItemTableRow = memo(function ItemTableRow({
         onContextMenu(e, item);
       }}
     >
-      <TableCell className="border border-gray-200 dark:border-gray-600 py-2 pl-4 pr-2 relative">
+      <TableCell className="border border-gray-200 dark:border-gray-600 p-0 relative w-[3.125rem]">
         <div className="flex items-center justify-center">
           <StatusRadialMenu
             currentStatus={item.status}
@@ -98,7 +98,7 @@ export const ItemTableRow = memo(function ItemTableRow({
       </TableCell>
 
       {visibleColumns.includes("Shipping" as ColumnTitles) && (
-        <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+        <TableCell className="border border-gray-200 dark:border-gray-600 p-0 text-center w-[3.125rem]">
           <ShippingCell item={item} />
         </TableCell>
       )}
@@ -148,7 +148,7 @@ export const ItemTableRow = memo(function ItemTableRow({
           );
         })}
 
-      <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center w-[160px]">
+      <TableCell className="border border-gray-200 dark:border-gray-600 p-0 text-center w-6">
         <ItemActions
           item={item}
           onDelete={onDelete}

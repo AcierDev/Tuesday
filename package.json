@@ -7,7 +7,8 @@
     "build": "next build --no-lint",
     "start": "next start -p 3000 -H 0.0.0.0",
     "lint": "next lint --fix",
-    "process-labels": "tsx scripts/process-existing-labels.ts"
+    "process-labels": "tsx scripts/process-existing-labels.ts",
+    "backfill-debt": "tsx scripts/backfillDebtSnapshots.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.700.0",

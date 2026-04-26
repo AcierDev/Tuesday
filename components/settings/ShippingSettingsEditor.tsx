@@ -49,13 +49,13 @@ import { useShippingSettingsStore } from "@/stores/useShippingSettingsStore";
 import {
   ItemSizes,
   type ShippingAddressInput,
-  type ShippingPackagePreset,
+  type ShippingBoxPreset,
   type ShippingSettings,
 } from "@/typings/types";
 import {
-  formatPackageNumberForInput,
-  parsePackageNumericInput,
-} from "@/utils/shipping-package-input";
+  formatBoxNumberForInput,
+  parseBoxNumericInput,
+} from "@/utils/shipping-box-input";
 
 const signatureOptions = [
   { value: "NO_SIGNATURE_REQUIRED", label: "No signature" },
@@ -91,7 +91,7 @@ function formatItemSizeTitle(size: string) {
   return size.replace(/\s+x\s+/i, " × ");
 }
 
-function createPackagePreset(index: number): ShippingPackagePreset {
+function createBoxPreset(index: number): ShippingBoxPreset {
   return {
     id: `pkg-${Date.now()}-${index}`,
     label: "",
@@ -187,7 +187,7 @@ export function ShippingSettingsEditor() {
   const updatePreset = (
     size: ItemSizes,
     presetId: string,
-    field: keyof ShippingPackagePreset,
+    field: keyof ShippingBoxPreset,
     value: string
   ) => {
     setDraft((current) => {
@@ -197,16 +197,16 @@ export function ShippingSettingsEditor() {
 
       return {
         ...current,
-        packagePresetsBySize: {
-          ...current.packagePresetsBySize,
-          [size]: current.packagePresetsBySize[size].map((preset) =>
+        boxPresetsBySize: {
+          ...current.boxPresetsBySize,
+          [size]: current.boxPresetsBySize[size].map((preset) =>
             preset.id === presetId
               ? {
                   ...preset,
                   [field]:
                     field === "label"
                       ? value
-                      : parsePackageNumericInput(value),
+                      : parseBoxNumericInput(value),
                 }
               : preset
           ),
@@ -223,11 +223,11 @@ export function ShippingSettingsEditor() {
 
       return {
         ...current,
-        packagePresetsBySize: {
-          ...current.packagePresetsBySize,
+        boxPresetsBySize: {
+          ...current.boxPresetsBySize,
           [size]: [
-            ...current.packagePresetsBySize[size],
-            createPackagePreset(current.packagePresetsBySize[size].length + 1),
+            ...current.boxPresetsBySize[size],
+            createBoxPreset(current.boxPresetsBySize[size].length + 1),
           ],
         },
       };
@@ -240,15 +240,15 @@ export function ShippingSettingsEditor() {
         return current;
       }
 
-      const nextPresets = current.packagePresetsBySize[size].filter(
+      const nextPresets = current.boxPresetsBySize[size].filter(
         (preset) => preset.id !== presetId
       );
 
       return {
         ...current,
-        packagePresetsBySize: {
-          ...current.packagePresetsBySize,
-          [size]: nextPresets.length ? nextPresets : [createPackagePreset(1)],
+        boxPresetsBySize: {
+          ...current.boxPresetsBySize,
+          [size]: nextPresets.length ? nextPresets : [createBoxPreset(1)],
         },
       };
     });
@@ -285,7 +285,7 @@ export function ShippingSettingsEditor() {
                 Shipping Settings
               </CardTitle>
               <CardDescription>
-                FedEx ship-from defaults and editable package presets by item size.
+                FedEx ship-from defaults and editable box presets by item size.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -450,16 +450,16 @@ export function ShippingSettingsEditor() {
 
       <Card className="dark:bg-gray-900">
         <CardHeader>
-          <CardTitle>Package Presets by Size</CardTitle>
+          <CardTitle>Box Presets by Size</CardTitle>
           <CardDescription>
-            Orders with a given item size get these package rows prefilled in the FedEx
+            Orders with a given item size get these box rows prefilled in the FedEx
             dialog.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <Accordion type="multiple" className="w-full">
             {Object.values(ItemSizes).map((size) => {
-              const presets = draft.packagePresetsBySize[size];
+              const presets = draft.boxPresetsBySize[size];
               return (
                 <AccordionItem key={size} value={size} className="border-b last:border-b-0 px-4">
                   <AccordionTrigger className="mx-2 my-1 rounded-md border border-transparent px-3 text-left hover:no-underline hover:border-border">
@@ -468,7 +468,7 @@ export function ShippingSettingsEditor() {
                         {formatItemSizeTitle(size)}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {presets.length} {presets.length === 1 ? "package" : "packages"}
+                        {presets.length} {presets.length === 1 ? "box" : "boxes"}
                       </span>
                     </div>
                   </AccordionTrigger>
@@ -481,7 +481,7 @@ export function ShippingSettingsEditor() {
                         >
                           <div className="mb-3 flex items-center justify-between gap-3">
                             <span className="text-sm font-semibold text-foreground">
-                              Package {index + 1}
+                              Box {index + 1}
                             </span>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
@@ -490,7 +490,7 @@ export function ShippingSettingsEditor() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                                  aria-label={`Remove package ${index + 1}`}
+                                  aria-label={`Remove box ${index + 1}`}
                                 >
                                   <X className="h-4 w-4" />
                                 </Button>
@@ -498,10 +498,10 @@ export function ShippingSettingsEditor() {
                               <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>
-                                    Remove package {index + 1}?
+                                    Remove box {index + 1}?
                                   </AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    This package preset for{" "}
+                                    This box preset for{" "}
                                     {formatItemSizeTitle(size)} will be deleted.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
@@ -542,16 +542,16 @@ export function ShippingSettingsEditor() {
                                     type="number"
                                     min="0"
                                     step="0.1"
-                                    value={formatPackageNumberForInput(
+                                    value={formatBoxNumberForInput(
                                       preset[
-                                        field as keyof ShippingPackagePreset
+                                        field as keyof ShippingBoxPreset
                                       ] as number
                                     )}
                                     onChange={(event) =>
                                       updatePreset(
                                         size,
                                         preset.id,
-                                        field as keyof ShippingPackagePreset,
+                                        field as keyof ShippingBoxPreset,
                                         event.target.value
                                       )
                                     }
@@ -571,7 +571,7 @@ export function ShippingSettingsEditor() {
                         onClick={() => addPreset(size)}
                       >
                         <Plus className="h-4 w-4" />
-                        Add package
+                        Add box
                       </Button>
                     </div>
                   </AccordionContent>

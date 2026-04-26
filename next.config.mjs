@@ -4,6 +4,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   poweredByHeader: false,
+  compress: true,
+  productionBrowserSourceMaps: false,
   async rewrites() {
     return {
       beforeFiles: [

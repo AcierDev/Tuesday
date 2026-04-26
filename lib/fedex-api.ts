@@ -1,7 +1,7 @@
 import {
   type FedExRateQuote,
   type ShippingAddressInput,
-  type ShippingPackagePreset,
+  type ShippingBoxPreset,
   type ShippingPurchaseDefaults,
 } from "@/typings/types";
 
@@ -17,7 +17,7 @@ type FedExCredentials = {
 type FedExRateRequest = {
   shipFrom: ShippingAddressInput;
   shipTo: ShippingAddressInput;
-  packages: ShippingPackagePreset[];
+  packages: ShippingBoxPreset[];
   purchaseDefaults: ShippingPurchaseDefaults;
 };
 
@@ -96,7 +96,7 @@ function formatAddress(address: ShippingAddressInput) {
   };
 }
 
-function formatPackages(packages: ShippingPackagePreset[]) {
+function formatPackages(packages: ShippingBoxPreset[]) {
   return packages.map((pkg, index) => ({
     sequenceNumber: index + 1,
     groupPackageCount: 1,

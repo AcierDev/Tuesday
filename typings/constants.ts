@@ -728,6 +728,7 @@ export const FRONTEND_HIDDEN_COLUMN_TITLES: ReadonlySet<ColumnTitles> = new Set(
   ColumnTitles.Notes,
   ColumnTitles.Rating,
   ColumnTitles.Packaging,
+  ColumnTitles.Due,
 ]);
 
 export const ITEM_DEFAULT_VALUES: Record<ColumnTitles, GenericColumnValue> = {

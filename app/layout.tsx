@@ -57,13 +57,13 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         sidebarOpen={sidebarOpen}
         onSidebarOpenChange={setSidebarOpen}
       />
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto no-scrollbar border-t border-sky-400/40">
         <div
           className={`${
             sidebarOpen ? "lg:ml-64" : "lg:ml-16"
           } mt-14 lg:mt-0 transition-[margin] duration-300 pb-16 lg:pb-0`}
         >
-          <main className="w-full px-4 sm:px-6 lg:px-8">{children}</main>
+          <main className="w-full">{children}</main>
         </div>
       </div>
       <MobileBottomNav />

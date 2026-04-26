@@ -18,7 +18,7 @@ import {
   isAfter,
 } from "date-fns";
 import { boardConfig } from "../config/boardconfig";
-import { DEFAULT_PACKAGE_PRESETS_BY_SIZE } from "@/config/shipping-defaults";
+import { DEFAULT_BOX_PRESETS_BY_SIZE } from "@/config/shipping-defaults";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Box } from "@/typings/interfaces";
@@ -108,7 +108,7 @@ export const isPastDue = (item: Item) => {
 };
 
 export function getBoxData(size: ItemSizes): Box[] {
-  const configurations = DEFAULT_PACKAGE_PRESETS_BY_SIZE[size];
+  const configurations = DEFAULT_BOX_PRESETS_BY_SIZE[size];
 
   if (!configurations?.length) {
     return [{ length: "0", width: "0", height: "0", weight: "0" }];

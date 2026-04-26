@@ -60,6 +60,7 @@ export async function GET(request: Request) {
     const offset = parseInt(searchParams.get("offset") || "0", 10);
     const search = searchParams.get("search") || "";
     const ids = searchParams.get("ids");
+    const fields = searchParams.get("fields") || "";
 
     const client = await clientPromise;
     const db = client.db("react-web-app");
@@ -106,7 +107,18 @@ export async function GET(request: Request) {
       }
     }
 
-    let cursor = collection.find(filter);
+    const findOptions: { projection?: Record<string, 1> } = {};
+    if (fields) {
+      const projection: Record<string, 1> = {};
+      for (const f of fields.split(",").map((s) => s.trim()).filter(Boolean)) {
+        projection[f] = 1;
+      }
+      // Always include id so callers can identify rows
+      projection.id = 1;
+      findOptions.projection = projection;
+    }
+
+    let cursor = collection.find(filter, findOptions);
 
     // Sort by completedAt for Done items, otherwise by index or createdAt
     if (status === "Done") {
@@ -136,8 +148,6 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    console.debug("PATCH request received");
-
     const client = await clientPromise;
     const db = client.db("react-web-app");
     const collection = db.collection<Item>(
@@ -147,8 +157,12 @@ export async function PATCH(request: Request) {
     const { id, updates } = await request.json();
     const { _id, ...updatesWithoutId } = updates;
 
-    // Fetch the item before updating to compare changes
-    const currentItem = await collection.findOne({ id });
+    // Fetch + update in a single round trip; `before` lets us diff against prior state.
+    const currentItem = await collection.findOneAndUpdate(
+      { id },
+      { $set: updatesWithoutId },
+      { returnDocument: "before", upsert: true }
+    );
 
     if (!currentItem) {
       const origin = request.headers.get("origin") || undefined;
@@ -158,21 +172,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Update the item with the given id
-    const result = await collection.updateOne(
-      { id },
-      { $set: updatesWithoutId },
-      { upsert: true }
-    );
-
-    if (result.matchedCount === 0) {
-      // Should have been caught by findOne check, but just in case
-      const origin = request.headers.get("origin") || undefined;
-      return NextResponse.json(
-        { error: "Item not found" },
-        { status: 404, headers: getCorsHeaders(origin) }
-      );
-    }
+    const result = { matchedCount: 1, modifiedCount: 1 };
 
     // Determine changes and log activity
     const changes: ActivityChange[] = [];

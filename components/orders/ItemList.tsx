@@ -21,6 +21,25 @@ interface ItemListProps {
   onSort: (column: ColumnTitles) => void;
 }
 
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🧩 STATUS LANE LAYOUT                                                ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+// New + Done are full-width. OnDeck lives in the left lane and
+// Wip/Packaging/At_The_Door live in the right lane (Wip above Packaging).
+const LEFT_LANE_STATUSES: ReadonlySet<string> = new Set<string>([
+  ItemStatus.OnDeck,
+]);
+const RIGHT_LANE_STATUSES: ReadonlySet<string> = new Set<string>([
+  ItemStatus.Wip,
+  ItemStatus.Packaging,
+  ItemStatus.At_The_Door,
+]);
+const RIGHT_LANE_ORDER: ItemStatus[] = [
+  ItemStatus.Wip,
+  ItemStatus.Packaging,
+  ItemStatus.At_The_Door,
+];
+
 export const ItemList = memo(function ItemList({
   groups,
   onStatusChange,
@@ -41,33 +60,51 @@ export const ItemList = memo(function ItemList({
     items: doneItems,
   };
 
+  const newGroup = groups.find((g) => g.title === ItemStatus.New);
+  const leftGroups = groups.filter((g) =>
+    LEFT_LANE_STATUSES.has(g.title)
+  );
+  const rightGroups = RIGHT_LANE_ORDER.map((status) =>
+    groups.find((g) => g.title === status)
+  ).filter((g): g is Group => Boolean(g));
+  const hiddenGroup = groups.find((g) => g.title === ItemStatus.Hidden);
+
+  const renderGroup = (group: Group, defaultCollapsed: boolean) => (
+    <div
+      key={group.id}
+      id={`section-${group.title.toLowerCase().replace(/\s+/g, "-")}`}
+      className="min-h-[50px] scroll-mt-32"
+    >
+      <ItemGroupSection
+        group={group}
+        onStatusChange={onStatusChange}
+        onDelete={onDelete}
+        onGetLabel={onGetLabel}
+        onMarkCompleted={onMarkCompleted}
+        onShip={onShip}
+        isCollapsible={true}
+        defaultCollapsed={defaultCollapsed}
+        clickToAddTarget={clickToAddTarget}
+        onItemClick={onItemClick}
+        sortColumn={sortColumn}
+        sortDirection={sortDirection}
+        onSort={onSort}
+      />
+    </div>
+  );
+
   return (
     <div className="flex-grow">
-      {groups
-        .filter((group) => group.title !== ItemStatus.Done)
-        .map((group) => (
-          <div key={group.id} className="min-h-[50px]">
-            <ItemGroupSection
-              key={group.id}
-              group={group}
-              onStatusChange={onStatusChange}
-              onDelete={onDelete}
-              onGetLabel={onGetLabel}
-              onMarkCompleted={onMarkCompleted}
-              onShip={onShip}
-              isCollapsible={true}
-              defaultCollapsed={
-                group.title === ItemStatus.Hidden ||
-                group.title === ItemStatus.New
-              }
-              clickToAddTarget={clickToAddTarget}
-              onItemClick={onItemClick}
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={onSort}
-            />
-          </div>
-        ))}
+      {newGroup && renderGroup(newGroup, true)}
+      <div className="grid grid-cols-2 gap-4 items-start">
+        <div className="min-w-0">
+          {leftGroups.map((g) => renderGroup(g, false))}
+        </div>
+        <div className="min-w-0">
+          {rightGroups.map((g) => renderGroup(g, false))}
+        </div>
+      </div>
+      {hiddenGroup && renderGroup(hiddenGroup, true)}
       <div key="done-section" className="min-h-[50px]">
         <ItemGroupSection
           group={doneGroup}

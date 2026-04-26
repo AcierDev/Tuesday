@@ -103,15 +103,41 @@ export function useAutoPromoteByDueDate(items: Item[] | undefined) {
     }
 
     //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-    //║ 🔁 APPLY: promote, demote, or self-heal each item                      ║
+    //║ 🚪 OVERFLOW EVICTION: cap is soft for urgent (yellow/red), hard for   ║
+    //║    green. When green OnDeck exceeds remaining slots, evict greenest.  ║
+    //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+    const onDeckLive = liveItems.filter((i) => i.status === ItemStatus.OnDeck);
+    const urgentOnDeckCount = onDeckLive.filter((i) => {
+      const d = computeDelta(i);
+      return d !== null && d <= range;
+    }).length;
+    const greenSlots = Math.max(0, minCount - urgentOnDeckCount);
+
+    const greenOnDeckSorted = onDeckLive
+      .filter((i) => {
+        const d = computeDelta(i);
+        return d === null || d > range;
+      })
+      .map((i) => ({ item: i, delta: computeDelta(i) ?? Infinity }))
+      .sort((a, b) => b.delta - a.delta); // greenest (largest delta / no due) first
+
+    const evictIds = new Set<string>();
+    for (const { item } of greenOnDeckSorted.slice(0, Math.max(0, greenOnDeckSorted.length - greenSlots))) {
+      evictIds.add(item.id);
+    }
+
+    //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+    //║ 🔁 APPLY: evict, self-heal, promote, or demote each item              ║
     //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
     for (const item of liveItems) {
       if (inFlightRef.current.has(item.id)) continue;
 
       let next: Item | null = null;
 
-      if (selfHealIds.has(item.id)) {
-        next = { ...item, status: item.prevStatus!, prevStatus: undefined };
+      if (evictIds.has(item.id)) {
+        next = { ...item, status: ItemStatus.New, prevStatus: null };
+      } else if (selfHealIds.has(item.id)) {
+        next = { ...item, status: item.prevStatus!, prevStatus: null };
       } else if (item.status === ItemStatus.New && shouldBeOnDeck.has(item.id)) {
         next = { ...item, prevStatus: item.status, status: ItemStatus.OnDeck };
       } else if (
@@ -119,7 +145,7 @@ export function useAutoPromoteByDueDate(items: Item[] | undefined) {
         item.prevStatus &&
         !shouldBeOnDeck.has(item.id)
       ) {
-        next = { ...item, status: item.prevStatus, prevStatus: undefined };
+        next = { ...item, status: item.prevStatus, prevStatus: null };
       }
 
       if (!next) continue;

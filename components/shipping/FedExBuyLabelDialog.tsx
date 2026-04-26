@@ -37,9 +37,9 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/utils/functions";
 import {
-  formatPackageNumberForInput,
-  parsePackageNumericInput,
-} from "@/utils/shipping-package-input";
+  formatBoxNumberForInput,
+  parseBoxNumericInput,
+} from "@/utils/shipping-box-input";
 import {
   clearFedExShipmentDraft,
   loadFedExShipmentDraft,
@@ -56,7 +56,7 @@ import {
   type FedExRateQuote,
   type Item,
   type ShippingAddressInput,
-  type ShippingPackagePreset,
+  type ShippingBoxPreset,
   type ShippingPurchaseDefaults,
 } from "@/typings/types";
 
@@ -114,7 +114,7 @@ function emptyAddress(): ShippingAddressInput {
   };
 }
 
-function createPackage(index: number): ShippingPackagePreset {
+function createPackage(index: number): ShippingBoxPreset {
   return {
     id: `pkg-${Date.now()}-${index}`,
     label: "",
@@ -149,8 +149,8 @@ function mapShippingDetailsToAddress(item: Item): ShippingAddressInput {
 function initializeDraft(item: Item, settings: ReturnType<typeof normalizeShippingSettings>): ShipmentDraft {
   const size = item.size as ItemSizes | undefined;
   const packages =
-    (size && settings.packagePresetsBySize[size]?.length
-      ? settings.packagePresetsBySize[size]
+    (size && settings.boxPresetsBySize[size]?.length
+      ? settings.boxPresetsBySize[size]
       : [createPackage(1)]
     ).map((pkg, index) => ({
       ...pkg,
@@ -356,7 +356,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
 
   const updatePackage = (
     packageId: string,
-    field: keyof ShippingPackagePreset,
+    field: keyof ShippingBoxPreset,
     value: string
   ) => {
     setDraft((current) =>
@@ -370,7 +370,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                     [field]:
                       field === "label"
                         ? value
-                        : parsePackageNumericInput(value),
+                        : parseBoxNumericInput(value),
                   }
                 : pkg
             ),
@@ -747,15 +747,15 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                                 type="number"
                                 min="0"
                                 step="0.1"
-                                value={formatPackageNumberForInput(
+                                value={formatBoxNumberForInput(
                                   pkg[
-                                    field as keyof ShippingPackagePreset
+                                    field as keyof ShippingBoxPreset
                                   ] as number
                                 )}
                                 onChange={(event) =>
                                   updatePackage(
                                     pkg.id,
-                                    field as keyof ShippingPackagePreset,
+                                    field as keyof ShippingBoxPreset,
                                     event.target.value
                                   )
                                 }

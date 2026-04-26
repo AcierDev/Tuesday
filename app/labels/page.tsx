@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useShippingStore } from "@/stores/useShippingStore";
+import { useTrackingStore } from "@/stores/useTrackingStore";
 import { Item, ItemStatus } from "@/typings/types";
 import { ViewLabel } from "@/components/shipping/ViewLabel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +37,7 @@ export default function LabelsPage() {
     fetchAllLabels,
     isLoading: isLabelsLoading,
   } = useShippingStore();
+  const { trackingInfo } = useTrackingStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
@@ -114,14 +116,21 @@ export default function LabelsPage() {
             No active orders found.
           </div>
         ) : (
-          filteredAndSortedItems.map((item) => (
-            <OrderLabelCard
-              key={item.id}
-              item={item}
-              hasLabel={!!labels[item.id]?.length}
-              onViewLabel={() => setSelectedOrderId(item.id)}
-            />
-          ))
+          filteredAndSortedItems.map((item) => {
+            const labelCount = labels[item.id]?.length ?? 0;
+            const trackerCount =
+              trackingInfo.find((t) => t.orderId === item.id)?.trackers
+                .length ?? 0;
+            return (
+              <OrderLabelCard
+                key={item.id}
+                item={item}
+                hasLabel={labelCount > 0}
+                needsRetry={labelCount > 0 && trackerCount < labelCount}
+                onViewLabel={() => setSelectedOrderId(item.id)}
+              />
+            );
+          })
         )}
       </div>
 
@@ -154,10 +163,12 @@ export default function LabelsPage() {
 function OrderLabelCard({
   item,
   hasLabel,
+  needsRetry,
   onViewLabel,
 }: {
   item: Item;
   hasLabel: boolean;
+  needsRetry: boolean;
   onViewLabel: () => void;
 }) {
   const { theme } = useTheme();
@@ -207,7 +218,9 @@ function OrderLabelCard({
             <Barcode
               className={cn(
                 "h-5 w-5",
-                hasLabel
+                needsRetry
+                  ? "text-red-500"
+                  : hasLabel
                   ? "text-yellow-500"
                   : "text-gray-500 dark:text-gray-400"
               )}

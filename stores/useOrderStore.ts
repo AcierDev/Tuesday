@@ -1,11 +1,23 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { toast } from "sonner";
+import debounce from "lodash/debounce";
 import { Item, ColumnTitles, ItemStatus, Settings } from "@/typings/types";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { useWeeklyScheduleStore } from "./useWeeklyScheduleStore";
 import { ITEM_DEFAULT_VALUES } from "@/typings/constants";
 import { ItemUtil } from "@/utils/ItemUtil";
+
+const SEARCH_DEBOUNCE_MS = 300;
+
+// Coalesces search keystrokes into a single API call. Lodash.debounce keeps the
+// latest args, so the trailing fire uses the most recent query.
+const debouncedSearchDoneItems = debounce(
+  (fn: (query: string) => Promise<void>, query: string) => {
+    fn(query);
+  },
+  SEARCH_DEBOUNCE_MS
+);
 
 interface OrderState {
   lastFetched: number | null;
@@ -642,11 +654,6 @@ export const useOrderStore = create<OrderState>()(
       },
 
       searchDoneItems: async (query: string) => {
-          console.log("searchDoneItems called with:", query);
-          // Just trigger loadDoneItems with reset, assuming searchQuery state is set
-          // Actually setSearchQuery sets the state.
-          // But if this is called directly...
-          // Let's just reuse loadDoneItems logic.
           get().loadDoneItems(true);
       },
 
@@ -759,14 +766,11 @@ export const useOrderStore = create<OrderState>()(
         columns?: ColumnTitles[] | ColumnTitles,
         searchAllItems?: boolean
       ) => {
-        console.log("setSearchQuery called with:", query);
         set({ searchQuery: query });
+        // Local in-memory filter — runs synchronously so the UI updates immediately.
         get().searchItems(query, columns, searchAllItems);
-
-        // Trigger server-side search for done items
-        // Debouncing should be handled by the caller or a utility if needed.
-        // For now, we call it directly to ensure responsiveness.
-        get().searchDoneItems(query);
+        // Server hit for Done items — debounced so typing doesn't fire one request per keystroke.
+        debouncedSearchDoneItems(get().searchDoneItems, query);
       },
 
       searchItems: (

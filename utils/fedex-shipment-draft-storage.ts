@@ -1,6 +1,6 @@
 import type {
   ShippingAddressInput,
-  ShippingPackagePreset,
+  ShippingBoxPreset,
   ShippingPurchaseDefaults,
 } from "@/typings/types";
 
@@ -9,7 +9,7 @@ const KEY_PREFIX = "shadcn-panel:fedexShipmentDraft:v1:";
 export type FedExShipmentDraft = {
   shipFrom: ShippingAddressInput;
   shipTo: ShippingAddressInput;
-  packages: ShippingPackagePreset[];
+  packages: ShippingBoxPreset[];
   purchaseDefaults: ShippingPurchaseDefaults;
 };
 
@@ -38,7 +38,7 @@ function isFiniteNumber(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v);
 }
 
-function isShippingPackagePreset(v: unknown): v is ShippingPackagePreset {
+function isShippingBoxPreset(v: unknown): v is ShippingBoxPreset {
   if (!v || typeof v !== "object") return false;
   const o = v as Record<string, unknown>;
   return (
@@ -78,7 +78,7 @@ function isFedExShipmentDraft(v: unknown): v is FedExShipmentDraft {
   if (!Array.isArray(o.packages) || o.packages.length === 0) {
     return false;
   }
-  return o.packages.every(isShippingPackagePreset);
+  return o.packages.every(isShippingBoxPreset);
 }
 
 function storageKey(itemId: string): string {

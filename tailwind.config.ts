@@ -15,6 +15,7 @@ const config: Config = {
     "bg-orange-600",
     "bg-gray-400",
     "bg-lime-300",
+    "text-gray-400",
     "text-orange-600",
     "text-lime-300",
     "text-blue-500",
@@ -22,6 +23,7 @@ const config: Config = {
     "text-green-600",
     "text-yellow-500",
     "text-yellow-900",
+    "text-red-500",
     "bg-green-500/10",
     "bg-green-900/20",
     "border-green-500/50",
@@ -52,6 +54,9 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./typings/**/*.{js,ts,jsx,tsx,mdx}",
+    // Required: lib/stats-shared.tsx renders chart classes (fill-slate-400,
+    // text-white, bg-white/10, etc.) that would otherwise be purged.
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
     // Required: getDueBadge() in utils/functions.tsx renders Tailwind
     // classes (bg-red-500, hover:bg-yellow-500, min-w-[2.25rem], etc.)
     // that would otherwise be purged in production.
@@ -109,6 +114,16 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        glass:
+          "0 1px 2px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.5)",
+        "glass-dark":
+          "0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
+        "table-header":
+          "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)",
+        "table-header-dark":
+          "0 4px 6px -1px rgba(255,255,255,0.1), 0 2px 4px -2px rgba(255,255,255,0.1)",
       },
       keyframes: {
         "accordion-down": {

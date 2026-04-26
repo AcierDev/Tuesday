@@ -34,33 +34,15 @@ export function ShippingCell({ item }: ShippingCellProps) {
 
   return (
     <>
-      <div className="flex items-center justify-center w-full h-full">
+      <div className="flex items-center justify-center w-full h-full select-none">
         {hasLabel ? (
           <Button
             variant="ghost"
             className="w-8 h-8 p-0 flex items-center justify-center"
             onClick={() => setIsOpen(true)}
           >
-            <div className="flex items-center justify-center gap-1">
+            <div className="flex items-center justify-center">
               <ShippingStatusIcon orderId={item.id} />
-              {carrier === "UPS" && (
-                <Image
-                  src="/icons/ups.png"
-                  alt="UPS"
-                  width={24}
-                  height={24}
-                  className="w-4 h-4"
-                />
-              )}
-              {carrier === "FedExDefault" && (
-                <Image
-                  src="/icons/fedex.webp"
-                  alt="FedEx"
-                  width={32}
-                  height={32}
-                  className="w-4 h-4"
-                />
-              )}
             </div>
           </Button>
         ) : (

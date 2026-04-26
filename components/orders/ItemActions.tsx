@@ -5,22 +5,20 @@ import {
   Trash2,
   Truck,
   Clipboard,
+  MoreHorizontal,
 } from "lucide-react";
 import React from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 import {
   type Item,
@@ -39,9 +37,6 @@ interface ItemActionsProps {
   onGetLabel: (item: Item) => void;
   showTrigger?: boolean;
 }
-
-const INLINE_ICON_BUTTON_CLASS = "h-8 w-8 p-0";
-const INLINE_ICON_CLASS = "h-4 w-4";
 
 export const ItemActions = ({
   item,
@@ -69,92 +64,49 @@ export const ItemActions = ({
     }
   };
 
+  const menuContent = (
+    <DropdownMenuContent
+      align="end"
+      className="dark:bg-gray-800 dark:border-gray-600"
+    >
+      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+      <DropdownMenuItem onClick={() => onEdit(item)}>
+        <Edit className="mr-2 h-4 w-4" />
+        Edit
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => onDelete(item)}>
+        <Trash2 className="mr-2 h-4 w-4" />
+        Delete
+      </DropdownMenuItem>
+      <DropdownMenuSeparator className="dark:bg-gray-600" />
+      <DropdownMenuItem onClick={() => onMarkCompleted(item.id)}>
+        <CheckCircle className="mr-2 h-4 w-4" />
+        Mark as Completed
+      </DropdownMenuItem>
+      <DropdownMenuSeparator className="dark:bg-gray-600" />
+      <DropdownMenuItem onClick={handleSetupUtility}>
+        <Clipboard className="mr-2 h-4 w-4" />
+        Setup Utility
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  );
+
   if (!showTrigger) {
-    return (
-      <DropdownMenuContent
-        align="end"
-        className="dark:bg-gray-800 dark:border-gray-600"
-      >
-        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => onEdit(item)}>
-          <Edit className="mr-2 h-4 w-4" />
-          Edit
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onDelete(item)}>
-          <Trash2 className="mr-2 h-4 w-4" />
-          Delete
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className="dark:bg-gray-600" />
-        <DropdownMenuItem onClick={() => onMarkCompleted(item.id)}>
-          <CheckCircle className="mr-2 h-4 w-4" />
-          Mark as Completed
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className="dark:bg-gray-600" />
-        <DropdownMenuItem onClick={handleSetupUtility}>
-          <Clipboard className="mr-2 h-4 w-4" />
-          Setup Utility
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    );
+    return menuContent;
   }
 
   return (
-    <div className="flex items-center justify-center gap-1">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            className={INLINE_ICON_BUTTON_CLASS}
-            variant="ghost"
-            onClick={() => onEdit(item)}
-          >
-            <span className="sr-only">Edit</span>
-            <Edit className={INLINE_ICON_CLASS} />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Edit</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            className={INLINE_ICON_BUTTON_CLASS}
-            variant="ghost"
-            onClick={() => onMarkCompleted(item.id)}
-          >
-            <span className="sr-only">Mark as Completed</span>
-            <CheckCircle className={INLINE_ICON_CLASS} />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Mark as Completed</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            className={INLINE_ICON_BUTTON_CLASS}
-            variant="ghost"
-            onClick={handleSetupUtility}
-          >
-            <span className="sr-only">Setup Utility</span>
-            <Clipboard className={INLINE_ICON_CLASS} />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Setup Utility</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            className={INLINE_ICON_BUTTON_CLASS}
-            variant="ghost"
-            onClick={() => onDelete(item)}
-          >
-            <span className="sr-only">Delete</span>
-            <Trash2 className={INLINE_ICON_CLASS} />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Delete</TooltipContent>
-      </Tooltip>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          className="h-8 w-6 p-0 mx-auto text-gray-700 dark:text-gray-300"
+          variant="ghost"
+        >
+          <span className="sr-only">Open actions menu</span>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      {menuContent}
+    </DropdownMenu>
   );
 };

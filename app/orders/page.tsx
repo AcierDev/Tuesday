@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Toaster, toast } from "sonner";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -19,7 +19,6 @@ import {
   ColumnTitles,
   DayName,
 } from "@/typings/types";
-import { STATUS_COLORS } from "@/typings/constants";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { ShippingDashboard } from "@/components/shipping/ShippingDashboard";
@@ -147,18 +146,9 @@ export default function OrderManagementPage() {
     currentMode,
   });
 
-  const statusCounts = useMemo(() => {
-    const counts = {} as Record<ItemStatus, number>;
-    for (const status of Object.values(ItemStatus)) {
-      counts[status] = 0;
-    }
-    for (const item of items || []) {
-      if (counts[item.status] !== undefined) {
-        counts[item.status] += 1;
-      }
-    }
-    return counts;
-  }, [items]);
+  useEffect(() => {
+    fetch("/api/debt-snapshots", { method: "POST" }).catch(() => {});
+  }, []);
 
   const shipItem = useCallback(async (itemId: string) => {
     toast.success("Item marked as shipped", {
@@ -234,7 +224,7 @@ export default function OrderManagementPage() {
         const restoredItem = {
           ...item,
           status: previousStatus,
-          prevStatus: undefined,
+          prevStatus: null,
           completedAt: undefined,
         };
 
@@ -262,7 +252,7 @@ export default function OrderManagementPage() {
         const updatedItem = {
           ...item,
           status: newStatus,
-          prevStatus: undefined,
+          prevStatus: null,
           completedAt: newStatus === ItemStatus.Done ? Date.now() : undefined,
         };
 
@@ -368,52 +358,10 @@ export default function OrderManagementPage() {
           dueCounts={dueCounts}
         />
       )}
-      {!isMobile && (
-        <aside className="fixed left-20 top-[5.5rem] z-20 flex flex-col gap-2">
-          {Object.values(ItemStatus)
-            .filter(
-              (status) =>
-                status !== ItemStatus.Done && status !== ItemStatus.Hidden
-            )
-            .map((status) => {
-              const color =
-                status === ItemStatus.Hidden
-                  ? "gray-500"
-                  : STATUS_COLORS[status] || "gray-400";
-              const count = statusCounts[status] ?? 0;
-              const STATUS_SHORT_LABELS: Partial<Record<ItemStatus, string>> = {
-                [ItemStatus.Packaging]: "Pack",
-                [ItemStatus.At_The_Door]: "Door",
-              };
-              const label = STATUS_SHORT_LABELS[status] ?? status;
-              return (
-                <div
-                  key={status}
-                  className={cn(
-                    "flex flex-col items-center justify-center w-16 h-16 rounded-xl px-1",
-                    "bg-white/25 dark:bg-gray-900/25 backdrop-blur-md backdrop-saturate-150",
-                    "border border-white/30 dark:border-white/10",
-                    "shadow-[0_1px_2px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.5)]",
-                    "dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.05)]",
-                    `text-${color} dark:text-${color}`
-                  )}
-                  title={`${status}: ${count}`}
-                >
-                  <span className="text-xl font-bold leading-none">
-                    {count}
-                  </span>
-                  <span className="mt-0.5 w-full truncate text-center text-[9px] font-medium uppercase tracking-wide opacity-80">
-                    {label}
-                  </span>
-                </div>
-              );
-            })}
-        </aside>
-      )}
       <div className="flex-grow">
         <div
           className={`h-full max-w-full mx-auto pr-4 sm:pr-6 lg:pr-8 ${
-            isMobile ? "pl-4 pt-1" : "pl-24 py-8"
+            isMobile ? "pl-4 pt-1" : "pl-4 sm:pl-6 lg:pl-8 py-8"
           }`}
         >
           <div className="flex h-full relative">
@@ -463,7 +411,10 @@ export default function OrderManagementPage() {
         </div>
       </div>
       <Button
-        className="fixed top-1/2 right-0 transform -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md rounded-l-md p-2 z-10"
+        className={cn(
+          "fixed top-1/2 transform -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md rounded-l-md rounded-r-sm py-8 h-auto w-auto min-w-0 z-10 transition-all duration-300",
+          isWeeklyPlannerOpen ? "right-[1.5px] px-[2.275px]" : "right-0 px-[3.5px]"
+        )}
         variant="ghost"
         onClick={() => setIsWeeklyPlannerOpen(!isWeeklyPlannerOpen)}
         aria-label={
@@ -471,9 +422,9 @@ export default function OrderManagementPage() {
         }
       >
         {isWeeklyPlannerOpen ? (
-          <ChevronRight className="h-6 w-6" />
+          <ChevronRight className="h-5 w-4" />
         ) : (
-          <ChevronLeft className="h-6 w-6" />
+          <ChevronLeft className="h-5 w-4" />
         )}
       </Button>
       {isSettingsOpen && (

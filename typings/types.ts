@@ -81,7 +81,7 @@ export type Item = {
   createdAt: number;
   completedAt?: number;
   status: ItemStatus;
-  prevStatus?: ItemStatus;
+  prevStatus?: ItemStatus | null;
   visible: boolean;
   deleted: boolean;
   index: number;
@@ -126,7 +126,7 @@ export type ShippingAddressInput = {
   residential?: boolean;
 };
 
-export type ShippingPackagePreset = {
+export type ShippingBoxPreset = {
   id: string;
   label?: string;
   length: number;
@@ -144,7 +144,7 @@ export type ShippingPurchaseDefaults = {
 
 export type ShippingSettings = {
   _id?: string;
-  packagePresetsBySize: Record<ItemSizes, ShippingPackagePreset[]>;
+  boxPresetsBySize: Record<ItemSizes, ShippingBoxPreset[]>;
   shipFrom: ShippingAddressInput;
   purchaseDefaults: ShippingPurchaseDefaults;
   updatedAt?: number;
@@ -169,7 +169,7 @@ export type PurchasedShipment = {
   labelUrl: string;
   totalNetCharge: number;
   currency: string;
-  packages: ShippingPackagePreset[];
+  packages: ShippingBoxPreset[];
   shipFrom: ShippingAddressInput;
   shipTo: ShippingAddressInput;
   purchasedAt: number;

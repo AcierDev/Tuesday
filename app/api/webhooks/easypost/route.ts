@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import clientPromise from "../../db/connect";
-import { OrderTrackingInfo, Tracker } from "@/typings/types";
+import { logActivity } from "../../activities/log";
+import {
+  Item,
+  ItemStatus,
+  OrderTrackingInfo,
+  Tracker,
+  TrackerStatus,
+} from "@/typings/types";
 import { AlertManager } from "@/backend/src/AlertManager";
 
 // Change the controller type to use string
@@ -8,6 +15,16 @@ type ReadableStreamController = ReadableStreamDefaultController<string>;
 
 // Add a Set to store SSE clients
 const clients = new Set<ReadableStreamController>();
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 📦 AUTO-DONE: tracker statuses meaning "package has left origin"      ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+const SHIPPED_STATUSES: ReadonlySet<TrackerStatus> = new Set<TrackerStatus>([
+  "in_transit",
+  "out_for_delivery",
+  "delivered",
+  "available_for_pickup",
+]);
 
 // Add an endpoint for SSE connections
 export async function GET() {
@@ -78,10 +95,62 @@ export async function POST(request: Request) {
 
       // console.log("Database update result:", updateResult);
 
+      //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+      //║ ✅ AUTO-COMPLETE: flip linked order to Done on first post-pickup scan  ║
+      //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+      let autoCompletedItemId: string | null = null;
+      if (SHIPPED_STATUSES.has(tracker.status)) {
+        const trackingDoc = await collection.findOne({
+          "trackers.id": tracker.id,
+        });
+        const orderId = trackingDoc?.orderId;
+        if (orderId) {
+          const itemsCollection = db.collection<Item>(
+            `items-${process.env.NEXT_PUBLIC_MODE}`
+          );
+          const item = await itemsCollection.findOne({ id: orderId });
+          if (
+            item &&
+            item.status !== ItemStatus.Done &&
+            item.status !== ItemStatus.Hidden
+          ) {
+            const previousStatus = item.status;
+            await itemsCollection.updateOne(
+              { id: orderId },
+              {
+                $set: {
+                  status: ItemStatus.Done,
+                  previousStatus,
+                  completedAt: Date.now(),
+                },
+              }
+            );
+            await logActivity(db, {
+              itemId: orderId,
+              type: "status_change",
+              changes: [
+                {
+                  field: "status",
+                  oldValue: previousStatus,
+                  newValue: ItemStatus.Done,
+                },
+              ],
+              metadata: {
+                customerName: item.customerName,
+                design: item.design,
+                size: item.size,
+              },
+            });
+            autoCompletedItemId = orderId;
+          }
+        }
+      }
+
       // Notify all connected clients
       const message = JSON.stringify({
         type: "tracker.updated",
         data: tracker,
+        autoCompletedItemId,
       });
 
       clients.forEach((client) => {
