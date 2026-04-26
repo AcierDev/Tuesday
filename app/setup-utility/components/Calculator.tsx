@@ -3,13 +3,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ColumnTitles, ItemSizes } from "@/typings/types";
 import { Design, ColorDistribution } from "../types";
 import { useOrderStore } from "@/stores/useOrderStore";
@@ -211,37 +204,39 @@ export function Calculator({
         </div>
 
         <div className="space-y-2">
-          <Label
-            htmlFor="size-select"
-            className="text-gray-900 dark:text-gray-100"
-          >
+          <Label className="text-gray-900 dark:text-gray-100">
             Choose a size:
           </Label>
-          <Select value={selectedSize} onValueChange={onSizeChange}>
-            <SelectTrigger
-              id="size-select"
-              className=""
-            >
-              <SelectValue placeholder="Choose a size" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.values(ItemSizes).map((size) => (
-                <SelectItem
+          <div className="flex flex-wrap gap-2">
+            {Object.values(ItemSizes).map((size) => {
+              const isActive = selectedSize === size;
+              return (
+                <button
                   key={size}
-                  value={size}
-                  className="text-gray-900 dark:text-gray-100"
+                  type="button"
+                  onClick={() => onSizeChange(size)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium ring-1 ring-inset transition-colors ${
+                    isActive
+                      ? "bg-blue-600 text-white ring-blue-600 shadow-sm shadow-blue-600/30"
+                      : "bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60"
+                  }`}
                 >
                   {size}
-                </SelectItem>
-              ))}
-              <SelectItem
-                value="custom"
-                className="text-gray-900 dark:text-gray-100"
-              >
-                Custom
-              </SelectItem>
-            </SelectContent>
-          </Select>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => onSizeChange("custom")}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium ring-1 ring-inset transition-colors ${
+                selectedSize === "custom"
+                  ? "bg-blue-600 text-white ring-blue-600 shadow-sm shadow-blue-600/30"
+                  : "bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60"
+              }`}
+            >
+              Custom
+            </button>
+          </div>
         </div>
 
         <div className="space-y-2">
