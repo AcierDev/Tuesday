@@ -7,6 +7,7 @@ import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { useWeeklyScheduleStore } from "./useWeeklyScheduleStore";
 import { ITEM_DEFAULT_VALUES } from "@/typings/constants";
 import { ItemUtil } from "@/utils/ItemUtil";
+import { invalidateStatsCaches } from "@/lib/stats-shared";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -372,6 +373,9 @@ export const useOrderStore = create<OrderState>()(
 
           if (!response.ok) throw new Error("Failed to update item");
 
+          // Flush stats caches so glued/health badges re-fetch.
+          invalidateStatsCaches();
+
           // Update local state
           const { items: currentItems, doneItems: currentDoneItems } = get();
           const processedUpdate = ItemUtil.processItem(itemToUpdate);
@@ -465,6 +469,8 @@ export const useOrderStore = create<OrderState>()(
 
           if (!response.ok) throw new Error("Failed to add item");
 
+          invalidateStatsCaches();
+
           set({ items: [...items, ItemUtil.processItem(fullNewItem)] });
 
           toast.success("New item added successfully");
@@ -491,6 +497,8 @@ export const useOrderStore = create<OrderState>()(
           });
 
           if (!response.ok) throw new Error("Failed to delete item");
+
+          invalidateStatsCaches();
 
           // Update local state
           const updatedItems = items.map((item) =>
@@ -589,6 +597,8 @@ export const useOrderStore = create<OrderState>()(
 
           if (!response.ok) throw new Error("Failed to reorder items");
 
+          invalidateStatsCaches();
+
           set({ items: updatedItems });
           console.log("Items reordered successfully.");
         } catch (err) {
@@ -620,7 +630,7 @@ export const useOrderStore = create<OrderState>()(
         }
 
         const currentPage = reset ? 0 : doneItemsPage;
-        const limit = 50;
+        const limit = 25;
         const offset = currentPage * limit;
 
         try {

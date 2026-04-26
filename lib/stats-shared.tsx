@@ -21,6 +21,34 @@ export const RANGE_OPTIONS = [
 export type RangeKey = (typeof RANGE_OPTIONS)[number]["key"];
 export const DEFAULT_RANGE: RangeKey = "30d";
 
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🔄 REVALIDATION — call invalidateStatsCaches() to flush + refetch    ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+let statsRevalidationVersion = 0;
+const statsRevalidationListeners = new Set<(v: number) => void>();
+
+// Bumps the version so all stats hooks re-fetch on their next effect run,
+// and immediately notifies any mounted subscribers. Call this after any
+// mutation that affects items/activities (status changes, new items, etc).
+export function invalidateStatsCaches(): void {
+  statsRevalidationVersion += 1;
+  for (const cb of statsRevalidationListeners) cb(statsRevalidationVersion);
+}
+
+// Internal hook used by every stats data hook below to react to invalidation.
+function useStatsRevalidationVersion(): number {
+  const [v, setV] = useState(statsRevalidationVersion);
+  useEffect(() => {
+    const cb = (next: number) => setV(next);
+    statsRevalidationListeners.add(cb);
+    return () => {
+      statsRevalidationListeners.delete(cb);
+    };
+  }, []);
+  return v;
+}
+
 const CHART_HEIGHT = 280;
 const CHART_PADDING_X = 44;
 const CHART_PADDING_TOP = 16;
@@ -483,6 +511,7 @@ async function fetchStatsItems(): Promise<Item[]> {
 }
 
 export function useAllItems(): AllItemsState {
+  const version = useStatsRevalidationVersion();
   const [state, setState] = useState<AllItemsState>(() => {
     if (itemsCache && Date.now() - itemsCache.ts < ITEMS_CACHE_TTL_MS) {
       return { items: itemsCache.data, loading: false, error: null };
@@ -491,7 +520,11 @@ export function useAllItems(): AllItemsState {
   });
 
   useEffect(() => {
-    if (itemsCache && Date.now() - itemsCache.ts < ITEMS_CACHE_TTL_MS) return;
+    if (itemsCache && Date.now() - itemsCache.ts < ITEMS_CACHE_TTL_MS) {
+      setState({ items: itemsCache.data, loading: false, error: null });
+      return;
+    }
+    itemsCache = null;
     let cancelled = false;
     fetchStatsItems()
       .then((data) => {
@@ -509,7 +542,7 @@ export function useAllItems(): AllItemsState {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [version]);
 
   return state;
 }
@@ -541,6 +574,7 @@ async function fetchRichItems(): Promise<Item[]> {
 }
 
 export function useAllItemsRich(): AllItemsState {
+  const version = useStatsRevalidationVersion();
   const [state, setState] = useState<AllItemsState>(() => {
     if (richCache && Date.now() - richCache.ts < ITEMS_CACHE_TTL_MS) {
       return { items: richCache.data, loading: false, error: null };
@@ -549,7 +583,11 @@ export function useAllItemsRich(): AllItemsState {
   });
 
   useEffect(() => {
-    if (richCache && Date.now() - richCache.ts < ITEMS_CACHE_TTL_MS) return;
+    if (richCache && Date.now() - richCache.ts < ITEMS_CACHE_TTL_MS) {
+      setState({ items: richCache.data, loading: false, error: null });
+      return;
+    }
+    richCache = null;
     let cancelled = false;
     fetchRichItems()
       .then((data) => {
@@ -567,7 +605,7 @@ export function useAllItemsRich(): AllItemsState {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [version]);
 
   return state;
 }
@@ -607,6 +645,7 @@ async function fetchActivities(): Promise<Activity[]> {
 }
 
 export function useActivities(): ActivitiesState {
+  const version = useStatsRevalidationVersion();
   const [state, setState] = useState<ActivitiesState>(() => {
     if (
       activitiesCache &&
@@ -625,8 +664,15 @@ export function useActivities(): ActivitiesState {
     if (
       activitiesCache &&
       Date.now() - activitiesCache.ts < ACTIVITIES_CACHE_TTL_MS
-    )
+    ) {
+      setState({
+        activities: activitiesCache.data,
+        loading: false,
+        error: null,
+      });
       return;
+    }
+    activitiesCache = null;
     let cancelled = false;
     fetchActivities()
       .then((data) => {
@@ -645,7 +691,7 @@ export function useActivities(): ActivitiesState {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [version]);
 
   return state;
 }
@@ -741,12 +787,20 @@ const gluedStatsCache = new Map<
 >();
 const gluedStatsInflight = new Map<number, Promise<GluedStatsPayload>>();
 
-async function fetchGluedStats(days: number): Promise<GluedStatsPayload> {
+async function fetchGluedStats(
+  days: number,
+  bypassCache = false
+): Promise<GluedStatsPayload> {
   const existing = gluedStatsInflight.get(days);
-  if (existing) return existing;
+  if (existing && !bypassCache) return existing;
   const promise = (async () => {
     try {
-      const res = await fetch(`/api/stats/glued?days=${days}`);
+      // Cache-bust query param + no-store header forces a fresh server
+      // computation, bypassing both Vercel's CDN cache and any HTTP cache.
+      const url = bypassCache
+        ? `/api/stats/glued?days=${days}&_=${Date.now()}`
+        : `/api/stats/glued?days=${days}`;
+      const res = await fetch(url, bypassCache ? { cache: "no-store" } : {});
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as GluedStatsPayload;
       gluedStatsCache.set(days, { data, ts: Date.now() });
@@ -760,6 +814,7 @@ async function fetchGluedStats(days: number): Promise<GluedStatsPayload> {
 }
 
 export function useGluedStats(days: number): GluedStatsState {
+  const version = useStatsRevalidationVersion();
   const [state, setState] = useState<GluedStatsState>(() => {
     const cached = gluedStatsCache.get(days);
     if (cached && Date.now() - cached.ts < GLUED_STATS_CACHE_TTL_MS) {
@@ -774,9 +829,10 @@ export function useGluedStats(days: number): GluedStatsState {
       setState({ data: cached.data, loading: false, error: null });
       return;
     }
+    gluedStatsCache.delete(days);
     setState((s) => ({ ...s, loading: true, error: null }));
     let cancelled = false;
-    fetchGluedStats(days)
+    fetchGluedStats(days, version > 0)
       .then((data) => {
         if (cancelled) return;
         setState({ data, loading: false, error: null });
@@ -793,7 +849,7 @@ export function useGluedStats(days: number): GluedStatsState {
     return () => {
       cancelled = true;
     };
-  }, [days]);
+  }, [days, version]);
 
   return state;
 }
