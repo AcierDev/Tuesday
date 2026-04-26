@@ -48,6 +48,7 @@ export const LabelCell = ({ item }: { item: Item }) => {
           </DialogHeader>
           <ViewLabel
             orderId={item.id}
+            item={item}
             onClose={() => setIsLabelDialogOpen(false)}
           />
         </DialogContent>

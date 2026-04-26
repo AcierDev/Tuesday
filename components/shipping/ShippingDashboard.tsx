@@ -26,7 +26,7 @@ export function ShippingDashboard({ item, onClose }: ShippingDashboardProps) {
         </TabsTrigger>
       </TabsList>
       <TabsContent value="view">
-        <ViewLabel orderId={item.id} />
+        <ViewLabel orderId={item.id} item={item} />
       </TabsContent>
       <TabsContent value="buy">
         <BuyLabelsDashboard item={item} onClose={onClose}/>

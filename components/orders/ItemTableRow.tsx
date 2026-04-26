@@ -2,7 +2,7 @@
 
 import { memo, useMemo } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { ShippingCell } from "../cells/ShippingCell";
+import { MergedShippingCell } from "../cells/MergedShippingCell";
 import { ItemTableCell } from "./ItemTableCell";
 import { ItemActions } from "./ItemActions";
 import { cn, isPastDue } from "@/utils/functions";
@@ -68,7 +68,7 @@ export const ItemTableRow = memo(function ItemTableRow({
         index % 2 === 0
           ? "bg-white dark:bg-gray-800"
           : "bg-gray-50 dark:bg-gray-800/60",
-        "hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors duration-150",
+        "hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors duration-200",
         pastDue &&
           item.status !== ItemStatus.Done &&
           "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]",
@@ -100,7 +100,7 @@ export const ItemTableRow = memo(function ItemTableRow({
 
       {visibleColumns.includes("Shipping" as ColumnTitles) && (
         <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 text-center w-[3.625rem]">
-          <ShippingCell item={item} />
+          <MergedShippingCell item={item} />
         </TableCell>
       )}
 

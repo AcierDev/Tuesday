@@ -91,6 +91,14 @@ export default function LabelsPage() {
     setSelectedOrderId(null);
   };
 
+  const selectedItem = useMemo(
+    () =>
+      selectedOrderId
+        ? items.find((it) => it.id === selectedOrderId)
+        : undefined,
+    [items, selectedOrderId]
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b dark:border-gray-800 p-4 shadow-sm">
@@ -150,6 +158,7 @@ export default function LabelsPage() {
             {selectedOrderId && (
               <ViewLabel
                 orderId={selectedOrderId}
+                item={selectedItem}
                 onClose={handleCloseDialog}
               />
             )}

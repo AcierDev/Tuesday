@@ -18,12 +18,13 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tracker } from "@/typings/types";
+import { Item, Tracker } from "@/typings/types";
 import { useTrackingStore } from "@/stores/useTrackingStore";
 import { useUploadProgressStore } from "@/stores/useUploadProgressStore";
 import { useShippingStore } from "@/stores/useShippingStore";
 import { UploadStep, TrackingInfo, FileProgress } from "@/types/shipping";
 import { toast } from "sonner";
+import { FedExBuyLabelDialog } from "./FedExBuyLabelDialog";
 
 type ManualTrackingInput = {
   fileIndex: number;
@@ -33,9 +34,11 @@ type ManualTrackingInput = {
 
 export function ViewLabel({
   orderId,
+  item,
   onClose,
 }: {
   orderId: string;
+  item?: Item;
   onClose?: () => void;
 }) {
   const [files, setFiles] = useState<File[]>([]);
@@ -621,9 +624,12 @@ export function ViewLabel({
   return (
     <Card className="w-full max-w-3xl mx-auto bg-background dark:bg-gray-800 dark:border-gray-700">
       <CardHeader>
-        <CardTitle className="text-2xl font-bold text-foreground dark:text-gray-100">
-          Shipping Labels for Order {orderId}
-        </CardTitle>
+        <div className="flex items-start justify-between gap-4">
+          <CardTitle className="text-2xl font-bold text-foreground dark:text-gray-100">
+            Shipping Labels for Order {orderId}
+          </CardTitle>
+          {item && <FedExBuyLabelDialog item={item} />}
+        </div>
       </CardHeader>
       <CardContent className="p-4">
         <Tabs defaultValue={pdfExists ? "view" : "manage"} className="w-full">
