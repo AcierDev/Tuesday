@@ -654,6 +654,23 @@ export default function ProductionPlanningPage() {
     return allOrdersById.get(activeId);
   }, [activeId, allOrdersById]);
 
+  // Reference date for the floating drag overlay's due-badge. Without this the
+  // overlay falls back to "today" and the badge flips numbers mid-drag, even
+  // though the source slot in the day column keeps showing the day-relative
+  // value. Sat/Sun fold into Monday's display column, so mirror that here.
+  const activeReferenceDate = useMemo(() => {
+    if (!activeId || !currentSchedule) return undefined;
+    for (const [day, dayItems] of Object.entries(currentSchedule.schedule)) {
+      if (!dayItems.some((i) => i.id === activeId)) continue;
+      const dayName = day as DayName;
+      const displayDay: DayName = DAYS_FOLDED_INTO_MONDAY.includes(dayName)
+        ? "Monday"
+        : dayName;
+      return addDays(currentWeekStart, DAY_OFFSET_FROM_WEEK_START[displayDay]);
+    }
+    return undefined;
+  }, [activeId, currentSchedule, currentWeekStart]);
+
   // Auto-fill Mon-Thu of a target week with the most-due standard-size orders.
   // IDs the auto-plan just placed — consumed by OrderCard for a one-shot
   // "land" animation. Cleared a moment after each run so re-runs flash again.
@@ -960,7 +977,11 @@ export default function ProductionPlanningPage() {
       <DragOverlay dropAnimation={dropAnimation}>
         {activeId && activeMeta ? (
           <div className="opacity-80 rotate-2 cursor-grabbing">
-            <OrderCard meta={activeMeta} isScheduled={true} />
+            <OrderCard
+              meta={activeMeta}
+              isScheduled={true}
+              referenceDate={activeReferenceDate}
+            />
           </div>
         ) : null}
       </DragOverlay>
