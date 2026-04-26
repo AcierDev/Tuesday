@@ -230,7 +230,7 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
 
       {action === "openLabel" && (
         <Dialog open={isLabelOpen} onOpenChange={setIsLabelOpen}>
-          <DialogContent className="max-w-4xl bg-card text-card-foreground border-border">
+          <DialogContent className="max-w-4xl bg-secondary text-secondary-foreground border-border">
             <DialogHeader>
               <DialogTitle>Shipping Label</DialogTitle>
             </DialogHeader>
@@ -245,7 +245,7 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
 
       {action === "openTracking" && (
         <Dialog open={isTrackingOpen} onOpenChange={setIsTrackingOpen}>
-          <DialogContent className="max-w-2xl bg-card text-card-foreground border-border">
+          <DialogContent className="max-w-2xl bg-secondary text-secondary-foreground border-border">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold">
                 Tracking History

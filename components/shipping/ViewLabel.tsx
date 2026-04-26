@@ -611,7 +611,7 @@ export function ViewLabel({
 
   if (isLoading && orderLabels.length === 0) {
     return (
-      <Card className="w-full max-w-3xl mx-auto bg-card border-border">
+      <Card className="w-full max-w-3xl mx-auto bg-secondary border-0 shadow-none">
         <CardContent className="pt-6">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
@@ -622,10 +622,10 @@ export function ViewLabel({
   }
 
   return (
-    <Card className="w-full max-w-3xl mx-auto bg-card border-border">
-      <CardHeader>
+    <Card className="w-full max-w-3xl mx-auto bg-secondary border-0 shadow-none">
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
-          <CardTitle className="text-2xl font-bold text-foreground">
+          <CardTitle className="text-xl font-semibold text-foreground">
             Shipping Labels for Order {orderId}
           </CardTitle>
           {item && <FedExBuyLabelDialog item={item} />}
@@ -643,11 +643,8 @@ export function ViewLabel({
             {pdfExists && orderLabels.length > 0 ? (
               <div className="space-y-4">
                 <div
-                  className="border border-border rounded-lg overflow-hidden"
-                  style={{
-                    height: "calc(100vh - 300px)",
-                    minHeight: "400px",
-                  }}
+                  className="border border-border rounded-lg overflow-hidden bg-background"
+                  style={{ height: "clamp(280px, 48vh, 440px)" }}
                 >
                   <iframe
                     src={getLabelUrl(orderLabels[currentPdfIndex] || "")}
@@ -659,29 +656,35 @@ export function ViewLabel({
                     } for Order ${orderId}`}
                   />
                 </div>
-                <div className="flex justify-between items-center">
-                  <Button
-                    onClick={() =>
-                      setCurrentPdfIndex((prev) => Math.max(0, prev - 1))
-                    }
-                    disabled={currentPdfIndex === 0}
-                  >
-                    <ChevronLeft className="mr-2 h-4 w-4" /> Previous
-                  </Button>
-                  <span className="text-sm font-medium text-foreground">
-                    Label {currentPdfIndex + 1} of {orderLabels.length}
-                  </span>
-                  <Button
-                    onClick={() =>
-                      setCurrentPdfIndex((prev) =>
-                        Math.min(orderLabels.length - 1, prev + 1)
-                      )
-                    }
-                    disabled={currentPdfIndex === orderLabels.length - 1}
-                  >
-                    Next <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
+                {orderLabels.length > 1 && (
+                  <div className="flex justify-between items-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPdfIndex((prev) => Math.max(0, prev - 1))
+                      }
+                      disabled={currentPdfIndex === 0}
+                    >
+                      <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      Label {currentPdfIndex + 1} of {orderLabels.length}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPdfIndex((prev) =>
+                          Math.min(orderLabels.length - 1, prev + 1)
+                        )
+                      }
+                      disabled={currentPdfIndex === orderLabels.length - 1}
+                    >
+                      Next <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <Alert>
@@ -702,14 +705,14 @@ export function ViewLabel({
                     {orderLabels.map((filename: string, index: number) => (
                       <div
                         key={index}
-                        className="flex justify-between items-center p-4 border border-border rounded-lg"
+                        className="flex justify-between items-center p-3 bg-background/40 border border-border rounded-lg"
                       >
                         <span className="font-medium text-foreground">
                           Label {index + 1}
                         </span>
-                        <div className="space-x-2">
+                        <div className="flex items-center gap-1">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() =>
                               handleRetryExtraction(filename, index)
@@ -717,7 +720,7 @@ export function ViewLabel({
                             disabled={retryingFiles.has(filename)}
                           >
                             <RefreshCw
-                              className={`mr-2 h-4 w-4 ${
+                              className={`mr-1.5 h-4 w-4 ${
                                 retryingFiles.has(filename)
                                   ? "animate-spin"
                                   : ""
@@ -725,25 +728,26 @@ export function ViewLabel({
                             />
                             {retryingFiles.has(filename)
                               ? "Reading…"
-                              : "Retry AI Read"}
+                              : "Retry"}
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() =>
                               window.open(getLabelUrl(filename), "_blank")
                             }
                           >
-                            <Download className="mr-2 h-4 w-4" /> Download
+                            <Download className="mr-1.5 h-4 w-4" /> Download
                           </Button>
                           <Button
-                            variant="destructive"
+                            variant="ghost"
                             size="sm"
                             onClick={() => {
                               handleDelete(index);
                             }}
+                            className="text-red-500 hover:text-red-500 hover:bg-red-500/10"
                           >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            <Trash2 className="mr-1.5 h-4 w-4" /> Delete
                           </Button>
                         </div>
                       </div>
@@ -817,7 +821,7 @@ export function ViewLabel({
 
       {manualTracking.show && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
+          <Card className="w-full max-w-md bg-secondary border-border">
             <CardHeader>
               <CardTitle>Enter Tracking Information</CardTitle>
             </CardHeader>

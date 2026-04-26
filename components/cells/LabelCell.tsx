@@ -42,7 +42,7 @@ export const LabelCell = ({ item }: { item: Item }) => {
             />
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-4xl bg-card text-card-foreground border-border">
+        <DialogContent className="max-w-4xl bg-secondary text-secondary-foreground border-border">
           <DialogHeader>
             <DialogTitle>Shipping Label</DialogTitle>
           </DialogHeader>
