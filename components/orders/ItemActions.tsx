@@ -5,7 +5,7 @@ import {
   Trash2,
   Truck,
   Clipboard,
-  MoreHorizontal,
+  MoreVertical,
 } from "lucide-react";
 import React from "react";
 import { useRouter } from "next/navigation";
@@ -99,11 +99,11 @@ export const ItemActions = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          className="h-8 w-6 p-0 mx-auto text-gray-700 dark:text-gray-300"
+          className="h-6 w-[1.125rem] p-0 mx-auto text-gray-700 dark:text-gray-300"
           variant="ghost"
         >
           <span className="sr-only">Open actions menu</span>
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreVertical className="h-[1.05rem] w-[1.05rem]" />
         </Button>
       </DropdownMenuTrigger>
       {menuContent}

@@ -89,7 +89,7 @@ export const ItemTableRow = memo(function ItemTableRow({
       }}
     >
       <TableCell className="border border-gray-200 dark:border-gray-600 p-0 relative w-[3.125rem]">
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center w-full">
           <StatusRadialMenu
             currentStatus={item.status}
             onStatusSelect={(newStatus) => onStatusChange?.(item.id, newStatus)}

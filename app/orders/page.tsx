@@ -242,7 +242,9 @@ export default function OrderManagementPage() {
 
   const handleStatusChange = useCallback(
     async (itemId: string, newStatus: ItemStatus) => {
-      const item = items.find((i) => i.id === itemId);
+      const item =
+        items.find((i) => i.id === itemId) ??
+        doneItems.find((i) => i.id === itemId);
       if (!item) return;
 
       if (item.status === newStatus) return;
@@ -270,7 +272,7 @@ export default function OrderManagementPage() {
         toast.error("Failed to update status");
       }
     },
-    [items, updateItem, undoStatusChange]
+    [items, doneItems, updateItem, undoStatusChange]
   );
 
   const undoItemDeletion = useCallback(

@@ -3,8 +3,6 @@ import { addMonths, endOfMonth, format, startOfMonth } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar as CalendarIcon,
-  ChevronDown,
-  ChevronUp,
   Pencil,
   X,
   User,
@@ -14,7 +12,6 @@ import {
   RotateCw,
   CheckCircle,
   ArrowUpDown,
-  Settings2,
   Building2,
 } from "lucide-react";
 
@@ -41,25 +38,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { boardConfig } from "@/config/boardconfig";
 import { cn } from "@/utils/functions";
 
 import {
-  ColumnTitles,
-  ColumnTypes,
   ItemDesigns,
   ItemSizes,
   ItemStatus,
   Item,
 } from "../../typings/types";
-
-type OptionalFields = {
-  [K in ColumnTitles]: string;
-};
-
-type CustomInputs = {
-  [K in ColumnTitles]?: boolean;
-};
 
 interface NewItemModalProps {
   isOpen: boolean;
@@ -100,44 +86,19 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
   const [design, setDesign] = useState("");
   const [vertical, setVertical] = useState(false);
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
-  const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [customInputs, setCustomInputs] = useState<CustomInputs>({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customSize, setCustomSize] = useState(false);
   const [customDesign, setCustomDesign] = useState(false);
 
-  const [optionalFields, setOptionalFields] = useState<OptionalFields>(() => {
-    const fields = {} as OptionalFields;
-    Object.values(ColumnTitles).forEach((title) => {
-      fields[title] = "";
-    });
-    return fields;
-  });
-
-  const handleOptionalFieldChange = (
-    columnName: ColumnTitles,
-    value: string
-  ) => {
-    setOptionalFields((prev) => ({
-      ...prev,
-      [columnName]: value,
-    }));
-  };
-
-  const toggleCustomInput = (field: "size" | "design" | ColumnTitles) => {
+  const toggleCustomInput = (field: "size" | "design") => {
     if (field === "size") {
       setCustomSize(!customSize);
       if (customSize) setSize("");
-    } else if (field === "design") {
+    } else {
       setCustomDesign(!customDesign);
       if (customDesign) setDesign("");
-    } else {
-      setCustomInputs((prev) => ({
-        ...prev,
-        [field]: !prev[field],
-      }));
     }
   };
 
@@ -171,6 +132,9 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
 
     setIsSubmitting(true);
 
+    const prefix =
+      company === "Woodform" ? "[WF] " : company === "Sheppit" ? "[SH] " : "";
+
     const newItem: any = {
       status: ItemStatus.New,
       createdAt: Date.now(),
@@ -178,48 +142,11 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
       visible: true,
       deleted: false,
       isScheduled: false,
+      customerName: `${prefix}${customerName}`,
+      size,
+      design,
+      dueDate: dueDate ? format(dueDate, "yyyy-MM-dd") : "",
     };
-
-    const fieldMap: Record<string, string> = {
-        [ColumnTitles.Customer_Name]: "customerName",
-        [ColumnTitles.Due]: "dueDate",
-        [ColumnTitles.Design]: "design",
-        [ColumnTitles.Size]: "size",
-        [ColumnTitles.Painted]: "painted",
-        [ColumnTitles.Backboard]: "backboard",
-        [ColumnTitles.Glued]: "glued",
-        [ColumnTitles.Packaging]: "packaging",
-        [ColumnTitles.Boxes]: "boxes",
-        [ColumnTitles.Notes]: "notes",
-        [ColumnTitles.Rating]: "rating",
-        [ColumnTitles.Shipping]: "shipping",
-        [ColumnTitles.Labels]: "labels"
-    };
-
-    Object.values(ColumnTitles).forEach((title) => {
-        const key = fieldMap[title];
-        if (!key) return;
-
-        let value = optionalFields[title];
-
-        if (title === ColumnTitles.Customer_Name) {
-          let prefix = "";
-          if (company === "Woodform") {
-            prefix = "[WF]";
-          } else if (company === "Sheppit") {
-            prefix = "[SH]";
-          }
-          value = customerName ? (prefix ? `${prefix} ${customerName}` : customerName) : customerName;
-        } else if (title === ColumnTitles.Size) {
-          value = size;
-        } else if (title === ColumnTitles.Design) {
-          value = design;
-        } else if (title === ColumnTitles.Due) {
-          value = dueDate ? format(dueDate, "yyyy-MM-dd") : "";
-        }
-
-        newItem[key] = value || "";
-    });
 
     try {
       await onSubmit(newItem);
@@ -245,16 +172,7 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
     setDesign("");
     setVertical(false);
     setDueDate(undefined);
-    setShowOptionalFields(false);
     setShowCalendar(false);
-    setCustomInputs({});
-    setOptionalFields((prev) => {
-      const reset = {} as OptionalFields;
-      Object.values(ColumnTitles).forEach((title) => {
-        reset[title] = "";
-      });
-      return reset;
-    });
     setIsSubmitting(false);
   };
 
@@ -511,146 +429,6 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
                 </div>
               </motion.div>
 
-              <motion.button
-                className="w-full py-2 px-4 rounded-lg border dark:border-gray-700 flex items-center justify-center gap-2"
-                onClick={() => setShowOptionalFields(!showOptionalFields)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Settings2 className="h-4 w-4" />
-                {showOptionalFields
-                  ? "Hide Optional Fields"
-                  : "Show Optional Fields"}
-                {showOptionalFields ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </motion.button>
-
-              <AnimatePresence>
-                {showOptionalFields && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-4"
-                  >
-                    {showOptionalFields ? (
-                      <div className="grid gap-4 py-4">
-                        {Object.values(ColumnTitles)
-                          .filter(
-                            (title) =>
-                              ![
-                                "Customer Name",
-                                "Size",
-                                "Design",
-                                "Due Date",
-                              ].includes(title)
-                          )
-                          .map((title) => {
-                            const column = boardConfig.columns[title];
-                            if (
-                              column.type === ColumnTypes.Dropdown &&
-                              column.options
-                            ) {
-                              return (
-                                <div
-                                  key={title}
-                                  className="grid grid-cols-4 items-center gap-4"
-                                >
-                                  <Label className="text-right" htmlFor={title}>
-                                    {title}
-                                  </Label>
-                                  {!customInputs[title] ? (
-                                    <div className="col-span-3 flex items-center space-x-2">
-                                      <Select
-                                        value={optionalFields[title]}
-                                        onValueChange={(value) =>
-                                          handleOptionalFieldChange(
-                                            title,
-                                            value
-                                          )
-                                        }
-                                      >
-                                        <SelectTrigger className="w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                                          <SelectValue
-                                            placeholder={`Select ${title}`}
-                                          />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                                          {column.options.map((option) => (
-                                            <SelectItem
-                                              key={option}
-                                              value={option}
-                                            >
-                                              {option}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        onClick={() => toggleCustomInput(title)}
-                                        className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 dark:bg-gray-700"
-                                      >
-                                        <Pencil className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="col-span-3 flex items-center space-x-2">
-                                      <Input
-                                        placeholder={`Enter custom ${title.toLowerCase()}`}
-                                        value={optionalFields[title]}
-                                        onChange={(e) =>
-                                          handleOptionalFieldChange(
-                                            title,
-                                            e.target.value
-                                          )
-                                        }
-                                        className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                                      />
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        onClick={() => toggleCustomInput(title)}
-                                        className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            }
-                            return (
-                              <div
-                                key={title}
-                                className="grid grid-cols-4 items-center gap-4"
-                              >
-                                <Label className="text-right" htmlFor={title}>
-                                  {title}
-                                </Label>
-                                <Input
-                                  className="col-span-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                                  id={title}
-                                  value={optionalFields[title]}
-                                  onChange={(e) =>
-                                    handleOptionalFieldChange(
-                                      title,
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                              </div>
-                            );
-                          })}
-                      </div>
-                    ) : null}
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
             <DialogFooter className="sticky bottom-0 bg-white dark:bg-gray-800 z-10 px-6 py-4 border-t">
