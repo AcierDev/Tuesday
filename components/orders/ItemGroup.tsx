@@ -1,11 +1,10 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,8 +12,6 @@ import {
 import {
   TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { itemSortFuncs } from "@/utils/itemSortFuncs";
@@ -358,73 +355,13 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       </div>
       {(!isCollapsible || !isCollapsed) && (
         <div className="relative overflow-visible">
-          {!isPreview ? (
+          {!shouldShowSkeleton && sortedItems.length === 0 ? null : !isPreview ? (
             <BorderedTable
               className="table-fixed"
               borderColor={`bg-${
                 GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
               }`}
             >
-              <TableHeader className="bg-gray-100 dark:bg-gray-700 shadow-table-header dark:shadow-table-header-dark select-none">
-                <TableRow>
-                  <TableHead className="border border-gray-200 dark:border-gray-600 p-0 text-center w-[3.125rem]">
-                    <span className="sr-only">Move</span>
-                  </TableHead>
-                  {visibleColumns.includes("Shipping" as ColumnTitles) && (
-                    <TableHead className="border border-gray-200 dark:border-gray-600 p-0 text-center w-[3.125rem]">
-                      <span className="sr-only">Shipping</span>
-                    </TableHead>
-                  )}
-                  {visibleColumns
-                    .filter((columnName) => columnName !== "Shipping")
-                    .map((columnName) => (
-                      <TableHead
-                        key={columnName}
-                        className={cn(
-                          "border border-gray-200 dark:border-gray-600 p-2 text-center",
-                          columnName === ColumnTitles.Customer_Name
-                            ? "w-auto"
-                            : "",
-                          columnName === ColumnTitles.Design
-                            ? "w-[23.38875%]"
-                            : "",
-                          columnName === ColumnTitles.Size
-                            ? "w-[15.4836%]"
-                            : "",
-                          columnName === ColumnTitles.Labels
-                            ? "w-[1.94734375rem] flex-shrink-0 overflow-hidden p-0"
-                            : ""
-                        )}
-                      >
-                        <Button
-                          className="h-8 flex items-center justify-center gap-2 w-full text-gray-900 dark:text-gray-400"
-                          variant="ghost"
-                          onClick={() => onSort(columnName)}
-                        >
-                          {columnName === ColumnTitles.Labels ? null : (
-                            <span>{columnName}</span>
-                          )}
-                          {settings.showSortingIcons ? (
-                            sortColumn === columnName ? (
-                              sortDirection === "asc" ? (
-                                <ArrowUp className="h-4 w-4" />
-                              ) : sortDirection === "desc" ? (
-                                <ArrowDown className="h-4 w-4" />
-                              ) : (
-                                <ArrowUpDown className="h-4 w-4" />
-                              )
-                            ) : (
-                              <ArrowUpDown className="h-4 w-4" />
-                            )
-                          ) : null}
-                        </Button>
-                      </TableHead>
-                    ))}
-                  <TableHead className="border border-gray-200 dark:border-gray-600 p-0 text-center w-6">
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
               <TableBody key={`${group.title}-body`}>
                 {shouldShowSkeleton
                   ? renderSkeletonRows()
@@ -457,50 +394,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                 GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
               }`}
             >
-              <TableHeader className="bg-gray-100 dark:bg-gray-700 shadow-table-header dark:shadow-table-header-dark select-none">
-                <TableRow>
-                  <TableHead className="border border-gray-200 dark:border-gray-600 p-2 text-center w-12">
-                    Status
-                  </TableHead>
-                  {visibleColumns.map((columnName) => (
-                    <TableHead
-                      key={columnName}
-                      className={cn(
-                        "border border-gray-200 dark:border-gray-600 p-2 text-center",
-                        columnName === ColumnTitles.Customer_Name
-                          ? "w-auto"
-                          : "",
-                        columnName === ColumnTitles.Design ? "w-[23.38875%]" : "",
-                        columnName === ColumnTitles.Size ? "w-[15.4836%]" : "",
-                        columnName === ColumnTitles.Labels
-                          ? "w-[1.94734375rem] flex-shrink-0 overflow-hidden p-0"
-                          : ""
-                      )}
-                    >
-                      <Button
-                        className="h-8 flex items-center justify-between w-full"
-                        variant="ghost"
-                        onClick={() => onSort(columnName)}
-                      >
-                        {columnName === ColumnTitles.Labels ? null : columnName}
-                        {settings.showSortingIcons ? (
-                          sortColumn === columnName ? (
-                            sortDirection === "asc" ? (
-                              <ArrowUp className="ml-2 h-4 w-4" />
-                            ) : sortDirection === "desc" ? (
-                              <ArrowDown className="ml-2 h-4 w-4" />
-                            ) : (
-                              <ArrowUpDown className="ml-2 h-4 w-4" />
-                            )
-                          ) : (
-                            <ArrowUpDown className="ml-2 h-4 w-4" />
-                          )
-                        ) : null}
-                      </Button>
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
               <TableBody key={`${group.title}-preview-body`}>
                 {shouldShowSkeleton
                   ? renderSkeletonRows()

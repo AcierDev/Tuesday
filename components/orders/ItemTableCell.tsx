@@ -139,8 +139,8 @@ export function ItemTableCell({
         "border border-gray-200 dark:border-gray-600 p-2 relative group",
         columnName === ColumnTitles.Customer_Name ? "w-auto" : "",
         columnName === ColumnTitles.Design ? "w-[23.38875%]" : "",
-        columnName === ColumnTitles.Size ? "w-[15.4836%]" : "",
-        columnName === ColumnTitles.Labels ? "w-[1.94734375rem] flex-shrink-0 overflow-hidden p-0" : "",
+        columnName === ColumnTitles.Size ? "w-[13.2%]" : "",
+        columnName === ColumnTitles.Labels ? "w-[2.44734375rem] flex-shrink-0 overflow-hidden p-0" : "",
         getStatusColor(columnValue)
       )}
       onMouseEnter={(e) => {

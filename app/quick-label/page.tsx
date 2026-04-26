@@ -219,17 +219,14 @@ export default function QuickLabelPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-md">
             <CardContent className="p-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="label-text">Label text</Label>
-                <textarea
-                  id="label-text"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="Type whatever you want on the label…"
-                  className="w-full min-h-[180px] rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-3 text-base resize-y focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  suppressHydrationWarning
-                />
-              </div>
+              <textarea
+                id="label-text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Type whatever you want on the label…"
+                className="w-full min-h-[180px] rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-3 text-base resize-y focus:outline-none focus:ring-2 focus:ring-blue-500"
+                suppressHydrationWarning
+              />
 
               <div className="flex items-center gap-2">
                 <Label className="text-sm">Orientation</Label>

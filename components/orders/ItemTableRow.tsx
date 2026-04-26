@@ -98,7 +98,7 @@ export const ItemTableRow = memo(function ItemTableRow({
       </TableCell>
 
       {visibleColumns.includes("Shipping" as ColumnTitles) && (
-        <TableCell className="border border-gray-200 dark:border-gray-600 p-0 text-center w-[3.125rem]">
+        <TableCell className="border border-gray-200 dark:border-gray-600 p-0 text-center w-[3.625rem]">
           <ShippingCell item={item} />
         </TableCell>
       )}
@@ -148,7 +148,7 @@ export const ItemTableRow = memo(function ItemTableRow({
           );
         })}
 
-      <TableCell className="border border-gray-200 dark:border-gray-600 p-0 text-center w-6">
+      <TableCell className="border border-gray-200 dark:border-gray-600 p-0 text-center w-8">
         <ItemActions
           item={item}
           onDelete={onDelete}
