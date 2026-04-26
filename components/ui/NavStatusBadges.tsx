@@ -289,7 +289,9 @@ export function NavMetricsBadges() {
           Glued
         </span>
         <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
-          {gluedToday ? gluedToday.squares.toLocaleString() : "—"}
+          {!gluedToday || gluedToday.squares === 0
+            ? "—"
+            : gluedToday.squares.toLocaleString()}
         </span>
         <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
           today

@@ -414,12 +414,8 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       <div
         className={cn(
           "group relative mx-auto p-4 rounded-xl",
-          group.title !== ItemStatus.Done
-            ? "transition-[width,background-color,color] duration-200 ease-out"
-            : "transition-colors duration-200 ease-out",
-          group.title !== ItemStatus.Done && isCollapsible && !isCollapsed
-            ? "w-[95%]"
-            : "w-[98%]",
+          "transition-[width,background-color,color] duration-200 ease-out",
+          isCollapsible && !isCollapsed ? "w-[95%]" : "w-[98%]",
           `text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           } dark:text-${
@@ -440,9 +436,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
             className={cn(
               "pointer-events-none absolute left-0 top-2 bottom-2 w-1 rounded-r bg-current",
               "origin-top transition-transform duration-300 ease-out",
-              !isCollapsed
-                ? "scale-y-100"
-                : "scale-y-0 group-hover:scale-y-100 group-hover:duration-200"
+              "scale-y-0 group-hover:scale-y-100 group-hover:duration-200"
             )}
           />
         )}
