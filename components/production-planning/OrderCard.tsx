@@ -35,30 +35,29 @@ function getSolidDueBadge(
   return { text, classes: "bg-emerald-500 text-white" };
 }
 
-// Production status maps the item's current ItemStatus to a card tint:
-//   "done" (green)    — past WIP: Packaging, At The Door, Done
-//   "wip"  (orange)   — currently being worked on
-//   "pending" (none)  — New / OnDeck / anything else
-type ProductionStatus = "done" | "wip" | "pending";
-
-function getProductionStatus(status: ItemStatus | undefined): ProductionStatus {
-  switch (status) {
-    case ItemStatus.Packaging:
-    case ItemStatus.At_The_Door:
-    case ItemStatus.Done:
-      return "done";
-    case ItemStatus.Wip:
-      return "wip";
-    default:
-      return "pending";
-  }
-}
-
-const STATUS_TINT: Record<ProductionStatus, string> = {
-  done: "bg-emerald-50 dark:bg-emerald-950/40 border-y-emerald-200 border-r-emerald-200 dark:border-y-emerald-900 dark:border-r-emerald-900",
-  wip: "bg-amber-50 dark:bg-amber-950/40 border-y-amber-200 border-r-amber-200 dark:border-y-amber-900 dark:border-r-amber-900",
-  pending: "bg-white dark:bg-gray-900 border-y border-r border-gray-200 dark:border-gray-800",
+// Card tint mirrors the canonical STATUS_COLORS palette so a card's color
+// matches the same status anywhere else in the app (orders board, badges,
+// etc). A subtle light/dark surface tint plus a matching subtle border.
+const STATUS_TINT: Record<ItemStatus, string> = {
+  [ItemStatus.New]:
+    "bg-white dark:bg-gray-900 border-y border-r border-gray-200 dark:border-gray-800",
+  [ItemStatus.OnDeck]:
+    "bg-yellow-50 dark:bg-yellow-950/40 border-y-yellow-200 border-r-yellow-200 dark:border-y-yellow-900 dark:border-r-yellow-900",
+  [ItemStatus.Wip]:
+    "bg-orange-50 dark:bg-orange-950/40 border-y-orange-200 border-r-orange-200 dark:border-y-orange-900 dark:border-r-orange-900",
+  [ItemStatus.Packaging]:
+    "bg-red-50 dark:bg-red-950/40 border-y-red-200 border-r-red-200 dark:border-y-red-900 dark:border-r-red-900",
+  [ItemStatus.At_The_Door]:
+    "bg-lime-50 dark:bg-lime-950/40 border-y-lime-200 border-r-lime-200 dark:border-y-lime-900 dark:border-r-lime-900",
+  [ItemStatus.Done]:
+    "bg-emerald-50 dark:bg-emerald-950/40 border-y-emerald-200 border-r-emerald-200 dark:border-y-emerald-900 dark:border-r-emerald-900",
+  [ItemStatus.Hidden]:
+    "bg-white dark:bg-gray-900 border-y border-r border-gray-200 dark:border-gray-800",
 };
+
+function getStatusTint(status: ItemStatus | undefined): string {
+  return STATUS_TINT[status ?? ItemStatus.New] ?? STATUS_TINT[ItemStatus.New];
+}
 
 interface OrderCardProps {
   meta: OrderMeta;
@@ -132,14 +131,12 @@ export function OrderCard({
     ? getSolidDueBadge(new Date(meta.item.dueDate), referenceDate)
     : null;
 
-  const productionStatus = getProductionStatus(meta.item.status);
-
   return (
     <Card
       className={cn(
         "group relative overflow-hidden border-l-[3px] transition-all hover:shadow-sm",
         bucketColor,
-        STATUS_TINT[productionStatus]
+        getStatusTint(meta.item.status)
       )}
     >
       <div className="flex items-start justify-between gap-2 px-3 py-2.5">
