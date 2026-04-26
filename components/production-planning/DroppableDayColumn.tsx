@@ -23,6 +23,9 @@ interface DroppableDayColumnProps {
   date: Date;
   autoPlanEnabled: boolean;
   onToggleAutoPlan: () => void;
+  // Item IDs the auto-plan run just landed in any day — used to trigger a
+  // one-shot "drop in" animation on those cards.
+  recentlyPlacedIds?: Set<string>;
 }
 
 export function DroppableDayColumn({
@@ -37,6 +40,7 @@ export function DroppableDayColumn({
   date,
   autoPlanEnabled,
   onToggleAutoPlan,
+  recentlyPlacedIds,
 }: DroppableDayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: day,
@@ -80,12 +84,10 @@ export function DroppableDayColumn({
       >
         <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
           {orders.length === 0 ? (
-            <div className="h-full flex items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg m-1">
-              <span className="text-xs text-gray-400 font-medium">Drop here</span>
-            </div>
+            <div className="h-full border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg m-1" />
           ) : (
             <div className="space-y-2">
-              {unpinned.map((order) => {
+              {unpinned.map((order, idx) => {
                 const meta = ordersById.get(order.itemId);
                 if (!meta) return null;
                 return (
@@ -99,6 +101,8 @@ export function DroppableDayColumn({
                     onTogglePin={() => onTogglePin(order.itemId, order.day)}
                     isPinned={false}
                     referenceDate={date}
+                    justPlaced={recentlyPlacedIds?.has(order.itemId) ?? false}
+                    placeIndex={idx}
                   />
                 );
               })}

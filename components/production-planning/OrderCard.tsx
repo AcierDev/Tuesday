@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ColumnTitles, DayName, ItemStatus } from "@/typings/types";
@@ -72,6 +73,10 @@ interface OrderCardProps {
   //   - In the sidebar: locked to the sidebar, auto-plan won't pull it in.
   isPinned?: boolean;
   onTogglePin?: () => void;
+  // True for one render-cycle after the auto-plan placed this card. Drives a
+  // staggered "drop in" animation; placeIndex tunes the per-card delay.
+  justPlaced?: boolean;
+  placeIndex?: number;
 }
 
 const bucketColors: Record<DueBucket, string> = {
@@ -112,6 +117,8 @@ export function OrderCard({
   referenceDate,
   isPinned = false,
   onTogglePin,
+  justPlaced = false,
+  placeIndex = 0,
 }: OrderCardProps) {
   const { theme } = useTheme();
   const { settings } = useOrderSettings();
@@ -131,7 +138,44 @@ export function OrderCard({
     ? getSolidDueBadge(new Date(meta.item.dueDate), referenceDate)
     : null;
 
+  // Auto-plan placement animation: a quick scale+drop-in with an amber glow
+  // pulse, staggered per card. We key the motion.div on justPlaced so React
+  // remounts it fresh each run — no need to coordinate "have we already
+  // animated?" state.
   return (
+    <motion.div
+      key={justPlaced ? `placed-${placeIndex}` : "idle"}
+      initial={
+        justPlaced
+          ? { scale: 0.5, opacity: 0, y: -16 }
+          : false
+      }
+      animate={
+        justPlaced
+          ? {
+              scale: [0.5, 1.05, 1],
+              opacity: [0, 1, 1],
+              y: [-16, 0, 0],
+              boxShadow: [
+                "0 0 0 0 rgba(245,158,11,0)",
+                "0 0 22px 6px rgba(245,158,11,0.55)",
+                "0 0 0 0 rgba(245,158,11,0)",
+              ],
+            }
+          : { scale: 1, opacity: 1, y: 0 }
+      }
+      transition={
+        justPlaced
+          ? {
+              delay: placeIndex * 0.04,
+              duration: 0.7,
+              times: [0, 0.55, 1],
+              ease: "easeOut",
+            }
+          : { duration: 0 }
+      }
+      className="rounded-md"
+    >
     <Card
       className={cn(
         "group relative overflow-hidden border-l-[3px] transition-all hover:shadow-sm",
@@ -238,5 +282,6 @@ export function OrderCard({
         </div>
       )}
     </Card>
+    </motion.div>
   );
 }

@@ -354,7 +354,7 @@ export default function ProductionPlanningPage() {
     [schedules, currentWeekKey]
   );
 
-  // Fetch done orders from DB if they're not in the store (similar to weekly-planner)
+  // Fetch done orders from DB if they're not in the store
   useEffect(() => {
     if (!currentSchedule) return;
     const allScheduledIds = Object.values(currentSchedule.schedule)
@@ -617,93 +617,132 @@ export default function ProductionPlanningPage() {
   }, [activeId, allOrdersById]);
 
   // Auto-fill Mon-Thu of a target week with the most-due standard-size orders.
-  // Items already past pre-WIP (Wip / Packaging / Done etc.) keep their
-  // existing day placement and consume that day's capacity — so a day already
-  // overcapacity from completed work pushes new items forward, and a day with
-  // spare room pulls earlier-due items back. Sat/Sun fold into Monday's
-  // capacity bucket to match the display rule.
-  const handleAutoFill = async (targetWeekKey: string) => {
-    const existing = schedules.find((s) => s.weekKey === targetWeekKey);
+  // IDs the auto-plan just placed — consumed by OrderCard for a one-shot
+  // "land" animation. Cleared a moment after each run so re-runs flash again.
+  const [recentlyPlacedIds, setRecentlyPlacedIds] = useState<Set<string>>(
+    new Set()
+  );
 
-    // Build a fresh schedule shell. If the week has no record yet, persist one.
-    const baseSchedule: WeeklyScheduleData = existing
-      ? structuredClone(existing)
-      : {
-          weekKey: targetWeekKey,
-          schedule: {
-            Sunday: [], Monday: [], Tuesday: [], Wednesday: [],
-            Thursday: [], Friday: [], Saturday: [],
-          },
-        };
+  // Plans BOTH this and next week in a single pass: pre-WIP items locked into
+  // either week stay put, then the remaining pool is greedy-packed across
+  // this-Mon → this-Thu → next-Mon → next-Thu by due-date urgency. Sat/Sun
+  // fold into Monday's capacity bucket to match the display rule.
+  const handleAutoFill = async () => {
+    type DaySlot = { weekKey: string; day: DayName };
+    const targetWeekKeys = [thisWeekKey, nextWeekKey];
 
-    if (!existing) {
-      try {
-        await createWeek(targetWeekKey);
-      } catch (e) {
-        console.error("Failed to create week", e);
-        return;
+    // Per-week working state.
+    type WeekPlan = {
+      weekKey: string;
+      lockedByDay: Record<
+        DayName,
+        { id: string; done: boolean; pinned?: boolean }[]
+      >;
+      lockedBlocksByDay: Record<DayName, number>;
+      remaining: Record<DayName, number>;
+      newPlacements: Record<DayName, { id: string; done: boolean }[]>;
+      pulled: Set<string>;
+    };
+
+    const plans: WeekPlan[] = [];
+
+    for (const weekKey of targetWeekKeys) {
+      const existing = schedules.find((s) => s.weekKey === weekKey);
+      const baseSchedule: WeeklyScheduleData = existing
+        ? structuredClone(existing)
+        : {
+            weekKey,
+            schedule: {
+              Sunday: [], Monday: [], Tuesday: [], Wednesday: [],
+              Thursday: [], Friday: [], Saturday: [],
+            },
+          };
+      if (!existing) {
+        try {
+          await createWeek(weekKey);
+        } catch (e) {
+          console.error("Failed to create week", e);
+          return;
+        }
       }
+
+      // Partition each day's existing items into locked vs pulled. Pinned
+      // entries always count as locked.
+      const lockedByDay: WeekPlan["lockedByDay"] = {
+        Sunday: [], Monday: [], Tuesday: [], Wednesday: [],
+        Thursday: [], Friday: [], Saturday: [],
+      };
+      const lockedBlocksByDay: Record<DayName, number> = {
+        Sunday: 0, Monday: 0, Tuesday: 0, Wednesday: 0,
+        Thursday: 0, Friday: 0, Saturday: 0,
+      };
+      const pulled = new Set<string>();
+
+      (Object.keys(baseSchedule.schedule) as DayName[]).forEach((day) => {
+        baseSchedule.schedule[day].forEach((entry) => {
+          const item = allOrdersById.get(entry.id)?.item;
+          const blocks = item ? calculateBlocks(item) : 0;
+          const isMovable =
+            !entry.pinned &&
+            item &&
+            PRE_WIP_STATUSES.has(item.status) &&
+            parseSquareSize(item.size) !== null;
+
+          if (isMovable) {
+            pulled.add(entry.id);
+          } else {
+            lockedByDay[day].push(entry);
+            lockedBlocksByDay[day] += blocks;
+          }
+        });
+      });
+
+      const remaining: Record<DayName, number> = {
+        Monday: Math.max(
+          0,
+          DAILY_CAPACITY_BLOCKS -
+            lockedBlocksByDay.Monday -
+            lockedBlocksByDay.Sunday -
+            lockedBlocksByDay.Saturday
+        ),
+        Tuesday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Tuesday),
+        Wednesday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Wednesday),
+        Thursday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Thursday),
+        Friday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Friday),
+        Sunday: 0, Saturday: 0,
+      };
+
+      plans.push({
+        weekKey,
+        lockedByDay,
+        lockedBlocksByDay,
+        remaining,
+        newPlacements: {
+          Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [],
+          Sunday: [], Saturday: [],
+        },
+        pulled,
+      });
     }
 
-    // Partition each day's existing items into:
-    //   - locked: pinned entries, items past pre-WIP, or any item whose size
-    //     we can't parse (custom/named sizes — we don't auto-place them and
-    //     don't know their block contribution).
-    //   - movable: unpinned pre-WIP + standard-size items, eligible for
-    //     redistribution.
-    // Pins always trump movability so "pin to this day" actually sticks.
-    const lockedByDay: Record<
-      DayName,
-      { id: string; done: boolean; pinned?: boolean }[]
-    > = {
-      Sunday: [], Monday: [], Tuesday: [], Wednesday: [],
-      Thursday: [], Friday: [], Saturday: [],
-    };
-    const lockedBlocksByDay: Record<DayName, number> = {
-      Sunday: 0, Monday: 0, Tuesday: 0, Wednesday: 0,
-      Thursday: 0, Friday: 0, Saturday: 0,
-    };
-    const pulledFromTargetWeek = new Set<string>();
-
-    (Object.keys(baseSchedule.schedule) as DayName[]).forEach((day) => {
-      baseSchedule.schedule[day].forEach((entry) => {
-        const item = allOrdersById.get(entry.id)?.item;
-        const blocks = item ? calculateBlocks(item) : 0;
-        const isMovable =
-          !entry.pinned &&
-          item &&
-          PRE_WIP_STATUSES.has(item.status) &&
-          parseSquareSize(item.size) !== null;
-
-        if (isMovable) {
-          pulledFromTargetWeek.add(entry.id);
-        } else {
-          lockedByDay[day].push(entry);
-          lockedBlocksByDay[day] += blocks;
-        }
-      });
-    });
-
-    // Items currently scheduled in OTHER weeks are off-limits; we only shuffle
-    // around what's unscheduled or what was sitting in the target week.
+    // Anything locked across either target week is off-limits for the pool —
+    // prevents double placement. Items in OTHER weeks (further out) are also
+    // off-limits.
+    const lockedItemIds = new Set<string>();
+    plans.forEach((p) =>
+      (Object.keys(p.lockedByDay) as DayName[]).forEach((d) =>
+        p.lockedByDay[d].forEach((entry) => lockedItemIds.add(entry.id))
+      )
+    );
+    const targetWeekSet = new Set(targetWeekKeys);
     const scheduledInOtherWeeks = new Set<string>();
     schedules.forEach((s) => {
-      if (s.weekKey === targetWeekKey) return;
-      Object.values(s.schedule).forEach((dayItems) => {
-        dayItems.forEach((entry) => scheduledInOtherWeeks.add(entry.id));
-      });
+      if (targetWeekSet.has(s.weekKey)) return;
+      Object.values(s.schedule).forEach((dayItems) =>
+        dayItems.forEach((entry) => scheduledInOtherWeeks.add(entry.id))
+      );
     });
 
-    // Anything already locked into the target week (pinned, WIP, done, or
-    // custom-size) is excluded from the pool to prevent double-placement.
-    const lockedItemIds = new Set<string>();
-    (Object.keys(lockedByDay) as DayName[]).forEach((d) =>
-      lockedByDay[d].forEach((entry) => lockedItemIds.add(entry.id))
-    );
-
-    // Pool = standard-size pre-WIP items that aren't pinned elsewhere, locked
-    // into the target week, or pinned-to-sidebar by the user. Sort by due-date
-    // urgency so the most-due land in the earliest day with capacity.
     const pool = availableOrders
       .filter(
         (item) =>
@@ -720,60 +759,54 @@ export default function ProductionPlanningPage() {
       .filter((entry) => entry.blocks > 0)
       .sort(compareByDueUrgency);
 
-    // Sat/Sun fold into Monday for capacity accounting (matches display).
-    const remainingByTarget: Record<DayName, number> = {
-      Monday: Math.max(
-        0,
-        DAILY_CAPACITY_BLOCKS -
-          lockedBlocksByDay.Monday -
-          lockedBlocksByDay.Sunday -
-          lockedBlocksByDay.Saturday
-      ),
-      Tuesday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Tuesday),
-      Wednesday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Wednesday),
-      Thursday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Thursday),
-      Friday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Friday),
-      // Not auto-fill targets but typed for completeness.
-      Sunday: 0, Saturday: 0,
-    };
-    // Honors the per-day checkbox on each column. Days the user has unchecked
-    // are skipped entirely so the auto-plan never lands new work there.
-    const TARGET_DAYS: DayName[] = (
+    // Build the slot order: for each week (this → next), each enabled day
+    // (Mon → Fri minus user-unchecked). Most-due items land in the earliest
+    // slot with room.
+    const enabledDays: DayName[] = (
       ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as DayName[]
     ).filter((d) => autoPlanDays[d]);
-    const newPlacements: Record<DayName, { id: string; done: boolean }[]> = {
-      Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [],
-      Sunday: [], Saturday: [],
-    };
+    const slots: DaySlot[] = plans.flatMap((p) =>
+      enabledDays.map((day) => ({ weekKey: p.weekKey, day }))
+    );
+    const planByWeekKey = new Map(plans.map((p) => [p.weekKey, p]));
 
-    let placed = 0;
+    const placedIds = new Set<string>();
     for (const entry of pool) {
-      const day = TARGET_DAYS.find((d) => remainingByTarget[d] >= entry.blocks);
-      if (!day) continue;
-      remainingByTarget[day] -= entry.blocks;
-      newPlacements[day].push({ id: entry.id, done: false });
-      placed++;
+      const slot = slots.find((s) => {
+        const plan = planByWeekKey.get(s.weekKey)!;
+        return plan.remaining[s.day] >= entry.blocks;
+      });
+      if (!slot) continue;
+      const plan = planByWeekKey.get(slot.weekKey)!;
+      plan.remaining[slot.day] -= entry.blocks;
+      plan.newPlacements[slot.day].push({ id: entry.id, done: false });
+      placedIds.add(entry.id);
     }
 
-    const finalSchedule: WeeklyScheduleData = {
-      weekKey: targetWeekKey,
-      schedule: {
-        Sunday: lockedByDay.Sunday,
-        Monday: [...lockedByDay.Monday, ...newPlacements.Monday],
-        Tuesday: [...lockedByDay.Tuesday, ...newPlacements.Tuesday],
-        Wednesday: [...lockedByDay.Wednesday, ...newPlacements.Wednesday],
-        Thursday: [...lockedByDay.Thursday, ...newPlacements.Thursday],
-        Friday: [...lockedByDay.Friday, ...newPlacements.Friday],
-        Saturday: lockedByDay.Saturday,
-      },
-    };
+    // Persist each affected week.
+    for (const plan of plans) {
+      const finalSchedule: WeeklyScheduleData = {
+        weekKey: plan.weekKey,
+        schedule: {
+          Sunday: plan.lockedByDay.Sunday,
+          Monday: [...plan.lockedByDay.Monday, ...plan.newPlacements.Monday],
+          Tuesday: [...plan.lockedByDay.Tuesday, ...plan.newPlacements.Tuesday],
+          Wednesday: [
+            ...plan.lockedByDay.Wednesday,
+            ...plan.newPlacements.Wednesday,
+          ],
+          Thursday: [...plan.lockedByDay.Thursday, ...plan.newPlacements.Thursday],
+          Friday: [...plan.lockedByDay.Friday, ...plan.newPlacements.Friday],
+          Saturday: plan.lockedByDay.Saturday,
+        },
+      };
+      await updateSchedule(plan.weekKey, finalSchedule);
+    }
 
-    await updateSchedule(targetWeekKey, finalSchedule);
-    const pulled = pulledFromTargetWeek.size;
-    toast.success(
-      `Auto-filled ${placed} order${placed === 1 ? "" : "s"}` +
-        (pulled > 0 ? ` (${pulled} re-shuffled)` : "")
-    );
+    // Trigger the placement animation. Clear after the animation has had time
+    // to play out so re-running auto-plan re-flashes.
+    setRecentlyPlacedIds(placedIds);
+    setTimeout(() => setRecentlyPlacedIds(new Set()), 1600);
   };
 
   const thisWeekKey = format(
@@ -793,41 +826,42 @@ export default function ProductionPlanningPage() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
-        {/* Sidebar */}
-        <ProductionPlanningSidebar
-          orders={unscheduledOrders}
-          excludedItemIds={excludedItemIds}
-          onToggleExcluded={toggleExcluded}
+      <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
+        {/* Header — full width across the top, above sidebar + content. */}
+        <ProductionPlanningHeader
+          viewingNextWeek={viewingNextWeek}
+          hasScheduledOrders={!!currentSchedule}
+          onToggleWeek={() =>
+            setCurrentWeekKey(viewingNextWeek ? thisWeekKey : nextWeekKey)
+          }
+          onAutoFill={() => handleAutoFill()}
+          onClearWeek={() => {
+            if (currentSchedule) {
+              const clearedSchedule = {
+                ...currentSchedule,
+                schedule: {
+                  Sunday: [],
+                  Monday: [],
+                  Tuesday: [],
+                  Wednesday: [],
+                  Thursday: [],
+                  Friday: [],
+                  Saturday: [],
+                },
+              };
+              updateSchedule(currentWeekKey, clearedSchedule);
+              toast.success("Week cleared");
+            }
+          }}
         />
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <ProductionPlanningHeader
-            viewingNextWeek={viewingNextWeek}
-            hasScheduledOrders={!!currentSchedule}
-            onToggleWeek={() =>
-              setCurrentWeekKey(viewingNextWeek ? thisWeekKey : nextWeekKey)
-            }
-            onAutoFill={() => handleAutoFill(currentWeekKey)}
-            onClearWeek={() => {
-              if (currentSchedule) {
-                const clearedSchedule = {
-                  ...currentSchedule,
-                  schedule: {
-                    Sunday: [],
-                    Monday: [],
-                    Tuesday: [],
-                    Wednesday: [],
-                    Thursday: [],
-                    Friday: [],
-                    Saturday: [],
-                  },
-                };
-                updateSchedule(currentWeekKey, clearedSchedule);
-                toast.success("Week cleared");
-              }
-            }}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Sidebar — sits below the header so the header can stretch
+              edge-to-edge across the page. */}
+          <ProductionPlanningSidebar
+            orders={unscheduledOrders}
+            excludedItemIds={excludedItemIds}
+            onToggleExcluded={toggleExcluded}
           />
 
           {/* Day columns slide horizontally on week toggle. Direction is
@@ -874,6 +908,7 @@ export default function ProductionPlanningPage() {
                         date={date}
                         autoPlanEnabled={autoPlanDays[day]}
                         onToggleAutoPlan={() => toggleAutoPlanDay(day)}
+                        recentlyPlacedIds={recentlyPlacedIds}
                       />
                     </div>
                   );
