@@ -87,7 +87,7 @@ export function Calculator({
                       </h3>
                       <div style={printStyles.content}>
                         <div style={{ marginBottom: "12px" }}>
-                          <span style={printStyles.label}>Total Pieces:</span>{" "}
+                          <span style={printStyles.label}>Total Squares:</span>{" "}
                           <span style={printStyles.value}>
                             {colorDistribution.totalPieces}
                           </span>
@@ -96,7 +96,7 @@ export function Calculator({
                         <div style={{ marginBottom: "12px" }}>
                           <span style={printStyles.label}>Adjustment:</span>{" "}
                           <span style={printStyles.value}>
-                            {colorDistribution.adjustmentCount} pieces{" "}
+                            {colorDistribution.adjustmentCount} squares{" "}
                             {colorDistribution.adjustmentType === "add"
                               ? "added to"
                               : "subtracted from"}{" "}
@@ -269,12 +269,12 @@ export function Calculator({
         {colorDistribution && (
           <>
             <DistributionCard
-              title="Total Pieces"
+              title="Total Squares"
               content={colorDistribution.totalPieces.toString()}
             />
             <DistributionCard
               title="Adjustment"
-              content={`${colorDistribution.adjustmentCount} pieces ${
+              content={`${colorDistribution.adjustmentCount} squares ${
                 colorDistribution.adjustmentType === "add"
                   ? "added to"
                   : "subtracted from"

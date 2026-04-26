@@ -77,76 +77,6 @@ const TEMPLATES = [
     type: "pdf",
   },
   {
-    id: 10,
-    name: "14x7",
-    src: "/images/box-sizes/14x7.jpg",
-    orientation: "portrait",
-    type: "image",
-  },
-  {
-    id: 11,
-    name: "16x6",
-    src: "/images/box-sizes/16x6.jpg",
-    orientation: "portrait",
-    type: "image",
-  },
-  {
-    id: 12,
-    name: "16x10",
-    src: "/images/box-sizes/16x10.jpg",
-    orientation: "portrait",
-    type: "image",
-  },
-  {
-    id: 13,
-    name: "20x10",
-    src: "/images/box-sizes/20x10.jpg",
-    orientation: "portrait",
-    type: "image",
-  },
-  {
-    id: 14,
-    name: "20x12",
-    src: "/images/box-sizes/20x12.jpg",
-    orientation: "portrait",
-    type: "image",
-  },
-  {
-    id: 15,
-    name: "24x10",
-    src: "/images/box-sizes/24x10.jpg",
-    orientation: "portrait",
-    type: "image",
-  },
-  {
-    id: 16,
-    name: "24x12",
-    src: "/images/box-sizes/24x12.jpg",
-    orientation: "portrait",
-    type: "image",
-  },
-  {
-    id: 17,
-    name: "28x12",
-    src: "/images/box-sizes/28x12.jpg",
-    orientation: "portrait",
-    type: "image",
-  },
-  {
-    id: 18,
-    name: "28x16",
-    src: "/images/box-sizes/28x16.jpg",
-    orientation: "portrait",
-    type: "image",
-  },
-  {
-    id: 19,
-    name: "36x16",
-    src: "/images/box-sizes/36x16.jpg",
-    orientation: "portrait",
-    type: "image",
-  },
-  {
     id: 21,
     name: "",
     src: "/pdf/i-dont-do-anything.pdf",
@@ -190,11 +120,10 @@ const TEMPLATES = [
   },
 ];
 
-type TabKey = "images" | "boxes" | "pdfs";
+type TabKey = "images" | "pdfs";
 
 const TABS: { value: TabKey; label: string; icon: typeof ImageIcon }[] = [
   { value: "images", label: "Labels", icon: ImageIcon },
-  { value: "boxes", label: "Box Sizes", icon: ImageIcon },
   { value: "pdfs", label: "PDFs", icon: FileIcon },
 ];
 
@@ -298,12 +227,7 @@ export default function LabelPrinter() {
   };
 
   const selectedTemplateData = TEMPLATES.find((t) => t.id === selectedTemplate);
-  const imageTemplates = TEMPLATES.filter(
-    (t) => t.type === "image" && !/^\d+x\d+$/.test(t.name)
-  );
-  const boxTemplates = TEMPLATES.filter(
-    (t) => t.type === "image" && /^\d+x\d+$/.test(t.name)
-  );
+  const imageTemplates = TEMPLATES.filter((t) => t.type === "image");
   const pdfTemplates = TEMPLATES.filter((t) => t.type === "pdf");
 
   const renderImageGrid = (templates: typeof TEMPLATES) => (
@@ -355,7 +279,7 @@ export default function LabelPrinter() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-black dark:text-white">
       <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-full mx-auto px-2 sm:px-3 lg:px-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3">
             <div className="flex items-center gap-3 sm:flex-shrink-0 sm:min-w-[220px]">
               <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
@@ -415,7 +339,6 @@ export default function LabelPrinter() {
           <Card className="rounded-2xl">
             <CardContent className="p-6">
               {activeTab === "images" && renderImageGrid(imageTemplates)}
-              {activeTab === "boxes" && renderImageGrid(boxTemplates)}
               {activeTab === "pdfs" && (
                 <div className="space-y-8">
                   <div>
