@@ -66,8 +66,9 @@ export const ItemTableRow = memo(function ItemTableRow({
     <TableRow
       className={cn(
         index % 2 === 0
-          ? "bg-gray-200 dark:bg-gray-800"
-          : "bg-gray-100 dark:bg-gray-700",
+          ? "bg-white dark:bg-gray-800"
+          : "bg-gray-50 dark:bg-gray-800/60",
+        "hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors duration-150",
         pastDue &&
           item.status !== ItemStatus.Done &&
           "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]",
@@ -88,7 +89,7 @@ export const ItemTableRow = memo(function ItemTableRow({
         onContextMenu(e, item);
       }}
     >
-      <TableCell className="border border-gray-200 dark:border-gray-600 p-0 relative w-[3.125rem]">
+      <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 relative w-[3.125rem]">
         <div className="flex items-center justify-center w-full">
           <StatusRadialMenu
             currentStatus={item.status}
@@ -98,7 +99,7 @@ export const ItemTableRow = memo(function ItemTableRow({
       </TableCell>
 
       {visibleColumns.includes("Shipping" as ColumnTitles) && (
-        <TableCell className="border border-gray-200 dark:border-gray-600 p-0 text-center w-[3.625rem]">
+        <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 text-center w-[3.625rem]">
           <ShippingCell item={item} />
         </TableCell>
       )}
@@ -148,7 +149,7 @@ export const ItemTableRow = memo(function ItemTableRow({
           );
         })}
 
-      <TableCell className="border border-gray-200 dark:border-gray-600 p-0 text-center w-8">
+      <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 text-center w-8">
         <ItemActions
           item={item}
           onDelete={onDelete}

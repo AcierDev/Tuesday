@@ -278,27 +278,27 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       .map((_, index) => (
         <TableRow
           key={`skeleton-${index}`}
-          className={cn(
+          className={
             index % 2 === 0
-              ? "bg-gray-200 dark:bg-gray-800"
-              : "bg-gray-100 dark:bg-gray-700"
-          )}
+              ? "bg-white dark:bg-gray-800"
+              : "bg-gray-50 dark:bg-gray-800/60"
+          }
         >
-          <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+          <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-2 text-center">
             <Skeleton className="h-6 w-6 mx-auto" />
           </TableCell>
           {visibleColumns.map((columnName, i) => (
             <TableCell
               key={`${index}-${columnName}`}
-              className="border border-gray-200 dark:border-gray-600 p-2"
+              className="border-b border-gray-100 dark:border-gray-700/60 p-2"
             >
               <Skeleton className="h-6 w-full" />
             </TableCell>
           ))}
-          <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+          <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-2 text-center">
             <Skeleton className="h-6 w-20 mx-auto" />
           </TableCell>
-          <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+          <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-2 text-center">
             <div className="flex justify-center gap-2">
               <Skeleton className="h-8 w-8" />
               <Skeleton className="h-8 w-8" />

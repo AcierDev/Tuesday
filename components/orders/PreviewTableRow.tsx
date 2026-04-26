@@ -59,14 +59,15 @@ export function PreviewTableRow({
       key={item.id}
       className={cn(
         index % 2 === 0
-          ? "bg-gray-200 dark:bg-gray-800"
-          : "bg-gray-100 dark:bg-gray-700",
+          ? "bg-white dark:bg-gray-800"
+          : "bg-gray-50 dark:bg-gray-800/60",
+        "hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors duration-150",
         pastDue &&
           item.status !== ItemStatus.Done &&
           "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]"
       )}
     >
-      <TableCell className="border border-gray-200 dark:border-gray-600 p-2 text-center">
+      <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-2 text-center">
         <ShippingStatusIcon orderId={item.id} />
       </TableCell>
 

@@ -136,7 +136,7 @@ export function ItemTableCell({
     <TableCell
       key={`${item.id}-${columnName}`}
       className={cn(
-        "border border-gray-200 dark:border-gray-600 p-2 relative group",
+        "border-b border-gray-100 dark:border-gray-700/60 p-2 relative group",
         columnName === ColumnTitles.Customer_Name ? "w-auto" : "",
         columnName === ColumnTitles.Design ? "w-[23.38875%]" : "",
         columnName === ColumnTitles.Size ? "w-[13.2%]" : "",
