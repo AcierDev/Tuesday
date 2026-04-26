@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from "react";
-import { Item, ItemSizes, ItemDesigns } from "@/typings/types";
+import { Item, ItemSizes, ItemDesigns, ItemStatus } from "@/typings/types";
 
 interface UseOrderStatsProps {
   items: Item[] | undefined;
@@ -40,7 +40,7 @@ export function useOrderStats({ items, dueBadgeDays }: UseOrderStatsProps) {
     };
 
     items.forEach((item) => {
-      if (isItemDue(item)) {
+      if (isItemDue(item) || item.status === ItemStatus.New) {
         counts.all = (counts.all || 0) + 1;
 
         // Use flattened fields

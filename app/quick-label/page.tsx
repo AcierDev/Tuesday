@@ -306,19 +306,19 @@ export default function QuickLabelPage() {
       </div>
 
       <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-md">
-            <CardContent className="p-6 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+          <Card className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-md flex flex-col">
+            <CardContent className="p-6 flex-1 flex flex-col gap-4">
               <textarea
                 id="label-text"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Type whatever you want on the label…"
-                className="w-full min-h-[180px] rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-3 text-base resize-y focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-[180px] rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-3 text-base resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                 suppressHydrationWarning
               />
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 h-9">
                 <Label className="text-sm">Orientation</Label>
                 <div className="flex bg-gray-100 dark:bg-gray-700 rounded-md p-1 gap-1">
                   <button
@@ -346,22 +346,24 @@ export default function QuickLabelPage() {
                 </div>
               </div>
 
-              <div
-                className={`mx-auto border border-gray-200 dark:border-gray-700 rounded-md bg-white text-black flex items-center justify-center text-center p-4 overflow-hidden ${
-                  textOrientation === "landscape"
-                    ? "w-[300px] h-[200px]"
-                    : "w-[200px] h-[300px]"
-                }`}
-              >
+              <div className="flex-1 flex items-center justify-center">
                 <div
-                  className="w-full h-full flex items-center justify-center font-bold leading-tight whitespace-pre-wrap break-words"
-                  style={{ fontSize: "24px" }}
+                  className={`border border-gray-200 dark:border-gray-700 rounded-md bg-white text-black flex items-center justify-center text-center p-4 overflow-hidden ${
+                    textOrientation === "landscape"
+                      ? "w-[300px] h-[200px]"
+                      : "w-[200px] h-[300px]"
+                  }`}
                 >
-                  {text || (
-                    <span className="text-gray-400 font-normal text-sm">
-                      Preview
-                    </span>
-                  )}
+                  <div
+                    className="w-full h-full flex items-center justify-center font-bold leading-tight whitespace-pre-wrap break-words"
+                    style={{ fontSize: "24px" }}
+                  >
+                    {text || (
+                      <span className="text-gray-400 font-normal text-sm">
+                        Preview
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -387,8 +389,8 @@ export default function QuickLabelPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-md">
-            <CardContent className="p-6 space-y-4">
+          <Card className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-md flex flex-col">
+            <CardContent className="p-6 flex-1 flex flex-col gap-4">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -399,66 +401,74 @@ export default function QuickLabelPage() {
                 }
               />
 
-              {!upload ? (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="w-full min-h-[180px] rounded-md border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex flex-col items-center justify-center gap-2 text-gray-600 dark:text-gray-300 disabled:opacity-60"
-                >
-                  {uploading ? (
-                    <>
-                      <Loader2 className="h-8 w-8 animate-spin" />
-                      <span className="font-medium">Uploading…</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-8 w-8" />
-                      <span className="font-medium">
-                        Click to choose a file
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        PNG, JPG, or PDF · saved so other computers can print
-                      </span>
-                    </>
-                  )}
-                </button>
-              ) : (
-                <div className="flex items-center justify-between rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {upload.kind === "pdf" ? (
-                      <FileIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
+              <div className="h-[180px]">
+                {!upload ? (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="w-full h-full rounded-md border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex flex-col items-center justify-center gap-2 text-gray-600 dark:text-gray-300 disabled:opacity-60"
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                        <span className="font-medium">Uploading…</span>
+                      </>
                     ) : (
-                      <ImageIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                      <>
+                        <Upload className="h-8 w-8" />
+                        <span className="font-medium">
+                          Click to choose a file
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          PNG, JPG, or PDF · saved so other computers can print
+                        </span>
+                      </>
                     )}
-                    <span className="truncate text-sm">{upload.file.name}</span>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={clearUpload}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-
-              <div className="mx-auto border border-gray-200 dark:border-gray-700 rounded-md bg-white overflow-hidden w-[200px] h-[300px] flex items-center justify-center">
-                {upload ? (
-                  upload.kind === "pdf" ? (
-                    <embed
-                      src={upload.url}
-                      type="application/pdf"
-                      className="w-full h-full"
-                    />
-                  ) : (
-                    <img
-                      src={upload.url}
-                      alt="Label preview"
-                      className="w-full h-full object-contain"
-                    />
-                  )
+                  </button>
                 ) : (
-                  <span className="text-gray-400 font-normal text-sm">
-                    Preview
-                  </span>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                    <div className="flex items-center gap-2 min-w-0 max-w-full">
+                      {upload.kind === "pdf" ? (
+                        <FileIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                      ) : (
+                        <ImageIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                      )}
+                      <span className="truncate text-sm">{upload.file.name}</span>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={clearUpload}>
+                      <X className="mr-1 h-4 w-4" />
+                      Clear
+                    </Button>
+                  </div>
                 )}
+              </div>
+
+              {/* Spacer matching the left card's Orientation row height so previews align */}
+              <div className="h-9" aria-hidden />
+
+              <div className="flex-1 flex items-center justify-center">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-md bg-white overflow-hidden w-[200px] h-[300px] flex items-center justify-center">
+                  {upload ? (
+                    upload.kind === "pdf" ? (
+                      <embed
+                        src={upload.url}
+                        type="application/pdf"
+                        className="w-full h-full"
+                      />
+                    ) : (
+                      <img
+                        src={upload.url}
+                        alt="Label preview"
+                        className="w-full h-full object-contain"
+                      />
+                    )
+                  ) : (
+                    <span className="text-gray-400 font-normal text-sm">
+                      Preview
+                    </span>
+                  )}
+                </div>
               </div>
 
               <Button

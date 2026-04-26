@@ -144,6 +144,40 @@ export const NameCell: React.FC<NameCellProps> = ({
 
   const isPrintMarker = inputValue.trim().toLowerCase() === "print";
 
+  // Split off the first two real words. Color codes (&a) and brand prefixes
+  // ([EW]/[WF]/[SH]) don't count as words but stay grouped with the head.
+  const splitFirstTwoWords = (text: string): [string, string] => {
+    let wordCount = 0;
+    let inWord = false;
+    let i = 0;
+    let splitAt = text.length;
+    while (i < text.length) {
+      if (/^&[0-9a-f]/i.test(text.slice(i, i + 2))) {
+        i += 2;
+        continue;
+      }
+      const prefixMatch = text.slice(i).match(/^\[(EW|WF|SH)\]/);
+      if (prefixMatch) {
+        i += prefixMatch[0].length;
+        continue;
+      }
+      const isSpace = /\s/.test(text[i]!);
+      if (!isSpace && !inWord) {
+        wordCount++;
+        if (wordCount > 2) {
+          splitAt = i;
+          break;
+        }
+        inWord = true;
+      } else if (isSpace) {
+        inWord = false;
+      }
+      i++;
+    }
+    return [text.slice(0, splitAt), text.slice(splitAt)];
+  };
+  const [firstTwoWords, restOfName] = splitFirstTwoWords(inputValue);
+
   const verticalIcon = tags?.isVertical && (
     <Tooltip>
       <TooltipTrigger>
@@ -251,7 +285,12 @@ export const NameCell: React.FC<NameCellProps> = ({
                 Print
               </span>
             ) : (
-              parseMinecraftColors(inputValue, isDarkMode)
+              <>
+                {parseMinecraftColors(firstTwoWords, isDarkMode)}
+                <span className="opacity-55 text-[0.92em]">
+                  {parseMinecraftColors(restOfName, isDarkMode)}
+                </span>
+              </>
             )}
           </div>
         )}

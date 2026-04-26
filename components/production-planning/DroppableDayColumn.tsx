@@ -149,7 +149,7 @@ export function DroppableDayColumn({
           checked={autoPlanEnabled}
           onCheckedChange={() => onToggleAutoPlan()}
           aria-label={`Include ${day} in auto-plan`}
-          className="cursor-pointer"
+          className="cursor-pointer border-gray-300 dark:border-gray-700 opacity-60 hover:opacity-100 transition-opacity data-[state=checked]:bg-gray-400 data-[state=checked]:border-gray-400 dark:data-[state=checked]:bg-gray-600 dark:data-[state=checked]:border-gray-600 data-[state=checked]:text-white"
         />
       </div>
     </div>
