@@ -32,6 +32,16 @@ interface WeeklyScheduleState {
     day: DayName,
     itemId: string
   ) => Promise<void>;
+  toggleItemPinned: (
+    weekKey: string,
+    day: DayName,
+    itemId: string
+  ) => Promise<void>;
+  pinItemToDay: (
+    weekKey: string,
+    day: DayName,
+    itemId: string
+  ) => Promise<void>;
   startWatchingChanges: () => void;
   stopWatchingChanges: () => void;
   setCurrentWeek: (weekKey: string) => void;
@@ -207,6 +217,70 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
           await get().updateSchedule(weekKey, updatedSchedule);
         } catch (error) {
           toast.error("Failed to update item status");
+          throw error;
+        }
+      },
+
+      toggleItemPinned: async (
+        weekKey: string,
+        day: DayName,
+        itemId: string
+      ) => {
+        try {
+          const schedule = get().schedules.find((s) => s.weekKey === weekKey);
+          if (!schedule) throw new Error("Schedule not found");
+
+          const updatedSchedule = {
+            ...schedule,
+            schedule: {
+              ...schedule.schedule,
+              [day]: schedule.schedule[day].map((item) =>
+                item.id === itemId ? { ...item, pinned: !item.pinned } : item
+              ),
+            },
+          };
+
+          await get().updateSchedule(weekKey, updatedSchedule);
+        } catch (error) {
+          toast.error("Failed to update pin");
+          throw error;
+        }
+      },
+
+      // Move (or insert) an item into a target day with pinned=true. Strips the
+      // entry out of every other day in the same week first, so pinning from
+      // anywhere — sidebar, another day — converges on a single placement.
+      pinItemToDay: async (
+        weekKey: string,
+        day: DayName,
+        itemId: string
+      ) => {
+        try {
+          let schedule = get().schedules.find((s) => s.weekKey === weekKey);
+          if (!schedule) {
+            await get().createWeek(weekKey);
+            schedule = get().schedules.find((s) => s.weekKey === weekKey);
+            if (!schedule) throw new Error("Failed to create week");
+          }
+
+          const stripped = Object.fromEntries(
+            (Object.keys(schedule.schedule) as DayName[]).map((d) => [
+              d,
+              schedule!.schedule[d].filter((entry) => entry.id !== itemId),
+            ])
+          ) as WeeklyScheduleData["schedule"];
+
+          stripped[day] = [
+            ...stripped[day],
+            { id: itemId, done: false, pinned: true },
+          ];
+
+          await get().updateSchedule(weekKey, {
+            ...schedule,
+            schedule: stripped,
+          });
+        } catch (error) {
+          toast.error("Failed to pin item");
           throw error;
         }
       },

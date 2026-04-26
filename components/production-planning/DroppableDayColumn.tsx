@@ -8,14 +8,17 @@ import { DraggableOrderCard } from "./DraggableOrderCard";
 import { CapacityIndicator } from "./CapacityIndicator";
 import { cn } from "@/utils/functions";
 
+type DayColumnOrder = ScheduledOrder & { pinned: boolean };
+
 interface DroppableDayColumnProps {
   day: DayName;
   dateLabel: string;
-  orders: ScheduledOrder[];
+  orders: DayColumnOrder[];
   ordersById: Map<string, OrderMeta>;
   totalBlocks: number;
   capacity: number;
   onUnschedule: (itemId: string, actualDay: DayName) => void;
+  onTogglePin: (itemId: string, actualDay: DayName) => void;
   date: Date;
 }
 
@@ -27,6 +30,7 @@ export function DroppableDayColumn({
   totalBlocks,
   capacity,
   onUnschedule,
+  onTogglePin,
   date,
 }: DroppableDayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
@@ -34,7 +38,11 @@ export function DroppableDayColumn({
     data: { day, totalBlocks },
   });
 
-  const orderIds = orders.map(o => o.itemId);
+  // Pinned entries always sit at the bottom of the column. Within each
+  // partition the original order is preserved so manual reordering still works.
+  const unpinned = orders.filter((o) => !o.pinned);
+  const pinned = orders.filter((o) => o.pinned);
+  const orderedIds = [...unpinned, ...pinned].map((o) => o.itemId);
 
   return (
     <div
@@ -55,14 +63,14 @@ export function DroppableDayColumn({
 
       {/* List */}
       <div className="flex-1 p-2 overflow-y-auto min-h-[150px]">
-        <SortableContext items={orderIds} strategy={verticalListSortingStrategy}>
+        <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
           {orders.length === 0 ? (
             <div className="h-full flex items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg m-1">
               <span className="text-xs text-gray-400 font-medium">Drop here</span>
             </div>
           ) : (
             <div className="space-y-2">
-              {orders.map((order) => {
+              {unpinned.map((order) => {
                 const meta = ordersById.get(order.itemId);
                 if (!meta) return null;
                 return (
@@ -73,10 +81,43 @@ export function DroppableDayColumn({
                     isScheduled
                     scheduledDay={day}
                     onUnschedule={() => onUnschedule(order.itemId, order.day)}
+                    onTogglePin={() => onTogglePin(order.itemId, order.day)}
+                    isPinned={false}
                     referenceDate={date}
                   />
                 );
               })}
+              {pinned.length > 0 && (
+                <div className="pt-3 mt-1 border-t border-dashed border-amber-300/60 dark:border-amber-700/40">
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400 px-1 pb-2 flex items-center gap-1">
+                    <span className="inline-block w-1 h-1 rounded-full bg-amber-500" />
+                    Pinned
+                  </div>
+                  <div className="space-y-2">
+                    {pinned.map((order) => {
+                      const meta = ordersById.get(order.itemId);
+                      if (!meta) return null;
+                      return (
+                        <DraggableOrderCard
+                          key={order.itemId}
+                          id={order.itemId}
+                          meta={meta}
+                          isScheduled
+                          scheduledDay={day}
+                          onUnschedule={() =>
+                            onUnschedule(order.itemId, order.day)
+                          }
+                          onTogglePin={() =>
+                            onTogglePin(order.itemId, order.day)
+                          }
+                          isPinned
+                          referenceDate={date}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </SortableContext>

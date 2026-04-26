@@ -9,9 +9,11 @@ import { DraggableOrderCard } from "./DraggableOrderCard";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { cn } from "@/utils/functions";
+import { DayName } from "@/typings/types";
 
 interface ProductionPlanningSidebarProps {
   orders: OrderMeta[];
+  onPinToDay: (itemId: string, day: DayName) => void;
 }
 
 type FilterOption = "all" | "overdue" | "thisWeek" | "nextWeek" | "future" | "noDue";
@@ -25,7 +27,7 @@ const filterOptions: { value: FilterOption; label: string }[] = [
   { value: "noDue", label: "No Due Date" },
 ];
 
-export function ProductionPlanningSidebar({ orders }: ProductionPlanningSidebarProps) {
+export function ProductionPlanningSidebar({ orders, onPinToDay }: ProductionPlanningSidebarProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<FilterOption>("all");
   
@@ -110,6 +112,7 @@ export function ProductionPlanningSidebar({ orders }: ProductionPlanningSidebarP
                 key={meta.id}
                 id={meta.id}
                 meta={meta}
+                onPinToDay={(day) => onPinToDay(meta.id, day)}
               />
             ))
           )}

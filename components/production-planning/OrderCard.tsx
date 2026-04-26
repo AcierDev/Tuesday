@@ -1,11 +1,17 @@
 "use client";
 
+import { useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ColumnTitles, DayName, ItemStatus } from "@/typings/types";
 import { OrderMeta, DueBucket } from "./types";
 import { cn } from "@/utils/functions";
-import { X } from "lucide-react";
+import { Pin, X } from "lucide-react";
 import { DesignBlends } from "@/typings/constants";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
 import { useTheme } from "next-themes";
@@ -68,7 +74,17 @@ interface OrderCardProps {
   onUnschedule?: () => void;
   showScheduleButtons?: boolean;
   referenceDate?: Date;
+  isPinned?: boolean;
+  // Toggle pin on a scheduled card. Called when isScheduled=true.
+  onTogglePin?: () => void;
+  // Pin an unscheduled card to a specific day. Called when isScheduled=false.
+  onPinToDay?: (day: DayName) => void;
 }
+
+// Day options exposed in the sidebar pin picker. Mon–Thu match the auto-plan
+// target days; we deliberately omit Fri/Sat/Sun since those aren't normal
+// production days.
+const PIN_TARGET_DAYS: DayName[] = ["Monday", "Tuesday", "Wednesday", "Thursday"];
 
 const bucketColors: Record<DueBucket, string> = {
   overdue: "border-l-red-500",
@@ -106,10 +122,14 @@ export function OrderCard({
   onUnschedule,
   showScheduleButtons = false,
   referenceDate,
+  isPinned = false,
+  onTogglePin,
+  onPinToDay,
 }: OrderCardProps) {
   const { theme } = useTheme();
   const { settings } = useOrderSettings();
   const isDark = theme === "dark";
+  const [pinPickerOpen, setPinPickerOpen] = useState(false);
 
   const size = meta.item.size || "N/A";
   const customerName = meta.item.customerName || "Unknown";
@@ -165,16 +185,88 @@ export function OrderCard({
           </div>
         </div>
 
-        {isScheduled && onUnschedule && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity -mr-1 -mt-1 text-gray-400 hover:text-red-500"
-            onClick={onUnschedule}
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        )}
+        <div className="flex flex-col items-end gap-0.5 shrink-0 -mr-1 -mt-1">
+          {/* Pin (scheduled): direct toggle. Sidebar: opens day picker. */}
+          {isScheduled && onTogglePin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onTogglePin();
+              }}
+              className={cn(
+                "h-6 w-6 transition-opacity",
+                isPinned
+                  ? "text-amber-600 dark:text-amber-400 opacity-100"
+                  : "text-gray-400 hover:text-amber-500 opacity-0 group-hover:opacity-100"
+              )}
+              title={isPinned ? "Unpin from this day" : "Pin to this day"}
+            >
+              {isPinned ? (
+                <Pin className="h-3.5 w-3.5 fill-current" />
+              ) : (
+                <Pin className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          )}
+          {!isScheduled && onPinToDay && (
+            <Popover open={pinPickerOpen} onOpenChange={setPinPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="h-6 w-6 text-gray-400 hover:text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Pin to a specific day"
+                >
+                  <Pin className="h-3.5 w-3.5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="p-2 w-auto"
+                align="end"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <div className="text-[10px] uppercase tracking-wider text-gray-500 px-1 pb-1">
+                  Pin to
+                </div>
+                <div className="flex gap-1">
+                  {PIN_TARGET_DAYS.map((day) => (
+                    <Button
+                      key={day}
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 text-xs px-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPinToDay(day);
+                        setPinPickerOpen(false);
+                      }}
+                    >
+                      {dayAbbr[day]}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          {isScheduled && onUnschedule && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onUnschedule();
+              }}
+              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {showScheduleButtons && !isScheduled && onSchedule && (

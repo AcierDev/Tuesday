@@ -29,6 +29,10 @@ export interface WeeklyScheduleData {
     [key in DayName]: Array<{
       id: string;
       done: boolean;
+      // Pinned entries are forced to stay on this day — auto-plan treats them
+      // as locked capacity and won't redistribute them. Optional + defaults to
+      // false so existing schedule docs stay backward-compatible.
+      pinned?: boolean;
     }>;
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   addWeeks,
   subWeeks,
@@ -92,6 +92,24 @@ const DAY_OFFSET_FROM_WEEK_START: Record<DayName, number> = {
 // Sat/Sun work folds into Monday's column for display.
 const DAYS_FOLDED_INTO_MONDAY: DayName[] = ["Saturday", "Sunday"];
 
+// Per-day opt-in for the auto-plan run. Stored in localStorage so the user's
+// pick sticks across reloads. Defaults match the original Mon–Thu target set.
+type AutoPlanDayMap = Record<DayName, boolean>;
+const AUTO_PLAN_STORAGE_KEY = "production-planning:auto-plan-days";
+const AUTO_PLAN_DEFAULTS: AutoPlanDayMap = {
+  Sunday: false,
+  Monday: true,
+  Tuesday: true,
+  Wednesday: true,
+  Thursday: true,
+  Friday: false,
+  Saturday: false,
+};
+
+// Local extension of ScheduledOrder that carries the pinned flag through to
+// the day column (so it can sort pinned entries to the bottom).
+type ScheduledDisplayOrder = ScheduledOrder & { pinned: boolean };
+
 function classifyDueBucket(
   dueValue: string | null | undefined,
   today: Date,
@@ -155,12 +173,41 @@ export default function ProductionPlanningPage() {
     createWeek,
     removeItemFromDay,
     fetchSchedules,
+    toggleItemPinned,
+    pinItemToDay,
   } = useWeeklyScheduleStore();
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [currentWeekKey, setCurrentWeekKey] = useState(() =>
     format(startOfWeek(new Date(), { weekStartsOn: 0 }), "yyyy-MM-dd")
   );
+
+  const [autoPlanDays, setAutoPlanDays] =
+    useState<AutoPlanDayMap>(AUTO_PLAN_DEFAULTS);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(AUTO_PLAN_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<AutoPlanDayMap>;
+      setAutoPlanDays({ ...AUTO_PLAN_DEFAULTS, ...parsed });
+    } catch (err) {
+      console.warn("Failed to load auto-plan day prefs", err);
+    }
+  }, []);
+  const toggleAutoPlanDay = useCallback((day: DayName) => {
+    setAutoPlanDays((prev) => {
+      const next = { ...prev, [day]: !prev[day] };
+      try {
+        window.localStorage.setItem(
+          AUTO_PLAN_STORAGE_KEY,
+          JSON.stringify(next)
+        );
+      } catch (err) {
+        console.warn("Failed to save auto-plan day prefs", err);
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     fetchSchedules();
@@ -324,7 +371,7 @@ export default function ProductionPlanningPage() {
   const dayGroups = useMemo(() => {
     const groups: Record<
       DayName,
-      { orders: ScheduledOrder[]; totalBlocks: number }
+      { orders: ScheduledDisplayOrder[]; totalBlocks: number }
     > = {
       Sunday: { orders: [], totalBlocks: 0 },
       Monday: { orders: [], totalBlocks: 0 },
@@ -350,6 +397,7 @@ export default function ProductionPlanningPage() {
             itemId: item.id,
             weekKey: currentWeekKey,
             day: dayName,
+            pinned: !!item.pinned,
           });
           groups[targetDay].totalBlocks += meta.blocks;
         });
@@ -573,11 +621,16 @@ export default function ProductionPlanningPage() {
     }
 
     // Partition each day's existing items into:
-    //   - locked: items past pre-WIP, or any item whose size we can't parse
-    //     (custom/named sizes — we don't auto-place them and we don't know
-    //     their block contribution, so they sit where they are).
-    //   - movable: pre-WIP + standard-size items, eligible for redistribution.
-    const lockedByDay: Record<DayName, { id: string; done: boolean }[]> = {
+    //   - locked: pinned entries, items past pre-WIP, or any item whose size
+    //     we can't parse (custom/named sizes — we don't auto-place them and
+    //     don't know their block contribution).
+    //   - movable: unpinned pre-WIP + standard-size items, eligible for
+    //     redistribution.
+    // Pins always trump movability so "pin to this day" actually sticks.
+    const lockedByDay: Record<
+      DayName,
+      { id: string; done: boolean; pinned?: boolean }[]
+    > = {
       Sunday: [], Monday: [], Tuesday: [], Wednesday: [],
       Thursday: [], Friday: [], Saturday: [],
     };
@@ -592,6 +645,7 @@ export default function ProductionPlanningPage() {
         const item = allOrdersById.get(entry.id)?.item;
         const blocks = item ? calculateBlocks(item) : 0;
         const isMovable =
+          !entry.pinned &&
           item &&
           PRE_WIP_STATUSES.has(item.status) &&
           parseSquareSize(item.size) !== null;
@@ -615,11 +669,21 @@ export default function ProductionPlanningPage() {
       });
     });
 
-    // Pool = every standard-size pre-WIP item that isn't pinned in another week.
-    // Sort by due-date urgency so the most-due land in the earliest day with
-    // capacity.
+    // Anything already locked into the target week (pinned, WIP, done, or
+    // custom-size) is excluded from the pool to prevent double-placement.
+    const lockedItemIds = new Set<string>();
+    (Object.keys(lockedByDay) as DayName[]).forEach((d) =>
+      lockedByDay[d].forEach((entry) => lockedItemIds.add(entry.id))
+    );
+
+    // Pool = standard-size pre-WIP items that aren't pinned elsewhere or
+    // locked into the target week. Sort by due-date urgency so the most-due
+    // land in the earliest day with capacity.
     const pool = availableOrders
-      .filter((item) => !scheduledInOtherWeeks.has(item.id))
+      .filter(
+        (item) =>
+          !scheduledInOtherWeeks.has(item.id) && !lockedItemIds.has(item.id)
+      )
       .map((item) => ({
         id: item.id,
         item,
@@ -641,13 +705,18 @@ export default function ProductionPlanningPage() {
       Tuesday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Tuesday),
       Wednesday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Wednesday),
       Thursday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Thursday),
+      Friday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Friday),
       // Not auto-fill targets but typed for completeness.
-      Sunday: 0, Friday: 0, Saturday: 0,
+      Sunday: 0, Saturday: 0,
     };
-    const TARGET_DAYS: DayName[] = ["Monday", "Tuesday", "Wednesday", "Thursday"];
+    // Honors the per-day checkbox on each column. Days the user has unchecked
+    // are skipped entirely so the auto-plan never lands new work there.
+    const TARGET_DAYS: DayName[] = (
+      ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as DayName[]
+    ).filter((d) => autoPlanDays[d]);
     const newPlacements: Record<DayName, { id: string; done: boolean }[]> = {
-      Monday: [], Tuesday: [], Wednesday: [], Thursday: [],
-      Sunday: [], Friday: [], Saturday: [],
+      Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [],
+      Sunday: [], Saturday: [],
     };
 
     let placed = 0;
@@ -698,7 +767,12 @@ export default function ProductionPlanningPage() {
     >
       <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
         {/* Sidebar */}
-        <ProductionPlanningSidebar orders={unscheduledOrders} />
+        <ProductionPlanningSidebar
+          orders={unscheduledOrders}
+          onPinToDay={(itemId, day) =>
+            pinItemToDay(currentWeekKey, day, itemId)
+          }
+        />
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0">
@@ -775,6 +849,9 @@ export default function ProductionPlanningPage() {
                       capacity={DAILY_CAPACITY_BLOCKS}
                       onUnschedule={(id, actualDay) =>
                         removeItemFromDay(currentWeekKey, actualDay, id)
+                      }
+                      onTogglePin={(id, actualDay) =>
+                        toggleItemPinned(currentWeekKey, actualDay, id)
                       }
                       date={date}
                     />
