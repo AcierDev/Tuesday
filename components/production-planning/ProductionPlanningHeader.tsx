@@ -85,24 +85,28 @@ export function ProductionPlanningHeader({
 
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onAutoFillThisWeek}
-            className="border-primary/40 text-primary hover:bg-primary/10"
-          >
-            <Wand2 className="h-4 w-4 mr-1.5" />
-            Auto-fill This Week
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onAutoFillNextWeek}
-            className="border-primary/40 text-primary hover:bg-primary/10"
-          >
-            <Wand2 className="h-4 w-4 mr-1.5" />
-            Auto-fill Next Week
-          </Button>
+          <div className="inline-flex items-stretch rounded-md border border-primary/40 overflow-hidden">
+            <span className="flex items-center gap-1.5 px-3 text-sm font-medium text-primary bg-primary/5">
+              <Wand2 className="h-4 w-4" />
+              Auto-fill
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onAutoFillThisWeek}
+              className="rounded-none border-l border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
+            >
+              This Week
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onAutoFillNextWeek}
+              className="rounded-none border-l border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
+            >
+              Next Week
+            </Button>
+          </div>
           <Button
             variant="outline"
             size="sm"
