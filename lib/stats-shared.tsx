@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Activity, Item, OrderTrackingInfo } from "@/typings/types";
+import { DayBucket, GluedEvent } from "@/lib/production-metrics";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -712,6 +713,87 @@ export function useTrackingInfos(): TrackingState {
       cancelled = true;
     };
   }, []);
+
+  return state;
+}
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🪝 useGluedStats — server-computed glued events + buckets per range  ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+const GLUED_STATS_CACHE_TTL_MS = 60_000;
+
+export type GluedStatsPayload = {
+  events: GluedEvent[];
+  buckets: DayBucket[];
+  range: { start: string; end: string; days: number };
+};
+
+type GluedStatsState = {
+  data: GluedStatsPayload | null;
+  loading: boolean;
+  error: string | null;
+};
+
+const gluedStatsCache = new Map<
+  number,
+  { data: GluedStatsPayload; ts: number }
+>();
+const gluedStatsInflight = new Map<number, Promise<GluedStatsPayload>>();
+
+async function fetchGluedStats(days: number): Promise<GluedStatsPayload> {
+  const existing = gluedStatsInflight.get(days);
+  if (existing) return existing;
+  const promise = (async () => {
+    try {
+      const res = await fetch(`/api/stats/glued?days=${days}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as GluedStatsPayload;
+      gluedStatsCache.set(days, { data, ts: Date.now() });
+      return data;
+    } finally {
+      gluedStatsInflight.delete(days);
+    }
+  })();
+  gluedStatsInflight.set(days, promise);
+  return promise;
+}
+
+export function useGluedStats(days: number): GluedStatsState {
+  const [state, setState] = useState<GluedStatsState>(() => {
+    const cached = gluedStatsCache.get(days);
+    if (cached && Date.now() - cached.ts < GLUED_STATS_CACHE_TTL_MS) {
+      return { data: cached.data, loading: false, error: null };
+    }
+    return { data: null, loading: true, error: null };
+  });
+
+  useEffect(() => {
+    const cached = gluedStatsCache.get(days);
+    if (cached && Date.now() - cached.ts < GLUED_STATS_CACHE_TTL_MS) {
+      setState({ data: cached.data, loading: false, error: null });
+      return;
+    }
+    setState((s) => ({ ...s, loading: true, error: null }));
+    let cancelled = false;
+    fetchGluedStats(days)
+      .then((data) => {
+        if (cancelled) return;
+        setState({ data, loading: false, error: null });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setState({
+          data: null,
+          loading: false,
+          error:
+            err instanceof Error ? err.message : "Failed to load glued stats",
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [days]);
 
   return state;
 }

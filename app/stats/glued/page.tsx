@@ -2,13 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
-import {
-  bucketGluedSquaresByDay,
-  buildGluedEvents,
-  DayBucket,
-  GluedEvent,
-} from "@/lib/production-metrics";
+import { DayBucket, GluedEvent } from "@/lib/production-metrics";
 import {
   ChartPoint,
   DEFAULT_RANGE,
@@ -17,8 +11,7 @@ import {
   RangeSelector,
   StatTile,
   TimeSeriesChart,
-  useActivities,
-  useAllItems,
+  useGluedStats,
 } from "@/lib/stats-shared";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -91,25 +84,13 @@ function summarizeWorkingDays(buckets: DayBucket[]): WorkingDayStats {
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function GluedPage() {
-  const { items, loading: itemsLoading, error: itemsError } = useAllItems();
-  const { activities, loading: actLoading, error: actError } = useActivities();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
   const [showAllDays, setShowAllDays] = useState(false);
 
   const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
   const rangeLabel = RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
 
-  const data = useMemo(() => {
-    if (!items || !activities) return null;
-    const today = laDayKey();
-    const start = shiftDayKey(today, -(days - 1));
-    const allEvents = buildGluedEvents(activities, items);
-    const events = allEvents.filter(
-      (e) => e.dayKey >= start && e.dayKey <= today
-    );
-    const buckets = bucketGluedSquaresByDay(events, start, today);
-    return { events, buckets };
-  }, [items, activities, days]);
+  const { data, loading, error } = useGluedStats(days);
 
   const stats = useMemo(
     () => (data ? summarizeWorkingDays(data.buckets) : null),
@@ -147,9 +128,6 @@ export default function GluedPage() {
   const velocityDelta = stats ? stats.recentAverage - stats.priorAverage : 0;
   const velocityTone: "good" | "bad" | "neutral" =
     velocityDelta > 5 ? "good" : velocityDelta < -5 ? "bad" : "neutral";
-
-  const loading = itemsLoading || actLoading;
-  const error = itemsError || actError;
 
   return (
     <>
