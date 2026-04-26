@@ -217,7 +217,7 @@ export function Calculator({
                   onClick={() => onSizeChange(size)}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium ring-1 ring-inset transition-all duration-150 hover:-translate-y-0.5 hover:scale-[1.04] active:scale-95 ${
                     isActive
-                      ? "bg-blue-600 text-white ring-blue-600 shadow-md shadow-blue-600/40 hover:shadow-lg hover:shadow-blue-600/50"
+                      ? "bg-blue-600 text-white ring-blue-600 shadow-md shadow-blue-600/10 hover:shadow-lg hover:shadow-blue-600/15"
                       : "bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60 hover:shadow-sm"
                   }`}
                 >
@@ -230,7 +230,7 @@ export function Calculator({
               onClick={() => onSizeChange("custom")}
               className={`px-3 py-1.5 rounded-full text-sm font-medium ring-1 ring-inset transition-all duration-150 hover:-translate-y-0.5 hover:scale-[1.04] active:scale-95 ${
                 selectedSize === "custom"
-                  ? "bg-blue-600 text-white ring-blue-600 shadow-md shadow-blue-600/40 hover:shadow-lg hover:shadow-blue-600/50"
+                  ? "bg-blue-600 text-white ring-blue-600 shadow-md shadow-blue-600/10 hover:shadow-lg hover:shadow-blue-600/15"
                   : "bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60 hover:shadow-sm"
               }`}
             >
