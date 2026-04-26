@@ -260,8 +260,18 @@ export function Navbar({
   const [activeTab, setActiveTab] = useState(pathname);
   const [settingsHovered, setSettingsHovered] = useState(false);
   const settingsContainerRef = useRef<HTMLDivElement | null>(null);
-  // Track open slider popovers so the menu doesn't fade out while one is up.
-  const [sliderPopoverOpen, setSliderPopoverOpen] = useState(false);
+  // Which slider popover (if any) is currently open. Single source of truth so
+  // clicking a different trigger cleanly switches instead of closing the menu.
+  const [openSliderId, setOpenSliderId] = useState<string | null>(null);
+  const sliderPopoverOpen = openSliderId !== null;
+  const setSliderOpen = useCallback(
+    (id: string) => (open: boolean) =>
+      setOpenSliderId((current) => {
+        if (open) return id;
+        return current === id ? null : current;
+      }),
+    []
+  );
   const { settings, updateSettings } = useOrderSettings();
   const [printHovered, setPrintHovered] = useState(false);
   const printLeaveTimerRef = useRef<number | null>(null);
@@ -298,11 +308,10 @@ export function Navbar({
   }, []);
 
   const toggleSettingsMenu = useCallback(() => {
-    setSettingsHovered((open) => !open);
-  }, []);
-
-  const closeSettingsHover = useCallback(() => {
-    setSettingsHovered(false);
+    setSettingsHovered((open) => {
+      if (open) setOpenSliderId(null);
+      return !open;
+    });
   }, []);
 
   // Close the settings menu on outside click.
@@ -316,6 +325,7 @@ export function Navbar({
       const root = settingsContainerRef.current;
       if (root && !root.contains(e.target as Node)) {
         setSettingsHovered(false);
+        setOpenSliderId(null);
       }
     };
     document.addEventListener("mousedown", onPointerDown);
@@ -684,10 +694,8 @@ export function Navbar({
                           min={1}
                           max={14}
                           onChange={(v) => updateSettings({ dueBadgeDays: v })}
-                          onOpenChange={(open) => {
-                            setSliderPopoverOpen(open);
-                            if (!open) closeSettingsHover();
-                          }}
+                          open={openSliderId === value}
+                          onOpenChange={setSliderOpen(value)}
                           description="Days before due date when the day-counter badge turns yellow."
                         />
                       );
@@ -702,10 +710,8 @@ export function Navbar({
                           min={0}
                           max={30}
                           onChange={(v) => updateSettings({ onDeckMinCount: v })}
-                          onOpenChange={(open) => {
-                            setSliderPopoverOpen(open);
-                            if (!open) closeSettingsHover();
-                          }}
+                          open={openSliderId === value}
+                          onOpenChange={setSliderOpen(value)}
                           description="Minimum items kept on deck. Yellow/red items promote first, then closest-to-due items from New fill the rest."
                         />
                       );
@@ -724,10 +730,8 @@ export function Navbar({
                           onEnabledChange={(on) =>
                             updateSettings({ recentEditHours: on ? 24 : undefined })
                           }
-                          onOpenChange={(open) => {
-                            setSliderPopoverOpen(open);
-                            if (!open) closeSettingsHover();
-                          }}
+                          open={openSliderId === value}
+                          onOpenChange={setSliderOpen(value)}
                           description={`Hours the blue circle shows on recently edited items.`}
                           offDescription="The recent edit indicator is turned off."
                         />

@@ -263,10 +263,8 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
 
       {action === "openLabel" && (
         <Dialog open={isLabelOpen} onOpenChange={setIsLabelOpen}>
-          <DialogContent className="max-w-4xl bg-secondary text-secondary-foreground border-border">
-            <DialogHeader>
-              <DialogTitle>Shipping Label</DialogTitle>
-            </DialogHeader>
+          <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto bg-secondary text-secondary-foreground border-border">
+            <DialogTitle className="sr-only">Shipping Label</DialogTitle>
             <ViewLabel
               orderId={item.id}
               item={item}

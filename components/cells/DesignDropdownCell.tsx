@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,16 +6,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { XCircleIcon } from "lucide-react";
 import { boardConfig } from "../../config/boardconfig";
-import { DesignBlends, ItemDesignImages } from "@/typings/constants";
+import { DesignBlends } from "@/typings/constants";
 import { toast } from "sonner";
 import { ColumnTitles, ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
@@ -58,34 +52,8 @@ export const DesignDropdownCell = ({
   disabled?: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [hoveredDesign, setHoveredDesign] = useState(null);
-  const [showPopover, setShowPopover] = useState(false);
-  const hoverTimeoutRef = useRef(null);
 
   const { updateItem } = useOrderStore();
-
-  const handleMouseEnter = useCallback((option) => {
-    setHoveredDesign(option);
-    hoverTimeoutRef.current = setTimeout(() => {
-      setShowPopover(true);
-    }, 1000); // 1-second delay
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-    setHoveredDesign(null);
-    setShowPopover(false);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleUpdate = async (newValue) => {
     try {

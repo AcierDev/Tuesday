@@ -39,7 +39,8 @@ interface SliderSettingPopoverProps {
   max: number;
   step?: number;
   onChange: (value: number) => void;
-  /** Forwarded to mouse-leave on the navbar wrapper so the menu doesn't fade out while a popover is open. */
+  /** Controlled open state. When provided, parent owns which popover is open. */
+  open?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** Optional on/off toggle. When provided and `enabled === false`, the slider hides and the pill reads "Off". */
   enabled?: boolean;
@@ -56,6 +57,7 @@ export const SliderSettingPopover = ({
   max,
   step = 1,
   onChange,
+  open,
   onOpenChange,
   enabled,
   onEnabledChange,
@@ -69,7 +71,7 @@ export const SliderSettingPopover = ({
   );
 
   return (
-    <Popover onOpenChange={onOpenChange}>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <motion.button
           variants={ITEM_VARIANTS}

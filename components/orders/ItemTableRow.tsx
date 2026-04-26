@@ -7,8 +7,9 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { MergedShippingCell } from "../cells/MergedShippingCell";
 import { ItemTableCell } from "./ItemTableCell";
 import { ItemActions } from "./ItemActions";
-import { cn, isPastDue } from "@/utils/functions";
+import { cn } from "@/utils/functions";
 import {
+  Activity,
   ColumnTitles,
   Item,
   ItemStatus,
@@ -16,6 +17,43 @@ import {
   DayName,
 } from "@/typings/types";
 import { boardConfig } from "@/config/boardconfig";
+import { useActivities } from "@/lib/stats-shared";
+import { useOrderSettings } from "@/contexts/OrderSettingsContext";
+
+// Item ids whose most recent status_change activity falls inside the
+// `recentEditHours` window. Computed once per (activities, hours) pair and
+// shared across every row via the module-level cache so that mounting N
+// rows doesn't recompute N times.
+let recentlyMovedCache: {
+  activities: Activity[];
+  hours: number;
+  set: Set<string>;
+} | null = null;
+
+function useRecentlyMovedIds(): Set<string> {
+  const { activities } = useActivities();
+  const { settings } = useOrderSettings();
+  const hours = settings.recentEditHours;
+
+  return useMemo(() => {
+    if (!activities || hours === undefined) return new Set<string>();
+    if (
+      recentlyMovedCache &&
+      recentlyMovedCache.activities === activities &&
+      recentlyMovedCache.hours === hours
+    ) {
+      return recentlyMovedCache.set;
+    }
+    const cutoff = Date.now() - hours * 60 * 60 * 1000;
+    const set = new Set<string>();
+    for (const a of activities) {
+      if (a.type !== "status_change") continue;
+      if (a.timestamp >= cutoff) set.add(a.itemId);
+    }
+    recentlyMovedCache = { activities, hours, set };
+    return set;
+  }, [activities, hours]);
+}
 
 interface ItemTableRowProps {
   item: Item;
@@ -56,14 +94,14 @@ export const ItemTableRow = memo(function ItemTableRow({
   clickToAddTarget,
   onItemClick,
 }: ItemTableRowProps) {
-  const pastDue = useMemo(() => isPastDue(item), [item.dueDate]);
-
   // Row is draggable — drop on a status section to change status. Listeners
   // live only on the grip cell so the rest of the row stays interactive.
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: item.id,
     data: { item },
   });
+
+  const recentlyMoved = useRecentlyMovedIds().has(item.id);
 
   if (!item.id) {
     console.warn("Item missing id:", item);
@@ -79,9 +117,6 @@ export const ItemTableRow = memo(function ItemTableRow({
           ? "bg-white dark:bg-gray-800"
           : "bg-gray-50 dark:bg-gray-800/60",
         "hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors duration-200",
-        pastDue &&
-          item.status !== ItemStatus.Done &&
-          "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]",
         clickToAddTarget &&
           "cursor-crosshair hover:bg-blue-50 dark:hover:bg-blue-900/20",
         isDragging && "opacity-30"
@@ -110,6 +145,12 @@ export const ItemTableRow = memo(function ItemTableRow({
         >
           <GripVertical className="h-5 w-5" />
         </div>
+        {recentlyMoved && (
+          <span
+            aria-label="Moved recently"
+            className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500"
+          />
+        )}
       </TableCell>
 
       {visibleColumns.includes("Shipping" as ColumnTitles) && (

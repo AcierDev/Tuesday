@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
@@ -23,6 +22,10 @@ const PAGE_TOGGLE_LABEL: Record<PageToggleValue, string> = {
 // module-level side effects (e.g. WeeklyScheduleStore auto-init firing
 // fetchSchedules) so toggling feels instant instead of triggering a cold load.
 const PREWARM_DELAY_MS = 300;
+// Pill slide is driven by a GPU-accelerated CSS transform so it stays smooth
+// even while React is busy committing the destination page.
+const PILL_TRANSITION = "transform 240ms cubic-bezier(0.32, 1.2, 0.55, 1)";
+const PILL_GAP_PX = 4;
 
 interface PageToggleProps {
   currentPage: PageToggleValue;
@@ -32,7 +35,6 @@ export function PageToggle({ currentPage }: PageToggleProps) {
   const router = useRouter();
   const [activeValue, setActiveValue] = useState<PageToggleValue>(currentPage);
   const [, startTransition] = useTransition();
-  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     const other: PageToggleValue =
@@ -48,13 +50,7 @@ export function PageToggle({ currentPage }: PageToggleProps) {
     return () => window.clearTimeout(handle);
   }, [currentPage, router]);
 
-  useEffect(() => {
-    return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-      }
-    };
-  }, []);
+  const activeIndex = PAGE_TOGGLE_VALUES.indexOf(activeValue);
 
   return (
     <ToggleGroup
@@ -65,44 +61,35 @@ export function PageToggle({ currentPage }: PageToggleProps) {
         const next = value as PageToggleValue;
         if (next === activeValue) return;
         setActiveValue(next);
-        // Yield one frame so the pill spring gets a clean first paint,
-        // then push the route inside startTransition. The transition
-        // marks the navigation as non-urgent so React keeps shipping
-        // animation frames while the new page bundle/render work runs
-        // alongside — slower than a foreground push, but it begins
-        // immediately rather than waiting for the spring to settle.
-        if (rafRef.current !== null) {
-          cancelAnimationFrame(rafRef.current);
-        }
-        rafRef.current = requestAnimationFrame(() => {
-          rafRef.current = null;
-          startTransition(() => {
-            router.push(PAGE_TOGGLE_HREF[next]);
-          });
+        startTransition(() => {
+          router.push(PAGE_TOGGLE_HREF[next]);
         });
       }}
-      className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60"
+      className="relative inline-grid grid-cols-2 gap-1 rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60"
     >
-      {PAGE_TOGGLE_VALUES.map((value) => {
-        const isActive = activeValue === value;
-        return (
-          <ToggleGroupItem
-            key={value}
-            value={value}
-            aria-label={`Go to ${PAGE_TOGGLE_LABEL[value]} page`}
-            className="relative h-8 px-4 rounded-full text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-200 hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:shadow-none data-[state=on]:text-gray-900 dark:data-[state=on]:text-white"
-          >
-            {isActive && (
-              <motion.span
-                layoutId="page-toggle-pill"
-                className="absolute inset-0 bg-white dark:bg-gray-700 rounded-full shadow-sm"
-                transition={{ type: "spring", stiffness: 480, damping: 36 }}
-              />
-            )}
-            <span className="relative z-10">{PAGE_TOGGLE_LABEL[value]}</span>
-          </ToggleGroupItem>
-        );
-      })}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute top-1 bottom-1 rounded-full bg-white dark:bg-gray-700 shadow-sm will-change-transform"
+        style={{
+          left: PILL_GAP_PX,
+          width: `calc((100% - ${PILL_GAP_PX * 3}px) / 2)`,
+          transform:
+            activeIndex === 0
+              ? "translateX(0)"
+              : `translateX(calc(100% + ${PILL_GAP_PX}px))`,
+          transition: PILL_TRANSITION,
+        }}
+      />
+      {PAGE_TOGGLE_VALUES.map((value) => (
+        <ToggleGroupItem
+          key={value}
+          value={value}
+          aria-label={`Go to ${PAGE_TOGGLE_LABEL[value]} page`}
+          className="relative z-10 h-8 px-4 rounded-full text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-200 hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:shadow-none data-[state=on]:text-gray-900 dark:data-[state=on]:text-white"
+        >
+          {PAGE_TOGGLE_LABEL[value]}
+        </ToggleGroupItem>
+      ))}
     </ToggleGroup>
   );
 }

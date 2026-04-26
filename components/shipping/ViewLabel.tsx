@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,17 +15,36 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
+  Eye,
+  Settings2,
+  Barcode,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Item, Tracker } from "@/typings/types";
 import { useTrackingStore } from "@/stores/useTrackingStore";
 import { useUploadProgressStore } from "@/stores/useUploadProgressStore";
 import { useShippingStore } from "@/stores/useShippingStore";
 import { UploadStep, TrackingInfo, FileProgress } from "@/types/shipping";
+import { cn } from "@/utils/functions";
 import { toast } from "sonner";
 import { FedExBuyLabelDialog } from "./FedExBuyLabelDialog";
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🎚️ TAB CONFIG                                                        ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+const TAB_VALUES = ["view", "manage"] as const;
+type TabValue = (typeof TAB_VALUES)[number];
+const TAB_LABEL: Record<TabValue, string> = {
+  view: "View Labels",
+  manage: "Manage Labels",
+};
+const TAB_ICON: Record<TabValue, React.ComponentType<{ className?: string }>> = {
+  view: Eye,
+  manage: Settings2,
+};
+
+const PREVIEW_HEIGHT = "clamp(440px, 68vh, 760px)";
 
 type ManualTrackingInput = {
   fileIndex: number;
@@ -60,6 +80,13 @@ export function ViewLabel({
   const { labels, fetchAllLabels, removeLabel, addLabel, getLabelUrl, isLoading } = useShippingStore();
   const orderLabels = labels[orderId] || [];
   const pdfExists = orderLabels.length > 0;
+  const [activeTab, setActiveTab] = useState<TabValue>(
+    pdfExists ? "view" : "manage"
+  );
+
+  useEffect(() => {
+    if (!pdfExists && activeTab === "view") setActiveTab("manage");
+  }, [pdfExists, activeTab]);
 
   useEffect(() => {
     // Refresh labels when orderId changes
@@ -611,213 +638,237 @@ export function ViewLabel({
 
   if (isLoading && orderLabels.length === 0) {
     return (
-      <Card className="w-full max-w-3xl mx-auto bg-secondary border-0 shadow-none">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="w-full flex items-center justify-center"
+           style={{ height: PREVIEW_HEIGHT }}>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
   return (
-    <Card className="w-full max-w-3xl mx-auto bg-secondary border-0 shadow-none">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <CardTitle className="text-xl font-semibold text-foreground">
-            Shipping Labels for Order {orderId}
-          </CardTitle>
+    <div className="w-full space-y-4">
+      {/*╔═══╗ ═══════════════════════════════════════════════════════════ ╔═══╗
+        ║ 📦 HEADER                                                         ║
+        ╚═══╝ ═══════════════════════════════════════════════════════════ ╚═══╝*/}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 ring-1 ring-blue-400/30">
+            <Barcode className="h-5 w-5 text-blue-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-foreground leading-tight">
+              Shipping Labels
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+              Order {orderId}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <PillToggle
+            active={activeTab}
+            onChange={setActiveTab}
+            disabledValues={pdfExists ? [] : ["view"]}
+          />
           {item && <FedExBuyLabelDialog item={item} />}
         </div>
-      </CardHeader>
-      <CardContent className="p-4">
-        <Tabs defaultValue={pdfExists ? "view" : "manage"} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted">
-            <TabsTrigger value="view" disabled={!pdfExists}>
-              View Labels
-            </TabsTrigger>
-            <TabsTrigger value="manage">Manage Labels</TabsTrigger>
-          </TabsList>
-          <TabsContent value="view">
-            {pdfExists && orderLabels.length > 0 ? (
-              <div className="space-y-4">
-                <div
-                  className="border border-border rounded-lg overflow-hidden bg-background"
-                  style={{ height: "clamp(280px, 48vh, 440px)" }}
-                >
-                  <iframe
-                    src={getLabelUrl(orderLabels[currentPdfIndex] || "")}
-                    width="100%"
-                    height="100%"
-                    className="border-0"
-                    title={`Shipping Label ${
-                      currentPdfIndex + 1
-                    } for Order ${orderId}`}
-                  />
-                </div>
-                {orderLabels.length > 1 && (
-                  <div className="flex justify-between items-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setCurrentPdfIndex((prev) => Math.max(0, prev - 1))
-                      }
-                      disabled={currentPdfIndex === 0}
-                    >
-                      <ChevronLeft className="mr-1 h-4 w-4" /> Previous
-                    </Button>
-                    <span className="text-sm text-muted-foreground">
-                      Label {currentPdfIndex + 1} of {orderLabels.length}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setCurrentPdfIndex((prev) =>
-                          Math.min(orderLabels.length - 1, prev + 1)
-                        )
-                      }
-                      disabled={currentPdfIndex === orderLabels.length - 1}
-                    >
-                      Next <ChevronRight className="ml-1 h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+      </div>
+
+      {/*╔═══╗ ═══════════════════════════════════════════════════════════ ╔═══╗
+        ║ 🧱 LOCKED-HEIGHT CONTENT (toggle stays put across tabs)            ║
+        ╚═══╝ ═══════════════════════════════════════════════════════════ ╚═══╝*/}
+      <div className="flex flex-col" style={{ height: PREVIEW_HEIGHT }}>
+        {/*╔═══╗ ═══════════════════════════════════════════════════════════ ╔═══╗
+          ║ 👁️ VIEW PANEL                                                     ║
+          ╚═══╝ ═══════════════════════════════════════════════════════════ ╚═══╝*/}
+        {activeTab === "view" && (
+          pdfExists && orderLabels.length > 0 ? (
+            <div className="flex flex-col h-full gap-3">
+              <div className="flex-1 min-h-0 rounded-xl overflow-hidden bg-background ring-1 ring-blue-500/20 shadow-[0_0_24px_-12px_rgba(59,130,246,0.45)]">
+                <iframe
+                  src={getLabelUrl(orderLabels[currentPdfIndex] || "")}
+                  width="100%"
+                  height="100%"
+                  className="border-0"
+                  title={`Shipping Label ${
+                    currentPdfIndex + 1
+                  } for Order ${orderId}`}
+                />
               </div>
-            ) : (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
+              {orderLabels.length > 1 && (
+                <div className="flex justify-between items-center px-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setCurrentPdfIndex((prev) => Math.max(0, prev - 1))
+                    }
+                    disabled={currentPdfIndex === 0}
+                  >
+                    <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                  </Button>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    Label {currentPdfIndex + 1} of {orderLabels.length}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setCurrentPdfIndex((prev) =>
+                        Math.min(orderLabels.length - 1, prev + 1)
+                      )
+                    }
+                    disabled={currentPdfIndex === orderLabels.length - 1}
+                  >
+                    Next <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <Alert className="max-w-md border-blue-500/30 bg-blue-500/5">
+                <AlertCircle className="h-4 w-4 text-blue-400" />
                 <AlertTitle>No Labels Found</AlertTitle>
                 <AlertDescription>
                   No shipping labels have been uploaded for this order yet. You
-                  can upload them in the "Manage Labels" tab.
+                  can upload them in the Manage tab.
                 </AlertDescription>
               </Alert>
-            )}
-          </TabsContent>
-          <TabsContent value="manage">
-            <div className="space-y-4">
-              {orderLabels.length > 0 && (
-                <ScrollArea className="h-[200px] overflow-y-auto">
-                  <div className="space-y-4">
-                    {orderLabels.map((filename: string, index: number) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center p-3 bg-background/40 border border-border rounded-lg"
-                      >
-                        <span className="font-medium text-foreground">
-                          Label {index + 1}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              handleRetryExtraction(filename, index)
-                            }
-                            disabled={retryingFiles.has(filename)}
-                          >
-                            <RefreshCw
-                              className={`mr-1.5 h-4 w-4 ${
-                                retryingFiles.has(filename)
-                                  ? "animate-spin"
-                                  : ""
-                              }`}
-                            />
-                            {retryingFiles.has(filename)
-                              ? "Reading…"
-                              : "Retry"}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              window.open(getLabelUrl(filename), "_blank")
-                            }
-                          >
-                            <Download className="mr-1.5 h-4 w-4" /> Download
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              handleDelete(index);
-                            }}
-                            className="text-red-500 hover:text-red-500 hover:bg-red-500/10"
-                          >
-                            <Trash2 className="mr-1.5 h-4 w-4" /> Delete
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              )}
-              <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center ${
-                  dragActive
-                    ? "border-primary bg-primary/10"
-                    : "border-muted-foreground/25"
-                }`}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-              >
-                <Input
-                  id="pdf-upload"
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  multiple
-                  className="hidden"
-                />
-                <Label htmlFor="pdf-upload" className="cursor-pointer">
-                  <div className="flex flex-col items-center">
-                    <FileIcon className="h-16 w-16 text-muted-foreground mb-4" />
-                    <p className="text-lg font-semibold mb-2 text-foreground">
-                      Drag & Drop your PDF files here
-                    </p>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      or click to select files
-                    </p>
-                    {files.length > 0 && (
-                      <p className="text-sm font-medium text-primary">
-                        {files.length} file(s) selected
-                      </p>
-                    )}
-                  </div>
-                </Label>
-              </div>
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <Button
-                onClick={handleUpload}
-                disabled={files.length === 0 || uploading}
-                className="w-full"
-              >
-                {uploading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-2"></div>
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 h-4 w-4" /> Upload Labels
-                  </>
-                )}
-              </Button>
             </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
+          )
+        )}
+
+        {/*╔═══╗ ═══════════════════════════════════════════════════════════ ╔═══╗
+          ║ ⚙️ MANAGE PANEL                                                    ║
+          ╚═══╝ ═══════════════════════════════════════════════════════════ ╚═══╝*/}
+        {activeTab === "manage" && (
+          <div className="flex flex-col h-full gap-4">
+            {orderLabels.length > 0 && (
+              <ScrollArea className="max-h-[180px] overflow-y-auto rounded-xl border border-blue-500/15 bg-gradient-to-b from-blue-500/[0.04] to-transparent">
+                <div className="divide-y divide-border/60">
+                  {orderLabels.map((filename: string, index: number) => (
+                    <div
+                      key={index}
+                      className="flex justify-between items-center p-3"
+                    >
+                      <span className="flex items-center gap-2 font-medium text-foreground">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-blue-500/15 text-blue-300 text-xs font-semibold">
+                          {index + 1}
+                        </span>
+                        Label {index + 1}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            handleRetryExtraction(filename, index)
+                          }
+                          disabled={retryingFiles.has(filename)}
+                        >
+                          <RefreshCw
+                            className={`mr-1.5 h-4 w-4 ${
+                              retryingFiles.has(filename)
+                                ? "animate-spin"
+                                : ""
+                            }`}
+                          />
+                          {retryingFiles.has(filename) ? "Reading…" : "Retry"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            window.open(getLabelUrl(filename), "_blank")
+                          }
+                        >
+                          <Download className="mr-1.5 h-4 w-4" /> Download
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            handleDelete(index);
+                          }}
+                          className="text-red-400 hover:text-red-400 hover:bg-red-500/10"
+                        >
+                          <Trash2 className="mr-1.5 h-4 w-4" /> Delete
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+            <div
+              className={cn(
+                "flex-1 min-h-0 rounded-xl p-8 text-center transition-all bg-gradient-to-br relative overflow-hidden",
+                dragActive
+                  ? "from-blue-500/15 to-blue-600/10 ring-2 ring-blue-400/60"
+                  : "from-blue-500/[0.04] to-transparent ring-1 ring-dashed ring-blue-500/25 hover:ring-blue-400/50"
+              )}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <Input
+                id="pdf-upload"
+                type="file"
+                accept=".pdf"
+                onChange={handleFileChange}
+                multiple
+                className="hidden"
+              />
+              <Label
+                htmlFor="pdf-upload"
+                className="cursor-pointer h-full flex items-center justify-center"
+              >
+                <div className="flex flex-col items-center">
+                  <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 ring-1 ring-blue-400/30">
+                    <FileIcon className="h-7 w-7 text-blue-400" />
+                  </div>
+                  <p className="text-base font-semibold mb-1 text-foreground">
+                    Drag & drop PDF files here
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    or click to select files
+                  </p>
+                  {files.length > 0 && (
+                    <p className="text-sm font-medium text-blue-400">
+                      {files.length} file(s) selected
+                    </p>
+                  )}
+                </div>
+              </Label>
+            </div>
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <Button
+              onClick={handleUpload}
+              disabled={files.length === 0 || uploading}
+              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white shadow-md shadow-blue-900/30 disabled:from-gray-700 disabled:to-gray-700 disabled:text-gray-400 disabled:shadow-none"
+            >
+              {uploading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-2"></div>
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" /> Upload Labels
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
 
       {manualTracking.show && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -881,6 +932,55 @@ export function ViewLabel({
           </Card>
         </div>
       )}
-    </Card>
+    </div>
+  );
+}
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 💊 PILL TOGGLE                                                        ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+function PillToggle({
+  active,
+  onChange,
+  disabledValues = [],
+}: {
+  active: TabValue;
+  onChange: (value: TabValue) => void;
+  disabledValues?: TabValue[];
+}) {
+  return (
+    <div className="inline-flex items-center gap-1 rounded-full bg-gray-900/60 p-1 ring-1 ring-inset ring-blue-500/20 backdrop-blur-sm">
+      {TAB_VALUES.map((value) => {
+        const isActive = active === value;
+        const isDisabled = disabledValues.includes(value);
+        const Icon = TAB_ICON[value];
+        return (
+          <button
+            key={value}
+            type="button"
+            disabled={isDisabled}
+            onClick={() => !isDisabled && onChange(value)}
+            className={cn(
+              "relative inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors",
+              isActive
+                ? "text-white"
+                : "text-gray-400 hover:text-gray-200",
+              isDisabled &&
+                "opacity-40 cursor-not-allowed hover:text-gray-400"
+            )}
+          >
+            {isActive && (
+              <motion.span
+                layoutId="view-label-pill"
+                className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 shadow-md shadow-blue-900/40"
+                transition={{ type: "spring", stiffness: 480, damping: 36 }}
+              />
+            )}
+            <Icon className="relative z-10 h-3.5 w-3.5" />
+            <span className="relative z-10">{TAB_LABEL[value]}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }

@@ -1,14 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ShippingStatusIcon } from "./ShippingStatusIcon";
 import { PreviewTableCell } from "./PreviewTableCell";
-import { cn, isPastDue } from "@/utils/functions";
+import { cn } from "@/utils/functions";
 import {
   ColumnTitles,
   Item,
-  ItemStatus,
   ColumnTypes,
   DayName,
 } from "@/typings/types";
@@ -35,8 +33,6 @@ export function PreviewTableRow({
   onAddToSchedule,
   onScheduleUpdate,
 }: PreviewTableRowProps) {
-  const pastDue = useMemo(() => isPastDue(item), [item.dueDate]);
-
   // Map column names to flat keys
   const fieldMap: Record<string, keyof Item> = {
     [ColumnTitles.Customer_Name]: "customerName",
@@ -61,10 +57,7 @@ export function PreviewTableRow({
         index % 2 === 0
           ? "bg-white dark:bg-gray-800"
           : "bg-gray-50 dark:bg-gray-800/60",
-        "hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors duration-150",
-        pastDue &&
-          item.status !== ItemStatus.Done &&
-          "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]"
+        "hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors duration-150"
       )}
     >
       <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-2 text-center">
