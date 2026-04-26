@@ -15,7 +15,7 @@ interface DroppableDayColumnProps {
   ordersById: Map<string, OrderMeta>;
   totalBlocks: number;
   capacity: number;
-  onUnschedule: (itemId: string) => void;
+  onUnschedule: (itemId: string, actualDay: DayName) => void;
   date: Date;
 }
 
@@ -72,7 +72,7 @@ export function DroppableDayColumn({
                     meta={meta}
                     isScheduled
                     scheduledDay={day}
-                    onUnschedule={() => onUnschedule(order.itemId)}
+                    onUnschedule={() => onUnschedule(order.itemId, order.day)}
                     referenceDate={date}
                   />
                 );
