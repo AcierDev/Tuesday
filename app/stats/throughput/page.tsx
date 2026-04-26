@@ -99,6 +99,7 @@ export default function ThroughputPage() {
           series={chartSeries}
           color={THROUGHPUT_COLOR}
           gradientId="throughput-area"
+          formatValue={(v) => `${Math.round(v)} items`}
           emptyLabel="No completion history yet."
           showWeekBoundaries={range === "30d" || range === "90d"}
         />
@@ -107,23 +108,23 @@ export default function ThroughputPage() {
       <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
         <StatTile
           label="Peak day"
-          value={stats.peak}
+          value={`${stats.peak} items`}
           sublabel="best single day"
         />
         <StatTile
           label="Avg / day"
-          value={stats.average.toFixed(1)}
-          sublabel={`median ${stats.median}`}
+          value={`${stats.average.toFixed(1)} items`}
+          sublabel={`median ${stats.median} items`}
         />
         <StatTile
           label="7-day velocity"
-          value={`${velocityDelta > 0 ? "+" : velocityDelta < 0 ? "−" : ""}${Math.abs(velocityDelta).toFixed(1)}`}
+          value={`${velocityDelta > 0 ? "+" : velocityDelta < 0 ? "−" : ""}${Math.abs(velocityDelta).toFixed(1)} items`}
           sublabel="vs prior 7d / day"
           tone={velocityTone}
         />
         <StatTile
           label="Active streak"
-          value={stats.longestStreak}
+          value={`${stats.longestStreak} d`}
           sublabel="consecutive days"
         />
       </section>

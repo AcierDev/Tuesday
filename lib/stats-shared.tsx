@@ -338,26 +338,18 @@ export function TimeSeriesChart({
         ))}
 
         {segments.map((seg, segIdx) => {
-          const linePoints = seg
-            .map(({ i, v }) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`)
-            .join(" ");
-          const areaPath = [
-            `M ${toX(seg[0]!.i).toFixed(1)} ${(
-              CHART_PADDING_TOP + innerHeight
-            ).toFixed(1)}`,
-            ...seg.map(
-              ({ i, v }) => `L ${toX(i).toFixed(1)} ${toY(v).toFixed(1)}`
-            ),
-            `L ${toX(seg[seg.length - 1]!.i).toFixed(1)} ${(
-              CHART_PADDING_TOP + innerHeight
-            ).toFixed(1)}`,
-            "Z",
-          ].join(" ");
+          const pts = seg.map(({ i, v }) => ({ x: toX(i), y: toY(v) }));
+          const linePathD = smoothPath(pts);
+          const baseY = (CHART_PADDING_TOP + innerHeight).toFixed(1);
+          const areaPath =
+            pts.length === 1
+              ? `M ${pts[0]!.x.toFixed(1)} ${baseY} L ${pts[0]!.x.toFixed(1)} ${pts[0]!.y.toFixed(1)} Z`
+              : `M ${pts[0]!.x.toFixed(1)} ${baseY} L ${pts[0]!.x.toFixed(1)} ${pts[0]!.y.toFixed(1)} ${smoothCommands(pts)} L ${pts[pts.length - 1]!.x.toFixed(1)} ${baseY} Z`;
           return (
             <g key={segIdx}>
               <path d={areaPath} fill={`url(#${gradientId})`} />
-              <polyline
-                points={linePoints}
+              <path
+                d={linePathD}
                 fill="none"
                 stroke={color}
                 strokeWidth={2}
@@ -854,12 +846,44 @@ export function useGluedStats(days: number): GluedStatsState {
   return state;
 }
 
+// Catmull-Rom → cubic-Bezier curve commands, used to smooth chart lines
+// without overshoot. `smoothPath` returns a full path starting with M;
+// `smoothCommands` returns the C segments only (caller has already moved
+// the pen to pts[0]).
+export function smoothCommands(pts: { x: number; y: number }[]): string {
+  if (pts.length < 2) return "";
+  let d = "";
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i]!;
+    const p1 = pts[i]!;
+    const p2 = pts[i + 1]!;
+    const p3 = pts[i + 2] ?? p2;
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += `C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)} `;
+  }
+  return d.trim();
+}
+
+export function smoothPath(pts: { x: number; y: number }[]): string {
+  if (pts.length === 0) return "";
+  const head = `M ${pts[0]!.x.toFixed(1)} ${pts[0]!.y.toFixed(1)}`;
+  if (pts.length === 1) return head;
+  return `${head} ${smoothCommands(pts)}`;
+}
+
 // Pick a "nice" round-to value for axis ticks based on the data magnitude.
+// Aims for ~5 buckets across the y-axis using 1/2/5 × 10^k progression so
+// tick labels stay readable across small (debt-days) and large (backlog-
+// squares) ranges. yTickStep = roundTo / 2 in the chart, yTickCount caps
+// at 12 — so roundTo ≈ rawMax/5 keeps labels covering the full data range.
 function niceRoundTo(rawMax: number): number {
-  if (rawMax <= 5) return 1;
-  if (rawMax <= 20) return 5;
-  if (rawMax <= 50) return 10;
-  if (rawMax <= 200) return 50;
-  if (rawMax <= 1000) return 100;
-  return 500;
+  if (rawMax <= 0) return 1;
+  const target = rawMax / 5;
+  const exp = Math.floor(Math.log10(target));
+  const base = target / Math.pow(10, exp);
+  const nice = base <= 1 ? 1 : base <= 2 ? 2 : base <= 5 ? 5 : 10;
+  return nice * Math.pow(10, exp);
 }

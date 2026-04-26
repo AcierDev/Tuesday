@@ -81,13 +81,22 @@ export default function ForecastPage() {
       )}
 
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <StatTile label="Within 7 days" value={data?.within7 ?? 0} tone="good" />
-        <StatTile label="Within 14 days" value={data?.within14 ?? 0} />
-        <StatTile label="Within 30 days" value={data?.within30 ?? 0} />
+        <StatTile
+          label="Within 7 days"
+          value={`${data?.within7 ?? 0} items`}
+          tone="good"
+        />
+        <StatTile
+          label="Within 14 days"
+          value={`${data?.within14 ?? 0} items`}
+        />
+        <StatTile
+          label="Within 30 days"
+          value={`${data?.within30 ?? 0} items`}
+        />
         <StatTile
           label="Avg lead"
-          value={data ? data.overallLead.toFixed(1) : "—"}
-          sublabel="days"
+          value={data ? `${data.overallLead.toFixed(1)} d` : "—"}
         />
       </section>
 
@@ -137,7 +146,7 @@ export default function ForecastPage() {
                         {projectedDate}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-slate-400">
-                        {remainingDays.toFixed(1)}
+                        {remainingDays.toFixed(1)} d
                       </td>
                     </tr>
                   );

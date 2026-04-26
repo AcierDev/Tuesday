@@ -167,6 +167,7 @@ export default function GluedPage() {
           series={chartSeries}
           color={GLUED_COLOR}
           gradientId="glued-area"
+          formatValue={(v) => `${Math.round(v).toLocaleString()} sq`}
           emptyLabel="No glued events in this range yet."
           showWeekBoundaries={range === "30d" || range === "90d"}
         />
@@ -175,19 +176,19 @@ export default function GluedPage() {
       <section className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <StatTile
           label="Peak day"
-          value={stats?.peak.toLocaleString() ?? "—"}
+          value={stats ? `${stats.peak.toLocaleString()} sq` : "—"}
           sublabel="best single day"
         />
         <StatTile
           label="Avg / working day"
-          value={stats ? stats.average.toFixed(1) : "—"}
-          sublabel={`median ${stats?.median.toFixed(0) ?? 0} · ${stats?.daysWithValue ?? 0} day${stats?.daysWithValue === 1 ? "" : "s"}`}
+          value={stats ? `${stats.average.toFixed(1)} sq` : "—"}
+          sublabel={`median ${stats?.median.toFixed(0) ?? 0} sq · ${stats?.daysWithValue ?? 0} day${stats?.daysWithValue === 1 ? "" : "s"}`}
         />
         <StatTile
           label="7-day velocity"
           value={
             stats
-              ? `${velocityDelta > 0 ? "+" : velocityDelta < 0 ? "−" : ""}${Math.abs(velocityDelta).toFixed(1)}`
+              ? `${velocityDelta > 0 ? "+" : velocityDelta < 0 ? "−" : ""}${Math.abs(velocityDelta).toFixed(1)} sq`
               : "—"
           }
           sublabel="vs prior 7d / working day"

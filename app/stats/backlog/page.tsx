@@ -152,6 +152,13 @@ export default function BacklogPage() {
     loadItems();
   }, [loadItems]);
 
+  // Record today's snapshot on mount so the chart reflects live state even
+  // when the user lands directly on /stats/backlog without visiting /orders.
+  // Mirrors the same POST that /orders/page.tsx fires.
+  useEffect(() => {
+    fetch("/api/backlog-snapshots", { method: "POST" }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (seriesByRange[range]) return;
     let cancelled = false;
@@ -219,12 +226,6 @@ export default function BacklogPage() {
   // For backlog: shrinking is good, growing is bad.
   const velocityTone: "good" | "bad" | "neutral" =
     velocityDelta < -10 ? "good" : velocityDelta > 10 ? "bad" : "neutral";
-  const startTone: "good" | "bad" | "neutral" =
-    stats.deltaFromStart < 0
-      ? "good"
-      : stats.deltaFromStart > 0
-        ? "bad"
-        : "neutral";
 
   return (
     <>
@@ -267,7 +268,7 @@ export default function BacklogPage() {
           series={chartSeries}
           color={BACKLOG_CHART_COLOR}
           gradientId="backlog-area"
-          formatValue={(v) => formatSquares(Math.round(v))}
+          formatValue={(v) => `${formatSquares(Math.round(v))} sq`}
           emptyLabel="No backlog history yet — check back tomorrow."
           showWeekBoundaries={range === "30d" || range === "90d"}
         />
@@ -276,47 +277,30 @@ export default function BacklogPage() {
       <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
         <StatTile
           label={`${rangeLabel} peak`}
-          value={formatSquares(stats.peak)}
+          value={`${formatSquares(stats.peak)} sq`}
           sublabel="biggest day"
         />
         <StatTile
           label={`${rangeLabel} trough`}
-          value={formatSquares(stats.trough)}
+          value={`${formatSquares(stats.trough)} sq`}
           sublabel="smallest day"
         />
         <StatTile
           label={`${rangeLabel} avg`}
-          value={formatSquares(Math.round(stats.average))}
-          sublabel={`median ${formatSquares(Math.round(stats.median))}`}
-        />
-        <StatTile
-          label="Δ vs start"
-          value={`${stats.deltaFromStart > 0 ? "+" : stats.deltaFromStart < 0 ? "−" : ""}${formatSquares(Math.abs(stats.deltaFromStart))}`}
-          sublabel={`from ${formatSquares(stats.startValue)}`}
-          tone={startTone}
+          value={`${formatSquares(Math.round(stats.average))} sq`}
+          sublabel={`median ${formatSquares(Math.round(stats.median))} sq`}
         />
         <StatTile
           label="7-day velocity"
-          value={`${velocityDelta > 0 ? "+" : velocityDelta < 0 ? "−" : ""}${formatSquares(Math.abs(Math.round(velocityDelta)))}`}
+          value={`${velocityDelta > 0 ? "+" : velocityDelta < 0 ? "−" : ""}${formatSquares(Math.abs(Math.round(velocityDelta)))} sq`}
           sublabel="vs prior 7d"
           tone={velocityTone}
         />
         <StatTile
-          label="Biggest jump"
-          value={`+${formatSquares(stats.biggestJump)}`}
-          sublabel="day-over-day"
-          tone={stats.biggestJump > 0 ? "bad" : "neutral"}
-        />
-        <StatTile
           label="Biggest drop"
-          value={`−${formatSquares(Math.abs(stats.biggestDrop))}`}
+          value={`−${formatSquares(Math.abs(stats.biggestDrop))} sq`}
           sublabel="day-over-day"
           tone={stats.biggestDrop < 0 ? "good" : "neutral"}
-        />
-        <StatTile
-          label="Tracked days"
-          value={stats.recordedDays}
-          sublabel={`of ${RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30}`}
         />
       </section>
 
@@ -351,6 +335,9 @@ export default function BacklogPage() {
                   </span>
                   <span className="mt-1 text-2xl font-bold tabular-nums leading-none">
                     {formatSquares(bucket.squares)}
+                    <span className="ml-1 text-xs font-medium text-slate-400">
+                      sq
+                    </span>
                   </span>
                   <span className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">
                     {bucket.items} item{bucket.items === 1 ? "" : "s"} · {share}%

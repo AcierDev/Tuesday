@@ -72,6 +72,9 @@ export default function MapPage() {
                 </div>
                 <div className="mt-1 text-2xl font-bold tabular-nums leading-none text-white">
                   {r.count}
+                  <span className="ml-1 text-xs font-medium text-slate-400">
+                    items
+                  </span>
                 </div>
                 <div className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">
                   {r.pct.toFixed(1)}%

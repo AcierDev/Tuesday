@@ -115,13 +115,13 @@ export default function RecordsPage() {
       <section className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <StatTile
           label="Best day"
-          value={records?.bestDay ? records.bestDay.count : "—"}
+          value={records?.bestDay ? `${records.bestDay.count} items` : "—"}
           sublabel={records?.bestDay?.date ?? undefined}
           tone="good"
         />
         <StatTile
           label="Best week"
-          value={records?.bestWeek ? records.bestWeek.count : "—"}
+          value={records?.bestWeek ? `${records.bestWeek.count} items` : "—"}
           sublabel={
             records?.bestWeek
               ? `week of ${records.bestWeek.weekStart}`
@@ -131,25 +131,25 @@ export default function RecordsPage() {
         />
         <StatTile
           label="Best month"
-          value={records?.bestMonth ? records.bestMonth.count : "—"}
+          value={records?.bestMonth ? `${records.bestMonth.count} items` : "—"}
           sublabel={records?.bestMonth?.month ?? undefined}
           tone="good"
         />
         <StatTile
           label="Current streak"
-          value={records?.currentStreak ?? 0}
+          value={`${records?.currentStreak ?? 0} d`}
           sublabel="consecutive active days"
           tone={(records?.currentStreak ?? 0) > 0 ? "good" : "neutral"}
         />
         <StatTile
           label="Longest streak"
-          value={records?.longestStreak ?? 0}
+          value={`${records?.longestStreak ?? 0} d`}
           sublabel="consecutive active days"
         />
         <StatTile
           label="Lifetime total"
-          value={records?.total ?? 0}
-          sublabel="items shipped"
+          value={`${records?.total ?? 0} items`}
+          sublabel="shipped"
         />
       </section>
     </>

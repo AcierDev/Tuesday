@@ -85,11 +85,11 @@ export default function YearOverYearPage() {
             {delta > 0 ? "+" : ""}
             {delta}
             <span className="text-2xl font-medium ml-2 text-slate-400">
-              vs last yr
+              items vs last yr
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            {data?.recentSummary.total ?? 0} this period · {data?.priorSummary.total ?? 0} same period last year ({deltaPct > 0 ? "+" : ""}{deltaPct.toFixed(0)}%)
+            {data?.recentSummary.total ?? 0} items this period · {data?.priorSummary.total ?? 0} items same period last year ({deltaPct > 0 ? "+" : ""}{deltaPct.toFixed(0)}%)
           </p>
         </div>
         <div className="inline-flex rounded-xl glass-surface p-1 gap-1">
@@ -121,15 +121,21 @@ export default function YearOverYearPage() {
       )}
 
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <StatTile label="This period" value={data?.recentSummary.total ?? 0} />
-        <StatTile label="Last year" value={data?.priorSummary.total ?? 0} />
+        <StatTile
+          label="This period"
+          value={`${data?.recentSummary.total ?? 0} items`}
+        />
+        <StatTile
+          label="Last year"
+          value={`${data?.priorSummary.total ?? 0} items`}
+        />
         <StatTile
           label="Avg / day now"
-          value={data ? data.recentSummary.average.toFixed(1) : "—"}
+          value={data ? `${data.recentSummary.average.toFixed(1)} items` : "—"}
         />
         <StatTile
           label="Avg / day then"
-          value={data ? data.priorSummary.average.toFixed(1) : "—"}
+          value={data ? `${data.priorSummary.average.toFixed(1)} items` : "—"}
         />
       </section>
 
@@ -141,6 +147,7 @@ export default function YearOverYearPage() {
           series={recentSeries}
           color="rgb(52 211 153)"
           gradientId="yoy-recent"
+          formatValue={(v) => `${Math.round(v)} items`}
         />
       </section>
 
@@ -152,6 +159,7 @@ export default function YearOverYearPage() {
           series={priorSeries}
           color="rgb(148 163 184)"
           gradientId="yoy-prior"
+          formatValue={(v) => `${Math.round(v)} items`}
         />
       </section>
     </>

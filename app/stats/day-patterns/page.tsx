@@ -70,19 +70,25 @@ export default function DayPatternsPage() {
         <StatTile
           label="Best day"
           value={top?.day ?? "—"}
-          sublabel={top ? `${top.avg.toFixed(1)} / day` : undefined}
+          sublabel={top ? `${top.avg.toFixed(1)} items / day` : undefined}
           tone="good"
         />
         <StatTile
           label="Slowest day"
           value={bottom?.day ?? "—"}
-          sublabel={bottom ? `${bottom.avg.toFixed(1)} / day` : undefined}
+          sublabel={
+            bottom ? `${bottom.avg.toFixed(1)} items / day` : undefined
+          }
           tone="bad"
         />
         <StatTile
           label="Total"
-          value={rows ? rows.reduce((s, r) => s + r.total, 0) : "—"}
-          sublabel="items in range"
+          value={
+            rows
+              ? `${rows.reduce((s, r) => s + r.total, 0)} items`
+              : "—"
+          }
+          sublabel="in range"
         />
         <StatTile
           label="Best:Worst"
@@ -110,7 +116,7 @@ export default function DayPatternsPage() {
                   <div className="flex items-baseline justify-between mb-1">
                     <span className="text-sm font-semibold text-white">{r.day}</span>
                     <span className="text-xs text-slate-400 tabular-nums">
-                      {r.avg.toFixed(1)} / day · {r.total} total · {r.activeDays} {r.activeDays === 1 ? "occurrence" : "occurrences"}
+                      {r.avg.toFixed(1)} items / day · {r.total} total · {r.activeDays} {r.activeDays === 1 ? "occurrence" : "occurrences"}
                     </span>
                   </div>
                   <div className="h-3 rounded-full bg-white/5 overflow-hidden">

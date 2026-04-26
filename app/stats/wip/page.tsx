@@ -60,21 +60,21 @@ export default function WipPage() {
       )}
 
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <StatTile label="Active items" value={stats?.total ?? 0} />
+        <StatTile label="Active items" value={`${stats?.total ?? 0} items`} />
         <StatTile
           label={`Stale (≥${STALE_DAYS}d)`}
-          value={stats?.stale ?? 0}
+          value={`${stats?.stale ?? 0} items`}
           tone={(stats?.stale ?? 0) > 0 ? "bad" : "good"}
         />
         <StatTile
           label="Avg age"
-          value={stats ? stats.avgDays.toFixed(1) : "—"}
-          sublabel="days in status"
+          value={stats ? `${stats.avgDays.toFixed(1)} d` : "—"}
+          sublabel="in status"
         />
         <StatTile
           label="Oldest"
-          value={stats ? stats.maxDays.toFixed(1) : "—"}
-          sublabel="days"
+          value={stats ? `${stats.maxDays.toFixed(1)} d` : "—"}
+          sublabel="in status"
           tone={(stats?.maxDays ?? 0) > STALE_DAYS ? "bad" : "neutral"}
         />
       </section>
@@ -124,6 +124,9 @@ export default function WipPage() {
                         )}
                       >
                         {daysInStatus.toFixed(1)}
+                        <span className="ml-1 text-xs font-medium text-slate-400">
+                          d
+                        </span>
                       </td>
                     </tr>
                   );

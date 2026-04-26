@@ -97,24 +97,20 @@ export default function DeliveryPage() {
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <StatTile
           label="Avg transit"
-          value={data ? data.avg.toFixed(1) : "—"}
-          sublabel="days"
+          value={data ? `${data.avg.toFixed(1)} d` : "—"}
         />
         <StatTile
           label="Median"
-          value={data ? data.median.toFixed(1) : "—"}
-          sublabel="days"
+          value={data ? `${data.median.toFixed(1)} d` : "—"}
         />
         <StatTile
           label="Fastest"
-          value={data ? data.fastest.toFixed(1) : "—"}
-          sublabel="days"
+          value={data ? `${data.fastest.toFixed(1)} d` : "—"}
           tone="good"
         />
         <StatTile
           label="Slowest"
-          value={data ? data.slowest.toFixed(1) : "—"}
-          sublabel="days"
+          value={data ? `${data.slowest.toFixed(1)} d` : "—"}
           tone="bad"
         />
       </section>
@@ -147,6 +143,9 @@ export default function DeliveryPage() {
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums font-semibold">
                       {r.avg.toFixed(1)}
+                      <span className="ml-1 text-xs font-medium text-slate-400">
+                        d
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -198,6 +197,9 @@ export default function DeliveryPage() {
                       )}
                     >
                       {r.transitDays.toFixed(1)}
+                      <span className="ml-1 text-xs font-medium text-slate-400">
+                        d
+                      </span>
                     </td>
                   </tr>
                 ))}

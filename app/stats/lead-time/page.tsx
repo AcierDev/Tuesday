@@ -72,24 +72,21 @@ export default function LeadTimePage() {
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <StatTile
           label="Median"
-          value={stats ? stats.medianDays.toFixed(1) : "—"}
-          sublabel="days"
+          value={stats ? `${stats.medianDays.toFixed(1)} d` : "—"}
         />
         <StatTile
           label="P90"
-          value={stats ? stats.p90Days.toFixed(1) : "—"}
+          value={stats ? `${stats.p90Days.toFixed(1)} d` : "—"}
           sublabel="90% under this"
         />
         <StatTile
           label="Fastest"
-          value={stats ? stats.fastestDays.toFixed(1) : "—"}
-          sublabel="days"
+          value={stats ? `${stats.fastestDays.toFixed(1)} d` : "—"}
           tone="good"
         />
         <StatTile
           label="Slowest"
-          value={stats ? stats.slowestDays.toFixed(1) : "—"}
-          sublabel="days"
+          value={stats ? `${stats.slowestDays.toFixed(1)} d` : "—"}
           tone="bad"
         />
       </section>
@@ -163,9 +160,12 @@ function LeadTimeTable({ title, rows, totalCount }: LeadTimeTableProps) {
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums font-semibold">
                       {r.avgDays.toFixed(1)}
+                      <span className="ml-1 text-xs font-medium text-slate-400">
+                        d
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-slate-400">
-                      {r.medianDays.toFixed(1)}
+                      {r.medianDays.toFixed(1)} d
                     </td>
                   </tr>
                 );

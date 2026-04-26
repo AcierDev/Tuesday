@@ -132,24 +132,24 @@ export default function OnTimePage() {
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <StatTile
           label="Total shipped"
-          value={stats?.total ?? 0}
+          value={`${stats?.total ?? 0} items`}
           sublabel={rangeLabel}
         />
         <StatTile
           label="On time"
-          value={stats?.onTime ?? 0}
+          value={`${stats?.onTime ?? 0} items`}
           sublabel="met due date"
           tone="good"
         />
         <StatTile
           label="Late"
-          value={stats?.late ?? 0}
+          value={`${stats?.late ?? 0} items`}
           sublabel="missed due date"
           tone={(stats?.late ?? 0) > 0 ? "bad" : "neutral"}
         />
         <StatTile
           label="Avg days late"
-          value={stats ? stats.avgDaysLate.toFixed(1) : "—"}
+          value={stats ? `${stats.avgDaysLate.toFixed(1)} d` : "—"}
           sublabel="when late"
           tone={(stats?.avgDaysLate ?? 0) > 0 ? "bad" : "neutral"}
         />

@@ -76,15 +76,15 @@ export default function AnomaliesPage() {
       <section className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <StatTile
           label="Mean / day"
-          value={data ? data.mean.toFixed(1) : "—"}
+          value={data ? `${data.mean.toFixed(1)} items` : "—"}
         />
         <StatTile
           label="Std dev"
-          value={data ? data.stddev.toFixed(1) : "—"}
+          value={data ? `${data.stddev.toFixed(1)} items` : "—"}
         />
         <StatTile
           label="Anomaly threshold"
-          value={data ? `±${(SIGMA_THRESHOLD * data.stddev).toFixed(1)}` : "—"}
+          value={data ? `±${(SIGMA_THRESHOLD * data.stddev).toFixed(1)} items` : "—"}
           sublabel="from mean"
         />
       </section>

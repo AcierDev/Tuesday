@@ -36,7 +36,7 @@ export default function BottlenecksPage() {
         </p>
         <h2 className="mt-1 text-3xl font-bold text-white">
           {rows && rows.length > 0
-            ? `${rows[0]!.status} avg ${rows[0]!.avgDays.toFixed(1)}d`
+            ? `${rows[0]!.status} avg ${rows[0]!.avgDays.toFixed(1)} d`
             : "—"}
         </h2>
         <p className="mt-1 text-xs text-slate-400">
@@ -70,7 +70,7 @@ export default function BottlenecksPage() {
                       {r.status}
                     </span>
                     <span className="text-xs text-slate-400 tabular-nums">
-                      avg {r.avgDays.toFixed(1)}d · median {r.medianDays.toFixed(1)}d · {r.count} segments
+                      avg {r.avgDays.toFixed(1)} d · median {r.medianDays.toFixed(1)} d · {r.count} segments
                     </span>
                   </div>
                   <div className="h-3 rounded-full bg-white/5 overflow-hidden">

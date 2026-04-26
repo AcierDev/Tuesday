@@ -14,21 +14,28 @@ import {
   computeOnTimeStats,
   summarizeDayBuckets,
 } from "@/lib/production-metrics";
-import { StatTile, useActivities, useAllItems } from "@/lib/stats-shared";
+import {
+  DEFAULT_RANGE,
+  RANGE_OPTIONS,
+  RangeKey,
+  RangeSelector,
+  smoothPath,
+  StatTile,
+  useActivities,
+  useAllItems,
+} from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ ⚙️ CONFIG                                                            ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
-const RANGE_DAYS = 30;
-
 const COMBINED_SERIES_COLORS = {
-  debt: "rgb(248 113 113)",
-  shipped: "rgb(96 165 250)",
-  onTime: "rgb(52 211 153)",
-  glued: "rgb(56 189 248)",
-  backlog: "rgb(165 180 252)",
+  debt: "rgb(244 63 94)", // rose-500
+  shipped: "rgb(59 130 246)", // blue-500
+  onTime: "rgb(16 185 129)", // emerald-500
+  glued: "rgb(251 191 36)", // amber-400
+  backlog: "rgb(217 70 239)", // fuchsia-500
 } as const;
 
 const COMBINED_CHART_HEIGHT = 280;
@@ -46,42 +53,59 @@ type BacklogSnapshot = { date: string; squares: number; recorded?: boolean };
 export default function OverviewPage() {
   const { items, loading, error } = useAllItems();
   const { activities } = useActivities();
-  const [debtSeries, setDebtSeries] = useState<DebtSnapshot[] | null>(null);
-  const [backlogSeries, setBacklogSeries] = useState<
-    BacklogSnapshot[] | null
-  >(null);
+  const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
+  const [debtByRange, setDebtByRange] = useState<
+    Partial<Record<RangeKey, DebtSnapshot[]>>
+  >({});
+  const [backlogByRange, setBacklogByRange] = useState<
+    Partial<Record<RangeKey, BacklogSnapshot[]>>
+  >({});
+
+  const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
+  const rangeLabel =
+    RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+
+  const debtSeries = debtByRange[range];
+  const backlogSeries = backlogByRange[range];
 
   useEffect(() => {
+    if (debtSeries && backlogSeries) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`/api/debt-snapshots?days=${RANGE_DAYS}`);
-        if (!res.ok) return;
-        const json = (await res.json()) as { series: DebtSnapshot[] };
-        if (!cancelled) setDebtSeries(json.series);
-      } catch (err) {
-        console.error("Failed to load debt snapshots", err);
-      }
-    })();
-    (async () => {
-      try {
-        const res = await fetch(`/api/backlog-snapshots?days=${RANGE_DAYS}`);
-        if (!res.ok) return;
-        const json = (await res.json()) as { series: BacklogSnapshot[] };
-        if (!cancelled) setBacklogSeries(json.series);
-      } catch (err) {
-        console.error("Failed to load backlog snapshots", err);
-      }
-    })();
+    if (!debtSeries) {
+      (async () => {
+        try {
+          const res = await fetch(`/api/debt-snapshots?days=${days}`);
+          if (!res.ok) return;
+          const json = (await res.json()) as { series: DebtSnapshot[] };
+          if (!cancelled)
+            setDebtByRange((prev) => ({ ...prev, [range]: json.series }));
+        } catch (err) {
+          console.error("Failed to load debt snapshots", err);
+        }
+      })();
+    }
+    if (!backlogSeries) {
+      (async () => {
+        try {
+          const res = await fetch(`/api/backlog-snapshots?days=${days}`);
+          if (!res.ok) return;
+          const json = (await res.json()) as { series: BacklogSnapshot[] };
+          if (!cancelled)
+            setBacklogByRange((prev) => ({ ...prev, [range]: json.series }));
+        } catch (err) {
+          console.error("Failed to load backlog snapshots", err);
+        }
+      })();
+    }
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [days, range, debtSeries, backlogSeries]);
 
   const summary = useMemo(() => {
     if (!items) return null;
     const today = laDayKey();
-    const start = shiftDayKey(today, -(RANGE_DAYS - 1));
+    const start = shiftDayKey(today, -(days - 1));
     const active = items.filter(
       (i) => i.status !== ItemStatus.Done && i.status !== ItemStatus.Hidden
     );
@@ -91,10 +115,6 @@ export default function OverviewPage() {
     const throughput = summarizeDayBuckets(buckets);
     const onTime = computeOnTimeStats(items, start, today);
 
-    const wipByStatus: Partial<Record<ItemStatus, number>> = {};
-    for (const i of active) {
-      wipByStatus[i.status] = (wipByStatus[i.status] ?? 0) + 1;
-    }
     return {
       debt: debt.total,
       lateNow: lateNow.length,
@@ -103,15 +123,14 @@ export default function OverviewPage() {
       onTimePct: onTime.onTimePct,
       onTimeTotal: onTime.total,
       wipTotal: active.length,
-      wipByStatus,
     };
-  }, [items]);
+  }, [items, days]);
 
   const combinedChart = useMemo(() => {
     if (!items) return null;
     const today = laDayKey();
-    const start = shiftDayKey(today, -(RANGE_DAYS - 1));
-    const dates = Array.from({ length: RANGE_DAYS }, (_, i) =>
+    const start = shiftDayKey(today, -(days - 1));
+    const dates = Array.from({ length: days }, (_, i) =>
       shiftDayKey(start, i)
     );
 
@@ -160,14 +179,14 @@ export default function OverviewPage() {
           label: "Time Debt",
           color: COMBINED_SERIES_COLORS.debt,
           values: debtValues,
-          format: (v: number) => `${Math.round(v)}d`,
+          format: (v: number) => `${Math.round(v)} d`,
         },
         {
           key: "shipped",
           label: "Shipped",
           color: COMBINED_SERIES_COLORS.shipped,
           values: shippedValues,
-          format: (v: number) => `${Math.round(v)}`,
+          format: (v: number) => `${Math.round(v)} items`,
         },
         {
           key: "onTime",
@@ -178,33 +197,36 @@ export default function OverviewPage() {
         },
         {
           key: "glued",
-          label: "Glued (sq)",
+          label: "Glued",
           color: COMBINED_SERIES_COLORS.glued,
           values: gluedValues,
-          format: (v: number) => `${Math.round(v)}`,
+          format: (v: number) => `${Math.round(v)} sq`,
         },
         {
           key: "backlog",
-          label: "Backlog (sq)",
+          label: "Backlog",
           color: COMBINED_SERIES_COLORS.backlog,
           values: backlogValues,
-          format: (v: number) => `${Math.round(v)}`,
+          format: (v: number) => `${Math.round(v)} sq`,
         },
       ],
     };
-  }, [items, debtSeries, backlogSeries, activities]);
+  }, [items, days, debtSeries, backlogSeries, activities]);
 
   return (
     <>
-      <header className="mb-6">
-        <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
-          At a glance · last 30 days
-        </p>
-        <h2 className="mt-1 text-3xl font-bold text-white">
-          {summary
-            ? `${summary.throughputTotal} items shipped, ${summary.wipTotal} in flight`
-            : "—"}
-        </h2>
+      <header className="flex flex-wrap items-end justify-between gap-6 mb-6">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+            At a glance · {rangeLabel.toLowerCase()}
+          </p>
+          <h2 className="mt-1 text-3xl font-bold text-white">
+            {summary
+              ? `${summary.throughputTotal} items shipped, ${summary.wipTotal} in flight`
+              : "—"}
+          </h2>
+        </div>
+        <RangeSelector value={range} onChange={setRange} />
       </header>
 
       {(loading || error) && (
@@ -217,23 +239,22 @@ export default function OverviewPage() {
         <KPILink href="/stats/debt" tile={
           <StatTile
             label="Time Debt"
-            value={summary ? `${summary.debt}` : "—"}
-            sublabel="overdue days"
+            value={summary ? `${summary.debt} d` : "—"}
+            sublabel="overdue"
             tone={summary && summary.debt > 0 ? "bad" : "good"}
           />
         } />
         <KPILink href="/stats/on-time" tile={
           <StatTile
             label="Late now"
-            value={summary?.lateNow ?? 0}
-            sublabel="active items"
+            value={`${summary?.lateNow ?? 0} items`}
             tone={(summary?.lateNow ?? 0) > 0 ? "bad" : "good"}
           />
         } />
         <KPILink href="/stats/throughput" tile={
           <StatTile
             label="Avg / day"
-            value={summary ? summary.throughputAvg.toFixed(1) : "—"}
+            value={summary ? `${summary.throughputAvg.toFixed(1)} items` : "—"}
             sublabel={`${summary?.throughputTotal ?? 0} this period`}
           />
         } />
@@ -256,8 +277,8 @@ export default function OverviewPage() {
         <KPILink href="/stats/wip" tile={
           <StatTile
             label="WIP"
-            value={summary?.wipTotal ?? 0}
-            sublabel="active items"
+            value={`${summary?.wipTotal ?? 0} items`}
+            sublabel="active"
           />
         } />
         <KPILink href="/stats/health" tile={
@@ -268,10 +289,10 @@ export default function OverviewPage() {
       <section className="rounded-2xl glass-surface p-5 mb-6">
         <div className="flex items-baseline justify-between mb-4">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-            30-day combined trend
+            {rangeLabel} combined trend
           </h3>
           <span className="text-[10px] uppercase tracking-wider text-slate-500">
-            normalized · hover for actuals
+            normalized · hover for actuals · click legend to toggle
           </span>
         </div>
         {combinedChart ? (
@@ -284,36 +305,6 @@ export default function OverviewPage() {
         )}
       </section>
 
-      <section className="rounded-2xl glass-surface p-5">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
-          WIP by status
-        </h3>
-        {!summary ? (
-          <p className="text-sm text-slate-400">—</p>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {([
-              ItemStatus.New,
-              ItemStatus.OnDeck,
-              ItemStatus.Wip,
-              ItemStatus.Packaging,
-              ItemStatus.At_The_Door,
-            ] as const).map((status) => (
-              <div
-                key={status}
-                className="rounded-xl px-3 py-3 bg-white/5 border border-white/10"
-              >
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                  {status}
-                </div>
-                <div className="mt-1 text-2xl font-bold tabular-nums leading-none text-white">
-                  {summary.wipByStatus[status] ?? 0}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
     </>
   );
 }
@@ -363,6 +354,16 @@ function CombinedChart({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(800);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
+
+  const toggleSeries = (key: string) => {
+    setHiddenSeries((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   useEffect(() => {
     const update = () => {
@@ -445,6 +446,37 @@ function CombinedChart({
 
   return (
     <div ref={wrapRef} className="w-full relative">
+      <div className="h-7 mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+        {hoverIndex !== null && dates[hoverIndex] && (
+          <>
+            <span className="text-[10px] uppercase tracking-wider text-slate-400 tabular-nums">
+              {new Date(`${dates[hoverIndex]}T12:00:00`).toLocaleDateString(
+                "en-US",
+                { month: "short", day: "numeric", year: "numeric" }
+              )}
+            </span>
+            {series.map((s) => {
+              if (hiddenSeries.has(s.key)) return null;
+              const v = s.values[hoverIndex];
+              return (
+                <div
+                  key={s.key}
+                  className="flex items-center gap-1.5 tabular-nums"
+                >
+                  <span
+                    className="inline-block w-2 h-2 rounded-sm"
+                    style={{ background: s.color }}
+                  />
+                  <span className="text-slate-300">{s.label}</span>
+                  <span className="font-semibold text-white">
+                    {v === null || v === undefined ? "—" : s.format(v)}
+                  </span>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
       <svg
         width={width}
         height={COMBINED_CHART_HEIGHT}
@@ -466,6 +498,7 @@ function CombinedChart({
         ))}
 
         {series.map((s, sIdx) => {
+          if (hiddenSeries.has(s.key)) return null;
           // Split into segments around nulls so weekly/sparse series render
           // as separate sub-lines rather than fake-connecting through gaps.
           const segments: { i: number; v: number }[][] = [];
@@ -485,16 +518,14 @@ function CombinedChart({
           return (
             <g key={s.key}>
               {segments.map((seg, segIdx) => {
-                const points = seg
-                  .map(
-                    ({ i, v }) =>
-                      `${toX(i).toFixed(1)},${toY(sIdx, v).toFixed(1)}`
-                  )
-                  .join(" ");
+                const pts = seg.map(({ i, v }) => ({
+                  x: toX(i),
+                  y: toY(sIdx, v),
+                }));
                 return (
-                  <polyline
+                  <path
                     key={segIdx}
-                    points={points}
+                    d={smoothPath(pts)}
                     fill="none"
                     stroke={s.color}
                     strokeWidth={2}
@@ -533,6 +564,7 @@ function CombinedChart({
               strokeDasharray="2 3"
             />
             {series.map((s, sIdx) => {
+              if (hiddenSeries.has(s.key)) return null;
               const v = s.values[hoverIndex];
               if (v === null || v === undefined) return null;
               return (
@@ -552,59 +584,41 @@ function CombinedChart({
         )}
       </svg>
 
-      {hoverIndex !== null && dates[hoverIndex] && (
-        <div
-          className="pointer-events-none absolute glass-surface px-3 py-2 rounded-lg text-xs shadow-lg"
-          style={{
-            left: Math.min(
-              Math.max(toX(hoverIndex) - 70, 0),
-              Math.max(width - 160, 0)
-            ),
-            top: 0,
-          }}
-        >
-          <div className="text-[10px] uppercase tracking-wider text-slate-400">
-            {new Date(`${dates[hoverIndex]}T12:00:00`).toLocaleDateString(
-              "en-US",
-              { month: "short", day: "numeric", year: "numeric" }
-            )}
-          </div>
-          <div className="mt-1 space-y-0.5">
-            {series.map((s) => {
-              const v = s.values[hoverIndex!];
-              return (
-                <div
-                  key={s.key}
-                  className="flex items-center gap-2 tabular-nums"
-                >
-                  <span
-                    className="inline-block w-2 h-2 rounded-sm"
-                    style={{ background: s.color }}
-                  />
-                  <span className="text-slate-300">{s.label}</span>
-                  <span className="font-semibold text-white ml-auto">
-                    {v === null || v === undefined ? "—" : s.format(v)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-slate-300">
-        {series.map((s, i) => (
-          <div key={s.key} className="flex items-center gap-2">
-            <span
-              className="inline-block w-3 h-3 rounded-sm"
-              style={{ background: s.color }}
-            />
-            <span className="font-medium text-white">{s.label}</span>
-            <span className={cn("text-slate-400 tabular-nums")}>
-              {legendValues[i]}
-            </span>
-          </div>
-        ))}
+      <div className="mt-3 flex flex-wrap gap-x-2 gap-y-1.5 text-xs text-slate-300">
+        {series.map((s, i) => {
+          const hidden = hiddenSeries.has(s.key);
+          return (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => toggleSeries(s.key)}
+              className={cn(
+                "flex items-center gap-2 rounded-md px-2 py-1 transition hover:bg-white/5",
+                hidden && "opacity-40"
+              )}
+              aria-pressed={!hidden}
+            >
+              <span
+                className="inline-block w-3 h-3 rounded-sm"
+                style={{
+                  background: hidden ? "transparent" : s.color,
+                  boxShadow: hidden ? `inset 0 0 0 2px ${s.color}` : undefined,
+                }}
+              />
+              <span
+                className={cn(
+                  "font-medium",
+                  hidden ? "text-slate-400 line-through" : "text-white"
+                )}
+              >
+                {s.label}
+              </span>
+              <span className="text-slate-400 tabular-nums">
+                {legendValues[i]}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

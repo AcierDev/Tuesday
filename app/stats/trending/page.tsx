@@ -70,7 +70,7 @@ export default function TrendingPage() {
           </p>
           <h2 className="mt-1 text-3xl font-bold text-white">
             {data?.rising[0]
-              ? `${data.rising[0].design} +${data.rising[0].delta}`
+              ? `${data.rising[0].design} +${data.rising[0].delta} items`
               : "—"}
           </h2>
         </div>
@@ -150,9 +150,9 @@ function TrendTable({ title, rows, positive }: TrendTableProps) {
             <thead>
               <tr className="text-left text-xs uppercase tracking-wider text-slate-400">
                 <th className="px-3 py-2 font-medium">Design</th>
-                <th className="px-3 py-2 font-medium text-right">Prior</th>
-                <th className="px-3 py-2 font-medium text-right">Recent</th>
-                <th className="px-3 py-2 font-medium text-right">Δ</th>
+                <th className="px-3 py-2 font-medium text-right">Prior items</th>
+                <th className="px-3 py-2 font-medium text-right">Recent items</th>
+                <th className="px-3 py-2 font-medium text-right">Δ items</th>
               </tr>
             </thead>
             <tbody>

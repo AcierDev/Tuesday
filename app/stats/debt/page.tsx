@@ -286,7 +286,7 @@ export default function DebtPage() {
           series={chartSeries}
           color={DEBT_CHART_COLOR}
           gradientId="debt-area"
-          formatValue={(v) => `${v}`}
+          formatValue={(v) => `${v} d`}
           emptyLabel="No time debt history yet — check back tomorrow."
           showWeekBoundaries={range === "30d" || range === "90d"}
         />
@@ -295,47 +295,47 @@ export default function DebtPage() {
       <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
         <StatTile
           label={`${rangeLabel} peak`}
-          value={stats.peak}
+          value={`${stats.peak} d`}
           sublabel="worst day"
         />
         <StatTile
           label={`${rangeLabel} avg`}
-          value={Math.round(stats.average)}
-          sublabel={`median ${Math.round(stats.median)}`}
+          value={`${Math.round(stats.average)} d`}
+          sublabel={`median ${Math.round(stats.median)} d`}
         />
         <StatTile
           label="Δ vs start"
-          value={`${stats.deltaFromStart > 0 ? "+" : stats.deltaFromStart < 0 ? "−" : ""}${Math.abs(stats.deltaFromStart)}`}
-          sublabel={`from ${stats.startValue}`}
+          value={`${stats.deltaFromStart > 0 ? "+" : stats.deltaFromStart < 0 ? "−" : ""}${Math.abs(stats.deltaFromStart)} d`}
+          sublabel={`from ${stats.startValue} d`}
           tone={startTone}
         />
         <StatTile
           label="7-day velocity"
-          value={`${velocityDelta > 0 ? "+" : velocityDelta < 0 ? "−" : ""}${Math.abs(Math.round(velocityDelta))}`}
+          value={`${velocityDelta > 0 ? "+" : velocityDelta < 0 ? "−" : ""}${Math.abs(Math.round(velocityDelta))} d`}
           sublabel={`vs prior 7d`}
           tone={velocityTone}
         />
         <StatTile
           label="Time-debt-free days"
-          value={stats.daysDebtFree}
+          value={`${stats.daysDebtFree} d`}
           sublabel={`${debtFreePct}% of ${stats.recordedDays} tracked`}
           tone={debtFreePct > 0 ? "good" : "neutral"}
         />
         <StatTile
           label="Days in time debt"
-          value={stats.daysInDebt}
+          value={`${stats.daysInDebt} d`}
           sublabel={`${100 - debtFreePct}% of ${stats.recordedDays} tracked`}
           tone={stats.daysInDebt > 0 ? "bad" : "neutral"}
         />
         <StatTile
           label="Longest time debt streak"
-          value={stats.longestDebtStreak}
+          value={`${stats.longestDebtStreak} d`}
           sublabel="consecutive days"
           tone={stats.longestDebtStreak > 0 ? "bad" : "neutral"}
         />
         <StatTile
           label="Biggest swings"
-          value={`+${stats.biggestJump} / −${Math.abs(stats.biggestDrop)}`}
+          value={`+${stats.biggestJump} / −${Math.abs(stats.biggestDrop)} d`}
           sublabel="day-over-day"
         />
       </section>
@@ -373,9 +373,12 @@ export default function DebtPage() {
                     </span>
                     <span className="mt-1 text-2xl font-bold tabular-nums leading-none">
                       −{days}
+                      <span className="ml-1 text-xs font-medium text-slate-400">
+                        d
+                      </span>
                     </span>
                     <span className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">
-                      days · {share}%
+                      {share}%
                     </span>
                     <div className="mt-2 w-full h-1 rounded-full bg-white/5 overflow-hidden">
                       <div
