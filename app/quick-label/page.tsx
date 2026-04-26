@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
   FileIcon,
   ImageIcon,
+  Loader2,
   Printer,
   RotateCw,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
@@ -24,6 +26,22 @@ interface UploadedFile {
   file: File;
   url: string;
   kind: UploadKind;
+  key: string;
+}
+
+interface SavedLabel {
+  key: string;
+  filename: string;
+  size: number;
+  uploadedAt: string | null;
+}
+
+function kindFromFilename(name: string): UploadKind {
+  return name.toLowerCase().endsWith(".pdf") ? "pdf" : "image";
+}
+
+function proxyUrlForKey(key: string): string {
+  return `/api/quick-labels?key=${encodeURIComponent(key)}`;
 }
 
 export default function QuickLabelPage() {
@@ -31,6 +49,10 @@ export default function QuickLabelPage() {
   const [textOrientation, setTextOrientation] =
     useState<Orientation>("portrait");
   const [upload, setUpload] = useState<UploadedFile | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [savedLabels, setSavedLabels] = useState<SavedLabel[]>([]);
+  const [savedLoading, setSavedLoading] = useState(true);
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -39,7 +61,24 @@ export default function QuickLabelPage() {
     };
   }, [upload]);
 
-  const handleFileSelected = (file: File | null) => {
+  const refreshSavedLabels = async () => {
+    try {
+      const res = await fetch("/api/quick-labels", { cache: "no-store" });
+      if (!res.ok) return;
+      const json = (await res.json()) as { items: SavedLabel[] };
+      setSavedLabels(json.items);
+    } catch (err) {
+      console.error("Failed to list saved labels", err);
+    } finally {
+      setSavedLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshSavedLabels();
+  }, []);
+
+  const handleFileSelected = async (file: File | null) => {
     if (!file) return;
     const isPdf = file.type === "application/pdf";
     const isImage = file.type.startsWith("image/");
@@ -47,18 +86,68 @@ export default function QuickLabelPage() {
       alert("Please choose an image or PDF file.");
       return;
     }
-    if (upload) URL.revokeObjectURL(upload.url);
-    setUpload({
-      file,
-      url: URL.createObjectURL(file),
-      kind: isPdf ? "pdf" : "image",
-    });
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/quick-labels", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        alert("Upload failed.");
+        return;
+      }
+      const saved = (await res.json()) as SavedLabel;
+      if (upload) URL.revokeObjectURL(upload.url);
+      setUpload({
+        file,
+        url: URL.createObjectURL(file),
+        kind: isPdf ? "pdf" : "image",
+        key: saved.key,
+      });
+      refreshSavedLabels();
+    } catch (err) {
+      console.error("Upload failed", err);
+      alert("Upload failed.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const clearUpload = () => {
     if (upload) URL.revokeObjectURL(upload.url);
     setUpload(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const deleteSavedLabel = async (key: string) => {
+    if (!confirm("Delete this saved label?")) return;
+    setDeletingKey(key);
+    try {
+      const res = await fetch(
+        `/api/quick-labels?key=${encodeURIComponent(key)}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) {
+        alert("Delete failed.");
+        return;
+      }
+      setSavedLabels((prev) => prev.filter((s) => s.key !== key));
+      if (upload?.key === key) clearUpload();
+    } finally {
+      setDeletingKey(null);
+    }
+  };
+
+  const printSavedLabel = (saved: SavedLabel) => {
+    const url = proxyUrlForKey(saved.key);
+    if (kindFromFilename(saved.filename) === "pdf") {
+      printPdfFile(url);
+    } else {
+      printImageFile(url);
+    }
   };
 
   const printText = () => {
@@ -204,18 +293,19 @@ export default function QuickLabelPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 p-6">
-      <div className="max-w-6xl mx-auto">
-        <CardHeader className="text-center mb-8">
-          <CardTitle className="text-4xl font-bold text-gray-900 dark:text-white">
-            Quick Label
-          </CardTitle>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
-            Type text or upload a file and send it straight to the label
-            printer.
-          </p>
-        </CardHeader>
+    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-black dark:text-white">
+      <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3 py-3 sm:min-w-[220px]">
+            <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] [forced-color-adjust:none]">
+              Quick Label
+            </h1>
+          </div>
+        </div>
+      </div>
 
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-md">
             <CardContent className="p-6 space-y-4">
@@ -313,13 +403,25 @@ export default function QuickLabelPage() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full min-h-[180px] rounded-md border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex flex-col items-center justify-center gap-2 text-gray-600 dark:text-gray-300"
+                  disabled={uploading}
+                  className="w-full min-h-[180px] rounded-md border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex flex-col items-center justify-center gap-2 text-gray-600 dark:text-gray-300 disabled:opacity-60"
                 >
-                  <Upload className="h-8 w-8" />
-                  <span className="font-medium">Click to choose a file</span>
-                  <span className="text-xs text-gray-500">
-                    PNG, JPG, or PDF
-                  </span>
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                      <span className="font-medium">Uploading…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8" />
+                      <span className="font-medium">
+                        Click to choose a file
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        PNG, JPG, or PDF · saved so other computers can print
+                      </span>
+                    </>
+                  )}
                 </button>
               ) : (
                 <div className="flex items-center justify-between rounded-md border border-gray-200 dark:border-gray-700 p-3">
@@ -370,6 +472,74 @@ export default function QuickLabelPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="mt-6 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-md">
+          <CardContent className="p-6">
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 className="text-lg font-semibold">Saved labels</h2>
+              <span className="text-xs text-gray-500">
+                Available on every computer
+              </span>
+            </div>
+            {savedLoading ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500 py-6">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading…
+              </div>
+            ) : savedLabels.length === 0 ? (
+              <p className="text-sm text-gray-500 py-6">
+                No labels saved yet.
+              </p>
+            ) : (
+              <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                {savedLabels.map((s) => {
+                  const kind = kindFromFilename(s.filename);
+                  const uploaded = s.uploadedAt
+                    ? new Date(s.uploadedAt).toLocaleString()
+                    : "";
+                  return (
+                    <li
+                      key={s.key}
+                      className="flex items-center gap-3 py-2"
+                    >
+                      {kind === "pdf" ? (
+                        <FileIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                      ) : (
+                        <ImageIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">
+                          {s.filename}
+                        </div>
+                        <div className="text-xs text-gray-500">{uploaded}</div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => printSavedLabel(s)}
+                        className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                      >
+                        <Printer className="mr-1 h-4 w-4" />
+                        Print
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteSavedLabel(s.key)}
+                        disabled={deletingKey === s.key}
+                      >
+                        {deletingKey === s.key ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
