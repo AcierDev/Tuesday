@@ -164,7 +164,7 @@ export function OrderCard({
               y: [-16, 0, 0],
               boxShadow: [
                 "0 0 0 0 rgba(245,158,11,0)",
-                "0 0 11px 3px rgba(245,158,11,0.28)",
+                "0 0 8px 2px rgba(245,158,11,0.14)",
                 "0 0 0 0 rgba(245,158,11,0)",
               ],
             }
