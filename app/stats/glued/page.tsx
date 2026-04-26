@@ -271,7 +271,6 @@ export default function GluedPage() {
 
 type WeekBucket = {
   weekStart: string; // YYYY-MM-DD (Monday, LA-local calendar)
-  weekEnd: string; // YYYY-MM-DD (Sunday)
   total: number;
   activeDays: number; // days with > 0 squares glued
   avgPerActiveDay: number;
@@ -304,12 +303,8 @@ function bucketToWeeks(buckets: DayBucket[]): WeekBucket[] {
   }
   const weeks: WeekBucket[] = [];
   for (const [weekStart, { total, active }] of map.entries()) {
-    const [y, m, d] = weekStart.split("-").map(Number);
-    const sunday = new Date(Date.UTC(y!, m! - 1, d!));
-    sunday.setUTCDate(sunday.getUTCDate() + 6);
     weeks.push({
       weekStart,
-      weekEnd: sunday.toISOString().slice(0, 10),
       total,
       activeDays: active,
       avgPerActiveDay: active > 0 ? total / active : 0,
@@ -317,6 +312,92 @@ function bucketToWeeks(buckets: DayBucket[]): WeekBucket[] {
   }
   weeks.sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1));
   return weeks;
+}
+
+const MONTH_NAMES_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+const MONTH_NAMES_FULL = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function ordinalSuffix(n: number): string {
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return "th";
+  switch (n % 10) {
+    case 1: return "st";
+    case 2: return "nd";
+    case 3: return "rd";
+    default: return "th";
+  }
+}
+
+// Pick the month a Mon-Sun week "belongs to" by looking only at Mon-Thu —
+// whichever month holds the majority of those four days wins, with a 2-2
+// split broken in favor of Thursday's month. Then count how many such
+// majority-this-month weeks precede this one (inclusive) within that month
+// to get the ordinal.
+function weekLabelInfo(weekStartIso: string): {
+  ordinal: number;
+  monthIndex: number;
+  year: number;
+} {
+  const [y, m, d] = weekStartIso.split("-").map(Number);
+  const monday = new Date(Date.UTC(y!, m! - 1, d!));
+
+  const counts: Record<string, number> = {};
+  let thursdayKey = "";
+  for (let i = 0; i < 4; i++) {
+    const day = new Date(monday);
+    day.setUTCDate(day.getUTCDate() + i);
+    const key = `${day.getUTCFullYear()}-${day.getUTCMonth()}`;
+    counts[key] = (counts[key] ?? 0) + 1;
+    if (i === 3) thursdayKey = key;
+  }
+  let bestKey = thursdayKey;
+  let bestCount = counts[thursdayKey] ?? 0;
+  for (const k in counts) {
+    if ((counts[k] ?? 0) > bestCount) {
+      bestCount = counts[k]!;
+      bestKey = k;
+    }
+  }
+  const [yStr, mStr] = bestKey.split("-");
+  const monthYear = Number(yStr);
+  const monthIndex = Number(mStr);
+
+  const isMajorityFor = (mon: Date): boolean => {
+    let inMonth = 0;
+    let thuInMonth = false;
+    for (let i = 0; i < 4; i++) {
+      const day = new Date(mon);
+      day.setUTCDate(day.getUTCDate() + i);
+      const sameMonth =
+        day.getUTCFullYear() === monthYear &&
+        day.getUTCMonth() === monthIndex;
+      if (sameMonth) inMonth += 1;
+      if (i === 3 && sameMonth) thuInMonth = true;
+    }
+    if (inMonth > 2) return true;
+    if (inMonth === 2) return thuInMonth; // tie → Thursday wins
+    return false;
+  };
+
+  const firstOfMonth = new Date(Date.UTC(monthYear, monthIndex, 1));
+  const dow = firstOfMonth.getUTCDay();
+  const daysSinceMonday = (dow + 6) % 7;
+  const candidate = new Date(firstOfMonth);
+  candidate.setUTCDate(candidate.getUTCDate() - daysSinceMonday);
+  if (!isMajorityFor(candidate)) {
+    candidate.setUTCDate(candidate.getUTCDate() + 7);
+  }
+  const ordinal =
+    Math.round(
+      (monday.getTime() - candidate.getTime()) / (7 * 24 * 60 * 60 * 1000)
+    ) + 1;
+  return { ordinal, monthIndex, year: monthYear };
 }
 
 function WeeklyDualChart({ weeks }: { weeks: WeekBucket[] }) {
@@ -434,24 +515,13 @@ function WeeklyDualChart({ weeks }: { weeks: WeekBucket[] }) {
       : totalToY(hovered.total)
     : 0;
 
-  const formatWeekLabel = (key: string) =>
-    new Date(`${key}T12:00:00`).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  const formatWeekRange = (start: string, end: string) => {
-    const s = new Date(`${start}T12:00:00`);
-    const e = new Date(`${end}T12:00:00`);
-    const sameMonth = s.getMonth() === e.getMonth();
-    const sFmt = s.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-    const eFmt = e.toLocaleDateString(
-      "en-US",
-      sameMonth ? { day: "numeric" } : { month: "short", day: "numeric" }
-    );
-    return `${sFmt} – ${eFmt}`;
+  const formatAxisLabel = (weekStart: string) => {
+    const { ordinal, monthIndex } = weekLabelInfo(weekStart);
+    return `${MONTH_NAMES_SHORT[monthIndex]} W${ordinal}`;
+  };
+  const formatTooltipLabel = (weekStart: string) => {
+    const { ordinal, monthIndex } = weekLabelInfo(weekStart);
+    return `${ordinal}${ordinalSuffix(ordinal)} week of ${MONTH_NAMES_FULL[monthIndex]}`;
   };
 
   return (
@@ -550,7 +620,7 @@ function WeeklyDualChart({ weeks }: { weeks: WeekBucket[] }) {
             className="fill-slate-400"
             fontSize="11"
           >
-            {formatWeekLabel(p.weekStart)}
+            {formatAxisLabel(p.weekStart)}
           </text>
         ))}
 
@@ -593,7 +663,7 @@ function WeeklyDualChart({ weeks }: { weeks: WeekBucket[] }) {
           }}
         >
           <div className="text-[10px] uppercase tracking-wider text-slate-400">
-            {formatWeekRange(hovered.weekStart, hovered.weekEnd)}
+            {formatTooltipLabel(hovered.weekStart)}
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span

@@ -182,30 +182,6 @@ export function NavMetricsBadges() {
   return (
     <div className="px-1 py-2 flex flex-col items-center gap-1.5">
       <Link
-        href="/stats/glued"
-        className={cn(
-          "flex flex-col items-center justify-center w-14 h-14 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
-          gluedToday && gluedToday.squares > 0
-            ? "text-emerald-500 dark:text-emerald-400"
-            : "text-slate-400"
-        )}
-        title={
-          gluedToday === null
-            ? "Glued today loading…"
-            : `Glued today: ${gluedToday.squares} square${gluedToday.squares === 1 ? "" : "s"} across ${gluedToday.orders} order${gluedToday.orders === 1 ? "" : "s"}`
-        }
-      >
-        <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
-          Glued
-        </span>
-        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
-          {gluedToday ? gluedToday.squares.toLocaleString() : "—"}
-        </span>
-        <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
-          today
-        </span>
-      </Link>
-      <Link
         href="/stats/backlog"
         className={cn(
           "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
@@ -294,6 +270,30 @@ export function NavMetricsBadges() {
           height={12}
           className="mt-1 opacity-70"
         />
+      </Link>
+      <Link
+        href="/stats/glued"
+        className={cn(
+          "flex flex-col items-center justify-center w-14 h-14 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
+          gluedToday && gluedToday.squares > 0
+            ? "text-emerald-500 dark:text-emerald-400"
+            : "text-slate-400"
+        )}
+        title={
+          gluedToday === null
+            ? "Glued today loading…"
+            : `Glued today: ${gluedToday.squares} square${gluedToday.squares === 1 ? "" : "s"} across ${gluedToday.orders} order${gluedToday.orders === 1 ? "" : "s"}`
+        }
+      >
+        <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
+          Glued
+        </span>
+        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
+          {gluedToday ? gluedToday.squares.toLocaleString() : "—"}
+        </span>
+        <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
+          today
+        </span>
       </Link>
     </div>
   );
