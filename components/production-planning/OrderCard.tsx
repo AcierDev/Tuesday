@@ -135,18 +135,18 @@ export function OrderCard({
         STATUS_TINT[productionStatus]
       )}
     >
-      <div className="flex items-start justify-between gap-2 p-2">
-        <div className="flex-1 min-w-0 space-y-1">
-          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate leading-tight">
+      <div className="flex items-start justify-between gap-2 px-3 py-2.5">
+        <div className="flex-1 min-w-0 space-y-1.5">
+          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate leading-snug">
             {parsedCustomerName}
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
-            <div className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-md">
+            <div className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">
               {size}
             </div>
             {design && (
               <div
-                className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-medium shadow-sm"
+                className="text-[11px] px-2 py-1 rounded-full text-white font-medium shadow-sm"
                 style={{ background: backgroundStyle }}
               >
                 {design}
@@ -155,7 +155,7 @@ export function OrderCard({
             {badgeStatus && (
               <div
                 className={cn(
-                  "text-[10px] px-1.5 py-0.5 rounded-full font-bold tabular-nums shadow-sm",
+                  "text-[11px] px-2 py-1 rounded-full font-bold tabular-nums shadow-sm",
                   badgeStatus.classes
                 )}
               >
@@ -164,7 +164,7 @@ export function OrderCard({
             )}
           </div>
         </div>
-        
+
         {isScheduled && onUnschedule && (
           <Button
             variant="ghost"

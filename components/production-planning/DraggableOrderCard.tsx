@@ -47,7 +47,7 @@ export function DraggableOrderCard({
       style={style} 
       {...attributes} 
       {...listeners} 
-      className="touch-none mb-2"
+      className="touch-none mb-2.5"
     >
       <OrderCard 
         meta={meta} 
