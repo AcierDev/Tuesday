@@ -56,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
     setIsSearchActive(false)
   }
 
-  const TYPES = ["all", "geometric", "striped", "tiled", "mini", "custom"];
+  const TYPES = ["all", "geometric", "striped", "mini", "custom"];
 
   return (
     <div
