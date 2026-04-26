@@ -14,7 +14,16 @@ import {
   useSliderDraft,
 } from "@/components/settings/settingsSlider";
 
-const HOVER_CLOSE_DELAY_MS = 180;
+const HOVER_CLOSE_DELAY_MS = 220;
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🔁 SINGLE-OPEN COORDINATOR                                            ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+// Only one slider popover is open at a time. When a new one opens it tells
+// the previous one to close immediately, so siblings don't visually overlap
+// during cursor sweeps.
+type ActivePopover = { close: () => void };
+let activePopover: ActivePopover | null = null;
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 💊 PILL + SLIDER STYLES                                               ║
@@ -101,6 +110,31 @@ export const SliderSettingPopover = ({
 
   React.useEffect(() => () => cancelClose(), [cancelClose]);
 
+  const selfRef = React.useRef<ActivePopover>({ close: () => {} });
+  selfRef.current.close = () => {
+    cancelClose();
+    setOpen(false);
+    onOpenChange?.(false);
+  };
+
+  React.useEffect(() => {
+    if (open) {
+      if (activePopover && activePopover !== selfRef.current) {
+        activePopover.close();
+      }
+      activePopover = selfRef.current;
+    } else if (activePopover === selfRef.current) {
+      activePopover = null;
+    }
+  }, [open]);
+
+  React.useEffect(
+    () => () => {
+      if (activePopover === selfRef.current) activePopover = null;
+    },
+    []
+  );
+
   const handleEnter = () => {
     cancelClose();
     if (!open) updateOpen(true);
@@ -127,11 +161,11 @@ export const SliderSettingPopover = ({
       <PopoverContent
         side="right"
         align="start"
-        sideOffset={10}
+        sideOffset={0}
         onMouseEnter={cancelClose}
         onMouseLeave={scheduleClose}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className="w-80 border-white/15 bg-gray-900/95 backdrop-blur-md text-foreground shadow-xl"
+        className="relative w-96 p-6 border-white/15 bg-gray-900/95 backdrop-blur-md text-foreground shadow-xl before:absolute before:content-[''] before:-left-3 before:top-0 before:h-full before:w-3 before:bg-transparent after:absolute after:content-[''] after:-bottom-3 after:left-0 after:h-3 after:w-full after:bg-transparent"
       >
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
