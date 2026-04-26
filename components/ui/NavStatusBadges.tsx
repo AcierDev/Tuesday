@@ -83,7 +83,7 @@ export function NavSectionCounters() {
             type="button"
             onClick={() => handleStatusClick(status)}
             className={cn(
-              "flex flex-col items-center justify-center w-14 h-11 rounded-lg px-1 select-none glass-surface transition-transform duration-200 ease-out hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer",
+              "flex flex-col items-center justify-center w-14 h-[53px] rounded-lg px-1 select-none glass-surface transition-transform duration-200 ease-out hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer",
               `text-${color} dark:text-${color}`
             )}
             title={`${status}: ${count}`}

@@ -465,6 +465,7 @@ export function Navbar({
         } fixed h-screen transition-all duration-300 ease-in-out bg-[#0d1a3a] hidden lg:block z-30`}
       >
         <div className="h-screen flex flex-col bg-[#0d1a3a]">
+          <NavSectionCounters />
           <div className="flex-1 overflow-y-auto no-scrollbar">
             <div className="flex flex-col space-y-1 pt-6 px-3">
               {mainNavItems.map((item, index) => {
@@ -488,8 +489,7 @@ export function Navbar({
               })}
             </div>
           </div>
-          <NavSectionCounters />
-          {/* Soft gradient divider between section counts and metric badges. */}
+          {/* Soft gradient divider above the metric badges. */}
           <div
             aria-hidden
             className="mx-4 my-2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
