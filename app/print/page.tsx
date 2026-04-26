@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
-import { Printer, ImageIcon, FileIcon, History } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group";
+import { Printer, ImageIcon, FileIcon } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -196,8 +197,17 @@ const TEMPLATES = [
   },
 ];
 
+type TabKey = "images" | "boxes" | "pdfs";
+
+const TABS: { value: TabKey; label: string; icon: typeof ImageIcon }[] = [
+  { value: "images", label: "Labels", icon: ImageIcon },
+  { value: "boxes", label: "Box Sizes", icon: ImageIcon },
+  { value: "pdfs", label: "PDFs", icon: FileIcon },
+];
+
 export default function LabelPrinter() {
   const [selectedTemplate, setSelectedTemplate] = useState(TEMPLATES[0]!.id);
+  const [activeTab, setActiveTab] = useState<TabKey>("images");
   const printRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [pdfLoaded, setPdfLoaded] = useState(false);
@@ -303,164 +313,148 @@ export default function LabelPrinter() {
   );
   const pdfTemplates = TEMPLATES.filter((t) => t.type === "pdf");
 
+  const renderImageGrid = (templates: typeof TEMPLATES) => (
+    <div className="grid grid-cols-2 gap-4">
+      {templates.map((template) => (
+        <motion.div
+          key={template.id}
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.97 }}
+          className={`cursor-pointer rounded-xl overflow-hidden ring-1 ring-inset transition-all ${
+            selectedTemplate === template.id
+              ? "ring-2 ring-blue-500 shadow-lg shadow-blue-500/20"
+              : "ring-gray-200/70 dark:ring-gray-700/60 hover:ring-blue-300 dark:hover:ring-blue-700"
+          }`}
+          onClick={() => setSelectedTemplate(template.id)}
+        >
+          <Image
+            src={template.src}
+            alt={template.name}
+            width={200}
+            height={150}
+            className="w-full h-32 object-cover"
+          />
+          <div className="p-2 text-center text-sm font-medium">
+            {template.name}
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+
+  const renderPdfTile = (template: (typeof TEMPLATES)[number]) => (
+    <motion.div
+      key={template.id}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.97 }}
+      className={`cursor-pointer p-4 rounded-xl ring-1 ring-inset transition-all ${
+        selectedTemplate === template.id
+          ? "ring-2 ring-blue-500 shadow-lg shadow-blue-500/20"
+          : "ring-gray-200/70 dark:ring-gray-700/60 hover:ring-blue-300 dark:hover:ring-blue-700"
+      }`}
+      onClick={() => setSelectedTemplate(template.id)}
+    >
+      <FileIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+      <div className="text-center font-medium">{template.name}</div>
+    </motion.div>
+  );
+
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 p-6">
-      <div className="max-w-6xl mx-auto">
-        <CardHeader className="text-center mb-8">
-          <CardTitle className="text-4xl font-bold text-gray-900 dark:text-white">
-            Label Printing Station
-          </CardTitle>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
-            Professional-grade printing for your shipping needs
-          </p>
-        </CardHeader>
+    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-black dark:text-white">
+      <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3">
+            <div className="flex items-center gap-3 sm:flex-shrink-0 sm:min-w-[220px]">
+              <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
+              <h1 className="text-lg sm:text-xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] [forced-color-adjust:none]">
+                Label Printing
+              </h1>
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Tab toggle — sliding pill, matches the type toggle on Orders. */}
+            <div className="flex justify-center sm:flex-1 sm:min-w-0">
+              <ToggleGroup
+                type="single"
+                value={activeTab}
+                onValueChange={(value) => {
+                  if (value) setActiveTab(value as TabKey);
+                }}
+                className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60"
+              >
+                {TABS.map(({ value, label, icon: Icon }) => {
+                  const isActive = activeTab === value;
+                  return (
+                    <ToggleGroupItem
+                      key={value}
+                      value={value}
+                      aria-label={`Show ${label}`}
+                      className="relative h-8 px-4 rounded-full text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-200 hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:shadow-none data-[state=on]:text-gray-900 dark:data-[state=on]:text-white"
+                    >
+                      {isActive && (
+                        <motion.span
+                          layoutId="print-tab-pill"
+                          className="absolute inset-0 bg-white dark:bg-gray-700 rounded-full shadow-sm"
+                          transition={{
+                            type: "spring",
+                            stiffness: 480,
+                            damping: 36,
+                          }}
+                        />
+                      )}
+                      <span className="relative z-10 inline-flex items-center gap-1.5">
+                        <Icon className="h-4 w-4" />
+                        {label}
+                      </span>
+                    </ToggleGroupItem>
+                  );
+                })}
+              </ToggleGroup>
+            </div>
+
+            <div className="hidden sm:block sm:min-w-[220px]" />
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Template Selection Panel */}
-          <Card className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-md">
+          <Card className="rounded-2xl">
             <CardContent className="p-6">
-              <Tabs defaultValue="images" className="space-y-6">
-                <TabsList className="w-full">
-                  <TabsTrigger value="images" className="w-1/3">
-                    <ImageIcon className="mr-2 h-4 w-4" />
-                    Labels
-                  </TabsTrigger>
-                  <TabsTrigger value="boxes" className="w-1/3">
-                    <ImageIcon className="mr-2 h-4 w-4" />
-                    Box Sizes
-                  </TabsTrigger>
-                  <TabsTrigger value="pdfs" className="w-1/3">
-                    <FileIcon className="mr-2 h-4 w-4" />
-                    PDFs
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="images" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    {imageTemplates.map((template) => (
-                      <motion.div
-                        key={template.id}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className={`cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                          selectedTemplate === template.id
-                            ? "border-blue-500 shadow-lg"
-                            : "border-transparent"
-                        }`}
-                        onClick={() => setSelectedTemplate(template.id)}
-                      >
-                        <Image
-                          src={template.src}
-                          alt={template.name}
-                          width={200}
-                          height={150}
-                          className="w-full h-32 object-cover"
-                        />
-                        <div className="p-2 text-center text-sm font-medium">
-                          {template.name}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="boxes" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    {boxTemplates.map((template) => (
-                      <motion.div
-                        key={template.id}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className={`cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                          selectedTemplate === template.id
-                            ? "border-blue-500 shadow-lg"
-                            : "border-transparent"
-                        }`}
-                        onClick={() => setSelectedTemplate(template.id)}
-                      >
-                        <Image
-                          src={template.src}
-                          alt={template.name}
-                          width={200}
-                          height={150}
-                          className="w-full h-32 object-cover"
-                        />
-                        <div className="p-2 text-center text-sm font-medium">
-                          {template.name}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="pdfs" className="space-y-4">
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-300">
-                        Standard
-                      </h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        {pdfTemplates
-                          .filter((t) => !t.name.includes("(Vertical)"))
-                          .map((template) => (
-                            <motion.div
-                              key={template.id}
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${
-                                selectedTemplate === template.id
-                                  ? "border-blue-500 shadow-lg"
-                                  : "border-gray-200 dark:border-gray-700"
-                              }`}
-                              onClick={() => setSelectedTemplate(template.id)}
-                            >
-                              <FileIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                              <div className="text-center font-medium">
-                                {template.name}
-                              </div>
-                            </motion.div>
-                          ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-300">
-                        Vertical
-                      </h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        {pdfTemplates
-                          .filter((t) => t.name.includes("(Vertical)"))
-                          .map((template) => (
-                            <motion.div
-                              key={template.id}
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${
-                                selectedTemplate === template.id
-                                  ? "border-blue-500 shadow-lg"
-                                  : "border-gray-200 dark:border-gray-700"
-                              }`}
-                              onClick={() => setSelectedTemplate(template.id)}
-                            >
-                              <FileIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                              <div className="text-center font-medium">
-                                {template.name}
-                              </div>
-                            </motion.div>
-                          ))}
-                      </div>
+              {activeTab === "images" && renderImageGrid(imageTemplates)}
+              {activeTab === "boxes" && renderImageGrid(boxTemplates)}
+              {activeTab === "pdfs" && (
+                <div className="space-y-8">
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+                      Standard
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      {pdfTemplates
+                        .filter((t) => !t.name.includes("(Vertical)"))
+                        .map(renderPdfTile)}
                     </div>
                   </div>
-                </TabsContent>
-              </Tabs>
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+                      Vertical
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      {pdfTemplates
+                        .filter((t) => t.name.includes("(Vertical)"))
+                        .map(renderPdfTile)}
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Preview Panel */}
-          <Card className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-md">
+          <Card className="rounded-2xl">
             <CardContent className="p-6">
               <div className="space-y-6">
-                <div className="aspect-[4/6] relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                <div className="aspect-[4/6] relative rounded-xl overflow-hidden ring-1 ring-inset ring-gray-200/70 dark:ring-gray-700/60">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={selectedTemplate}
@@ -487,19 +481,16 @@ export default function LabelPrinter() {
                   </AnimatePresence>
                 </div>
 
-                <div className="flex justify-between items-center">
-                  <Button
-                    onClick={handlePrint}
-                    disabled={
-                      selectedTemplateData?.type === "pdf" && !pdfLoaded
-                    }
-                    className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-                  >
-                    <Printer className="mr-2 h-5 w-5" />
-                    Print{" "}
-                    {selectedTemplateData?.type === "pdf" ? "PDF" : "Label"}
-                  </Button>
-                </div>
+                <Button
+                  onClick={handlePrint}
+                  disabled={
+                    selectedTemplateData?.type === "pdf" && !pdfLoaded
+                  }
+                  className="w-full h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-600/30 active:translate-y-0 dark:bg-blue-600 dark:hover:bg-blue-500"
+                >
+                  <Printer className="mr-2 h-5 w-5" />
+                  Print {selectedTemplateData?.type === "pdf" ? "PDF" : "Label"}
+                </Button>
               </div>
             </CardContent>
           </Card>

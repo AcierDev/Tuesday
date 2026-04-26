@@ -14,13 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ItemSizes } from "@/typings/types";
 
 interface CostBreakdown {
@@ -246,185 +239,194 @@ export default function CustomArtRequest() {
   }, []);
 
   return (
-    <div className="min-h-screen w-full flex items-start justify-center p-8 pt-12">
-      <div className="flex flex-col lg:flex-row gap-8 w-full max-w-5xl items-start justify-center">
-        {/* Standard Sizes Sidebar */}
-        <Card className="w-full lg:w-72 bg-[#1a1f2b]/95 border-gray-800 backdrop-blur-sm shrink-0 lg:sticky lg:top-8">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-bold text-gray-200">
-              Standard Sizes
-            </CardTitle>
-            <CardDescription className="text-gray-400 text-xs">
-              Quick select a standard configuration
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 lg:grid-cols-1 gap-2.5">
-            {standardSizeCosts.map((item) => (
-              <Button
-                key={item.size}
-                variant="outline"
-                className="justify-start bg-gray-800/50 border-gray-700 hover:bg-gray-700 hover:text-white h-auto py-3 px-4 w-full"
-                onClick={() => handleSizeSelect(item.size)}
-              >
-                <div className="flex flex-col items-start text-left gap-0.5">
-                  <span className="font-semibold text-sm text-gray-200">
-                    {item.size}
-                  </span>
-                  <span className="text-xs text-gray-400 font-normal">
-                    {item.label}
-                  </span>
-                </div>
-              </Button>
-            ))}
-          </CardContent>
-        </Card>
+    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-black dark:text-white">
+      <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3 py-3 sm:min-w-[220px]">
+            <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] [forced-color-adjust:none]">
+              Custom Art Calculator
+            </h1>
+          </div>
+        </div>
+      </div>
 
-        <Card
-          ref={cardRef}
-          className="w-full max-w-xl bg-[#1a1f2b]/95 border-gray-800 backdrop-blur-sm flex-1"
-        >
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Custom Art Request
-            </CardTitle>
-            <CardDescription className="text-gray-400">
-              Enter the dimensions for your custom art piece
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid w-full items-center gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="size-select" className="text-gray-300">
-                    Select Size
-                  </Label>
-                  <Select
-                    value={formData.selectedSize}
-                    onValueChange={handleSizeSelect}
+      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* Standard Sizes Sidebar */}
+          <Card className="rounded-2xl w-full lg:w-72 shrink-0 lg:sticky lg:top-20">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Standard Sizes</CardTitle>
+              <CardDescription className="text-xs">
+                Quick select a standard configuration
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 lg:grid-cols-1 gap-2">
+              {standardSizeCosts.map((item) => {
+                const isActive = formData.selectedSize === item.size;
+                return (
+                  <button
+                    key={item.size}
+                    type="button"
+                    onClick={() => handleSizeSelect(item.size)}
+                    className={`flex flex-col items-start text-left gap-0.5 px-3 py-2.5 rounded-xl ring-1 ring-inset transition-colors w-full ${
+                      isActive
+                        ? "bg-blue-600 text-white ring-blue-600 shadow-sm shadow-blue-600/30"
+                        : "bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60"
+                    }`}
                   >
-                    <SelectTrigger
-                      id="size-select"
-                      className="bg-gray-800 border-gray-700 h-11"
+                    <span className="font-semibold text-sm">{item.size}</span>
+                    <span
+                      className={`text-xs font-normal ${
+                        isActive ? "text-white/80" : "text-gray-500 dark:text-gray-400"
+                      }`}
                     >
-                      <SelectValue placeholder="Choose a size" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="custom">Custom</SelectItem>
-                      {CALCULATOR_SIZES.map((size) => (
-                        <SelectItem key={size} value={size}>
-                          {size}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
 
-                <div className="grid grid-cols-2 gap-4">
+          <Card ref={cardRef} className="rounded-2xl w-full max-w-xl flex-1">
+            <CardHeader>
+              <CardTitle className="text-xl bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] [forced-color-adjust:none]">
+                Custom Art Request
+              </CardTitle>
+              <CardDescription>
+                Enter the dimensions for your custom art piece
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid w-full items-center gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="height" className="text-gray-300">
-                      Height
-                    </Label>
-                    <Input
-                      required
-                      id="height"
-                      name="height"
-                      placeholder="Enter height"
-                      type="number"
-                      value={formData.height}
-                      onChange={handleInputChange}
-                      className="bg-gray-800 border-gray-700 h-11"
-                    />
+                    <Label>Select Size</Label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSizeSelect("custom")}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium ring-1 ring-inset transition-colors ${
+                          formData.selectedSize === "custom"
+                            ? "bg-blue-600 text-white ring-blue-600 shadow-sm shadow-blue-600/30"
+                            : "bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60"
+                        }`}
+                      >
+                        Custom
+                      </button>
+                      {CALCULATOR_SIZES.map((size) => {
+                        const isActive = formData.selectedSize === size;
+                        return (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => handleSizeSelect(size)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium ring-1 ring-inset transition-colors ${
+                              isActive
+                                ? "bg-blue-600 text-white ring-blue-600 shadow-sm shadow-blue-600/30"
+                                : "bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60"
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="height">Height</Label>
+                      <Input
+                        required
+                        id="height"
+                        name="height"
+                        placeholder="Enter height"
+                        type="number"
+                        value={formData.height}
+                        onChange={handleInputChange}
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="width">Width</Label>
+                      <Input
+                        required
+                        id="width"
+                        name="width"
+                        placeholder="Enter width"
+                        type="number"
+                        value={formData.width}
+                        onChange={handleInputChange}
+                        className="h-10"
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="width" className="text-gray-300">
-                      Width
-                    </Label>
-                    <Input
-                      required
-                      id="width"
-                      name="width"
-                      placeholder="Enter width"
-                      type="number"
-                      value={formData.width}
-                      onChange={handleInputChange}
-                      className="bg-gray-800 border-gray-700 h-11"
-                    />
+                    <Label>Unit</Label>
+                    <RadioGroup
+                      value={formData.unit}
+                      onValueChange={handleUnitChange}
+                      className="flex space-x-6 p-1"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem id="inches" value="inches" />
+                        <Label htmlFor="inches" className="cursor-pointer">
+                          Inches
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem id="feet" value="feet" />
+                        <Label htmlFor="feet" className="cursor-pointer">
+                          Feet
+                        </Label>
+                      </div>
+                    </RadioGroup>
                   </div>
                 </div>
+              </form>
+            </CardContent>
+            <CardFooter className="flex flex-col items-start border-t pt-6">
+              <div className="w-full space-y-2">
+                <div className="mb-4 p-5 bg-gray-50 dark:bg-gray-900/50 rounded-xl text-sm font-mono border border-gray-200 dark:border-gray-800">
+                  <h4 className="text-gray-500 dark:text-gray-400 mb-3 font-semibold uppercase text-xs tracking-wider">
+                    Cost Breakdown
+                  </h4>
+                  {costBreakdown.debug && (
+                    <div className="space-y-2 text-gray-700 dark:text-gray-300">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Dimensions:</span>
+                        <span>
+                          {costBreakdown.debug.dimensions.height}" ×{" "}
+                          {costBreakdown.debug.dimensions.width}"
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Squares:</span>
+                        <span>{costBreakdown.debug.squares.total} squares</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Weight:</span>
+                        <span>{costBreakdown.weight.pounds.toFixed(1)} lb</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Unit</Label>
-                  <RadioGroup
-                    value={formData.unit}
-                    onValueChange={handleUnitChange}
-                    className="flex space-x-6 p-1"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem id="inches" value="inches" />
-                      <Label
-                        htmlFor="inches"
-                        className="text-gray-300 cursor-pointer"
-                      >
-                        Inches
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem id="feet" value="feet" />
-                      <Label
-                        htmlFor="feet"
-                        className="text-gray-300 cursor-pointer"
-                      >
-                        Feet
-                      </Label>
-                    </div>
-                  </RadioGroup>
+                <div className="flex justify-between items-center p-4 bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 rounded-xl border border-emerald-500/20 w-full">
+                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                    Estimated Total
+                  </span>
+                  <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                    ${costBreakdown.total.toFixed(2)}
+                  </span>
                 </div>
               </div>
-            </form>
-          </CardContent>
-          <CardFooter className="flex flex-col items-start border-t border-gray-800 pt-6">
-            <div className="w-full space-y-2">
-              <div className="mb-4 p-5 bg-gray-900/50 rounded-lg text-sm font-mono border border-gray-800">
-                <h4 className="text-gray-400 mb-3 font-semibold uppercase text-xs tracking-wider">
-                  Cost Breakdown
-                </h4>
-                {costBreakdown.debug && (
-                  <div className="space-y-2 text-gray-300">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Dimensions:</span>
-                      <span>
-                        {costBreakdown.debug.dimensions.height}" ×{" "}
-                        {costBreakdown.debug.dimensions.width}"
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Squares:</span>
-                      <span>
-                        {costBreakdown.debug.squares.total} squares
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Weight:</span>
-                      <span>
-                        {costBreakdown.weight.pounds.toFixed(1)} lb
-                      </span>
-                    </div>
-                    <div className="border-t border-gray-800 my-2"></div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-lg border border-green-500/20 w-full">
-                <span className="text-sm font-medium text-green-400">
-                  Estimated Total
-                </span>
-                <span className="text-2xl font-bold text-green-400">
-                  ${costBreakdown.total.toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </CardFooter>
-        </Card>
+            </CardFooter>
+          </Card>
+        </div>
       </div>
     </div>
   );

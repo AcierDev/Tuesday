@@ -83,22 +83,25 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div
         ref={dialogRef}
-        className="bg-background text-foreground rounded-lg shadow-lg w-full max-w-[1120px] h-[90vh] overflow-hidden flex flex-col dark:bg-gray-800"
+        className="bg-white dark:bg-gray-900 text-foreground rounded-2xl shadow-xl ring-1 ring-gray-200/60 dark:ring-gray-800 w-full max-w-[1120px] h-[90vh] overflow-hidden flex flex-col"
       >
         <div className="flex flex-col h-full">
-          <div className="flex-grow overflow-y-auto p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">
+          <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
+              <h2 className="text-lg sm:text-xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] [forced-color-adjust:none]">
                 {SECTION_TITLES[activeTab] ?? "Settings"}
               </h2>
-              <Button size="icon" variant="ghost" onClick={onClose}>
-                <X className="h-5 w-5" />
-                <span className="sr-only">Close</span>
-              </Button>
             </div>
+            <Button size="icon" variant="ghost" onClick={onClose} className="rounded-full">
+              <X className="h-5 w-5" />
+              <span className="sr-only">Close</span>
+            </Button>
+          </div>
+          <div className="flex-grow overflow-y-auto p-6 bg-slate-50 dark:bg-slate-950">
             {activeTab === "columns" && (
               <ColumnVisibilitySettings
                 columnVisibility={settings.columnVisibility}
@@ -135,13 +138,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             {activeTab === "shipping" && <ShippingSettingsEditor />}
           </div>
           {activeTab === "shipping" ? (
-            <div className="border-t mt-auto p-4 bg-muted dark:bg-gray-700 flex justify-end items-center">
+            <div className="border-t border-gray-200/80 dark:border-gray-800 mt-auto p-4 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md flex justify-end items-center">
               <Button variant="ghost" onClick={onClose}>
                 Close
               </Button>
             </div>
           ) : (
-            <div className="border-t mt-auto p-4 bg-muted dark:bg-gray-700 flex justify-between items-center">
+            <div className="border-t border-gray-200/80 dark:border-gray-800 mt-auto p-4 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md flex justify-between items-center">
               <Button
                 variant="ghost"
                 onClick={() => console.log("Restore defaults")}
@@ -152,7 +155,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 <Button variant="ghost" onClick={onClose}>
                   Cancel
                 </Button>
-                <Button onClick={saveSettings}>Save Changes</Button>
+                <Button
+                  onClick={saveSettings}
+                  className="rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-600/30 active:translate-y-0 dark:bg-blue-600 dark:hover:bg-blue-500"
+                >
+                  Save Changes
+                </Button>
               </div>
             </div>
           )}
