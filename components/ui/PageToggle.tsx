@@ -24,13 +24,6 @@ const PAGE_TOGGLE_LABEL: Record<PageToggleValue, string> = {
 // fetchSchedules) so toggling feels instant instead of triggering a cold load.
 const PREWARM_DELAY_MS = 300;
 
-// The pill spring (stiffness 480, damping 36) visually settles in ~220ms.
-// Defer the route change behind that window so navigation work — which
-// can block the main thread on slower machines — doesn't chop the
-// in-flight animation. The local activeValue update fires immediately,
-// so the user gets instant visual feedback regardless.
-const NAVIGATE_AFTER_ANIMATION_MS = 220;
-
 interface PageToggleProps {
   currentPage: PageToggleValue;
 }
@@ -39,7 +32,7 @@ export function PageToggle({ currentPage }: PageToggleProps) {
   const router = useRouter();
   const [activeValue, setActiveValue] = useState<PageToggleValue>(currentPage);
   const [, startTransition] = useTransition();
-  const navTimeoutRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     const other: PageToggleValue =
@@ -57,8 +50,8 @@ export function PageToggle({ currentPage }: PageToggleProps) {
 
   useEffect(() => {
     return () => {
-      if (navTimeoutRef.current !== null) {
-        window.clearTimeout(navTimeoutRef.current);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
       }
     };
   }, []);
@@ -72,15 +65,21 @@ export function PageToggle({ currentPage }: PageToggleProps) {
         const next = value as PageToggleValue;
         if (next === activeValue) return;
         setActiveValue(next);
-        if (navTimeoutRef.current !== null) {
-          window.clearTimeout(navTimeoutRef.current);
+        // Yield one frame so the pill spring gets a clean first paint,
+        // then push the route inside startTransition. The transition
+        // marks the navigation as non-urgent so React keeps shipping
+        // animation frames while the new page bundle/render work runs
+        // alongside — slower than a foreground push, but it begins
+        // immediately rather than waiting for the spring to settle.
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
         }
-        navTimeoutRef.current = window.setTimeout(() => {
-          navTimeoutRef.current = null;
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null;
           startTransition(() => {
             router.push(PAGE_TOGGLE_HREF[next]);
           });
-        }, NAVIGATE_AFTER_ANIMATION_MS);
+        });
       }}
       className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60"
     >
