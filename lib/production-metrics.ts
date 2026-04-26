@@ -866,7 +866,7 @@ export function computeHealthScore(items: Item[]): {
               : `Ship ${onTime.total - onTime.onTime} more on-time of next ${onTime.total} to reach target.`,
       },
       {
-        label: "Debt",
+        label: "Time Debt",
         earned: debtScore,
         weight: HEALTH_WEIGHT_DEBT,
         raw: `${debt} overdue days`,

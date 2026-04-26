@@ -51,7 +51,7 @@ const TONE_TEXT: Record<Tone, string> = {
 // Stable color per breakdown component, used by the composition bar legend.
 const COMPONENT_FILL: Record<string, string> = {
   "On-time rate": "bg-sky-400",
-  Debt: "bg-rose-400",
+  "Time Debt": "bg-rose-400",
   "Late items": "bg-amber-400",
   Velocity: "bg-violet-400",
 };

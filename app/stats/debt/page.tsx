@@ -250,7 +250,7 @@ export default function DebtPage() {
       <header className="flex flex-wrap items-end justify-between gap-6 mb-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
-            Total overdue debt
+            Total overdue time debt
           </p>
           <div
             className={cn(
@@ -287,7 +287,7 @@ export default function DebtPage() {
           color={DEBT_CHART_COLOR}
           gradientId="debt-area"
           formatValue={(v) => `${v}`}
-          emptyLabel="No debt history yet — check back tomorrow."
+          emptyLabel="No time debt history yet — check back tomorrow."
           showWeekBoundaries={range === "30d" || range === "90d"}
         />
       </section>
@@ -316,19 +316,19 @@ export default function DebtPage() {
           tone={velocityTone}
         />
         <StatTile
-          label="Debt-free days"
+          label="Time-debt-free days"
           value={stats.daysDebtFree}
           sublabel={`${debtFreePct}% of ${stats.recordedDays} tracked`}
           tone={debtFreePct > 0 ? "good" : "neutral"}
         />
         <StatTile
-          label="Days in debt"
+          label="Days in time debt"
           value={stats.daysInDebt}
           sublabel={`${100 - debtFreePct}% of ${stats.recordedDays} tracked`}
           tone={stats.daysInDebt > 0 ? "bad" : "neutral"}
         />
         <StatTile
-          label="Longest debt streak"
+          label="Longest time debt streak"
           value={stats.longestDebtStreak}
           sublabel="consecutive days"
           tone={stats.longestDebtStreak > 0 ? "bad" : "neutral"}

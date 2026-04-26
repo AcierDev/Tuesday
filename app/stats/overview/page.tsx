@@ -157,7 +157,7 @@ export default function OverviewPage() {
       series: [
         {
           key: "debt",
-          label: "Debt",
+          label: "Time Debt",
           color: COMBINED_SERIES_COLORS.debt,
           values: debtValues,
           format: (v: number) => `${Math.round(v)}d`,
@@ -216,7 +216,7 @@ export default function OverviewPage() {
       <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         <KPILink href="/stats/debt" tile={
           <StatTile
-            label="Debt"
+            label="Time Debt"
             value={summary ? `${summary.debt}` : "—"}
             sublabel="overdue days"
             tone={summary && summary.debt > 0 ? "bad" : "good"}
