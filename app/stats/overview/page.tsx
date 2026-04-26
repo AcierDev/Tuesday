@@ -28,6 +28,7 @@ const COMBINED_SERIES_COLORS = {
   shipped: "rgb(96 165 250)",
   onTime: "rgb(52 211 153)",
   glued: "rgb(56 189 248)",
+  backlog: "rgb(165 180 252)",
 } as const;
 
 const COMBINED_CHART_HEIGHT = 280;
@@ -40,11 +41,15 @@ const COMBINED_PADDING_BOTTOM = 28;
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 type DebtSnapshot = { date: string; totalDebt: number; recorded?: boolean };
+type BacklogSnapshot = { date: string; squares: number; recorded?: boolean };
 
 export default function OverviewPage() {
   const { items, loading, error } = useAllItems();
   const { activities } = useActivities();
   const [debtSeries, setDebtSeries] = useState<DebtSnapshot[] | null>(null);
+  const [backlogSeries, setBacklogSeries] = useState<
+    BacklogSnapshot[] | null
+  >(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,6 +61,16 @@ export default function OverviewPage() {
         if (!cancelled) setDebtSeries(json.series);
       } catch (err) {
         console.error("Failed to load debt snapshots", err);
+      }
+    })();
+    (async () => {
+      try {
+        const res = await fetch(`/api/backlog-snapshots?days=${RANGE_DAYS}`);
+        if (!res.ok) return;
+        const json = (await res.json()) as { series: BacklogSnapshot[] };
+        if (!cancelled) setBacklogSeries(json.series);
+      } catch (err) {
+        console.error("Failed to load backlog snapshots", err);
       }
     })();
     return () => {
@@ -105,6 +120,12 @@ export default function OverviewPage() {
       (debtSeries ?? []).map((p) => [p.date, p.totalDebt])
     );
     const debtValues = dates.map((d) => debtByDate.get(d) ?? null);
+
+    // Backlog — daily snapshot of squares across New / On Deck / WIP.
+    const backlogByDate = new Map(
+      (backlogSeries ?? []).map((p) => [p.date, p.squares])
+    );
+    const backlogValues = dates.map((d) => backlogByDate.get(d) ?? null);
 
     // Shipped — completions per day from items.
     const shipBuckets = bucketCompletionsByDay(items, start, today);
@@ -162,9 +183,16 @@ export default function OverviewPage() {
           values: gluedValues,
           format: (v: number) => `${Math.round(v)}`,
         },
+        {
+          key: "backlog",
+          label: "Backlog (sq)",
+          color: COMBINED_SERIES_COLORS.backlog,
+          values: backlogValues,
+          format: (v: number) => `${Math.round(v)}`,
+        },
       ],
     };
-  }, [items, debtSeries, activities]);
+  }, [items, debtSeries, backlogSeries, activities]);
 
   return (
     <>

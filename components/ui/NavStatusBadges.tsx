@@ -206,7 +206,7 @@ export function NavMetricsBadges() {
         </span>
       </Link>
       <Link
-        href="/orders"
+        href="/stats/backlog"
         className={cn(
           "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
           backlogSquares && backlogSquares > 0
@@ -216,7 +216,7 @@ export function NavMetricsBadges() {
         title={
           backlogSquares === null
             ? "Backlog squares loading…"
-            : `Backlog: ~${backlogSquares.toLocaleString()} squares across New / On Deck / WIP`
+            : `Backlog: ~${backlogSquares.toLocaleString()} squares across New / On Deck / WIP — click for details`
         }
       >
         <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">

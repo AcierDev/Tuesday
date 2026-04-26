@@ -26,6 +26,7 @@ const SECTIONS = [
   ]},
   { group: "Operational", items: [
     { href: "/stats/debt", label: "Debt" },
+    { href: "/stats/backlog", label: "Backlog" },
     { href: "/stats/wip", label: "WIP & Aging" },
     { href: "/stats/bottlenecks", label: "Bottlenecks" },
     { href: "/stats/anomalies", label: "Anomalies" },
