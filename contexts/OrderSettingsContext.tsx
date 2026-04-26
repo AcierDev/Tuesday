@@ -49,6 +49,7 @@ const defaultSettings: OrderSettings = {
 };
 
 const SHARED_SETTINGS_PATCH_DEBOUNCE_MS = 300;
+const SHARED_SETTINGS_POLL_MS = 3000;
 
 function orderSettingsReducer(
   state: OrderSettings,
@@ -202,6 +203,60 @@ export function OrderSettingsProvider({
 
     return () => clearTimeout(handle);
   }, [settings.dueBadgeDays, settings.onDeckMinCount, isInitialized]);
+
+  //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+  //║ 🔄 POLL: pick up shared-settings changes from other browsers          ║
+  //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+  // Without this, two open browsers fight: one user changes onDeckMinCount,
+  // but other browsers keep their stale value and their auto-promote hook
+  // re-promotes the same items the first browser just demoted. Skip overlay
+  // while a local edit is still pending the debounced PATCH so the user's
+  // own slider drag doesn't get clobbered mid-gesture.
+  const settingsRef = useRef(settings);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
+  useEffect(() => {
+    if (!isInitialized || !serverSyncedRef.current) return;
+
+    const handle = setInterval(async () => {
+      try {
+        const res = await fetch("/api/settings");
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const overlay: Partial<OrderSettings> = {};
+        const current = settingsRef.current;
+        const last = lastPatchedSharedRef.current;
+
+        if (
+          typeof data.dueBadgeDays === "number" &&
+          data.dueBadgeDays !== last.dueBadgeDays &&
+          current.dueBadgeDays === last.dueBadgeDays
+        ) {
+          last.dueBadgeDays = data.dueBadgeDays;
+          overlay.dueBadgeDays = data.dueBadgeDays;
+        }
+        if (
+          typeof data.onDeckMinCount === "number" &&
+          data.onDeckMinCount !== last.onDeckMinCount &&
+          current.onDeckMinCount === last.onDeckMinCount
+        ) {
+          last.onDeckMinCount = data.onDeckMinCount;
+          overlay.onDeckMinCount = data.onDeckMinCount;
+        }
+
+        if (Object.keys(overlay).length > 0) {
+          dispatch({ type: "UPDATE_SETTINGS", payload: overlay });
+        }
+      } catch {
+        // ignore transient fetch errors
+      }
+    }, SHARED_SETTINGS_POLL_MS);
+
+    return () => clearInterval(handle);
+  }, [isInitialized]);
 
   const updateSettings = (newSettings: Partial<OrderSettings>) => {
     dispatch({ type: "UPDATE_SETTINGS", payload: newSettings });
