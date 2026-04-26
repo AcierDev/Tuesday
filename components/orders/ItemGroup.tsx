@@ -217,17 +217,23 @@ export const ItemGroupSection = memo(function ItemGroupSection({
 
   const trackingInfo = useTrackingStore((state) => state.trackingInfo);
 
-  // Map<orderId, true> for orders whose latest tracker reports in-transit
-  // (in_transit or out_for_delivery). Built once per trackingInfo change so
-  // the Done-section sort can float these to the top in O(n).
+  // Set of orderIds whose order has at least one tracker reporting an
+  // in-transit status (in_transit or out_for_delivery). "Any" semantics
+  // because an order can carry multiple labels — if any one shipment is
+  // moving, the order should float to the top of Done. Once all trackers
+  // flip to delivered (or another non-in-transit state), the order leaves
+  // this set and falls back to its natural index position.
   const inTransitOrderIds = useMemo(() => {
     const ids = new Set<string>();
     for (const info of trackingInfo) {
       const trackers = info.trackers;
       if (!trackers || trackers.length === 0) continue;
-      const status = trackers[trackers.length - 1]?.status?.toLowerCase();
-      if (status && IN_TRANSIT_TRACKER_STATUSES.has(status)) {
-        ids.add(info.orderId);
+      for (const tracker of trackers) {
+        const status = tracker?.status?.toLowerCase();
+        if (status && IN_TRANSIT_TRACKER_STATUSES.has(status)) {
+          ids.add(info.orderId);
+          break;
+        }
       }
     }
     return ids;
@@ -236,21 +242,23 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   const sortedItems = useMemo(() => {
     let items = [...group.items];
 
-    const isDone = group.title === ItemStatus.Done;
-    items.sort((a, b) => {
-      // In the Done section, in-transit packages float above non-transit
-      // items. Once a tracker flips to "delivered" the item drops out of
-      // the in-transit tier and falls back to its natural index position.
-      if (isDone) {
-        const aTier = inTransitOrderIds.has(a.id) ? 0 : 1;
-        const bTier = inTransitOrderIds.has(b.id) ? 0 : 1;
-        if (aTier !== bTier) return aTier - bTier;
-      }
-      return (a.index ?? 0) - (b.index ?? 0);
-    });
+    items.sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
 
     if (sortColumn && sortDirection && itemSortFuncs[sortColumn]) {
       items = itemSortFuncs[sortColumn](items, sortDirection === "asc");
+    }
+
+    // Done section: float in-transit packages to the top as a final pass.
+    // Done last so it always wins over any column sort. Sort is stable, so
+    // relative order within each tier is preserved. Once a tracker flips
+    // to delivered (or another non-in-transit state) the item leaves the
+    // top tier and falls back to its previous position.
+    if (group.title === ItemStatus.Done) {
+      items.sort((a, b) => {
+        const aTier = inTransitOrderIds.has(a.id) ? 0 : 1;
+        const bTier = inTransitOrderIds.has(b.id) ? 0 : 1;
+        return aTier - bTier;
+      });
     }
 
     return items;
