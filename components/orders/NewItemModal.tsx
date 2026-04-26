@@ -257,9 +257,11 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
                       {isActive && (
                         <motion.span
                           layoutId="company-toggle-pill"
-                          className="absolute inset-0 bg-white dark:bg-gray-700 rounded-full shadow-sm"
+                          className="absolute inset-0 pointer-events-none"
                           transition={{ type: "spring", stiffness: 480, damping: 36 }}
-                        />
+                        >
+                          <span className="absolute inset-0 bg-white dark:bg-gray-700 rounded-full shadow-sm animate-pill-squish" />
+                        </motion.span>
                       )}
                       <span className="relative z-10">{c}</span>
                     </button>

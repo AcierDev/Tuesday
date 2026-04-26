@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Popover,
@@ -5,33 +7,16 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { boardConfig } from "../../config/boardconfig";
-import { DesignBlends } from "@/typings/constants";
+import { boardConfig } from "@/config/boardconfig";
 import { toast } from "sonner";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 
-const DESIGN_TAG_ALPHA = 0.8;
-
 const PILL_BASE_CLASSES =
-  "inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 transition-[transform,opacity,box-shadow] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.05)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_24%)] hover:opacity-95 hover:-translate-y-px active:translate-y-0";
+  "inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 transition-[transform,opacity,box-shadow] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(0,0,0,0.10)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_48%)] bg-sky-500/80 dark:bg-sky-600/80 hover:opacity-95 hover:-translate-y-px active:translate-y-0";
 
 const SELECTED_RING_CLASSES =
   "ring-2 ring-blue-400 ring-offset-2 ring-offset-white dark:ring-offset-gray-900";
-
-const WOODFORM_DESIGNS = new Set(["Mint", "Brisket", "Nevada"]);
-
-const splitByCompany = (opts: string[]) => {
-  const woodform: string[] = [];
-  const everwood: string[] = [];
-  const striped: string[] = [];
-  for (const o of opts) {
-    if (WOODFORM_DESIGNS.has(o)) woodform.push(o);
-    else if (o.toLowerCase().startsWith("striped ")) striped.push(o);
-    else everwood.push(o);
-  }
-  return { woodform, everwood, striped };
-};
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 px-0.5">
@@ -63,7 +48,6 @@ const Section = ({
             className={`${PILL_BASE_CLASSES} ${
               isSelected ? SELECTED_RING_CLASSES : ""
             }`}
-            style={{ background: createBackground(option) }}
           >
             {option}
           </button>
@@ -73,32 +57,33 @@ const Section = ({
   </div>
 );
 
-const hexToRgba = (hex: string, alpha: number) => {
-  const normalized = hex.replace("#", "");
-  const full =
-    normalized.length === 3
-      ? normalized
-          .split("")
-          .map((c) => c + c)
-          .join("")
-      : normalized;
-  const r = parseInt(full.slice(0, 2), 16);
-  const g = parseInt(full.slice(2, 4), 16);
-  const b = parseInt(full.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+const parseHeight = (size: string): number | null => {
+  const m = size.match(/x\s*(\d+)/i);
+  if (!m) return null;
+  return parseInt(m[1]!, 10);
 };
 
-const createBackground = (option: string, alpha = 1) => {
-  const colors = DesignBlends[option as keyof typeof DesignBlends];
-  if (colors && colors.length > 0) {
-    const stops =
-      alpha < 1 ? colors.map((c) => hexToRgba(c, alpha)) : colors;
-    return `linear-gradient(to right, ${stops.join(", ")})`;
+const groupByHeight = (opts: string[]) => {
+  const map = new Map<string, string[]>();
+  const noHeight: string[] = [];
+  for (const o of opts) {
+    const h = parseHeight(o);
+    if (h === null) {
+      noHeight.push(o);
+      continue;
+    }
+    const key = String(h);
+    const arr = map.get(key) ?? [];
+    arr.push(o);
+    map.set(key, arr);
   }
-  return alpha < 1 ? `rgba(0, 0, 0, ${alpha})` : "#000000";
+  const ordered = [...map.entries()].sort(
+    (a, b) => parseInt(a[0], 10) - parseInt(b[0], 10)
+  );
+  return { ordered, noHeight };
 };
 
-export const DesignDropdownCell = ({
+export const SizeDropdownCell = ({
   item,
   columnValue,
   disabled = false,
@@ -113,9 +98,7 @@ export const DesignDropdownCell = ({
 
   const { updateItem } = useOrderStore();
 
-  const options = (
-    boardConfig.columns[columnValue.columnName].options ?? []
-  ).filter((o) => !o.toLowerCase().startsWith("tiled "));
+  const options = boardConfig.columns[columnValue.columnName].options ?? [];
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -123,7 +106,7 @@ export const DesignDropdownCell = ({
     return options.filter((o) => o.toLowerCase().includes(q));
   }, [options, query]);
 
-  const grouped = useMemo(() => splitByCompany(filtered), [filtered]);
+  const grouped = useMemo(() => groupByHeight(filtered), [filtered]);
 
   const trimmed = query.trim();
   const exactMatch = options.some(
@@ -140,13 +123,13 @@ export const DesignDropdownCell = ({
     try {
       const updatedItem = {
         ...item,
-        design: newValue,
+        size: newValue,
       };
-      await updateItem(updatedItem, columnValue.columnName);
-      toast.success("Design updated successfully");
+      await updateItem(updatedItem as Item, columnValue.columnName);
+      toast.success("Size updated successfully");
     } catch (err) {
-      console.error("Failed to update ColumnValue", err);
-      toast.error("Failed to update the design. Please try again.");
+      console.error("Failed to update size", err);
+      toast.error("Failed to update the size. Please try again.");
     }
   };
 
@@ -155,18 +138,14 @@ export const DesignDropdownCell = ({
     handleUpdate(trimmed);
   };
 
-  const currentDesign = columnValue.text as keyof typeof DesignBlends;
-  const backgroundStyle = createBackground(currentDesign, DESIGN_TAG_ALPHA);
-
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
           disabled={disabled}
           className={PILL_BASE_CLASSES}
-          style={{ background: backgroundStyle }}
         >
-          {columnValue.text || "Select Design"}
+          {columnValue.text || "Select Size"}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -185,38 +164,28 @@ export const DesignDropdownCell = ({
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              if (showCustomOption) {
-                handleSubmitCustom();
-              } else if (filtered[0]) {
-                handleUpdate(filtered[0]);
-              }
+              if (showCustomOption) handleSubmitCustom();
+              else if (filtered[0]) handleUpdate(filtered[0]);
             }
           }}
-          placeholder="Search or type a custom design"
+          placeholder="Search or type a custom size"
           className="w-full mb-3 px-3 h-8 rounded-md text-sm bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
 
         <div className="max-h-56 overflow-y-auto custom-scrollbar px-1 pt-1.5 pb-1 space-y-3">
-          {grouped.everwood.length > 0 && (
+          {grouped.ordered.map(([height, sizes]) => (
             <Section
-              label="Everwood-Geometric"
-              options={grouped.everwood}
+              key={height}
+              label={`Height ${height}"`}
+              options={sizes}
               selected={columnValue.text}
               onPick={handleUpdate}
             />
-          )}
-          {grouped.striped.length > 0 && (
+          ))}
+          {grouped.noHeight.length > 0 && (
             <Section
-              label="Everwood-Striped"
-              options={grouped.striped}
-              selected={columnValue.text}
-              onPick={handleUpdate}
-            />
-          )}
-          {grouped.woodform.length > 0 && (
-            <Section
-              label="WoodForm-Geometric"
-              options={grouped.woodform}
+              label="Other"
+              options={grouped.noHeight}
               selected={columnValue.text}
               onPick={handleUpdate}
             />
@@ -228,7 +197,6 @@ export const DesignDropdownCell = ({
                 type="button"
                 onClick={handleSubmitCustom}
                 className={PILL_BASE_CLASSES}
-                style={{ background: "linear-gradient(to right, #4b5563, #1f2937)" }}
               >
                 Use &ldquo;{trimmed}&rdquo;
               </button>
@@ -240,7 +208,6 @@ export const DesignDropdownCell = ({
             </p>
           )}
         </div>
-
       </PopoverContent>
     </Popover>
   );

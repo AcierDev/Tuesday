@@ -282,6 +282,17 @@ html.dark .text-gray-800 { color: rgb(229 231 235); }
   animation: fade-out 0.5s ease-out forwards;
 }
 
+@keyframes pill-squish {
+  0%   { transform: scaleX(1); }
+  45%  { transform: scaleX(0.86); }
+  100% { transform: scaleX(1); }
+}
+
+.animate-pill-squish {
+  animation: pill-squish 216ms ease-out;
+  transform-origin: center;
+}
+
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;

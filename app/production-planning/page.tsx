@@ -97,6 +97,7 @@ const DAYS_FOLDED_INTO_MONDAY: DayName[] = ["Saturday", "Sunday"];
 // pick sticks across reloads. Defaults match the original Mon–Thu target set.
 type AutoPlanDayMap = Record<DayName, boolean>;
 const AUTO_PLAN_STORAGE_KEY = "production-planning:auto-plan-days";
+const EXCLUDED_ITEMS_STORAGE_KEY = "production-planning:excluded-item-ids";
 const AUTO_PLAN_DEFAULTS: AutoPlanDayMap = {
   Sunday: false,
   Monday: true,
@@ -222,17 +223,37 @@ export default function ProductionPlanningPage() {
 
   // Items the user has pinned-to-sidebar — auto-plan skips these entirely.
   // Persisted server-side via /api/production-planning/excluded-items so the
-  // pin sticks across reloads and machines.
-  const [excludedItemIds, setExcludedItemIds] = useState<Set<string>>(
-    new Set()
-  );
+  // pin sticks across reloads and machines. Mirrored to localStorage so the
+  // pinned state shows on first paint instead of flashing in after the fetch.
+  const [excludedItemIds, setExcludedItemIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = window.localStorage.getItem(EXCLUDED_ITEMS_STORAGE_KEY);
+      if (!raw) return new Set();
+      const parsed = JSON.parse(raw) as unknown;
+      return Array.isArray(parsed)
+        ? new Set(parsed.filter((v): v is string => typeof v === "string"))
+        : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   useEffect(() => {
     let cancelled = false;
     fetch("/api/production-planning/excluded-items")
       .then((r) => (r.ok ? r.json() : { itemIds: [] }))
       .then((data: { itemIds?: string[] }) => {
         if (cancelled) return;
-        setExcludedItemIds(new Set(data.itemIds ?? []));
+        const ids = data.itemIds ?? [];
+        setExcludedItemIds(new Set(ids));
+        try {
+          window.localStorage.setItem(
+            EXCLUDED_ITEMS_STORAGE_KEY,
+            JSON.stringify(ids)
+          );
+        } catch (err) {
+          console.warn("Failed to cache sidebar pins", err);
+        }
       })
       .catch((err) => console.warn("Failed to load sidebar pins", err));
     return () => {
@@ -259,7 +280,16 @@ export default function ProductionPlanningPage() {
         );
         if (!res.ok) throw new Error("Server rejected pin update");
         const data: { itemIds?: string[] } = await res.json();
-        setExcludedItemIds(new Set(data.itemIds ?? []));
+        const ids = data.itemIds ?? [];
+        setExcludedItemIds(new Set(ids));
+        try {
+          window.localStorage.setItem(
+            EXCLUDED_ITEMS_STORAGE_KEY,
+            JSON.stringify(ids)
+          );
+        } catch (cacheErr) {
+          console.warn("Failed to cache sidebar pins", cacheErr);
+        }
       } catch (err) {
         console.error("Failed to toggle sidebar pin", err);
         toast.error("Failed to update pin");

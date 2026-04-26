@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { boardConfig } from "@/config/boardconfig";
 import { ColumnTitles, GenericColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { SizeDropdownCell } from "./SizeDropdownCell";
 
 interface DropdownCellProps {
   item: Item;
@@ -21,7 +22,20 @@ interface DropdownCellProps {
   disabled?: boolean;
 }
 
-export function DropdownCell({
+export function DropdownCell(props: DropdownCellProps) {
+  if (props.columnValue.columnName === ColumnTitles.Size) {
+    return (
+      <SizeDropdownCell
+        item={props.item}
+        columnValue={props.columnValue}
+        disabled={props.disabled}
+      />
+    );
+  }
+  return <BaseDropdownCell {...props} />;
+}
+
+function BaseDropdownCell({
   item,
   columnValue,
   disabled = false,

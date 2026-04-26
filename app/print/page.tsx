@@ -310,13 +310,15 @@ export default function LabelPrinter() {
                       {isActive && (
                         <motion.span
                           layoutId="print-tab-pill"
-                          className="absolute inset-0 bg-white dark:bg-gray-700 rounded-full shadow-sm"
+                          className="absolute inset-0 pointer-events-none"
                           transition={{
                             type: "spring",
                             stiffness: 480,
                             damping: 36,
                           }}
-                        />
+                        >
+                          <span className="absolute inset-0 bg-white dark:bg-gray-700 rounded-full shadow-sm animate-pill-squish" />
+                        </motion.span>
                       )}
                       <span className="relative z-10 inline-flex items-center gap-1.5">
                         <Icon className="h-4 w-4" />

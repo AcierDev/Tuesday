@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -24,8 +24,12 @@ const PAGE_TOGGLE_LABEL: Record<PageToggleValue, string> = {
 const PREWARM_DELAY_MS = 300;
 // Pill slide is driven by a GPU-accelerated CSS transform so it stays smooth
 // even while React is busy committing the destination page.
-const PILL_TRANSITION = "transform 240ms cubic-bezier(0.32, 1.2, 0.55, 1)";
+const PILL_DURATION_MS = 216;
+const PILL_TRANSITION = `transform ${PILL_DURATION_MS}ms cubic-bezier(0.32, 1.2, 0.55, 1)`;
 const PILL_GAP_PX = 4;
+// Hold the route push until the pill has finished sliding so the navigation's
+// render work can't compete with the animation frames.
+const NAVIGATE_DELAY_MS = PILL_DURATION_MS;
 
 interface PageToggleProps {
   currentPage: PageToggleValue;
@@ -34,7 +38,9 @@ interface PageToggleProps {
 export function PageToggle({ currentPage }: PageToggleProps) {
   const router = useRouter();
   const [activeValue, setActiveValue] = useState<PageToggleValue>(currentPage);
+  const [squishTick, setSquishTick] = useState(0);
   const [, startTransition] = useTransition();
+  const navigateTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const other: PageToggleValue =
@@ -50,6 +56,14 @@ export function PageToggle({ currentPage }: PageToggleProps) {
     return () => window.clearTimeout(handle);
   }, [currentPage, router]);
 
+  useEffect(() => {
+    return () => {
+      if (navigateTimerRef.current !== null) {
+        window.clearTimeout(navigateTimerRef.current);
+      }
+    };
+  }, []);
+
   const activeIndex = PAGE_TOGGLE_VALUES.indexOf(activeValue);
 
   return (
@@ -61,15 +75,22 @@ export function PageToggle({ currentPage }: PageToggleProps) {
         const next = value as PageToggleValue;
         if (next === activeValue) return;
         setActiveValue(next);
-        startTransition(() => {
-          router.push(PAGE_TOGGLE_HREF[next]);
-        });
+        setSquishTick((tick) => tick + 1);
+        if (navigateTimerRef.current !== null) {
+          window.clearTimeout(navigateTimerRef.current);
+        }
+        navigateTimerRef.current = window.setTimeout(() => {
+          navigateTimerRef.current = null;
+          startTransition(() => {
+            router.push(PAGE_TOGGLE_HREF[next]);
+          });
+        }, NAVIGATE_DELAY_MS);
       }}
       className="relative inline-grid grid-cols-2 gap-1 rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60"
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute top-1 bottom-1 rounded-full bg-white dark:bg-gray-700 shadow-sm will-change-transform"
+        className="pointer-events-none absolute top-1 bottom-1 will-change-transform"
         style={{
           left: PILL_GAP_PX,
           width: `calc((100% - ${PILL_GAP_PX * 3}px) / 2)`,
@@ -79,7 +100,14 @@ export function PageToggle({ currentPage }: PageToggleProps) {
               : `translateX(calc(100% + ${PILL_GAP_PX}px))`,
           transition: PILL_TRANSITION,
         }}
-      />
+      >
+        <span
+          key={squishTick}
+          className={`absolute inset-0 rounded-full bg-white dark:bg-gray-700 shadow-sm${
+            squishTick > 0 ? " animate-pill-squish" : ""
+          }`}
+        />
+      </span>
       {PAGE_TOGGLE_VALUES.map((value) => (
         <ToggleGroupItem
           key={value}

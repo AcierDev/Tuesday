@@ -972,9 +972,11 @@ function PillToggle({
             {isActive && (
               <motion.span
                 layoutId="view-label-pill"
-                className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 shadow-md shadow-blue-900/40"
+                className="absolute inset-0 pointer-events-none"
                 transition={{ type: "spring", stiffness: 480, damping: 36 }}
-              />
+              >
+                <span className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 shadow-md shadow-blue-900/40 animate-pill-squish" />
+              </motion.span>
             )}
             <Icon className="relative z-10 h-3.5 w-3.5" />
             <span className="relative z-10">{TAB_LABEL[value]}</span>

@@ -100,9 +100,11 @@ export const Header: React.FC<HeaderProps> = ({
                     {isActive && (
                       <motion.span
                         layoutId="type-toggle-pill"
-                        className="absolute inset-0 bg-white dark:bg-gray-700 rounded-full shadow-sm"
+                        className="absolute inset-0 pointer-events-none"
                         transition={{ type: "spring", stiffness: 480, damping: 36 }}
-                      />
+                      >
+                        <span className="absolute inset-0 bg-white dark:bg-gray-700 rounded-full shadow-sm animate-pill-squish" />
+                      </motion.span>
                     )}
                     <span className="relative z-10">
                       {type.charAt(0).toUpperCase() + type.slice(1)}
