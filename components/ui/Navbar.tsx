@@ -462,10 +462,15 @@ export function Navbar({
       <aside
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } fixed h-screen transition-all duration-300 ease-in-out bg-[#0d1a3a] hidden lg:block z-30`}
+        } fixed h-screen transition-all duration-300 ease-in-out bg-[hsl(var(--sidebar))] hidden lg:block z-30`}
       >
-        <div className="h-screen flex flex-col bg-[#0d1a3a]">
-          <NavSectionCounters />
+        <div className="h-screen flex flex-col bg-[hsl(var(--sidebar))]">
+          <NavMetricsBadges />
+          {/* Soft gradient divider below the metric badges. */}
+          <div
+            aria-hidden
+            className="mx-4 my-2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
+          />
           <div className="flex-1 overflow-y-auto no-scrollbar">
             <div className="flex flex-col space-y-1 pt-6 px-3">
               {mainNavItems.map((item, index) => {
@@ -489,22 +494,24 @@ export function Navbar({
               })}
             </div>
           </div>
-          {/* Soft gradient divider above the metric badges. */}
+          {/* Soft gradient divider above the section counters. */}
           <div
             aria-hidden
             className="mx-4 my-2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
           />
-          <NavMetricsBadges />
-          <div className="p-3 border-t dark:border-gray-600 space-y-2">
+          <NavSectionCounters />
+          {/* Soft gradient divider between section counters and the bottom (print/setup/calc) buttons. */}
+          <div
+            aria-hidden
+            className="mx-4 my-2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
+          />
+          <div className="p-3 space-y-2">
             <div
               className="relative"
               onMouseEnter={openPrintHover}
               onMouseLeave={closePrintHover}
             >
-              <Link
-                href="/print"
-                className="flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition"
-              >
+              <Link href="/print" className="sidebar-action-btn">
                 <Printer className="h-5 w-5 flex-shrink-0" />
                 {sidebarOpen && <span className="ml-2">Print</span>}
               </Link>
@@ -552,7 +559,7 @@ export function Navbar({
                         }}
                         transition={{ duration: 0.12, ease: "easeOut" }}
                         onClick={() => handleQuickPrint(tpl)}
-                        className="flex items-center px-3 py-2 text-sm text-foreground bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition text-left"
+                        className="sidebar-action-btn justify-start text-left"
                       >
                         <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
                         {tpl.name}
@@ -562,24 +569,15 @@ export function Navbar({
                 </motion.div>
               </motion.div>
             </div>
-            <Link
-              href="/quick-label"
-              className="flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition"
-            >
+            <Link href="/quick-label" className="sidebar-action-btn">
               <Barcode className="h-5 w-5 flex-shrink-0" />
               {sidebarOpen && <span className="ml-2">Quick Labels</span>}
             </Link>
-            <Link
-              href="/setup-utility"
-              className="flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition"
-            >
+            <Link href="/setup-utility" className="sidebar-action-btn">
               <PencilRuler className="h-5 w-5 flex-shrink-0" />
               {sidebarOpen && <span className="ml-2">Setup Utility</span>}
             </Link>
-            <Link
-              href="/calculator"
-              className="flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition"
-            >
+            <Link href="/calculator" className="sidebar-action-btn">
               <Calculator className="h-5 w-5 flex-shrink-0" />
               {sidebarOpen && <span className="ml-2">Calculator</span>}
             </Link>
@@ -588,13 +586,10 @@ export function Navbar({
               onMouseEnter={openSettingsHover}
               onMouseLeave={closeSettingsHover}
             >
-              <Button
-                className="flex w-full items-center justify-center bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition"
-                type="button"
-              >
+              <button className="sidebar-action-btn" type="button">
                 <Settings className="h-5 w-5 flex-shrink-0" />
                 {sidebarOpen && <span className="ml-2">Settings</span>}
-              </Button>
+              </button>
               <motion.div
                 onMouseEnter={openSettingsHover}
                 onMouseLeave={closeSettingsHover}
@@ -669,7 +664,7 @@ export function Navbar({
 
             <SheetContent
               side="left"
-              className="w-[85%] max-w-[320px] p-0 bg-gradient-to-b from-gray-800 to-gray-600"
+              className="w-4/5 sm:max-w-sm p-0 bg-gradient-to-b from-gray-800 to-gray-600"
             >
               <div className="flex flex-col h-[100dvh] bg-gradient-to-b from-gray-950/90 to-gray-950/70">
                 <div className="flex items-center justify-between p-4 border-b border-gray-700">

@@ -61,7 +61,11 @@ export function useOrderStats({ items, dueBadgeDays }: UseOrderStatsProps) {
           counts.geometric = (counts.geometric || 0) + 1;
 
         if (isMini) counts.mini = (counts.mini || 0) + 1;
-        if (!Object.values(ItemDesigns).includes(design as ItemDesigns))
+        if (
+          !isMini &&
+          (!Object.values(ItemDesigns).includes(design as ItemDesigns) ||
+            !Object.values(ItemSizes).includes(size as ItemSizes))
+        )
           counts.custom = (counts.custom || 0) + 1;
       }
     });

@@ -1,5 +1,5 @@
-// app/page.tsx
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <p>lorem ipsum</p>;
+  redirect("/orders");
 }

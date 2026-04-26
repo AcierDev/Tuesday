@@ -9,7 +9,6 @@ import { cn } from "@/utils/functions";
 import { Pin, X } from "lucide-react";
 import { DesignBlends } from "@/typings/constants";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
-import { useTheme } from "next-themes";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 
 // Solid, number-only due-date badge (overdue=red, due-soon=amber, on-time=emerald).
@@ -124,9 +123,7 @@ export function OrderCard({
   justPlaced = false,
   placeIndex = 0,
 }: OrderCardProps) {
-  const { theme } = useTheme();
   const { settings } = useOrderSettings();
-  const isDark = theme === "dark";
 
   const size = meta.item.size || "N/A";
   const customerName = meta.item.customerName || "Unknown";
@@ -138,7 +135,7 @@ export function OrderCard({
   const backgroundStyle = design ? createBackground(design) : undefined;
 
   // Parse customer name with Minecraft colors
-  const parsedCustomerName = parseMinecraftColors(customerName, isDark);
+  const parsedCustomerName = parseMinecraftColors(customerName);
 
   const badgeStatus = meta.item.dueDate
     ? getSolidDueBadge(new Date(meta.item.dueDate), referenceDate)

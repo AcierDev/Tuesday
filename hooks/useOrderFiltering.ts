@@ -64,8 +64,9 @@ export function useOrderFiltering({
               return isMini;
             case "custom":
               return (
-                !Object.values(ItemDesigns).includes(design as ItemDesigns) &&
-                !isMini
+                !isMini &&
+                (!Object.values(ItemDesigns).includes(design as ItemDesigns) ||
+                  !Object.values(ItemSizes).includes(size as ItemSizes))
               );
             default:
               return false;

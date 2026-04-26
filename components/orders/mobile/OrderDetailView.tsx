@@ -31,7 +31,6 @@ import { cn } from "@/utils/functions";
 import { getStatusColor } from "../ItemGroup";
 
 import { parseMinecraftColors } from "@/parseMinecraftColors";
-import { useTheme } from "next-themes";
 
 interface OrderDetailViewProps {
   orderId: string;
@@ -51,8 +50,6 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   onShip,
   onMarkCompleted,
 }) => {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
   const { items } = useOrderStore();
   const item = items.find((o) => o.id === orderId);
   if (!item) return null;
@@ -63,8 +60,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
 
   // Parse customer name with Minecraft colors
   const parsedCustomerName = parseMinecraftColors(
-    processedItem.customerName || "N/A",
-    isDark
+    processedItem.customerName || "N/A"
   );
 
   const renderColumnValue = (columnName: ColumnTitles) => {

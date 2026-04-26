@@ -46,16 +46,17 @@ export function DraggableOrderCard({
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
-    zIndex: isDragging ? 999 : undefined,
   };
 
   return (
-    <div 
-      ref={setNodeRef} 
-      style={style} 
-      {...attributes} 
-      {...listeners} 
-      className="touch-none mb-2.5"
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`touch-none mb-2.5 ${
+        isDragging ? "cursor-grabbing" : "cursor-grab active:cursor-grabbing"
+      }`}
     >
       <OrderCard
         meta={meta}

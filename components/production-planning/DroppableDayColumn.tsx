@@ -1,10 +1,11 @@
 "use client";
 
-import { useDroppable } from "@dnd-kit/core";
+import { useDndContext, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { DayName, ScheduledOrder } from "@/typings/types";
 import { OrderMeta } from "./types";
 import { DraggableOrderCard } from "./DraggableOrderCard";
+import { OrderCard } from "./OrderCard";
 import { CapacityIndicator } from "./CapacityIndicator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/utils/functions";
@@ -53,6 +54,18 @@ export function DroppableDayColumn({
   const pinned = orders.filter((o) => o.pinned);
   const orderedIds = [...unpinned, ...pinned].map((o) => o.itemId);
 
+  // While the user is dragging, peek at the active item so we can render a
+  // ghost preview at the bottom of unpinned (matching where the drop will
+  // actually land per handleDragEnd).
+  const { active } = useDndContext();
+  const activeMeta = (active?.data.current as { meta?: OrderMeta } | undefined)
+    ?.meta;
+  const activeId = active?.id as string | undefined;
+  const activeAlreadyHere = activeId
+    ? orders.some((o) => o.itemId === activeId)
+    : false;
+  const showGhost = isOver && !!activeMeta && !activeAlreadyHere;
+
   return (
     <div
       ref={setNodeRef}
@@ -84,30 +97,29 @@ export function DroppableDayColumn({
       >
         <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
           {orders.length === 0 ? (
-            <div className="h-full border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg m-1" />
+            showGhost && activeMeta ? (
+              <div className="opacity-40 pointer-events-none mb-2.5">
+                <OrderCard
+                  meta={activeMeta}
+                  isScheduled
+                  scheduledDay={day}
+                  referenceDate={date}
+                />
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  "h-full border-2 border-dashed rounded-lg m-1 transition-colors",
+                  isOver
+                    ? "border-primary/60 bg-primary/5"
+                    : "border-gray-200 dark:border-gray-800"
+                )}
+              />
+            )
           ) : (
             <div className="space-y-2">
-              {unpinned.map((order, idx) => {
-                const meta = ordersById.get(order.itemId);
-                if (!meta) return null;
-                return (
-                  <DraggableOrderCard
-                    key={order.itemId}
-                    id={order.itemId}
-                    meta={meta}
-                    isScheduled
-                    scheduledDay={day}
-                    onUnschedule={() => onUnschedule(order.itemId, order.day)}
-                    onTogglePin={() => onTogglePin(order.itemId, order.day)}
-                    isPinned={false}
-                    referenceDate={date}
-                    justPlaced={recentlyPlacedIds?.has(order.itemId) ?? false}
-                    placeIndex={idx}
-                  />
-                );
-              })}
               {pinned.length > 0 && (
-                <div className="pt-3 mt-1 border-t border-dashed border-amber-300/60 dark:border-amber-700/40">
+                <div className="pb-3 mb-1 border-b border-dashed border-amber-300/60 dark:border-amber-700/40">
                   <div className="text-[10px] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400 px-1 pb-2 flex items-center gap-1">
                     <span className="inline-block w-1 h-1 rounded-full bg-amber-500" />
                     Pinned
@@ -135,6 +147,35 @@ export function DroppableDayColumn({
                       );
                     })}
                   </div>
+                </div>
+              )}
+              {unpinned.map((order, idx) => {
+                const meta = ordersById.get(order.itemId);
+                if (!meta) return null;
+                return (
+                  <DraggableOrderCard
+                    key={order.itemId}
+                    id={order.itemId}
+                    meta={meta}
+                    isScheduled
+                    scheduledDay={day}
+                    onUnschedule={() => onUnschedule(order.itemId, order.day)}
+                    onTogglePin={() => onTogglePin(order.itemId, order.day)}
+                    isPinned={false}
+                    referenceDate={date}
+                    justPlaced={recentlyPlacedIds?.has(order.itemId) ?? false}
+                    placeIndex={idx}
+                  />
+                );
+              })}
+              {showGhost && activeMeta && (
+                <div className="opacity-40 pointer-events-none">
+                  <OrderCard
+                    meta={activeMeta}
+                    isScheduled
+                    scheduledDay={day}
+                    referenceDate={date}
+                  />
                 </div>
               )}
             </div>

@@ -39,6 +39,7 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    --sidebar: 225 64% 14%;
   }
 
   /* Kept for completeness — re-asserts the dark palette inside the
@@ -69,6 +70,7 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    --sidebar: 225 64% 14%;
   }
 }
 
@@ -78,13 +80,17 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: Arial, Helvetica, sss-serif;
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
   }
 }
 
 @layer components {
   .glass-surface {
     @apply bg-white/25 dark:bg-gray-900/25 backdrop-blur-md backdrop-saturate-150 border border-white/30 dark:border-white/10 shadow-glass dark:shadow-glass-dark;
+  }
+
+  .sidebar-action-btn {
+    @apply flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition;
   }
 }
 
@@ -148,30 +154,6 @@
 
 .radix-popover-content {
   z-index: 1000 !important;
-}
-
-Customize the scrollbar for Webkit browsers ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* Customize the scrollbar for Firefox */
-* {
-  scrollbar-width: auto;
-  scrollbar-color: #888 #f1f1f1;
 }
 
 /* Webkit browsers (Chrome, Safari) */

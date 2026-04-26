@@ -65,6 +65,7 @@ export const ItemTableRow = memo(function ItemTableRow({
   return (
     <TableRow
       className={cn(
+        "select-none",
         index % 2 === 0
           ? "bg-white dark:bg-gray-800"
           : "bg-gray-50 dark:bg-gray-800/60",

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface LoadMoreSentinelProps {
@@ -41,6 +42,7 @@ export const LoadMoreSentinel: React.FC<LoadMoreSentinelProps> = ({
     <div ref={observerTarget} className="p-4 flex justify-center w-full">
       {isLoading && (
         <Button disabled variant="outline">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Loading...
         </Button>
       )}

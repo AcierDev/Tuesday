@@ -17,9 +17,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   DndContext,
   DragOverlay,
-  pointerWithin,
+  closestCorners,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragStartEvent,
@@ -464,10 +465,14 @@ export default function ProductionPlanningPage() {
     return groups;
   }, [currentSchedule, allOrdersById, currentWeekKey]);
 
-  // DnD Sensors
+  // DnD Sensors. Mouse activates on a small drag distance; touch waits a beat
+  // so vertical scrolling on the card lists doesn't get hijacked into drags.
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -556,54 +561,28 @@ export default function ProductionPlanningPage() {
       newScheduleData = structuredClone(currentSchedule);
     }
 
-    // Moving from Unscheduled to Day
+    // Drops always land at the end of the day's list. Display splits by the
+    // `pinned` flag, so this puts new arrivals at the bottom of the unpinned
+    // section regardless of array layout.
     if (activeContainer === "unscheduled") {
-      const newItem = { id: activeId, done: false };
-
-      // Calculate index
-      let newIndex = newScheduleData.schedule[targetDay].length;
-      if (overId !== targetDay) {
-        const overIndex = newScheduleData.schedule[targetDay].findIndex(
-          (item) => item.id === overId
-        );
-        if (overIndex !== -1) newIndex = overIndex;
-      }
-
-      // Insert
-      newScheduleData.schedule[targetDay].splice(newIndex, 0, newItem);
-    }
-    // Moving between days or reordering within day
-    else {
+      newScheduleData.schedule[targetDay].push({ id: activeId, done: false });
+    } else {
       const activeDay = activeContainer as DayName;
-      const activeIndex = newScheduleData.schedule[activeDay].findIndex(
-        (item) => item.id === activeId
-      );
+      const sourceList = newScheduleData.schedule[activeDay];
+      const activeIndex = sourceList.findIndex((item) => item.id === activeId);
 
-      if (activeIndex === -1) return; // Should not happen
-
-      // Remove from old
-      const deletedItems = newScheduleData.schedule[activeDay].splice(
-        activeIndex,
-        1
-      );
-      const movedItem = deletedItems[0];
-
-      if (!movedItem) return;
-
-      let overIndex;
-      if (overId === targetDay) {
-        overIndex = newScheduleData.schedule[targetDay].length;
-      } else {
-        overIndex = newScheduleData.schedule[targetDay].findIndex(
-          (item) => item.id === overId
-        );
+      if (activeIndex === -1) {
+        setActiveId(null);
+        return;
       }
 
-      if (overIndex === -1)
-        overIndex = newScheduleData.schedule[targetDay].length;
+      const [movedItem] = sourceList.splice(activeIndex, 1);
+      if (!movedItem) {
+        setActiveId(null);
+        return;
+      }
 
-      // Insert into new
-      newScheduleData.schedule[targetDay].splice(overIndex, 0, movedItem);
+      newScheduleData.schedule[targetDay].push(movedItem);
     }
 
     await updateSchedule(currentWeekKey, newScheduleData);
@@ -822,7 +801,7 @@ export default function ProductionPlanningPage() {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={pointerWithin}
+      collisionDetection={closestCorners}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >

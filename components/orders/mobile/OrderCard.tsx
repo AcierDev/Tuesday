@@ -19,7 +19,6 @@ import {
 } from "../utils/orderUtils";
 
 import { parseMinecraftColors } from "@/parseMinecraftColors";
-import { useTheme } from "next-themes";
 
 interface OrderCardProps {
   item: OrderItem;
@@ -29,13 +28,9 @@ interface OrderCardProps {
 
 export const OrderCard: React.FC<OrderCardProps> = React.memo(
   ({ item, onSelect, clickToAddTarget }) => {
-    const { theme } = useTheme();
-    const isDark = theme === "dark";
-
     // Parse customer name with Minecraft colors
     const parsedCustomerName = parseMinecraftColors(
-      item.customerName || "Unknown Customer",
-      isDark
+      item.customerName || "Unknown Customer"
     );
 
     const daysRemaining = getDaysRemaining(item.dueDate || "");

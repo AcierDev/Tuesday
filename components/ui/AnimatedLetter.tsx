@@ -21,38 +21,17 @@ export function AnimatedLetter({
     xl: "text-9xl md:text-[12rem]",
   };
 
-  const letterStyles = {
-    E: {
-      color: "text-yellow-400",
-      shadow: `
-        0 0 3px #fbbf24,
-        0 0 6px #fbbf24
-      `,
-    },
-    EW: {
-      color: "text-yellow-400",
-      shadow: `
-        0 0 3px #fbbf24,
-        0 0 6px #fbbf24
-      `,
-    },
-    WF: {
-      color: "text-purple-400",
-      shadow: `
-        0 0 3px #c084fc,
-        0 0 6px #c084fc
-      `,
-    },
-    SH: {
-      color: "text-blue-400",
-      shadow: `
-        0 0 3px #60a5fa,
-        0 0 6px #60a5fa
-      `,
-    },
+  const glowShadow = "0 0 3px currentColor, 0 0 6px currentColor";
+  const glowFilter = "drop-shadow(0 0 3px currentColor) drop-shadow(0 0 6px currentColor)";
+
+  const letterColor = {
+    E: "text-yellow-400",
+    EW: "text-yellow-400",
+    WF: "text-purple-400",
+    SH: "text-blue-400",
   };
 
-  const style = letterStyles[letter];
+  const style = { color: letterColor[letter], shadow: glowShadow };
 
   return (
     <div className={cn("flex items-center justify-center pr-2", className)}>
@@ -74,7 +53,7 @@ export function AnimatedLetter({
               : "w-16 h-16"
           )}
           style={{
-            filter: `drop-shadow(0 0 3px #60a5fa) drop-shadow(0 0 6px #60a5fa)`,
+            filter: glowFilter,
             animationDuration: "4s",
           }}
         />

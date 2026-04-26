@@ -72,15 +72,13 @@ const renderColoredText = (
 };
 
 export const parseMinecraftColors = (
-  input: string,
-  darkMode: boolean
+  input: string
 ): React.ReactNode[] => {
   try {
     const regex = /(&[0-9a-f])/gi;
     const segments: TextSegment[] = [];
     let lastIndex = 0;
-    // Set default color based on dark mode
-    const defaultColor = darkMode ? minecraftColors["f"] : minecraftColors["0"];
+    const defaultColor = minecraftColors["f"] ?? "#FFFFFF";
     let currentColor: string = defaultColor;
 
     // Sanitize input to prevent XSS
@@ -101,7 +99,7 @@ export const parseMinecraftColors = (
       }
 
       // Update the current color
-      currentColor = minecraftColors[colorCode] || defaultColor;
+      currentColor = minecraftColors[colorCode] ?? defaultColor;
       lastIndex = index + 2; // Skip the color code
     }
 
@@ -195,7 +193,7 @@ export const parseMinecraftColors = (
   } catch (error) {
     console.error("Error parsing Minecraft colors:", error);
     return [
-      <span key="error" style={{ color: darkMode ? "#FFFFFF" : "#000000" }}>
+      <span key="error" style={{ color: "#FFFFFF" }}>
         {input}
       </span>,
     ];

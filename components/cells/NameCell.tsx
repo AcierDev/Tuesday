@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
 import {
@@ -67,8 +66,6 @@ export const NameCell: React.FC<NameCellProps> = ({
 }) => {
   const [inputValue, setInputValue] = useState(columnValue.text || "");
   const [isEditing, setIsEditing] = useState(false);
-  const { theme } = useTheme();
-  const isDarkMode = theme === "dark";
   const previousValueRef = useRef(columnValue.text);
 
   const { updateItem } = useOrderStore();
@@ -144,6 +141,14 @@ export const NameCell: React.FC<NameCellProps> = ({
 
   const isPrintMarker = inputValue.trim().toLowerCase() === "print";
 
+  // Brand prefix ([EW]/[WF]/[SH]) is stripped from the displayed name and
+  // shown as a tag to the right of the text.
+  const brandPrefixMatch = inputValue.match(/^\[(EW|WF|SH)\]\s*/);
+  const brandPrefix = brandPrefixMatch ? brandPrefixMatch[1] : null;
+  const displayName = brandPrefixMatch
+    ? inputValue.slice(brandPrefixMatch[0].length)
+    : inputValue;
+
   // Split off the first two real words. Color codes (&a) and brand prefixes
   // ([EW]/[WF]/[SH]) don't count as words but stay grouped with the head.
   const splitFirstTwoWords = (text: string): [string, string] => {
@@ -176,7 +181,20 @@ export const NameCell: React.FC<NameCellProps> = ({
     }
     return [text.slice(0, splitAt), text.slice(splitAt)];
   };
-  const [firstTwoWords, restOfName] = splitFirstTwoWords(inputValue);
+  const [firstTwoWords, restOfName] = splitFirstTwoWords(displayName);
+
+  const brandTag = brandPrefix ? (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-md px-1.5",
+        "bg-slate-200 text-slate-700 ring-1 ring-slate-300",
+        "dark:bg-slate-700 dark:text-slate-200 dark:ring-slate-600",
+        "text-[0.7rem] font-bold uppercase tracking-wide flex-shrink-0"
+      )}
+    >
+      {brandPrefix}
+    </span>
+  ) : null;
 
   const verticalIcon = tags?.isVertical && (
     <Tooltip>
@@ -237,7 +255,6 @@ export const NameCell: React.FC<NameCellProps> = ({
         {isEditing ? (
           <div className="flex flex-1 min-w-0 items-center justify-start gap-2">
             {dueBadge}
-            {verticalIcon}
             <input
               type="text"
               value={inputValue}
@@ -253,15 +270,13 @@ export const NameCell: React.FC<NameCellProps> = ({
               )}
               autoFocus
             />
+            {verticalIcon}
           </div>
         ) : (
           <div
             className={cn(
               "min-w-0 flex-1 py-2 pr-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
               "font-medium text-left break-words",
-              "select-text",
-              "transition-shadow duration-200",
-              "group-hover:ring-1 group-hover:ring-ring/50",
               "rounded-md",
               "flex items-center justify-start gap-2"
             )}
@@ -271,7 +286,6 @@ export const NameCell: React.FC<NameCellProps> = ({
             }}
           >
             {dueBadge}
-            {verticalIcon}
             {isPrintMarker ? (
               <span
                 className={cn(
@@ -286,12 +300,14 @@ export const NameCell: React.FC<NameCellProps> = ({
               </span>
             ) : (
               <>
-                {parseMinecraftColors(firstTwoWords, isDarkMode)}
+                {parseMinecraftColors(firstTwoWords)}
                 <span className="opacity-55 text-[0.92em]">
-                  {parseMinecraftColors(restOfName, isDarkMode)}
+                  {parseMinecraftColors(restOfName)}
                 </span>
               </>
             )}
+            {brandTag}
+            {verticalIcon}
           </div>
         )}
       </div>

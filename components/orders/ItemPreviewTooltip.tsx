@@ -149,7 +149,7 @@ export function ItemPreviewTooltip({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      <Card className="p-4 bg-white/95 dark:bg-gray-800/95 shadow-xl rounded-xl w-80 border-2 border-gray-200 dark:border-gray-700 backdrop-blur-sm">
+      <Card className="p-4 bg-white/95 dark:bg-gray-900/95 shadow-xl rounded-xl w-80 border-2 border-gray-200 dark:border-gray-700 backdrop-blur-sm">
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
             <h3 className="font-medium text-base flex items-center gap-2">

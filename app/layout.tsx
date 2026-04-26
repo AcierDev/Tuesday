@@ -10,7 +10,6 @@ import {
   OrderSettingsProvider,
   useOrderSettings,
 } from "@/contexts/OrderSettingsContext";
-import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -109,13 +108,11 @@ export default function RootLayout({
         style={{ forcedColorAdjust: "none", color: "rgb(243 244 246)" }}
       >
         <TooltipProvider>
-          <ThemeProvider attribute="class" forcedTheme="dark">
-            <OrderSettingsProvider>
-              <Toaster position="top-center" />
-              <LayoutContent>{children}</LayoutContent>
-              <UploadProgressToast />
-            </OrderSettingsProvider>
-          </ThemeProvider>
+          <OrderSettingsProvider>
+            <Toaster position="top-center" />
+            <LayoutContent>{children}</LayoutContent>
+            <UploadProgressToast />
+          </OrderSettingsProvider>
         </TooltipProvider>
       </body>
     </html>

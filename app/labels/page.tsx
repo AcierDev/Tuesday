@@ -15,7 +15,6 @@ import { Search, Barcode, Calendar, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/utils/functions";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
-import { useTheme } from "next-themes";
 import { STATUS_COLORS, STATUS_BORDER_COLORS } from "@/typings/constants";
 
 // Status priority for sorting (reverse workflow order)
@@ -180,13 +179,9 @@ function OrderLabelCard({
   needsRetry: boolean;
   onViewLabel: () => void;
 }) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-
   // Parse customer name with Minecraft colors
   const parsedCustomerName = parseMinecraftColors(
-    item.customerName || "Unknown Customer",
-    isDark
+    item.customerName || "Unknown Customer"
   );
 
   return (
