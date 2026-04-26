@@ -40,7 +40,7 @@ export function Calculator({
   };
 
   return (
-    <Card className="rounded-2xl">
+    <Card className="rounded-2xl bg-white/90 dark:bg-gray-900/70 backdrop-blur-md border-gray-200/80 dark:border-white/10 shadow-md">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-gray-900 dark:text-gray-100">
@@ -215,10 +215,10 @@ export function Calculator({
                   key={size}
                   type="button"
                   onClick={() => onSizeChange(size)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium ring-1 ring-inset transition-colors ${
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium ring-1 ring-inset transition-all duration-150 hover:-translate-y-0.5 hover:scale-[1.04] active:scale-95 ${
                     isActive
-                      ? "bg-blue-600 text-white ring-blue-600 shadow-sm shadow-blue-600/30"
-                      : "bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60"
+                      ? "bg-blue-600 text-white ring-blue-600 shadow-md shadow-blue-600/40 hover:shadow-lg hover:shadow-blue-600/50"
+                      : "bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60 hover:shadow-sm"
                   }`}
                 >
                   {size}
@@ -228,10 +228,10 @@ export function Calculator({
             <button
               type="button"
               onClick={() => onSizeChange("custom")}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium ring-1 ring-inset transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium ring-1 ring-inset transition-all duration-150 hover:-translate-y-0.5 hover:scale-[1.04] active:scale-95 ${
                 selectedSize === "custom"
-                  ? "bg-blue-600 text-white ring-blue-600 shadow-sm shadow-blue-600/30"
-                  : "bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60"
+                  ? "bg-blue-600 text-white ring-blue-600 shadow-md shadow-blue-600/40 hover:shadow-lg hover:shadow-blue-600/50"
+                  : "bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60 hover:shadow-sm"
               }`}
             >
               Custom
@@ -298,7 +298,7 @@ function DistributionCard({
   content: string;
 }) {
   return (
-    <Card className="rounded-xl">
+    <Card className="rounded-xl bg-white/90 dark:bg-gray-900/70 backdrop-blur-md border-gray-200/80 dark:border-white/10 shadow-md">
       <CardHeader>
         <CardTitle className="text-gray-900 dark:text-gray-100">
           {title}
@@ -319,7 +319,7 @@ function DistributionDiagram({
   const totalPieces = distribution.reduce((sum, { count }) => sum + count, 0);
 
   return (
-    <Card className="rounded-xl">
+    <Card className="rounded-xl bg-white/90 dark:bg-gray-900/70 backdrop-blur-md border-gray-200/80 dark:border-white/10 shadow-md">
       <CardHeader>
         <CardTitle className="text-gray-900 dark:text-gray-100">
           Distribution Diagram

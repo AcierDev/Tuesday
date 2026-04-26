@@ -103,7 +103,7 @@ export function DesignSelector({
   };
 
   return (
-    <Card className="rounded-2xl">
+    <Card className="rounded-2xl bg-white/90 dark:bg-gray-900/70 backdrop-blur-md border-gray-200/80 dark:border-white/10 shadow-md">
       <motion.div>
         <CardHeader
           className="cursor-pointer flex flex-row items-center justify-between"

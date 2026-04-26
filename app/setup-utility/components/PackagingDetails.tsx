@@ -28,7 +28,7 @@ export function PackagingDetails({
       : shippingSettings?.boxPresetsBySize[selectedSize] ?? [];
   if (selectedSize === "custom") {
     return (
-      <Card className="rounded-2xl transition-all duration-200 hover:shadow-md">
+      <Card className="rounded-2xl bg-white/90 dark:bg-gray-900/70 backdrop-blur-md border-gray-200/80 dark:border-white/10 shadow-md transition-all duration-200 hover:shadow-lg">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <Package className="h-5 w-5" />
@@ -46,7 +46,7 @@ export function PackagingDetails({
   }
 
   return (
-    <Card className="bg-white dark:bg-gray-800 transition-all duration-200 hover:shadow-md">
+    <Card className="rounded-2xl bg-white/90 dark:bg-gray-900/70 backdrop-blur-md border-gray-200/80 dark:border-white/10 shadow-md transition-all duration-200 hover:shadow-lg">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-3">
