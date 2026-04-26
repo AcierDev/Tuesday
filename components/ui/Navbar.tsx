@@ -80,17 +80,18 @@ const mainNavItems: NavItem[] = [
   // { href: "/pick-n-place", icon: Magnet, label: "Pick N Place" },
   // { href: "/router", icon: "/icons/router.png", label: "Router" },
   // { href: "/pick-and-place", icon: LayoutGrid, label: "Pick & Place" },
-  { type: "divider" },
   // { href: "/inventory", icon: ClipboardList, label: "Inventory" },
-  // { type: "divider" },
+  // { href: "/outlets", icon: Power, label: "Outlets", hotkey: "8" },
+];
+
+const bottomNavItems: NavLinkItem[] = [
+  { href: "/print", icon: Printer, label: "Print", hotkey: "7" },
   {
     href: "/setup-utility",
     icon: Accessibility,
     label: "Setup Utility",
     hotkey: "9",
   },
-  { href: "/print", icon: Printer, label: "Print", hotkey: "7" },
-  // { href: "/outlets", icon: Power, label: "Outlets", hotkey: "8" },
   { href: "/calculator", icon: Calculator, label: "Calculator", hotkey: "6" },
 ];
 
@@ -256,22 +257,11 @@ export function Navbar({
   const settingsLeaveTimerRef = useRef<number | null>(null);
   const [printHovered, setPrintHovered] = useState(false);
   const printLeaveTimerRef = useRef<number | null>(null);
-  const printWrapperRef = useRef<HTMLDivElement>(null);
-  const [printPanelPos, setPrintPanelPos] = useState({ top: 0, left: 0 });
-  const [navMounted, setNavMounted] = useState(false);
-
-  useEffect(() => {
-    setNavMounted(true);
-  }, []);
 
   const openPrintHover = useCallback(() => {
     if (printLeaveTimerRef.current !== null) {
       window.clearTimeout(printLeaveTimerRef.current);
       printLeaveTimerRef.current = null;
-    }
-    if (printWrapperRef.current) {
-      const r = printWrapperRef.current.getBoundingClientRect();
-      setPrintPanelPos({ top: r.top, left: r.right + 8 });
     }
     setPrintHovered(true);
   }, []);
@@ -333,7 +323,9 @@ export function Navbar({
 
   const handleHotkey = useCallback(
     (key: string) => {
-      const navItem = mainNavItems.find((item) => item.hotkey === key);
+      const navItem = [...mainNavItems, ...bottomNavItems].find(
+        (item) => "hotkey" in item && item.hotkey === key
+      );
       if (navItem && "href" in navItem) {
         router.push(navItem.href);
       }
@@ -489,22 +481,6 @@ export function Navbar({
                     />
                   );
                 }
-                if ("href" in item && item.href === "/print") {
-                  return (
-                    <div
-                      key={item.href}
-                      ref={printWrapperRef}
-                      onMouseEnter={openPrintHover}
-                      onMouseLeave={closePrintHover}
-                    >
-                      <NavLink
-                        href={item.href}
-                        icon={item.icon}
-                        label={item.label}
-                      />
-                    </div>
-                  );
-                }
                 return (
                   <NavLink
                     key={"href" in item ? item.href : index}
@@ -523,12 +499,92 @@ export function Navbar({
           </div>
           <NavMetricsBadges />
           <div className="p-3 border-t dark:border-gray-600 space-y-2">
+            <div
+              className="relative"
+              onMouseEnter={openPrintHover}
+              onMouseLeave={closePrintHover}
+            >
+              <Link
+                href="/print"
+                className="flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition"
+              >
+                <Printer className="h-5 w-5 flex-shrink-0" />
+                {sidebarOpen && <span className="ml-2">Print</span>}
+              </Link>
+              <motion.div
+                onMouseEnter={openPrintHover}
+                onMouseLeave={closePrintHover}
+                className={`absolute left-full bottom-0 pl-2 z-50 ${
+                  printHovered ? "" : "pointer-events-none"
+                }`}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{
+                  opacity: printHovered ? 1 : 0,
+                  x: printHovered ? 0 : -8,
+                }}
+                transition={{ duration: 0.1, ease: "easeOut" }}
+              >
+                <motion.div
+                  className="flex flex-col gap-1.5 min-w-[180px]"
+                  initial="hidden"
+                  animate={printHovered ? "visible" : "hidden"}
+                  variants={{
+                    hidden: {
+                      transition: {
+                        staggerChildren: 0.02,
+                        staggerDirection: 1,
+                      },
+                    },
+                    visible: {
+                      transition: {
+                        staggerChildren: 0.03,
+                        staggerDirection: -1,
+                        delayChildren: 0.04,
+                      },
+                    },
+                  }}
+                >
+                  {printTemplates.map((tpl) => {
+                    const Icon = tpl.icon;
+                    return (
+                      <motion.button
+                        key={tpl.name}
+                        variants={{
+                          hidden: { opacity: 0, y: 4 },
+                          visible: { opacity: 1, y: 0 },
+                        }}
+                        transition={{ duration: 0.12, ease: "easeOut" }}
+                        onClick={() => handleQuickPrint(tpl)}
+                        className="flex items-center px-3 py-2 text-sm text-foreground bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition text-left"
+                      >
+                        <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
+                        {tpl.name}
+                      </motion.button>
+                    );
+                  })}
+                </motion.div>
+              </motion.div>
+            </div>
             <Link
               href="/quick-label"
               className="flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition"
             >
               <Tag className="h-5 w-5 flex-shrink-0" />
               {sidebarOpen && <span className="ml-2">Quick Label</span>}
+            </Link>
+            <Link
+              href="/setup-utility"
+              className="flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition"
+            >
+              <Accessibility className="h-5 w-5 flex-shrink-0" />
+              {sidebarOpen && <span className="ml-2">Setup Utility</span>}
+            </Link>
+            <Link
+              href="/calculator"
+              className="flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition"
+            >
+              <Calculator className="h-5 w-5 flex-shrink-0" />
+              {sidebarOpen && <span className="ml-2">Calculator</span>}
             </Link>
             <div
               className="relative"
@@ -693,68 +749,6 @@ export function Navbar({
         </div>
       </nav>
 
-      {navMounted &&
-        createPortal(
-          <div
-            className={`fixed z-[100] ${
-              printHovered ? "" : "pointer-events-none"
-            }`}
-            style={{ top: printPanelPos.top, left: printPanelPos.left }}
-            onMouseEnter={openPrintHover}
-            onMouseLeave={closePrintHover}
-          >
-            <motion.div
-              initial={false}
-              animate={{
-                opacity: printHovered ? 1 : 0,
-                x: printHovered ? 0 : -8,
-              }}
-              transition={{ duration: 0.1, ease: "easeOut" }}
-              className={printHovered ? "" : "pointer-events-none"}
-            >
-              <motion.div
-                className="flex flex-col gap-1.5 min-w-[180px]"
-                initial="hidden"
-                animate={printHovered ? "visible" : "hidden"}
-                variants={{
-                  hidden: {
-                    transition: {
-                      staggerChildren: 0.02,
-                      staggerDirection: 1,
-                    },
-                  },
-                  visible: {
-                    transition: {
-                      staggerChildren: 0.03,
-                      staggerDirection: -1,
-                      delayChildren: 0.04,
-                    },
-                  },
-                }}
-              >
-                {printTemplates.map((tpl) => {
-                  const Icon = tpl.icon;
-                  return (
-                    <motion.button
-                      key={tpl.name}
-                      variants={{
-                        hidden: { opacity: 0, y: 4 },
-                        visible: { opacity: 1, y: 0 },
-                      }}
-                      transition={{ duration: 0.12, ease: "easeOut" }}
-                      onClick={() => handleQuickPrint(tpl)}
-                      className="flex items-center px-3 py-2 text-sm text-foreground bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition text-left"
-                    >
-                      <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
-                      {tpl.name}
-                    </motion.button>
-                  );
-                })}
-              </motion.div>
-            </motion.div>
-          </div>,
-          document.body
-        )}
     </>
   );
 }
