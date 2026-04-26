@@ -17,7 +17,7 @@ const ENTER_OFFSET_BY_PATH: Record<string, number> = {
   "/production-planning": SLIDE_OFFSET,
 };
 
-const TRANSITION_DURATION_S = 0.28;
+const TRANSITION_DURATION_S = 0.35;
 const TRANSITION_EASE = [0.32, 0.72, 0, 1] as const;
 
 export default function Template({ children }: { children: React.ReactNode }) {
