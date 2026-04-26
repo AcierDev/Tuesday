@@ -227,6 +227,7 @@ html,
 body {
   height: 100%;
   overflow-x: hidden;
+  color-scheme: dark;
 }
 
 #__next {

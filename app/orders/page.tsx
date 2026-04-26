@@ -101,6 +101,7 @@ export default function OrderManagementPage() {
 
   useEffect(() => {
     fetch("/api/debt-snapshots", { method: "POST" }).catch(() => {});
+    fetch("/api/backlog-snapshots", { method: "POST" }).catch(() => {});
   }, []);
 
   const shipItem = useCallback(async (itemId: string) => {
