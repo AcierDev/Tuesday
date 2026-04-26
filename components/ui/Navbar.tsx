@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import {
   PaintbrushVertical,
   PackageOpen,
+  Layers,
   Layers3,
   Calculator,
   Printer,
@@ -23,6 +24,12 @@ import {
   Edit,
   UserCircle,
   Truck,
+  Tag,
+  Drill,
+  Box,
+  Columns2,
+  Columns3,
+  Columns4,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -103,6 +110,114 @@ const settingsTabs: {
   { value: "shipping", label: "Shipping", icon: Truck },
 ];
 
+type PrintTemplateBase = {
+  name: string;
+  src: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+type PrintTemplate =
+  | (PrintTemplateBase & { type: "pdf" })
+  | (PrintTemplateBase & {
+      type: "image";
+      orientation: "landscape" | "portrait";
+    });
+
+const printTemplates: PrintTemplate[] = [
+  {
+    name: "Drywall Anchors",
+    src: "/images/drywall-anchors.png",
+    type: "image",
+    orientation: "landscape",
+    icon: Drill,
+  },
+  { name: "2 Boxes", src: "/pdf/2-boxes.pdf", type: "pdf", icon: Box },
+  { name: "3 Boxes", src: "/pdf/3-boxes.pdf", type: "pdf", icon: Box },
+  { name: "4 Boxes", src: "/pdf/4-boxes.pdf", type: "pdf", icon: Box },
+  { name: "2 Panels", src: "/pdf/2-panels.pdf", type: "pdf", icon: Columns2 },
+  { name: "3 Panels", src: "/pdf/3-panels.pdf", type: "pdf", icon: Columns3 },
+  { name: "4 Panels", src: "/pdf/4-panels.pdf", type: "pdf", icon: Columns4 },
+  { name: "5 Panels", src: "/pdf/5-panels.pdf", type: "pdf", icon: Layers },
+];
+
+const printPdf = (src: string) => {
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText =
+    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  iframe.src = src;
+  iframe.onload = () => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch {
+      // iframe contents may not allow direct print access
+    }
+    window.setTimeout(() => iframe.remove(), 60000);
+  };
+  document.body.appendChild(iframe);
+};
+
+const printImage = (src: string, orientation: "landscape" | "portrait") => {
+  const isLandscape = orientation === "landscape";
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <title>Print Label</title>
+        <style>
+          @page { size: ${isLandscape ? "6in 4in" : "4in 6in"}; margin: 0; }
+          html, body {
+            margin: 0; padding: 0;
+            width: ${isLandscape ? "6in" : "4in"};
+            height: ${isLandscape ? "4in" : "6in"};
+            display: flex; justify-content: center; align-items: center;
+          }
+          img {
+            max-width: 100%; max-height: 100%; object-fit: contain;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+          }
+          @media print {
+            html, body {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            img { image-resolution: 300dpi; }
+          }
+        </style>
+      </head>
+      <body><img src="${src}" alt="Print"/></body>
+    </html>
+  `;
+
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText =
+    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  iframe.srcdoc = html;
+  iframe.onload = () => {
+    const win = iframe.contentWindow;
+    if (!win) return;
+    const img = iframe.contentDocument?.querySelector("img");
+    const triggerPrint = () => {
+      try {
+        win.focus();
+        win.print();
+      } catch {
+        // noop
+      }
+      window.setTimeout(() => iframe.remove(), 60000);
+    };
+    if (img && !img.complete) {
+      img.addEventListener("load", triggerPrint, { once: true });
+      img.addEventListener("error", triggerPrint, { once: true });
+    } else {
+      triggerPrint();
+    }
+  };
+  document.body.appendChild(iframe);
+};
+
 interface NavLinkProps {
   href: string;
   icon: React.ComponentType<{ className?: string }> | string;
@@ -139,6 +254,50 @@ export function Navbar({
   const [activeTab, setActiveTab] = useState(pathname);
   const [settingsHovered, setSettingsHovered] = useState(false);
   const settingsLeaveTimerRef = useRef<number | null>(null);
+  const [printHovered, setPrintHovered] = useState(false);
+  const printLeaveTimerRef = useRef<number | null>(null);
+  const printWrapperRef = useRef<HTMLDivElement>(null);
+  const [printPanelPos, setPrintPanelPos] = useState({ top: 0, left: 0 });
+  const [navMounted, setNavMounted] = useState(false);
+
+  useEffect(() => {
+    setNavMounted(true);
+  }, []);
+
+  const openPrintHover = useCallback(() => {
+    if (printLeaveTimerRef.current !== null) {
+      window.clearTimeout(printLeaveTimerRef.current);
+      printLeaveTimerRef.current = null;
+    }
+    if (printWrapperRef.current) {
+      const r = printWrapperRef.current.getBoundingClientRect();
+      setPrintPanelPos({ top: r.top, left: r.right + 8 });
+    }
+    setPrintHovered(true);
+  }, []);
+
+  const closePrintHover = useCallback(() => {
+    if (printLeaveTimerRef.current !== null) {
+      window.clearTimeout(printLeaveTimerRef.current);
+    }
+    printLeaveTimerRef.current = window.setTimeout(() => {
+      setPrintHovered(false);
+      printLeaveTimerRef.current = null;
+    }, 300);
+  }, []);
+
+  const handleQuickPrint = useCallback((tpl: PrintTemplate) => {
+    if (printLeaveTimerRef.current !== null) {
+      window.clearTimeout(printLeaveTimerRef.current);
+      printLeaveTimerRef.current = null;
+    }
+    setPrintHovered(false);
+    if (tpl.type === "pdf") {
+      printPdf(tpl.src);
+    } else {
+      printImage(tpl.src, tpl.orientation);
+    }
+  }, []);
 
   const openSettingsHover = useCallback(() => {
     if (settingsLeaveTimerRef.current !== null) {
@@ -320,22 +479,41 @@ export function Navbar({
         <div className="h-screen flex flex-col bg-[#0d1a3a]">
           <div className="flex-1 overflow-y-auto no-scrollbar">
             <div className="flex flex-col space-y-1 pt-6 px-3">
-              {mainNavItems.map((item, index) =>
-                item.type === "divider" ? (
-                  <Separator
-                    key={index}
-                    className="my-2 dark:bg-gray-600"
-                    decorative
-                  />
-                ) : (
+              {mainNavItems.map((item, index) => {
+                if (item.type === "divider") {
+                  return (
+                    <Separator
+                      key={index}
+                      className="my-2 dark:bg-gray-600"
+                      decorative
+                    />
+                  );
+                }
+                if ("href" in item && item.href === "/print") {
+                  return (
+                    <div
+                      key={item.href}
+                      ref={printWrapperRef}
+                      onMouseEnter={openPrintHover}
+                      onMouseLeave={closePrintHover}
+                    >
+                      <NavLink
+                        href={item.href}
+                        icon={item.icon}
+                        label={item.label}
+                      />
+                    </div>
+                  );
+                }
+                return (
                   <NavLink
                     key={"href" in item ? item.href : index}
                     href={"href" in item ? item.href : ""}
                     icon={"icon" in item ? item.icon : Menu}
                     label={"label" in item ? item.label : ""}
                   />
-                )
-              )}
+                );
+              })}
             </div>
             <Separator
               className="mt-3 mb-1 mx-3 bg-white/15 dark:bg-white/15"
@@ -344,14 +522,21 @@ export function Navbar({
             <NavSectionCounters />
           </div>
           <NavMetricsBadges />
-          <div className="p-3 border-t dark:border-gray-600">
+          <div className="p-3 border-t dark:border-gray-600 space-y-2">
+            <Link
+              href="/quick-label"
+              className="flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition"
+            >
+              <Tag className="h-5 w-5 flex-shrink-0" />
+              {sidebarOpen && <span className="ml-2">Quick Label</span>}
+            </Link>
             <div
               className="relative"
               onMouseEnter={openSettingsHover}
               onMouseLeave={closeSettingsHover}
             >
               <Button
-                className="flex w-full items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90"
+                className="flex w-full items-center justify-center bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition"
                 type="button"
               >
                 <Settings className="h-5 w-5 flex-shrink-0" />
@@ -507,6 +692,69 @@ export function Navbar({
           </Sheet>
         </div>
       </nav>
+
+      {navMounted &&
+        createPortal(
+          <div
+            className={`fixed z-[100] ${
+              printHovered ? "" : "pointer-events-none"
+            }`}
+            style={{ top: printPanelPos.top, left: printPanelPos.left }}
+            onMouseEnter={openPrintHover}
+            onMouseLeave={closePrintHover}
+          >
+            <motion.div
+              initial={false}
+              animate={{
+                opacity: printHovered ? 1 : 0,
+                x: printHovered ? 0 : -8,
+              }}
+              transition={{ duration: 0.1, ease: "easeOut" }}
+              className={printHovered ? "" : "pointer-events-none"}
+            >
+              <motion.div
+                className="flex flex-col gap-1.5 min-w-[180px]"
+                initial="hidden"
+                animate={printHovered ? "visible" : "hidden"}
+                variants={{
+                  hidden: {
+                    transition: {
+                      staggerChildren: 0.02,
+                      staggerDirection: 1,
+                    },
+                  },
+                  visible: {
+                    transition: {
+                      staggerChildren: 0.03,
+                      staggerDirection: -1,
+                      delayChildren: 0.04,
+                    },
+                  },
+                }}
+              >
+                {printTemplates.map((tpl) => {
+                  const Icon = tpl.icon;
+                  return (
+                    <motion.button
+                      key={tpl.name}
+                      variants={{
+                        hidden: { opacity: 0, y: 4 },
+                        visible: { opacity: 1, y: 0 },
+                      }}
+                      transition={{ duration: 0.12, ease: "easeOut" }}
+                      onClick={() => handleQuickPrint(tpl)}
+                      className="flex items-center px-3 py-2 text-sm text-foreground bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition text-left"
+                    >
+                      <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
+                      {tpl.name}
+                    </motion.button>
+                  );
+                })}
+              </motion.div>
+            </motion.div>
+          </div>,
+          document.body
+        )}
     </>
   );
 }
