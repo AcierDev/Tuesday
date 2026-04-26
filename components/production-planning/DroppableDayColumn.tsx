@@ -140,21 +140,14 @@ export function DroppableDayColumn({
 
       {/* Auto-plan opt-in. Faded column body above signals when this day is
           excluded from the next auto-plan run. */}
-      <label
-        className={cn(
-          "flex items-center justify-center gap-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800 cursor-pointer text-[11px] uppercase tracking-wide font-medium select-none rounded-b-xl transition-colors",
-          autoPlanEnabled
-            ? "text-gray-700 dark:text-gray-300 hover:bg-gray-100/60 dark:hover:bg-gray-800/40"
-            : "text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100/60 dark:hover:bg-gray-800/40"
-        )}
-      >
+      <div className="flex items-center justify-center px-3 py-2 border-t border-gray-100 dark:border-gray-800 rounded-b-xl">
         <Checkbox
           checked={autoPlanEnabled}
           onCheckedChange={() => onToggleAutoPlan()}
           aria-label={`Include ${day} in auto-plan`}
+          className="cursor-pointer"
         />
-        <span>Auto-plan</span>
-      </label>
+      </div>
     </div>
   );
 }

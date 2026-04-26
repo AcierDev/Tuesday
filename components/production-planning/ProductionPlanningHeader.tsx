@@ -12,12 +12,6 @@ import { AnimatePresence, motion } from "framer-motion";
 interface ProductionPlanningHeaderProps {
   viewingNextWeek: boolean;
   hasScheduledOrders: boolean;
-  stats: {
-    overdue: { orders: number; blocks: number };
-    thisWeek: { orders: number; blocks: number };
-    nextWeek: { orders: number; blocks: number };
-    total: { orders: number; blocks: number };
-  };
   onToggleWeek: () => void;
   onClearWeek: () => void;
   onAutoFill: () => void;
@@ -32,7 +26,6 @@ const PAGE_TOGGLE_HREF: Record<(typeof PAGE_TOGGLE_VALUES)[number], string> = {
 export function ProductionPlanningHeader({
   viewingNextWeek,
   hasScheduledOrders,
-  stats,
   onToggleWeek,
   onClearWeek,
   onAutoFill,
@@ -40,9 +33,9 @@ export function ProductionPlanningHeader({
   const router = useRouter();
 
   return (
-    <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-20">
+    <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-4 py-3">
+        <div className="relative flex flex-col sm:flex-row items-center justify-between gap-4 py-3">
           {/* Week Toggle — flips between This Week / Next Week. */}
           <div className="flex items-center gap-3 sm:flex-shrink-0">
             <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
@@ -78,8 +71,9 @@ export function ProductionPlanningHeader({
             </button>
           </div>
 
-          {/* Page slider — switches between Orders and Planner. */}
-          <div className="flex justify-center sm:flex-1 sm:min-w-0">
+          {/* Page slider — absolutely centered so its position matches the
+              orders header exactly, independent of the side columns. */}
+          <div className="sm:absolute sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2">
             <ToggleGroup
               type="single"
               value="planner"
@@ -126,44 +120,6 @@ export function ProductionPlanningHeader({
           </div>
         </div>
 
-        {/* HUD Stats — slim row below the main toolbar. */}
-        <div className="flex items-center justify-end gap-6 text-sm pb-2 -mt-1 overflow-x-auto">
-          <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">
-              Overdue
-            </span>
-            <span className="font-bold text-red-600 text-base leading-none">
-              {stats.overdue.orders}
-              <span className="text-gray-400 font-normal text-xs ml-1">
-                ({stats.overdue.blocks})
-              </span>
-            </span>
-          </div>
-          <div className="w-px h-4 bg-gray-200 dark:bg-gray-800" />
-          <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">
-              This Week
-            </span>
-            <span className="font-bold text-amber-600 text-base leading-none">
-              {stats.thisWeek.orders}
-              <span className="text-gray-400 font-normal text-xs ml-1">
-                ({stats.thisWeek.blocks})
-              </span>
-            </span>
-          </div>
-          <div className="w-px h-4 bg-gray-200 dark:bg-gray-800" />
-          <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">
-              Unscheduled
-            </span>
-            <span className="font-bold text-gray-900 dark:text-gray-100 text-base leading-none">
-              {stats.total.orders}
-              <span className="text-gray-400 font-normal text-xs ml-1">
-                ({stats.total.blocks})
-              </span>
-            </span>
-          </div>
-        </div>
       </div>
     </div>
   );

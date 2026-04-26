@@ -181,7 +181,6 @@ export default function ProductionPlanningPage() {
     removeItemFromDay,
     fetchSchedules,
     toggleItemPinned,
-    pinItemToDay,
   } = useWeeklyScheduleStore();
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -219,6 +218,61 @@ export default function ProductionPlanningPage() {
   useEffect(() => {
     fetchSchedules();
   }, [fetchSchedules]);
+
+  // Items the user has pinned-to-sidebar — auto-plan skips these entirely.
+  // Persisted server-side via /api/production-planning/excluded-items so the
+  // pin sticks across reloads and machines.
+  const [excludedItemIds, setExcludedItemIds] = useState<Set<string>>(
+    new Set()
+  );
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/production-planning/excluded-items")
+      .then((r) => (r.ok ? r.json() : { itemIds: [] }))
+      .then((data: { itemIds?: string[] }) => {
+        if (cancelled) return;
+        setExcludedItemIds(new Set(data.itemIds ?? []));
+      })
+      .catch((err) => console.warn("Failed to load sidebar pins", err));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const toggleExcluded = useCallback(
+    async (itemId: string, excluded: boolean) => {
+      // Optimistic update so the pin pops immediately; reconcile from response.
+      setExcludedItemIds((prev) => {
+        const next = new Set(prev);
+        if (excluded) next.add(itemId);
+        else next.delete(itemId);
+        return next;
+      });
+      try {
+        const res = await fetch(
+          "/api/production-planning/excluded-items",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ itemId, excluded }),
+          }
+        );
+        if (!res.ok) throw new Error("Server rejected pin update");
+        const data: { itemIds?: string[] } = await res.json();
+        setExcludedItemIds(new Set(data.itemIds ?? []));
+      } catch (err) {
+        console.error("Failed to toggle sidebar pin", err);
+        toast.error("Failed to update pin");
+        // Roll back on failure.
+        setExcludedItemIds((prev) => {
+          const next = new Set(prev);
+          if (excluded) next.delete(itemId);
+          else next.add(itemId);
+          return next;
+        });
+      }
+    },
+    []
+  );
 
   const today = useMemo(() => startOfDay(new Date()), []);
 
@@ -409,38 +463,6 @@ export default function ProductionPlanningPage() {
 
     return groups;
   }, [currentSchedule, allOrdersById, currentWeekKey]);
-
-  // Stats
-  const stats = useMemo(() => {
-    let overdueBlocks = 0,
-      overdueOrders = 0;
-    let thisWeekBlocks = 0,
-      thisWeekOrders = 0;
-    let nextWeekBlocks = 0,
-      nextWeekOrders = 0;
-    let totalBlocks = 0;
-
-    unscheduledOrders.forEach((meta) => {
-      totalBlocks += meta.blocks;
-      if (meta.bucket === "overdue") {
-        overdueBlocks += meta.blocks;
-        overdueOrders++;
-      } else if (meta.bucket === "thisWeek") {
-        thisWeekBlocks += meta.blocks;
-        thisWeekOrders++;
-      } else if (meta.bucket === "nextWeek") {
-        nextWeekBlocks += meta.blocks;
-        nextWeekOrders++;
-      }
-    });
-
-    return {
-      overdue: { blocks: overdueBlocks, orders: overdueOrders },
-      thisWeek: { blocks: thisWeekBlocks, orders: thisWeekOrders },
-      nextWeek: { blocks: nextWeekBlocks, orders: nextWeekOrders },
-      total: { blocks: totalBlocks, orders: unscheduledOrders.length },
-    };
-  }, [unscheduledOrders]);
 
   // DnD Sensors
   const sensors = useSensors(
@@ -679,13 +701,15 @@ export default function ProductionPlanningPage() {
       lockedByDay[d].forEach((entry) => lockedItemIds.add(entry.id))
     );
 
-    // Pool = standard-size pre-WIP items that aren't pinned elsewhere or
-    // locked into the target week. Sort by due-date urgency so the most-due
-    // land in the earliest day with capacity.
+    // Pool = standard-size pre-WIP items that aren't pinned elsewhere, locked
+    // into the target week, or pinned-to-sidebar by the user. Sort by due-date
+    // urgency so the most-due land in the earliest day with capacity.
     const pool = availableOrders
       .filter(
         (item) =>
-          !scheduledInOtherWeeks.has(item.id) && !lockedItemIds.has(item.id)
+          !scheduledInOtherWeeks.has(item.id) &&
+          !lockedItemIds.has(item.id) &&
+          !excludedItemIds.has(item.id)
       )
       .map((item) => ({
         id: item.id,
@@ -773,9 +797,8 @@ export default function ProductionPlanningPage() {
         {/* Sidebar */}
         <ProductionPlanningSidebar
           orders={unscheduledOrders}
-          onPinToDay={(itemId, day) =>
-            pinItemToDay(currentWeekKey, day, itemId)
-          }
+          excludedItemIds={excludedItemIds}
+          onToggleExcluded={toggleExcluded}
         />
 
         {/* Main Content */}
@@ -783,7 +806,6 @@ export default function ProductionPlanningPage() {
           <ProductionPlanningHeader
             viewingNextWeek={viewingNextWeek}
             hasScheduledOrders={!!currentSchedule}
-            stats={stats}
             onToggleWeek={() =>
               setCurrentWeekKey(viewingNextWeek ? thisWeekKey : nextWeekKey)
             }

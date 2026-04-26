@@ -16,7 +16,6 @@ interface DraggableOrderCardProps {
   referenceDate?: Date;
   isPinned?: boolean;
   onTogglePin?: () => void;
-  onPinToDay?: (day: DayName) => void;
 }
 
 export function DraggableOrderCard({
@@ -29,7 +28,6 @@ export function DraggableOrderCard({
   referenceDate,
   isPinned,
   onTogglePin,
-  onPinToDay,
 }: DraggableOrderCardProps) {
   const {
     attributes,
@@ -64,7 +62,6 @@ export function DraggableOrderCard({
         referenceDate={referenceDate}
         isPinned={isPinned}
         onTogglePin={onTogglePin}
-        onPinToDay={onPinToDay}
       />
     </div>
   );

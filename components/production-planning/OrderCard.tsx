@@ -1,11 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ColumnTitles, DayName, ItemStatus } from "@/typings/types";
@@ -74,17 +68,12 @@ interface OrderCardProps {
   onUnschedule?: () => void;
   showScheduleButtons?: boolean;
   referenceDate?: Date;
+  // Pinned-state semantics depend on context:
+  //   - In a day column: locked to that day, auto-plan won't move it.
+  //   - In the sidebar: locked to the sidebar, auto-plan won't pull it in.
   isPinned?: boolean;
-  // Toggle pin on a scheduled card. Called when isScheduled=true.
   onTogglePin?: () => void;
-  // Pin an unscheduled card to a specific day. Called when isScheduled=false.
-  onPinToDay?: (day: DayName) => void;
 }
-
-// Day options exposed in the sidebar pin picker. Mon–Thu match the auto-plan
-// target days; we deliberately omit Fri/Sat/Sun since those aren't normal
-// production days.
-const PIN_TARGET_DAYS: DayName[] = ["Monday", "Tuesday", "Wednesday", "Thursday"];
 
 const bucketColors: Record<DueBucket, string> = {
   overdue: "border-l-red-500",
@@ -124,12 +113,10 @@ export function OrderCard({
   referenceDate,
   isPinned = false,
   onTogglePin,
-  onPinToDay,
 }: OrderCardProps) {
   const { theme } = useTheme();
   const { settings } = useOrderSettings();
   const isDark = theme === "dark";
-  const [pinPickerOpen, setPinPickerOpen] = useState(false);
 
   const size = meta.item.size || "N/A";
   const customerName = meta.item.customerName || "Unknown";
@@ -186,9 +173,9 @@ export function OrderCard({
         </div>
 
         <div className="flex flex-col items-end gap-0.5 shrink-0 -mr-1 -mt-1">
-          {/* Pin (scheduled): direct toggle. Sidebar: opens day picker. */}
-          {/* Always at least faintly visible so the affordance is discoverable. */}
-          {isScheduled && onTogglePin && (
+          {/* Pin toggle: in a day column it locks to the day; in the sidebar
+              it locks the item to the sidebar (auto-plan skips it). */}
+          {onTogglePin && (
             <Button
               variant="ghost"
               size="icon"
@@ -203,55 +190,23 @@ export function OrderCard({
                   ? "text-amber-600 dark:text-amber-400 opacity-100"
                   : "text-gray-400 hover:text-amber-500 opacity-50 group-hover:opacity-100"
               )}
-              title={isPinned ? "Unpin from this day" : "Pin to this day"}
+              title={
+                isPinned
+                  ? isScheduled
+                    ? "Unpin from this day"
+                    : "Allow auto-plan to schedule this"
+                  : isScheduled
+                  ? "Pin to this day"
+                  : "Lock to sidebar (skip auto-plan)"
+              }
             >
-              {isPinned ? (
-                <Pin className="h-3.5 w-3.5 fill-current" />
-              ) : (
-                <Pin className="h-3.5 w-3.5" />
-              )}
+              <Pin
+                className={cn(
+                  "h-3.5 w-3.5",
+                  isPinned && "fill-current"
+                )}
+              />
             </Button>
-          )}
-          {!isScheduled && onPinToDay && (
-            <Popover open={pinPickerOpen} onOpenChange={setPinPickerOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  className="h-6 w-6 text-gray-400 hover:text-amber-500 opacity-50 group-hover:opacity-100 transition-opacity"
-                  title="Pin to a specific day"
-                >
-                  <Pin className="h-3.5 w-3.5" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="p-2 w-auto"
-                align="end"
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 px-1 pb-1">
-                  Pin to
-                </div>
-                <div className="flex gap-1">
-                  {PIN_TARGET_DAYS.map((day) => (
-                    <Button
-                      key={day}
-                      variant="secondary"
-                      size="sm"
-                      className="h-7 text-xs px-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPinToDay(day);
-                        setPinPickerOpen(false);
-                      }}
-                    >
-                      {dayAbbr[day]}
-                    </Button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
           )}
           {isScheduled && onUnschedule && (
             <Button
