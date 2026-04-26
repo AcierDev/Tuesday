@@ -4,7 +4,6 @@ import { useCallback, useRef, useState } from "react";
 import { TableCell } from "@/components/ui/table";
 import { Portal } from "@/components/ui/portal";
 import { CustomTableCell } from "../cells/CustomTableCell";
-import { ItemPreviewTooltip } from "./ItemPreviewTooltip";
 import { DueDateTooltip } from "./DueDateTooltip";
 import { cn } from "@/utils/functions";
 import { ColumnTitles, Item, ColumnValue, DayName } from "@/typings/types";
@@ -56,41 +55,11 @@ export function ItemTableCell({
 }: ItemTableCellProps) {
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
   const [hoveredColumn, setHoveredColumn] = useState<ColumnTitles | null>(null);
-  const [isPreviewTooltipHovered, setIsPreviewTooltipHovered] = useState(false);
   const [isDueDateTooltipHovered, setIsDueDateTooltipHovered] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout>();
   const closeTimeoutRef = useRef<NodeJS.Timeout>();
   const hoveredElementRef = useRef<HTMLElement | null>(null);
   const ignoreHoverRef = useRef(false);
-
-  const handlePreviewMouseEnter = useCallback(
-    (itemId: string, columnName: ColumnTitles, element: HTMLElement) => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-      if (closeTimeoutRef.current) {
-        clearTimeout(closeTimeoutRef.current);
-      }
-      hoveredElementRef.current = element;
-      hoverTimeoutRef.current = setTimeout(() => {
-        setHoveredItemId(itemId);
-        setHoveredColumn(columnName);
-      }, 1000);
-    },
-    []
-  );
-
-  const handlePreviewMouseLeave = useCallback(() => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-    closeTimeoutRef.current = setTimeout(() => {
-      if (!isPreviewTooltipHovered) {
-        setHoveredItemId(null);
-        setHoveredColumn(null);
-      }
-    }, 300);
-  }, [isPreviewTooltipHovered]);
 
   const handleMouseEnter = useCallback(
     (itemId: string, columnName: ColumnTitles, element: HTMLElement) => {
@@ -128,8 +97,6 @@ export function ItemTableCell({
 
   const showPreviewTooltip =
     hoveredItemId === item.id && hoveredColumn === columnName;
-  const isPreviewColumn =
-    columnName === ColumnTitles.Size || columnName === ColumnTitles.Design;
   const isDueDateColumn = columnName === ColumnTitles.Due;
 
   return (
@@ -144,56 +111,17 @@ export function ItemTableCell({
         getStatusColor(columnValue)
       )}
       onMouseEnter={(e) => {
-        if (isPreviewColumn) {
-          handlePreviewMouseEnter(item.id, columnName, e.currentTarget);
-        } else if (isDueDateColumn) {
+        if (isDueDateColumn) {
           handleMouseEnter(item.id, columnName, e.currentTarget);
         }
       }}
       onMouseLeave={() => {
-        if (isPreviewColumn) {
-          handlePreviewMouseLeave();
-        } else if (isDueDateColumn) {
+        if (isDueDateColumn) {
           handleMouseLeave();
         }
       }}
     >
-      {isPreviewColumn ? (
-        <>
-          <CustomTableCell
-            columnValue={columnValue}
-            isNameColumn={false}
-            item={item}
-          />
-          {showPreviewTooltip && (
-            <Portal>
-              <div
-                className="fixed pointer-events-none"
-                style={{
-                  top:
-                    hoveredElementRef.current?.getBoundingClientRect().top || 0,
-                  left:
-                    hoveredElementRef.current?.getBoundingClientRect().right ||
-                    0,
-                  zIndex: 9999,
-                }}
-              >
-                <div className="pointer-events-auto">
-                  <ItemPreviewTooltip
-                    item={item}
-                    onMouseEnter={() => setIsPreviewTooltipHovered(true)}
-                    onMouseLeave={() => {
-                      setIsPreviewTooltipHovered(false);
-                      setHoveredItemId(null);
-                      setHoveredColumn(null);
-                    }}
-                  />
-                </div>
-              </div>
-            </Portal>
-          )}
-        </>
-      ) : isDueDateColumn ? (
+      {isDueDateColumn ? (
         <>
           <div onClick={handleDueDateClick} className="relative">
             <div className="relative">
