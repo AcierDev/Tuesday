@@ -20,7 +20,6 @@ interface DroppableDayColumnProps {
   ordersById: Map<string, OrderMeta>;
   totalBlocks: number;
   capacity: number;
-  onUnschedule: (itemId: string, actualDay: DayName) => void;
   onTogglePin: (itemId: string, actualDay: DayName) => void;
   date: Date;
   autoPlanEnabled: boolean;
@@ -37,7 +36,6 @@ export function DroppableDayColumn({
   ordersById,
   totalBlocks,
   capacity,
-  onUnschedule,
   onTogglePin,
   date,
   autoPlanEnabled,
@@ -154,7 +152,7 @@ export function DroppableDayColumn({
           ) : (
             <div className="space-y-2">
               {pinned.length > 0 && (
-                <div className="pb-3 mb-1 border-b border-dashed border-amber-300/60 dark:border-amber-700/40">
+                <div className="pb-3 mb-3 border-b-2 border-dashed border-amber-300/60 dark:border-amber-700/40">
                   <div className="text-[10px] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400 px-1 pb-2 flex items-center gap-1">
                     <span className="inline-block w-1 h-1 rounded-full bg-amber-500" />
                     Pinned
@@ -170,9 +168,6 @@ export function DroppableDayColumn({
                           meta={meta}
                           isScheduled
                           scheduledDay={day}
-                          onUnschedule={() =>
-                            onUnschedule(order.itemId, order.day)
-                          }
                           onTogglePin={() =>
                             onTogglePin(order.itemId, order.day)
                           }
@@ -204,7 +199,6 @@ export function DroppableDayColumn({
                       meta={meta}
                       isScheduled
                       scheduledDay={day}
-                      onUnschedule={() => onUnschedule(order.itemId, order.day)}
                       onTogglePin={() => onTogglePin(order.itemId, order.day)}
                       isPinned={false}
                       referenceDate={date}

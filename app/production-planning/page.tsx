@@ -47,7 +47,11 @@ import { parseSquareSize } from "@/lib/production-metrics";
 
 function calculateBlocks(item: { size?: string }): number {
   const sizeStr = item.size || "";
-  const parts = sizeStr.split("x").slice(0, 2);
+  // Accept any of x / X / × (Unicode mult sign) as the dimension separator —
+  // the size-picker can emit any of them depending on entry method, and the
+  // capacity indicator was undercounting × sizes (e.g. "60×20" → 60, not 1200)
+  // which made day totals appear capped below the real square count.
+  const parts = sizeStr.split(/[x×X]/).slice(0, 2);
   const [width, height] = parts.map((part) => {
     const value = parseFloat(part.trim());
     return Number.isFinite(value) ? value : null;
@@ -954,9 +958,6 @@ export default function ProductionPlanningPage() {
                         ordersById={allOrdersById}
                         totalBlocks={dayGroups[day].totalBlocks}
                         capacity={DAILY_CAPACITY_BLOCKS}
-                        onUnschedule={(id, actualDay) =>
-                          removeItemFromDay(currentWeekKey, actualDay, id)
-                        }
                         onTogglePin={(id, actualDay) =>
                           toggleItemPinned(currentWeekKey, actualDay, id)
                         }
@@ -976,7 +977,7 @@ export default function ProductionPlanningPage() {
 
       <DragOverlay dropAnimation={dropAnimation}>
         {activeId && activeMeta ? (
-          <div className="opacity-80 rotate-2 cursor-grabbing">
+          <div className="cursor-grabbing">
             <OrderCard
               meta={activeMeta}
               isScheduled={true}

@@ -196,7 +196,7 @@ export const DesignDropdownCell = ({
           className="w-full mb-3 px-3 h-8 rounded-md text-sm bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
 
-        <div className="max-h-56 overflow-y-auto custom-scrollbar px-1 pt-1.5 pb-1 space-y-3">
+        <div className="px-1 pt-1.5 pb-1 space-y-3">
           {grouped.everwood.length > 0 && (
             <Section
               label="Everwood-Geometric"

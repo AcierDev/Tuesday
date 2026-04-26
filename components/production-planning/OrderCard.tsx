@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ColumnTitles, DayName, ItemStatus } from "@/typings/types";
 import { OrderMeta } from "./types";
 import { cn } from "@/utils/functions";
-import { Pin, X } from "lucide-react";
+import { Pin } from "lucide-react";
 import { DesignBlends } from "@/typings/constants";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
@@ -64,7 +64,6 @@ interface OrderCardProps {
   isScheduled?: boolean;
   scheduledDay?: DayName | null;
   onSchedule?: (day: DayName) => void;
-  onUnschedule?: () => void;
   showScheduleButtons?: boolean;
   referenceDate?: Date;
   // Pinned-state semantics depend on context:
@@ -115,7 +114,6 @@ export function OrderCard({
   isScheduled = false,
   scheduledDay,
   onSchedule,
-  onUnschedule,
   showScheduleButtons = false,
   referenceDate,
   isPinned = false,
@@ -251,20 +249,6 @@ export function OrderCard({
                   isPinned && "fill-current"
                 )}
               />
-            </Button>
-          )}
-          {isScheduled && onUnschedule && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                onUnschedule();
-              }}
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500"
-            >
-              <X className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>

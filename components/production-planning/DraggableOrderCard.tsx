@@ -13,7 +13,6 @@ interface DraggableOrderCardProps {
   disabled?: boolean;
   isScheduled?: boolean;
   scheduledDay?: DayName | null;
-  onUnschedule?: () => void;
   referenceDate?: Date;
   isPinned?: boolean;
   onTogglePin?: () => void;
@@ -27,7 +26,6 @@ export function DraggableOrderCard({
   disabled,
   isScheduled,
   scheduledDay,
-  onUnschedule,
   referenceDate,
   isPinned,
   onTogglePin,
@@ -85,8 +83,7 @@ export function DraggableOrderCard({
         meta={meta}
         isScheduled={isScheduled}
         scheduledDay={scheduledDay}
-        onUnschedule={onUnschedule}
-        showScheduleButtons={false} // Hide buttons in DnD mode
+        showScheduleButtons={false}
         referenceDate={referenceDate}
         isPinned={isPinned}
         onTogglePin={onTogglePin}
