@@ -4,12 +4,36 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ColumnTitles, DayName, ItemStatus } from "@/typings/types";
 import { OrderMeta, DueBucket } from "./types";
-import { cn, getDueDateStatus } from "@/utils/functions";
+import { cn } from "@/utils/functions";
 import { X } from "lucide-react";
 import { DesignBlends } from "@/typings/constants";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
 import { useTheme } from "next-themes";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
+
+// Solid, number-only due-date badge (overdue=red, due-soon=amber, on-time=emerald).
+// `referenceDate` lets a scheduled card show the diff relative to its day rather
+// than today.
+function getSolidDueBadge(
+  dueDate: Date | null | undefined,
+  referenceDate: Date | undefined
+): { text: string; classes: string } {
+  if (!dueDate) {
+    return { text: "?", classes: "bg-gray-500 text-white" };
+  }
+  const ref = new Date(referenceDate ?? new Date());
+  ref.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+  const diffDays = Math.ceil(
+    (due.getTime() - ref.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  const text = diffDays > 0 ? `+${diffDays}` : `${diffDays}`;
+  if (diffDays < 0) return { text, classes: "bg-red-500 text-white" };
+  if (diffDays <= 2) return { text, classes: "bg-amber-500 text-white" };
+  return { text, classes: "bg-emerald-500 text-white" };
+}
 
 // Production status maps the item's current ItemStatus to a card tint:
 //   "done" (green)    — past WIP: Packaging, At The Door, Done
@@ -97,11 +121,8 @@ export function OrderCard({
   // Parse customer name with Minecraft colors
   const parsedCustomerName = parseMinecraftColors(customerName, isDark);
 
-  // Match the orders page badge style: useNumber=false renders text labels
-  // ("Yesterday", "Today", "Tomorrow", "2 days", "3+ days", "Week+", "Month+")
-  // so the two pages share a vocabulary.
   const badgeStatus = meta.item.dueDate
-    ? getDueDateStatus(new Date(meta.item.dueDate), false, referenceDate)
+    ? getSolidDueBadge(new Date(meta.item.dueDate), referenceDate)
     : null;
 
   const productionStatus = getProductionStatus(meta.item.status);
@@ -134,7 +155,7 @@ export function OrderCard({
             {badgeStatus && (
               <div
                 className={cn(
-                  "text-[10px] px-1.5 py-0.5 rounded-full font-medium border",
+                  "text-[10px] px-1.5 py-0.5 rounded-full font-bold tabular-nums shadow-sm",
                   badgeStatus.classes
                 )}
               >
