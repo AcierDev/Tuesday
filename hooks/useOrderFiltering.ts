@@ -4,13 +4,13 @@ import { Item, ItemStatus, ItemSizes, ItemDesigns } from "@/typings/types";
 interface UseOrderFilteringProps {
   items: Item[] | undefined;
   searchTerm: string;
-  currentMode: string;
+  currentType: string;
 }
 
 export function useOrderFiltering({
   items,
   searchTerm,
-  currentMode,
+  currentType,
 }: UseOrderFilteringProps) {
   const filteredGroups = useMemo(() => {
     if (!items) return [];
@@ -47,7 +47,7 @@ export function useOrderFiltering({
         const isMini = size === ItemSizes.Fourteen_By_Seven;
 
         const shouldInclude = (() => {
-          switch (currentMode) {
+          switch (currentType) {
             case "all":
               return true;
             case "striped":
@@ -79,7 +79,7 @@ export function useOrderFiltering({
     });
 
     return groups;
-  }, [items, searchTerm, currentMode]);
+  }, [items, searchTerm, currentType]);
 
   const sortedGroups = useMemo(() => {
     return [...filteredGroups].sort((a, b) => {

@@ -13,13 +13,11 @@ import {
   Accessibility,
   Settings,
   Menu,
-  ClipboardList,
   SprayCan,
   LayoutGrid,
   Magnet,
   Scissors,
   BarChart3,
-  CalendarDays,
   Clock,
   Edit,
   UserCircle,
@@ -38,7 +36,6 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { motion } from "framer-motion";
-import { OrdersIcon } from "@/components/icons/OrdersIcon";
 import {
   NavSectionCounters,
   NavMetricsBadges,
@@ -61,28 +58,9 @@ type DividerItem = NavItemBase & {
 
 type NavItem = NavLinkItem | DividerItem;
 
-const mainNavItems: NavItem[] = [
-  { href: "/orders", icon: OrdersIcon, label: "Orders", hotkey: "1" },
-  { href: "/weekly-planner", icon: ClipboardList, label: "Weekly Planner" },
-  {
-    href: "/production-planning",
-    icon: CalendarDays,
-    label: "Production Planning",
-  },
-  // { href: "/shipping", icon: Truck, label: "Shipping", hotkey: "2" },
-  // { type: "divider" },
-  // { href: "/paint", icon: PaintbrushVertical, label: "Paint", hotkey: "3" },
-  // { href: "/packaging", icon: PackageOpen, label: "Packaging", hotkey: "4" },
-  // { href: "/backboards", icon: Layers3, label: "Backboards", hotkey: "5" },
-  // { href: "/cutting", icon: Scissors, label: "Cutting" },
-  // { type: "divider" },
-  // { href: "/robotyler", icon: SprayCan, label: "RoboTyler" },
-  // { href: "/pick-n-place", icon: Magnet, label: "Pick N Place" },
-  // { href: "/router", icon: "/icons/router.png", label: "Router" },
-  // { href: "/pick-and-place", icon: LayoutGrid, label: "Pick & Place" },
-  // { href: "/inventory", icon: ClipboardList, label: "Inventory" },
-  // { href: "/outlets", icon: Power, label: "Outlets", hotkey: "8" },
-];
+// Orders / Weekly Planner / Production Planning live in the page-level
+// slider on the Orders + Planner headers — no longer surfaced in the navbar.
+const mainNavItems: NavItem[] = [];
 
 const bottomNavItems: NavLinkItem[] = [
   { href: "/print", icon: Printer, label: "Print", hotkey: "7" },

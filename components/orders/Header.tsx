@@ -2,6 +2,7 @@
 
 import { Plus, Search } from "lucide-react"
 import { type ChangeEvent, useEffect, useRef, useState } from "react"
+import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,8 +14,8 @@ interface HeaderProps {
   onSearchChange: (term: string) => void
   onNewOrder: () => void
   isMobile: boolean
-  currentMode: string
-  onModeChange: (mode: string) => void
+  currentType: string
+  onTypeChange: (type: string) => void
   dueCounts: Record<string, number>
 }
 
@@ -23,8 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSearchChange,
   onNewOrder,
   isMobile,
-  currentMode,
-  onModeChange,
+  currentType,
+  onTypeChange,
   dueCounts,
 }) => {
   const [isSearchActive, setIsSearchActive] = useState(false)
@@ -55,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
     setIsSearchActive(false)
   }
 
-  const SECTIONS = ["all", "geometric", "striped", "tiled", "mini", "custom"];
+  const TYPES = ["all", "geometric", "striped", "tiled", "mini", "custom"];
 
   return (
     <div
@@ -76,33 +77,44 @@ export const Header: React.FC<HeaderProps> = ({
             <PageToggle currentPage="orders" />
           </div>
 
-          {/* Design / art-style selector — center of the same row. */}
+          {/* Type toggle — center of the same row. Active pill slides
+              between options via framer-motion's shared layoutId. */}
           <div className="flex justify-center sm:flex-1 sm:min-w-0">
             <ToggleGroup
               type="single"
-              value={currentMode}
+              value={currentType}
               onValueChange={(value) => {
-                if (value) onModeChange(value);
+                if (value) onTypeChange(value);
               }}
               className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60"
             >
-              {SECTIONS.map((mode) => (
-                <ToggleGroupItem
-                  key={mode}
-                  value={mode}
-                  aria-label={`Toggle ${mode} mode`}
-                  className="relative h-8 px-3.5 rounded-full text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-200 hover:bg-transparent data-[state=on]:bg-white data-[state=on]:text-gray-900 data-[state=on]:shadow-sm dark:data-[state=on]:bg-gray-700 dark:data-[state=on]:text-white"
-                >
-                  <span className="relative z-10">
-                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                  </span>
-                  {(dueCounts[mode] ?? 0) > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center ring-2 ring-white dark:ring-gray-950 z-20">
-                      {dueCounts[mode]}
+              {TYPES.map((type) => {
+                const isActive = currentType === type;
+                return (
+                  <ToggleGroupItem
+                    key={type}
+                    value={type}
+                    aria-label={`Toggle ${type} type`}
+                    className="relative h-8 px-3.5 rounded-full text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-200 hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:shadow-none data-[state=on]:text-gray-900 dark:data-[state=on]:text-white"
+                  >
+                    {isActive && (
+                      <motion.span
+                        layoutId="type-toggle-pill"
+                        className="absolute inset-0 bg-white dark:bg-gray-700 rounded-full shadow-sm"
+                        transition={{ type: "spring", stiffness: 480, damping: 36 }}
+                      />
+                    )}
+                    <span className="relative z-10">
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
                     </span>
-                  )}
-                </ToggleGroupItem>
-              ))}
+                    {(dueCounts[type] ?? 0) > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center ring-2 ring-white dark:ring-gray-950 z-20">
+                        {dueCounts[type]}
+                      </span>
+                    )}
+                  </ToggleGroupItem>
+                );
+              })}
             </ToggleGroup>
           </div>
 

@@ -16,7 +16,7 @@ export const MobileBottomNav = () => {
     },
     {
       name: "Planner",
-      href: "/weekly-planner",
+      href: "/production-planning",
       icon: Calendar,
     },
     {

@@ -2,11 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Toaster, toast } from "sonner";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Header } from "@/components/orders/Header";
 import { NewItemModal } from "@/components/orders/NewItemModal";
-import { WeeklySchedule } from "@/components/weekly-schedule/WeeklySchedule";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -17,12 +15,9 @@ import {
   ItemSizes,
   ItemDesigns,
   ColumnTitles,
-  DayName,
 } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { ShippingDashboard } from "@/components/shipping/ShippingDashboard";
-import { cn } from "@/utils/functions";
 import { useOrderFiltering } from "@/hooks/useOrderFiltering";
 import { useOrderStats } from "@/hooks/useOrderStats";
 import { useAutoPromoteByDueDate } from "@/hooks/useAutoPromoteByDueDate";
@@ -31,56 +26,14 @@ import { ResponsiveOrdersView } from "@/components/orders/ResponsiveOrdersView";
 export default function OrderManagementPage() {
   const setSearchQuery = useOrderStore((state) => state.setSearchQuery);
   const searchTerm = useOrderStore((state) => state.searchQuery);
-  const [currentMode, setCurrentMode] = useState("all");
+  const [currentType, setCurrentType] = useState("all");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false);
   const [isShippingDashboardOpen, setIsShippingDashboardOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [isWeeklyPlannerOpen, setIsWeeklyPlannerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [itemToComplete, setItemToComplete] = useState<string | null>(null);
-  const { addItemToDay } = useWeeklyScheduleStore();
-  const [clickToAddTarget, setClickToAddTarget] = useState<{
-    day: DayName;
-    weekKey: string;
-  } | null>(null);
-
-  const handleStartClickToAdd = useCallback((day: DayName, weekKey: string) => {
-    if (weekKey === "") {
-      setClickToAddTarget(null);
-      return;
-    }
-    // If clicking the same day, toggle off
-    setClickToAddTarget((prev) => {
-      if (prev?.day === day && prev?.weekKey === weekKey) {
-        return null;
-      }
-      return { day, weekKey };
-    });
-  }, []);
-
-  const handleCancelClickToAdd = useCallback(() => {
-    setClickToAddTarget(null);
-  }, []);
-
-  const handleItemClick = useCallback(
-    async (item: Item) => {
-      if (!clickToAddTarget) return;
-
-      try {
-        await addItemToDay(
-          clickToAddTarget.weekKey,
-          clickToAddTarget.day,
-          item.id
-        );
-        toast.success(`Added ${item.customerName} to ${clickToAddTarget.day}`);
-      } catch (error) {
-        toast.error("Failed to add item to schedule");
-      }
-    },
-    [clickToAddTarget, addItemToDay]
-  );
 
   const orderSettingsContext = useOrderSettings();
   const settings = orderSettingsContext.settings || {};
@@ -143,7 +96,7 @@ export default function OrderManagementPage() {
   const sortedGroups = useOrderFiltering({
     items,
     searchTerm,
-    currentMode,
+    currentType,
   });
 
   useEffect(() => {
@@ -321,13 +274,6 @@ export default function OrderManagementPage() {
     [items, deleteItem, undoItemDeletion]
   );
 
-  useEffect(() => {
-    if (isWeeklyPlannerOpen) {
-      const event = new CustomEvent("weeklyScheduleUpdate");
-      window.dispatchEvent(event);
-    }
-  }, [isWeeklyPlannerOpen]);
-
   const handleAddNewItem = async (newItem: Partial<Item>) => {
     try {
       const createdItem = await addNewItem(newItem);
@@ -355,23 +301,20 @@ export default function OrderManagementPage() {
           searchTerm={searchTerm}
           onNewOrder={() => setIsNewItemModalOpen(true)}
           onSearchChange={setSearchQuery}
-          currentMode={currentMode}
-          onModeChange={setCurrentMode}
+          currentType={currentType}
+          onTypeChange={setCurrentType}
           dueCounts={dueCounts}
         />
       )}
       <div className="flex-grow">
         <div
-          className={`h-full max-w-full mx-auto pr-4 sm:pr-6 lg:pr-8 ${
+          className={`h-full max-w-full mx-auto pr-2 ${
             isMobile ? "pl-4 pt-1" : "pl-4 sm:pl-6 lg:pl-8 py-8"
           }`}
         >
           <div className="flex h-full relative">
             <div
-              className={cn(
-                "flex-grow transition-all duration-300 ease-in-out min-w-0",
-                isWeeklyPlannerOpen ? "pr-80" : ""
-              )}
+              className="flex-grow min-w-0"
               style={{ contain: "paint" }}
             >
               <ResponsiveOrdersView
@@ -385,50 +328,14 @@ export default function OrderManagementPage() {
                 loadDoneItems={loadDoneItems}
                 hasMoreDoneItems={hasMoreDoneItems}
                 isDoneLoading={isDoneLoading}
-                clickToAddTarget={clickToAddTarget}
-                onItemClick={handleItemClick}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
             </div>
-            <div
-              className={cn(
-                "fixed top-[5.5rem] right-0 h-[calc(100vh-5.5rem)] transition-all duration-300 ease-in-out",
-                isWeeklyPlannerOpen
-                  ? "w-96 translate-x-0"
-                  : "w-0 translate-x-full"
-              )}
-            >
-              {items && isWeeklyPlannerOpen && (
-                <div className="h-full bg-white dark:bg-transparent shadow-lg rounded-l-lg">
-                  <WeeklySchedule
-                    onStartClickToAdd={handleStartClickToAdd}
-                    clickToAddTarget={clickToAddTarget}
-                  />
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>
-      <Button
-        className={cn(
-          "fixed top-1/2 transform -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md rounded-l-md rounded-r-sm py-8 h-auto w-auto min-w-0 z-10 transition-all duration-300",
-          isWeeklyPlannerOpen ? "right-[1.5px] px-[2.275px]" : "right-0 px-[3.5px]"
-        )}
-        variant="ghost"
-        onClick={() => setIsWeeklyPlannerOpen(!isWeeklyPlannerOpen)}
-        aria-label={
-          isWeeklyPlannerOpen ? "Close weekly planner" : "Open weekly planner"
-        }
-      >
-        {isWeeklyPlannerOpen ? (
-          <ChevronRight className="h-5 w-4" />
-        ) : (
-          <ChevronLeft className="h-5 w-4" />
-        )}
-      </Button>
       {isSettingsOpen && (
         <SettingsPanel
           settings={settings}

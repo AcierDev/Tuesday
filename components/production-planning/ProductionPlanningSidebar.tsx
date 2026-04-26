@@ -51,13 +51,10 @@ export function ProductionPlanningSidebar({
         isOver && "bg-gray-50 dark:bg-gray-800/50"
       )}
     >
-      <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Planner</h2>
-          <span className="text-xs font-medium bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full text-gray-600 dark:text-gray-400">
-            {orders.length}
-          </span>
-        </div>
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex justify-end">
+        <span className="text-xs font-medium bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full text-gray-600 dark:text-gray-400">
+          {orders.length}
+        </span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">
