@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
@@ -22,6 +22,11 @@ const PAGE_TOGGLE_LABEL: Record<PageToggleValue, string> = {
 // feel snappy without truncating the spring.
 const NAV_DELAY_MS = 220;
 
+// After the current page settles, warm up the other page's bundle and run its
+// module-level side effects (e.g. WeeklyScheduleStore auto-init firing
+// fetchSchedules) so toggling feels instant instead of triggering a cold load.
+const PREWARM_DELAY_MS = 300;
+
 interface PageToggleProps {
   currentPage: PageToggleValue;
 }
@@ -29,6 +34,20 @@ interface PageToggleProps {
 export function PageToggle({ currentPage }: PageToggleProps) {
   const router = useRouter();
   const [activeValue, setActiveValue] = useState<PageToggleValue>(currentPage);
+
+  useEffect(() => {
+    const other: PageToggleValue =
+      currentPage === "orders" ? "planner" : "orders";
+    const handle = window.setTimeout(() => {
+      router.prefetch(PAGE_TOGGLE_HREF[other]);
+      if (other === "planner") {
+        void import("@/app/production-planning/page");
+      } else {
+        void import("@/app/orders/page");
+      }
+    }, PREWARM_DELAY_MS);
+    return () => window.clearTimeout(handle);
+  }, [currentPage, router]);
 
   return (
     <ToggleGroup
