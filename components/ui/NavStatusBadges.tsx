@@ -83,12 +83,12 @@ export function NavSectionCounters() {
             type="button"
             onClick={() => handleStatusClick(status)}
             className={cn(
-              "flex flex-col items-center justify-center w-14 h-14 rounded-xl px-1 select-none glass-surface transition-transform duration-200 ease-out hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer",
+              "flex flex-col items-center justify-center w-14 h-11 rounded-lg px-1 select-none glass-surface transition-transform duration-200 ease-out hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer",
               `text-${color} dark:text-${color}`
             )}
             title={`${status}: ${count}`}
           >
-            <span className="text-lg font-bold leading-none">{count}</span>
+            <span className="text-base font-bold leading-none">{count}</span>
             <span className="mt-0.5 w-full truncate text-center text-[8px] font-medium uppercase tracking-wide opacity-80">
               {label}
             </span>
@@ -164,7 +164,7 @@ export function NavMetricsBadges() {
   }, []);
 
   return (
-    <div className="px-1 py-2 flex flex-col items-center gap-1.5 border-t dark:border-gray-600">
+    <div className="px-1 py-2 flex flex-col items-center gap-1.5">
       <Link
         href="/stats/glued"
         className={cn(

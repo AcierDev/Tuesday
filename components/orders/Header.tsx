@@ -69,7 +69,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-4 sm:flex-shrink-0">
             <div className="flex items-center gap-3 sm:min-w-[220px]">
               <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
-              <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+              <h1 className="text-lg sm:text-xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent">
                 Order Management
               </h1>
             </div>

@@ -487,12 +487,13 @@ export function Navbar({
                 );
               })}
             </div>
-            <Separator
-              className="mt-3 mb-1 mx-3 bg-white/15 dark:bg-white/15"
-              decorative
-            />
-            <NavSectionCounters />
           </div>
+          <NavSectionCounters />
+          {/* Soft gradient divider between section counts and metric badges. */}
+          <div
+            aria-hidden
+            className="mx-4 my-2 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
+          />
           <NavMetricsBadges />
           <div className="p-3 border-t dark:border-gray-600 space-y-2">
             <div
