@@ -230,7 +230,7 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
-              className={`h-8 p-0 flex items-center justify-center ${
+              className={`h-8 p-0 flex items-center justify-center -translate-x-[13px] ${
                 carrierBadge ? "w-auto px-1.5 gap-1" : "w-8"
               }`}
               onClick={handleClick}

@@ -213,7 +213,7 @@ export const NameCell: React.FC<NameCellProps> = ({
   );
 
   return (
-    <div className="flex items-center w-full h-full relative group">
+    <div className="flex items-center w-full h-full relative group -translate-x-[13px]">
       <div className="flex items-center space-x-2 w-full">
         {tags?.isDuplicate && (
           <Tooltip>
