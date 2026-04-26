@@ -253,6 +253,16 @@ body {
   }
 }
 
+/* Tailwind 3.4 emits dark variants as `.dark\:foo:is(.dark *)`. On
+   the user's Windows Chrome the :is() chain wasn't matching, so
+   text-gray-900 was winning over its dark:text-gray-100 partner.
+   These plain-descendant rules use the same intent without :is() so
+   they apply in every browser. Specificity is (0,2,1) which
+   intentionally beats the (0,2,0) Tailwind variant — same color, no
+   visual difference, but a guaranteed match. */
+html.dark .text-gray-900 { color: rgb(243 244 246); }
+html.dark .text-gray-800 { color: rgb(229 231 235); }
+
 #__next {
   display: flex;
   flex-direction: column;
