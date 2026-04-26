@@ -182,36 +182,6 @@ export function NavMetricsBadges() {
   return (
     <div className="px-1 py-2 flex flex-col items-center gap-1.5">
       <Link
-        href="/stats/backlog"
-        className={cn(
-          "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
-          backlogSquares && backlogSquares > 0
-            ? "text-sky-500 dark:text-sky-400"
-            : "text-slate-400"
-        )}
-        title={
-          backlogSquares === null
-            ? "Backlog squares loading…"
-            : `Backlog: ~${backlogSquares.toLocaleString()} squares across New / On Deck / WIP — click for details`
-        }
-      >
-        <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
-          Backlog
-        </span>
-        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
-          {backlogSquares === null ? "—" : formatSquaresK(backlogSquares)}
-        </span>
-        <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
-          squares
-        </span>
-        <MiniSparkline
-          data={backlogHistory}
-          width={44}
-          height={12}
-          className="mt-1 opacity-70"
-        />
-      </Link>
-      <Link
         href="/stats/debt"
         className={cn(
           "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
@@ -266,6 +236,36 @@ export function NavMetricsBadges() {
         </span>
         <MiniSparkline
           data={debtHistory.map((d) => -d)}
+          width={44}
+          height={12}
+          className="mt-1 opacity-70"
+        />
+      </Link>
+      <Link
+        href="/stats/backlog"
+        className={cn(
+          "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
+          backlogSquares && backlogSquares > 0
+            ? "text-sky-500 dark:text-sky-400"
+            : "text-slate-400"
+        )}
+        title={
+          backlogSquares === null
+            ? "Backlog squares loading…"
+            : `Backlog: ~${backlogSquares.toLocaleString()} squares across New / On Deck / WIP — click for details`
+        }
+      >
+        <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
+          Backlog
+        </span>
+        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
+          {backlogSquares === null ? "—" : formatSquaresK(backlogSquares)}
+        </span>
+        <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
+          squares
+        </span>
+        <MiniSparkline
+          data={backlogHistory}
           width={44}
           height={12}
           className="mt-1 opacity-70"
