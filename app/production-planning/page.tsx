@@ -36,7 +36,13 @@ import { OrderCard } from "@/components/production-planning/OrderCard";
 import { OrderMeta } from "@/components/production-planning/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
-import { DayName, WeeklyScheduleData, ScheduledOrder } from "@/typings/types";
+import {
+  DayName,
+  ItemStatus,
+  WeeklyScheduleData,
+  ScheduledOrder,
+} from "@/typings/types";
+import { parseSquareSize } from "@/lib/production-metrics";
 
 function calculateBlocks(item: { size?: string }): number {
   const sizeStr = item.size || "";
@@ -106,6 +112,31 @@ function classifyDueBucket(
   return { dueDate, bucket: "future" };
 }
 
+// Pre-WIP statuses are the only ones eligible for auto-fill redistribution.
+// Once an item hits Wip or beyond, its day-placement is treated as locked
+// (the team has already committed to / completed the work).
+const PRE_WIP_STATUSES: ReadonlySet<ItemStatus> = new Set([
+  ItemStatus.New,
+  ItemStatus.OnDeck,
+]);
+
+// Compares two items by due-date urgency: most overdue first, then earliest
+// upcoming, then no-due last. Stable tiebreak on id so the result is
+// deterministic across re-runs.
+function compareByDueUrgency(
+  a: { dueDate: Date | null; id: string },
+  b: { dueDate: Date | null; id: string }
+): number {
+  if (a.dueDate && b.dueDate) {
+    const diff = a.dueDate.getTime() - b.dueDate.getTime();
+    if (diff !== 0) return diff;
+    return a.id.localeCompare(b.id);
+  }
+  if (a.dueDate) return -1;
+  if (b.dueDate) return 1;
+  return a.id.localeCompare(b.id);
+}
+
 const dropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
     styles: {
@@ -164,12 +195,17 @@ export default function ProductionPlanningPage() {
     [currentWeekStart]
   );
 
-  // Filter orders
+  // Filter orders: must be unscheduled-ready (New / OnDeck), not deleted, and
+  // have a parseable W×H size. Custom/named sizes don't count toward the
+  // 1000-blocks-per-day target since they aren't square units.
   const availableOrders = useMemo(
     () =>
       items.filter(
         (item) =>
-          !item.deleted && (item.status === "New" || item.status === "On Deck")
+          !item.deleted &&
+          (item.status === ItemStatus.New ||
+            item.status === ItemStatus.OnDeck) &&
+          parseSquareSize(item.size) !== null
       ),
     [items]
   );
@@ -507,6 +543,152 @@ export default function ProductionPlanningPage() {
     return allOrdersById.get(activeId);
   }, [activeId, allOrdersById]);
 
+  // Auto-fill Mon-Thu of a target week with the most-due standard-size orders.
+  // Items already past pre-WIP (Wip / Packaging / Done etc.) keep their
+  // existing day placement and consume that day's capacity — so a day already
+  // overcapacity from completed work pushes new items forward, and a day with
+  // spare room pulls earlier-due items back. Sat/Sun fold into Monday's
+  // capacity bucket to match the display rule.
+  const handleAutoFill = async (targetWeekKey: string) => {
+    const existing = schedules.find((s) => s.weekKey === targetWeekKey);
+
+    // Build a fresh schedule shell. If the week has no record yet, persist one.
+    const baseSchedule: WeeklyScheduleData = existing
+      ? structuredClone(existing)
+      : {
+          weekKey: targetWeekKey,
+          schedule: {
+            Sunday: [], Monday: [], Tuesday: [], Wednesday: [],
+            Thursday: [], Friday: [], Saturday: [],
+          },
+        };
+
+    if (!existing) {
+      try {
+        await createWeek(targetWeekKey);
+      } catch (e) {
+        console.error("Failed to create week", e);
+        return;
+      }
+    }
+
+    // Partition each day's existing items into:
+    //   - locked: items past pre-WIP, or any item whose size we can't parse
+    //     (custom/named sizes — we don't auto-place them and we don't know
+    //     their block contribution, so they sit where they are).
+    //   - movable: pre-WIP + standard-size items, eligible for redistribution.
+    const lockedByDay: Record<DayName, { id: string; done: boolean }[]> = {
+      Sunday: [], Monday: [], Tuesday: [], Wednesday: [],
+      Thursday: [], Friday: [], Saturday: [],
+    };
+    const lockedBlocksByDay: Record<DayName, number> = {
+      Sunday: 0, Monday: 0, Tuesday: 0, Wednesday: 0,
+      Thursday: 0, Friday: 0, Saturday: 0,
+    };
+    const pulledFromTargetWeek = new Set<string>();
+
+    (Object.keys(baseSchedule.schedule) as DayName[]).forEach((day) => {
+      baseSchedule.schedule[day].forEach((entry) => {
+        const item = allOrdersById.get(entry.id)?.item;
+        const blocks = item ? calculateBlocks(item) : 0;
+        const isMovable =
+          item &&
+          PRE_WIP_STATUSES.has(item.status) &&
+          parseSquareSize(item.size) !== null;
+
+        if (isMovable) {
+          pulledFromTargetWeek.add(entry.id);
+        } else {
+          lockedByDay[day].push(entry);
+          lockedBlocksByDay[day] += blocks;
+        }
+      });
+    });
+
+    // Items currently scheduled in OTHER weeks are off-limits; we only shuffle
+    // around what's unscheduled or what was sitting in the target week.
+    const scheduledInOtherWeeks = new Set<string>();
+    schedules.forEach((s) => {
+      if (s.weekKey === targetWeekKey) return;
+      Object.values(s.schedule).forEach((dayItems) => {
+        dayItems.forEach((entry) => scheduledInOtherWeeks.add(entry.id));
+      });
+    });
+
+    // Pool = every standard-size pre-WIP item that isn't pinned in another week.
+    // Sort by due-date urgency so the most-due land in the earliest day with
+    // capacity.
+    const pool = availableOrders
+      .filter((item) => !scheduledInOtherWeeks.has(item.id))
+      .map((item) => ({
+        id: item.id,
+        item,
+        blocks: calculateBlocks(item),
+        dueDate: item.dueDate ? startOfDay(new Date(item.dueDate)) : null,
+      }))
+      .filter((entry) => entry.blocks > 0)
+      .sort(compareByDueUrgency);
+
+    // Sat/Sun fold into Monday for capacity accounting (matches display).
+    const remainingByTarget: Record<DayName, number> = {
+      Monday: Math.max(
+        0,
+        DAILY_CAPACITY_BLOCKS -
+          lockedBlocksByDay.Monday -
+          lockedBlocksByDay.Sunday -
+          lockedBlocksByDay.Saturday
+      ),
+      Tuesday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Tuesday),
+      Wednesday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Wednesday),
+      Thursday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Thursday),
+      // Not auto-fill targets but typed for completeness.
+      Sunday: 0, Friday: 0, Saturday: 0,
+    };
+    const TARGET_DAYS: DayName[] = ["Monday", "Tuesday", "Wednesday", "Thursday"];
+    const newPlacements: Record<DayName, { id: string; done: boolean }[]> = {
+      Monday: [], Tuesday: [], Wednesday: [], Thursday: [],
+      Sunday: [], Friday: [], Saturday: [],
+    };
+
+    let placed = 0;
+    for (const entry of pool) {
+      const day = TARGET_DAYS.find((d) => remainingByTarget[d] >= entry.blocks);
+      if (!day) continue;
+      remainingByTarget[day] -= entry.blocks;
+      newPlacements[day].push({ id: entry.id, done: false });
+      placed++;
+    }
+
+    const finalSchedule: WeeklyScheduleData = {
+      weekKey: targetWeekKey,
+      schedule: {
+        Sunday: lockedByDay.Sunday,
+        Monday: [...lockedByDay.Monday, ...newPlacements.Monday],
+        Tuesday: [...lockedByDay.Tuesday, ...newPlacements.Tuesday],
+        Wednesday: [...lockedByDay.Wednesday, ...newPlacements.Wednesday],
+        Thursday: [...lockedByDay.Thursday, ...newPlacements.Thursday],
+        Friday: lockedByDay.Friday,
+        Saturday: lockedByDay.Saturday,
+      },
+    };
+
+    await updateSchedule(targetWeekKey, finalSchedule);
+    const pulled = pulledFromTargetWeek.size;
+    toast.success(
+      `Auto-filled ${placed} order${placed === 1 ? "" : "s"}` +
+        (pulled > 0 ? ` (${pulled} re-shuffled)` : "")
+    );
+  };
+
+  const thisWeekKey = format(
+    startOfWeek(new Date(), { weekStartsOn: 0 }),
+    "yyyy-MM-dd"
+  );
+  const nextWeekKey = format(
+    addWeeks(startOfWeek(new Date(), { weekStartsOn: 0 }), 1),
+    "yyyy-MM-dd"
+  );
+
   return (
     <DndContext
       sensors={sensors}
@@ -549,6 +731,8 @@ export default function ProductionPlanningPage() {
                 )
               );
             }}
+            onAutoFillThisWeek={() => handleAutoFill(thisWeekKey)}
+            onAutoFillNextWeek={() => handleAutoFill(nextWeekKey)}
             onClearWeek={() => {
               if (currentSchedule) {
                 const clearedSchedule = {

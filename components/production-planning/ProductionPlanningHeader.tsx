@@ -1,7 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  Wand2,
+} from "lucide-react";
 import { format } from "date-fns";
 
 interface ProductionPlanningHeaderProps {
@@ -19,6 +24,8 @@ interface ProductionPlanningHeaderProps {
   onNextWeek: () => void;
   onToday: () => void;
   onClearWeek: () => void;
+  onAutoFillThisWeek: () => void;
+  onAutoFillNextWeek: () => void;
 }
 
 export function ProductionPlanningHeader({
@@ -31,6 +38,8 @@ export function ProductionPlanningHeader({
   onNextWeek,
   onToday,
   onClearWeek,
+  onAutoFillThisWeek,
+  onAutoFillNextWeek,
 }: ProductionPlanningHeaderProps) {
   return (
     <div className="flex flex-col gap-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 p-4 sticky top-0 z-20 shadow-sm">
@@ -75,7 +84,25 @@ export function ProductionPlanningHeader({
         </div>
 
         {/* Actions */}
-        <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAutoFillThisWeek}
+            className="border-primary/40 text-primary hover:bg-primary/10"
+          >
+            <Wand2 className="h-4 w-4 mr-1.5" />
+            Auto-fill This Week
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAutoFillNextWeek}
+            className="border-primary/40 text-primary hover:bg-primary/10"
+          >
+            <Wand2 className="h-4 w-4 mr-1.5" />
+            Auto-fill Next Week
+          </Button>
           <Button
             variant="outline"
             size="sm"

@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ColumnTitles, DayName } from "@/typings/types";
+import { ColumnTitles, DayName, ItemStatus } from "@/typings/types";
 import { OrderMeta, DueBucket } from "./types";
 import { cn, getDueDateStatus } from "@/utils/functions";
 import { X } from "lucide-react";
@@ -10,6 +10,31 @@ import { DesignBlends } from "@/typings/constants";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
 import { useTheme } from "next-themes";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
+
+// Production status maps the item's current ItemStatus to a card tint:
+//   "done" (green)    — past WIP: Packaging, At The Door, Done
+//   "wip"  (orange)   — currently being worked on
+//   "pending" (none)  — New / OnDeck / anything else
+type ProductionStatus = "done" | "wip" | "pending";
+
+function getProductionStatus(status: ItemStatus | undefined): ProductionStatus {
+  switch (status) {
+    case ItemStatus.Packaging:
+    case ItemStatus.At_The_Door:
+    case ItemStatus.Done:
+      return "done";
+    case ItemStatus.Wip:
+      return "wip";
+    default:
+      return "pending";
+  }
+}
+
+const STATUS_TINT: Record<ProductionStatus, string> = {
+  done: "bg-emerald-50 dark:bg-emerald-950/40 border-y-emerald-200 border-r-emerald-200 dark:border-y-emerald-900 dark:border-r-emerald-900",
+  wip: "bg-amber-50 dark:bg-amber-950/40 border-y-amber-200 border-r-amber-200 dark:border-y-amber-900 dark:border-r-amber-900",
+  pending: "bg-white dark:bg-gray-900 border-y border-r border-gray-200 dark:border-gray-800",
+};
 
 interface OrderCardProps {
   meta: OrderMeta;
@@ -72,21 +97,21 @@ export function OrderCard({
   // Parse customer name with Minecraft colors
   const parsedCustomerName = parseMinecraftColors(customerName, isDark);
 
-  // Calculate badge status
+  // Match the orders page badge style: useNumber=false renders text labels
+  // ("Yesterday", "Today", "Tomorrow", "2 days", "3+ days", "Week+", "Month+")
+  // so the two pages share a vocabulary.
   const badgeStatus = meta.item.dueDate
-    ? getDueDateStatus(
-        new Date(meta.item.dueDate),
-        true, // useNumber
-        referenceDate
-      )
+    ? getDueDateStatus(new Date(meta.item.dueDate), false, referenceDate)
     : null;
+
+  const productionStatus = getProductionStatus(meta.item.status);
 
   return (
     <Card
       className={cn(
         "group relative overflow-hidden border-l-[3px] transition-all hover:shadow-sm",
         bucketColor,
-        "bg-white dark:bg-gray-900 border-y border-r border-gray-200 dark:border-gray-800"
+        STATUS_TINT[productionStatus]
       )}
     >
       <div className="flex items-start justify-between gap-2 p-2">
