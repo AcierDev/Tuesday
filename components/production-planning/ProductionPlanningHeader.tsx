@@ -76,10 +76,9 @@ export function ProductionPlanningHeader({
           {/* Right group: action buttons */}
           <div className="flex items-center gap-2 w-full sm:w-auto sm:flex-shrink-0">
             <Button
-              variant="outline"
               size="sm"
               onClick={onAutoFill}
-              className="rounded-full border-primary/40 text-primary hover:bg-primary/10 hover:text-primary transition-transform duration-150 ease-out hover:scale-[1.06]"
+              className="h-9 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-600/30 active:translate-y-0 dark:bg-blue-600 dark:hover:bg-blue-500"
             >
               <Wand2 className="h-4 w-4 mr-1.5" />
               Auto-plan
@@ -89,7 +88,7 @@ export function ProductionPlanningHeader({
               size="sm"
               onClick={onClearWeek}
               disabled={!hasScheduledOrders}
-              className="rounded-full border-red-300/70 text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:border-red-900 dark:hover:bg-red-950/30 transition-transform duration-150 ease-out hover:scale-[1.06] disabled:hover:scale-100"
+              className="h-9 rounded-full bg-white/60 dark:bg-blue-500/5 border-blue-200/70 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 dark:hover:bg-blue-500/15 dark:hover:text-blue-200 transition-all duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0"
             >
               <RotateCcw className="h-4 w-4 mr-1.5" />
               Clear Week
