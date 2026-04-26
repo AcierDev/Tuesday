@@ -21,7 +21,7 @@ import {
   Edit,
   UserCircle,
   Truck,
-  Tags,
+  Barcode,
   Drill,
   Box,
   Columns2,
@@ -566,7 +566,7 @@ export function Navbar({
               href="/quick-label"
               className="flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition"
             >
-              <Tags className="h-5 w-5 flex-shrink-0" />
+              <Barcode className="h-5 w-5 flex-shrink-0" />
               {sidebarOpen && <span className="ml-2">Quick Labels</span>}
             </Link>
             <Link
