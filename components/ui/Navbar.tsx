@@ -53,6 +53,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { motion } from "framer-motion";
 import {
   NavSectionCounters,
@@ -569,18 +574,39 @@ export function Navbar({
                 </motion.div>
               </motion.div>
             </div>
-            <Link href="/quick-label" className="sidebar-action-btn">
-              <Barcode className="h-5 w-5 flex-shrink-0" />
-              {sidebarOpen && <span className="ml-2">Quick Labels</span>}
-            </Link>
-            <Link href="/setup-utility" className="sidebar-action-btn">
-              <PencilRuler className="h-5 w-5 flex-shrink-0" />
-              {sidebarOpen && <span className="ml-2">Setup Utility</span>}
-            </Link>
-            <Link href="/calculator" className="sidebar-action-btn">
-              <Calculator className="h-5 w-5 flex-shrink-0" />
-              {sidebarOpen && <span className="ml-2">Calculator</span>}
-            </Link>
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger asChild>
+                <Link href="/quick-label" className="sidebar-action-btn">
+                  <Barcode className="h-5 w-5 flex-shrink-0" />
+                  {sidebarOpen && <span className="ml-2">Quick Labels</span>}
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="py-1 leading-none">
+                Quick Labels
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger asChild>
+                <Link href="/setup-utility" className="sidebar-action-btn">
+                  <PencilRuler className="h-5 w-5 flex-shrink-0" />
+                  {sidebarOpen && <span className="ml-2">Setup Utility</span>}
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="py-1 leading-none">
+                Setup Utility
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger asChild>
+                <Link href="/calculator" className="sidebar-action-btn">
+                  <Calculator className="h-5 w-5 flex-shrink-0" />
+                  {sidebarOpen && <span className="ml-2">Calculator</span>}
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="py-1 leading-none">
+                Calculator
+              </TooltipContent>
+            </Tooltip>
             <div
               className="relative"
               onMouseEnter={openSettingsHover}
