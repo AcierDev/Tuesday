@@ -47,7 +47,7 @@ export function Calculator({
   };
 
   return (
-    <Card className="bg-white dark:bg-gray-800 ">
+    <Card className="rounded-2xl">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-gray-900 dark:text-gray-100">
@@ -185,11 +185,11 @@ export function Calculator({
             }
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setTimeout(() => setIsSearchFocused(false), 100)}
-            className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            className=""
           />
 
           {isSearchFocused && searchResults.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg">
+            <div className="absolute z-10 w-full mt-1 bg-popover text-popover-foreground border border-border rounded-md shadow-lg">
               {searchResults.map((order) => (
                 <div
                   key={order.id}
@@ -220,11 +220,11 @@ export function Calculator({
           <Select value={selectedSize} onValueChange={onSizeChange}>
             <SelectTrigger
               id="size-select"
-              className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              className=""
             >
               <SelectValue placeholder="Choose a size" />
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-gray-700">
+            <SelectContent>
               {Object.values(ItemSizes).map((size) => (
                 <SelectItem
                   key={size}
@@ -258,7 +258,7 @@ export function Calculator({
               placeholder="Width"
               value={width}
               onChange={(e) => onDimensionChange("width", e.target.value)}
-              className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              className=""
             />
             <Input
               id="custom-height"
@@ -266,7 +266,7 @@ export function Calculator({
               placeholder="Height"
               value={height}
               onChange={(e) => onDimensionChange("height", e.target.value)}
-              className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              className=""
             />
           </div>
         </div>
@@ -303,7 +303,7 @@ function DistributionCard({
   content: string;
 }) {
   return (
-    <Card className="bg-white dark:bg-gray-700">
+    <Card className="rounded-xl">
       <CardHeader>
         <CardTitle className="text-gray-900 dark:text-gray-100">
           {title}
@@ -324,7 +324,7 @@ function DistributionDiagram({
   const totalPieces = distribution.reduce((sum, { count }) => sum + count, 0);
 
   return (
-    <Card className="bg-white dark:bg-gray-700">
+    <Card className="rounded-xl">
       <CardHeader>
         <CardTitle className="text-gray-900 dark:text-gray-100">
           Distribution Diagram

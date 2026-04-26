@@ -14,7 +14,7 @@ export function DesignDetails({
   getImageDimensions,
 }: DesignDetailsProps) {
   return (
-    <Card className="bg-white dark:bg-gray-800">
+    <Card className="rounded-2xl">
       <CardHeader>
         <CardTitle className="text-gray-900 dark:text-gray-100">
           {design.name}

@@ -160,11 +160,19 @@ function UtilitiesContent({
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <h1 className="text-3xl font-bold flex items-center justify-between">
-        Setup Utility
-      </h1>
+    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-black dark:text-white">
+      <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3 py-3 sm:min-w-[220px]">
+            <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] [forced-color-adjust:none]">
+              Setup Utility
+            </h1>
+          </div>
+        </div>
+      </div>
 
+      <div className="max-w-full mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       <DesignSelector
         designs={designs}
         selectedDesign={selectedDesign}
@@ -204,6 +212,7 @@ function UtilitiesContent({
           selectedSize={selectedSize}
           selectedOrder={selectedOrder}
         />
+      </div>
       </div>
     </div>
   );

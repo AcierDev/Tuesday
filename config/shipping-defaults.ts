@@ -72,6 +72,13 @@ export const DEFAULT_BOX_PRESETS_BY_SIZE: Record<
     { id: "pkg-3", label: "Panel box 3", length: 54, width: 32, height: 5, weight: 35 },
     { id: "pkg-4", label: "Panel box 4", length: 54, width: 32, height: 5, weight: 35 },
   ],
+  [ItemSizes.Forty_By_Sixteen]: [
+    { id: "pkg-1", label: "Panel box 1", length: 54, width: 32, height: 5, weight: 35 },
+    { id: "pkg-2", label: "Panel box 2", length: 54, width: 32, height: 5, weight: 35 },
+    { id: "pkg-3", label: "Panel box 3", length: 54, width: 32, height: 5, weight: 35 },
+    { id: "pkg-4", label: "Panel box 4", length: 54, width: 32, height: 5, weight: 35 },
+    { id: "pkg-5", label: "Panel box 5", length: 54, width: 32, height: 5, weight: 35 },
+  ],
 };
 
 function cloneBoxPreset(

@@ -370,6 +370,7 @@ export const SIZE_MULTIPLIERS: Record<ItemSizes, number> = {
   [ItemSizes.TwentyEight_By_Sixteen]: 28 * 16,
   [ItemSizes.ThirtyTwo_By_Sixteen]: 32 * 16,
   [ItemSizes.ThirtySix_By_Sixteen]: 36 * 16,
+  [ItemSizes.Forty_By_Sixteen]: 40 * 16,
 };
 
 export const BOX_COLORS: Record<
@@ -445,6 +446,12 @@ export const BOX_COLORS: Record<
     color: "Purple",
     count: 4,
     hardwareBag: "20 black screws, 7 anchors + 7 bolts",
+    mountingRail: '48"',
+  },
+  [ItemSizes.Forty_By_Sixteen]: {
+    color: "Purple",
+    count: 5,
+    hardwareBag: "25 black screws, 9 anchors + 9 bolts",
     mountingRail: '48"',
   },
 };
@@ -527,6 +534,13 @@ export const backboardData = {
     panels: 4,
     instructions: '4x H: 46 5/16" W: 27 ¾"',
     width: 111,
+    height: 46.3125,
+    blankSize: 29,
+  },
+  [ItemSizes.Forty_By_Sixteen]: {
+    panels: 5,
+    instructions: '5x H: 46 5/16" W: 27 ¾"',
+    width: 138.75,
     height: 46.3125,
     blankSize: 29,
   },

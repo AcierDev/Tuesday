@@ -17,7 +17,7 @@ export function BackboardDetails({
 }: BackboardDetailsProps) {
   if (selectedSize === "custom") {
     return (
-      <Card className="bg-white dark:bg-gray-800">
+      <Card className="rounded-2xl">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <Ruler className="h-5 w-5" />

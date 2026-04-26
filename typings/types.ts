@@ -385,6 +385,7 @@ export enum ItemSizes {
   TwentyEight_By_Sixteen = "28 x 16",
   ThirtyTwo_By_Sixteen = "32 x 16",
   ThirtySix_By_Sixteen = "36 x 16",
+  Forty_By_Sixteen = "40 x 16",
 }
 
 export type BoardConfig = {

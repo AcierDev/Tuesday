@@ -2,9 +2,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, Box, Hammer, HardHat } from "lucide-react";
-import { Item, ItemDesigns, ItemSizes } from "@/typings/types";
+import { Item, ItemDesigns, ItemSizes, ShippingBoxPreset } from "@/typings/types";
 import { ItemUtil } from "@/utils/ItemUtil";
 import { PrintLabel, printStyles } from "./PrintLabel";
+import { useShippingSettingsStore } from "@/stores/useShippingSettingsStore";
 
 interface PackagingDetailsProps {
   selectedSize: ItemSizes | "custom";
@@ -12,13 +13,22 @@ interface PackagingDetailsProps {
   selectedOrder?: Item;
 }
 
+function formatBoxDims(box: ShippingBoxPreset): string {
+  return `${box.length}" × ${box.width}" × ${box.height}" · ${box.weight}lb`;
+}
+
 export function PackagingDetails({
   selectedSize,
   selectedOrder,
 }: PackagingDetailsProps) {
+  const shippingSettings = useShippingSettingsStore((s) => s.settings);
+  const boxPresets: ShippingBoxPreset[] =
+    selectedSize === "custom"
+      ? []
+      : shippingSettings?.boxPresetsBySize[selectedSize] ?? [];
   if (selectedSize === "custom") {
     return (
-      <Card className="bg-white dark:bg-gray-800 transition-all duration-200 hover:shadow-md">
+      <Card className="rounded-2xl transition-all duration-200 hover:shadow-md">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <Package className="h-5 w-5" />
@@ -63,9 +73,7 @@ export function PackagingDetails({
                   <div style={printStyles.grid}>
                     <div>
                       <span style={printStyles.label}>Quantity:</span>
-                      <div style={printStyles.value}>
-                        {ItemUtil.getBoxQuantity(selectedSize)}
-                      </div>
+                      <div style={printStyles.value}>{boxPresets.length}</div>
                     </div>
                     <div>
                       <span style={printStyles.label}>Score:</span>
@@ -80,6 +88,15 @@ export function PackagingDetails({
                       </div>
                     </div>
                   </div>
+                  {boxPresets.length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      {boxPresets.map((box, i) => (
+                        <div key={box.id || i} style={printStyles.value}>
+                          {box.label}: {formatBoxDims(box)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div style={printStyles.divider} />
@@ -126,8 +143,14 @@ export function PackagingDetails({
               details={[
                 {
                   label: "Quantity",
-                  value: ItemUtil.getBoxQuantity(selectedSize),
+                  value: boxPresets.length
+                    ? `${boxPresets.length} ${boxPresets.length === 1 ? "box" : "boxes"}`
+                    : "—",
                 },
+                ...boxPresets.map((box) => ({
+                  label: box.label,
+                  value: formatBoxDims(box),
+                })),
                 {
                   label: "Score",
                   value: ItemUtil.getScore(selectedSize),
