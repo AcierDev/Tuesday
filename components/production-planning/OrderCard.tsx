@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ColumnTitles, DayName, ItemStatus } from "@/typings/types";
-import { OrderMeta, DueBucket } from "./types";
+import { OrderMeta } from "./types";
 import { cn } from "@/utils/functions";
 import { Pin, X } from "lucide-react";
 import { DesignBlends } from "@/typings/constants";
@@ -79,12 +79,16 @@ interface OrderCardProps {
   placeIndex?: number;
 }
 
-const bucketColors: Record<DueBucket, string> = {
-  overdue: "border-l-red-500",
-  thisWeek: "border-l-amber-500",
-  nextWeek: "border-l-emerald-500",
-  future: "border-l-blue-500",
-  noDue: "border-l-gray-400",
+// Left-edge stripe matches the order's status section on the orders board,
+// so each card visually inherits the column it came from.
+const STATUS_LEFT_BORDER: Record<ItemStatus, string> = {
+  [ItemStatus.New]: "border-l-gray-400 dark:border-l-gray-500",
+  [ItemStatus.OnDeck]: "border-l-yellow-500",
+  [ItemStatus.Wip]: "border-l-orange-500",
+  [ItemStatus.Packaging]: "border-l-red-500",
+  [ItemStatus.At_The_Door]: "border-l-lime-500",
+  [ItemStatus.Done]: "border-l-emerald-500",
+  [ItemStatus.Hidden]: "border-l-gray-400 dark:border-l-gray-500",
 };
 
 const dayAbbr: Record<DayName, string> = {
@@ -128,7 +132,9 @@ export function OrderCard({
   const customerName = meta.item.customerName || "Unknown";
   const design = meta.item.design || "";
 
-  const bucketColor = bucketColors[meta.bucket];
+  const leftBorderColor =
+    STATUS_LEFT_BORDER[meta.item.status ?? ItemStatus.New] ??
+    STATUS_LEFT_BORDER[ItemStatus.New];
   const backgroundStyle = design ? createBackground(design) : undefined;
 
   // Parse customer name with Minecraft colors
@@ -179,7 +185,7 @@ export function OrderCard({
     <Card
       className={cn(
         "group relative overflow-hidden border-l-[3px] transition-all hover:shadow-sm",
-        bucketColor,
+        leftBorderColor,
         getStatusTint(meta.item.status)
       )}
     >
