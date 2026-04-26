@@ -5,6 +5,7 @@ import { type ChangeEvent, useEffect, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PageToggle } from "@/components/ui/PageToggle"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 interface HeaderProps {
@@ -64,13 +65,18 @@ export const Header: React.FC<HeaderProps> = ({
     >
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3">
-          <div className="flex items-center gap-3 sm:flex-shrink-0">
-            <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
-            <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-              Order Management
-            </h1>
+          <div className="flex items-center gap-4 sm:flex-shrink-0">
+            <div className="flex items-center gap-3 sm:min-w-[220px]">
+              <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
+              <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                Order Management
+              </h1>
+            </div>
+
+            <PageToggle currentPage="orders" />
           </div>
 
+          {/* Design / art-style selector — center of the same row. */}
           <div className="flex justify-center sm:flex-1 sm:min-w-0">
             <ToggleGroup
               type="single"
@@ -116,7 +122,7 @@ export const Header: React.FC<HeaderProps> = ({
                 />
                 <Input
                   ref={searchInputRef}
-                  className="h-9 pl-9 pr-3 w-full rounded-full border-gray-200 bg-gray-50 text-sm placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 focus-visible:bg-white dark:bg-gray-800/60 dark:text-gray-200 dark:border-gray-700 dark:placeholder:text-gray-500 dark:focus-visible:bg-gray-800 dark:focus-visible:border-blue-400 dark:focus-visible:ring-blue-400/30 transition-colors"
+                  className="h-10 pl-9 pr-3 w-full rounded-full border-gray-200 bg-gray-50 text-sm placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 focus-visible:bg-white dark:bg-gray-800/60 dark:text-gray-200 dark:border-gray-700 dark:placeholder:text-gray-500 dark:focus-visible:bg-gray-800 dark:focus-visible:border-blue-400 dark:focus-visible:ring-blue-400/30 transition-colors"
                   placeholder="Search orders..."
                   value={searchTerm}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
@@ -126,7 +132,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
             <Button
-              className="h-9 px-4 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-sm shadow-blue-600/20 transition-colors dark:bg-blue-600 dark:hover:bg-blue-500"
+              className="h-10 px-4 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-sm shadow-blue-600/20 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-600/30 active:translate-y-0 dark:bg-blue-600 dark:hover:bg-blue-500"
               onClick={onNewOrder}
             >
               <Plus className="mr-1.5 h-4 w-4" /> New Order
