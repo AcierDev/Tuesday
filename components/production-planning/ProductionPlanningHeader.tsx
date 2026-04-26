@@ -78,7 +78,7 @@ export function ProductionPlanningHeader({
             <Button
               size="sm"
               onClick={onAutoFill}
-              className="h-9 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-600/30 active:translate-y-0 dark:bg-blue-600 dark:hover:bg-blue-500"
+              className="h-9 rounded-full bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-200 ring-1 ring-inset ring-blue-400/30 dark:ring-blue-400/25 backdrop-blur-sm shadow-sm shadow-blue-500/10 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-500/20 active:translate-y-0 dark:bg-blue-500/10 dark:hover:bg-blue-500/20"
             >
               <Wand2 className="h-4 w-4 mr-1.5" />
               Auto-plan
