@@ -84,11 +84,10 @@ export function ProductionPlanningHeader({
               Auto-plan
             </Button>
             <Button
-              variant="outline"
               size="sm"
               onClick={onClearWeek}
               disabled={!hasScheduledOrders}
-              className="h-9 rounded-full bg-white/60 dark:bg-blue-500/5 border-blue-200/70 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 dark:hover:bg-blue-500/15 dark:hover:text-blue-200 transition-all duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0"
+              className="h-9 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-300 ring-1 ring-inset ring-red-400/30 dark:ring-red-400/25 backdrop-blur-sm shadow-sm shadow-red-500/10 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-red-500/20 active:translate-y-0 dark:bg-red-500/10 dark:hover:bg-red-500/20 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
             >
               <RotateCcw className="h-4 w-4 mr-1.5" />
               Clear Week
