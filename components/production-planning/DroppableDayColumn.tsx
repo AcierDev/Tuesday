@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import { useDndContext, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { DayName, ScheduledOrder } from "@/typings/types";
@@ -43,7 +44,7 @@ export function DroppableDayColumn({
   onToggleAutoPlan,
   recentlyPlacedIds,
 }: DroppableDayColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef } = useDroppable({
     id: day,
     data: { day, totalBlocks },
   });
@@ -54,24 +55,43 @@ export function DroppableDayColumn({
   const pinned = orders.filter((o) => o.pinned);
   const orderedIds = [...unpinned, ...pinned].map((o) => o.itemId);
 
-  // While the user is dragging, peek at the active item so we can render a
-  // ghost preview at the bottom of unpinned (matching where the drop will
-  // actually land per handleDragEnd).
-  const { active } = useDndContext();
-  const activeMeta = (active?.data.current as { meta?: OrderMeta } | undefined)
-    ?.meta;
-  const activeId = active?.id as string | undefined;
+  // The column's own `useDroppable.isOver` flips off whenever the cursor is
+  // sitting on a card inside the column (cards register as their own
+  // droppables via `useSortable`). Derive a wider "is this column the drop
+  // target" from the active `over.id` instead, so the highlight and ghost
+  // preview both stay on while hovering anywhere inside the column.
+  const { active, over } = useDndContext();
+  const overId = over?.id != null ? String(over.id) : null;
+  const isTargetingThisColumn =
+    !!overId &&
+    (overId === day || orders.some((o) => o.itemId === overId));
+
+  const activeId = active?.id != null ? String(active.id) : undefined;
+  const activeMeta = activeId ? ordersById.get(activeId) : undefined;
   const activeAlreadyHere = activeId
     ? orders.some((o) => o.itemId === activeId)
     : false;
-  const showGhost = isOver && !!activeMeta && !activeAlreadyHere;
+  const showGhost =
+    isTargetingThisColumn && !!activeMeta && !activeAlreadyHere;
+
+  // The ghost lands immediately before the unpinned card the cursor is on.
+  // Anywhere else (column body, pinned card, gap) puts it at the end of
+  // unpinned. handleDragEnd uses the same rule so the drop matches the preview.
+  const ghostIdx = (() => {
+    if (!showGhost) return -1;
+    if (overId && overId !== day) {
+      const idx = unpinned.findIndex((o) => o.itemId === overId);
+      if (idx !== -1) return idx;
+    }
+    return unpinned.length;
+  })();
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
         "flex flex-col h-full rounded-xl border transition-colors bg-gray-50/50 dark:bg-gray-900/50",
-        isOver ? "border-primary/50 bg-primary/5 ring-2 ring-primary/20" : "border-transparent hover:border-gray-200 dark:hover:border-gray-800"
+        isTargetingThisColumn ? "border-primary/50 bg-primary/5 ring-2 ring-primary/20" : "border-transparent hover:border-gray-200 dark:hover:border-gray-800"
       )}
     >
       {/* Header */}
@@ -88,10 +108,12 @@ export function DroppableDayColumn({
         <CapacityIndicator current={totalBlocks} max={capacity} />
       </div>
 
-      {/* List */}
+      {/* List — sized to content. Items pile from the top and the auto-plan
+          checkbox is pinned to the column bottom via mt-auto, so the section
+          ends right at the last order. */}
       <div
         className={cn(
-          "flex-1 p-2 overflow-y-auto min-h-[150px] transition-opacity duration-200",
+          "p-2 overflow-y-auto min-h-[150px] transition-opacity duration-200",
           !autoPlanEnabled && "opacity-50"
         )}
       >
@@ -109,8 +131,8 @@ export function DroppableDayColumn({
             ) : (
               <div
                 className={cn(
-                  "h-full border-2 border-dashed rounded-lg m-1 transition-colors",
-                  isOver
+                  "h-[120px] border-2 border-dashed rounded-lg m-1 transition-colors",
+                  isTargetingThisColumn
                     ? "border-primary/60 bg-primary/5"
                     : "border-gray-200 dark:border-gray-800"
                 )}
@@ -153,22 +175,33 @@ export function DroppableDayColumn({
                 const meta = ordersById.get(order.itemId);
                 if (!meta) return null;
                 return (
-                  <DraggableOrderCard
-                    key={order.itemId}
-                    id={order.itemId}
-                    meta={meta}
-                    isScheduled
-                    scheduledDay={day}
-                    onUnschedule={() => onUnschedule(order.itemId, order.day)}
-                    onTogglePin={() => onTogglePin(order.itemId, order.day)}
-                    isPinned={false}
-                    referenceDate={date}
-                    justPlaced={recentlyPlacedIds?.has(order.itemId) ?? false}
-                    placeIndex={idx}
-                  />
+                  <Fragment key={order.itemId}>
+                    {showGhost && idx === ghostIdx && activeMeta && (
+                      <div className="opacity-40 pointer-events-none">
+                        <OrderCard
+                          meta={activeMeta}
+                          isScheduled
+                          scheduledDay={day}
+                          referenceDate={date}
+                        />
+                      </div>
+                    )}
+                    <DraggableOrderCard
+                      id={order.itemId}
+                      meta={meta}
+                      isScheduled
+                      scheduledDay={day}
+                      onUnschedule={() => onUnschedule(order.itemId, order.day)}
+                      onTogglePin={() => onTogglePin(order.itemId, order.day)}
+                      isPinned={false}
+                      referenceDate={date}
+                      justPlaced={recentlyPlacedIds?.has(order.itemId) ?? false}
+                      placeIndex={idx}
+                    />
+                  </Fragment>
                 );
               })}
-              {showGhost && activeMeta && (
+              {showGhost && ghostIdx === unpinned.length && activeMeta && (
                 <div className="opacity-40 pointer-events-none">
                   <OrderCard
                     meta={activeMeta}
@@ -184,8 +217,9 @@ export function DroppableDayColumn({
       </div>
 
       {/* Auto-plan opt-in. Faded column body above signals when this day is
-          excluded from the next auto-plan run. */}
-      <div className="flex items-center justify-center px-3 py-2 border-t border-gray-100 dark:border-gray-800 rounded-b-xl">
+          excluded from the next auto-plan run. mt-auto keeps it pinned to the
+          column bottom now that the list is content-sized. */}
+      <div className="mt-auto flex items-center justify-center px-3 py-2 border-t border-gray-100 dark:border-gray-800 rounded-b-xl">
         <Checkbox
           checked={autoPlanEnabled}
           onCheckedChange={() => onToggleAutoPlan()}

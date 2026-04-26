@@ -1,5 +1,6 @@
 "use client";
 
+import { useDndContext } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { OrderCard } from "./OrderCard";
@@ -42,10 +43,21 @@ export function DraggableOrderCard({
     isDragging,
   } = useSortable({ id, disabled, data: { meta, isScheduled, scheduledDay } });
 
+  // While dragging this card, peek at where the cursor is. If it's left this
+  // day for another day's column, hide the source slot — the user wants the
+  // origin to clear out, not leave a faded ghost behind.
+  const { over } = useDndContext();
+  const overData = over?.data.current as
+    | { day?: DayName; scheduledDay?: DayName | null }
+    | undefined;
+  const overDay = overData?.day ?? overData?.scheduledDay ?? null;
+  const sourceLeftOriginDay =
+    isDragging && !!scheduledDay && !!overDay && overDay !== scheduledDay;
+
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? (sourceLeftOriginDay ? 0 : 0.4) : 1,
   };
 
   return (

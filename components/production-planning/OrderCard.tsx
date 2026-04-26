@@ -147,6 +147,7 @@ export function OrderCard({
   // animated?" state.
   return (
     <motion.div
+      layout="position"
       key={justPlaced ? `placed-${placeIndex}` : "idle"}
       initial={
         justPlaced
@@ -175,7 +176,7 @@ export function OrderCard({
               times: [0, 0.55, 1],
               ease: "easeOut",
             }
-          : { duration: 0 }
+          : { duration: 0.25, ease: [0.32, 0.72, 0, 1] }
       }
       className="rounded-md"
     >

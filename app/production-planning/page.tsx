@@ -561,11 +561,21 @@ export default function ProductionPlanningPage() {
       newScheduleData = structuredClone(currentSchedule);
     }
 
-    // Drops always land at the end of the day's list. Display splits by the
-    // `pinned` flag, so this puts new arrivals at the bottom of the unpinned
-    // section regardless of array layout.
+    // Insertion index follows the cursor. Dropping on a card inserts
+    // immediately before it; dropping on the column body or an empty area
+    // appends to the end. Mirrors the ghost-preview logic.
+    const indexFromOver = (list: typeof newScheduleData.schedule[DayName]) => {
+      if (!overId || overId === targetDay) return list.length;
+      const idx = list.findIndex((item) => item.id === overId);
+      return idx !== -1 ? idx : list.length;
+    };
+
     if (activeContainer === "unscheduled") {
-      newScheduleData.schedule[targetDay].push({ id: activeId, done: false });
+      const targetList = newScheduleData.schedule[targetDay];
+      targetList.splice(indexFromOver(targetList), 0, {
+        id: activeId,
+        done: false,
+      });
     } else {
       const activeDay = activeContainer as DayName;
       const sourceList = newScheduleData.schedule[activeDay];
@@ -582,7 +592,10 @@ export default function ProductionPlanningPage() {
         return;
       }
 
-      newScheduleData.schedule[targetDay].push(movedItem);
+      // Recompute against the current target list (splice above may have
+      // shifted indices when active and target are the same day).
+      const targetList = newScheduleData.schedule[targetDay];
+      targetList.splice(indexFromOver(targetList), 0, movedItem);
     }
 
     await updateSchedule(currentWeekKey, newScheduleData);
