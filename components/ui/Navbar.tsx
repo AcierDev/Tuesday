@@ -259,7 +259,7 @@ export function Navbar({
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(pathname);
   const [settingsHovered, setSettingsHovered] = useState(false);
-  const settingsLeaveTimerRef = useRef<number | null>(null);
+  const settingsContainerRef = useRef<HTMLDivElement | null>(null);
   // Track open slider popovers so the menu doesn't fade out while one is up.
   const [sliderPopoverOpen, setSliderPopoverOpen] = useState(false);
   const { settings, updateSettings } = useOrderSettings();
@@ -297,27 +297,30 @@ export function Navbar({
     }
   }, []);
 
-  const openSettingsHover = useCallback(() => {
-    if (settingsLeaveTimerRef.current !== null) {
-      window.clearTimeout(settingsLeaveTimerRef.current);
-      settingsLeaveTimerRef.current = null;
-    }
-    setSettingsHovered(true);
+  const toggleSettingsMenu = useCallback(() => {
+    setSettingsHovered((open) => !open);
   }, []);
 
   const closeSettingsHover = useCallback(() => {
-    if (settingsLeaveTimerRef.current !== null) {
-      window.clearTimeout(settingsLeaveTimerRef.current);
-    }
-    settingsLeaveTimerRef.current = window.setTimeout(() => {
+    setSettingsHovered(false);
+  }, []);
+
+  // Close the settings menu on outside click.
+  useEffect(() => {
+    if (!settingsHovered) return;
+    const onPointerDown = (e: MouseEvent) => {
       // Don't dismiss the menu while a slider popover is open — Radix
-      // portals the popover outside, so a mouseleave on the menu wrapper
-      // would close it from underneath the user's cursor.
+      // portals it outside, so an outside-click would close the menu
+      // from underneath the user's cursor.
       if (sliderPopoverOpen) return;
-      setSettingsHovered(false);
-      settingsLeaveTimerRef.current = null;
-    }, 300);
-  }, [sliderPopoverOpen]);
+      const root = settingsContainerRef.current;
+      if (root && !root.contains(e.target as Node)) {
+        setSettingsHovered(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [settingsHovered, sliderPopoverOpen]);
 
   useEffect(() => {
     setActiveTab(pathname);
@@ -628,17 +631,18 @@ export function Navbar({
               </TooltipContent>
             </Tooltip>
             <div
+              ref={settingsContainerRef}
               className="relative"
-              onMouseEnter={openSettingsHover}
-              onMouseLeave={closeSettingsHover}
             >
-              <button className="sidebar-action-btn" type="button">
+              <button
+                className="sidebar-action-btn"
+                type="button"
+                onClick={toggleSettingsMenu}
+              >
                 <Settings className="h-5 w-5 flex-shrink-0" />
                 {sidebarOpen && <span className="ml-2">Settings</span>}
               </button>
               <motion.div
-                onMouseEnter={openSettingsHover}
-                onMouseLeave={closeSettingsHover}
                 className={`absolute left-full bottom-0 pl-2 z-50 ${
                   settingsHovered ? "" : "pointer-events-none"
                 }`}
