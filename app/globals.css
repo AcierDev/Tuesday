@@ -228,6 +228,21 @@ body {
   height: 100%;
   overflow-x: hidden;
   color-scheme: dark;
+  /* The app is forced-dark via next-themes; opt out of Windows
+     Forced Colors / High Contrast so Chrome on a fresh Windows
+     install doesn't repaint every text node black. */
+  forced-color-adjust: none;
+}
+
+/* Inside an active forced-colors media query, explicitly restore
+   our colors. Some Chrome builds ignore the property above unless
+   we re-state intent here. */
+@media (forced-colors: active) {
+  html,
+  body,
+  * {
+    forced-color-adjust: none !important;
+  }
 }
 
 #__next {

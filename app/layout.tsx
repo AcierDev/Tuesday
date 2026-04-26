@@ -86,8 +86,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html className={`${geistSans.variable} ${geistMono.variable}`} lang="en" suppressHydrationWarning>
-      <body className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <html
+      className={`dark ${geistSans.variable} ${geistMono.variable}`}
+      lang="en"
+      style={{ colorScheme: "dark", forcedColorAdjust: "none" }}
+      suppressHydrationWarning
+    >
+      <body className="bg-gray-900 text-gray-100" style={{ forcedColorAdjust: "none" }}>
         <TooltipProvider>
           <ThemeProvider attribute="class" forcedTheme="dark">
             <OrderSettingsProvider>
