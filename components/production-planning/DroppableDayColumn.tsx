@@ -6,6 +6,7 @@ import { DayName, ScheduledOrder } from "@/typings/types";
 import { OrderMeta } from "./types";
 import { DraggableOrderCard } from "./DraggableOrderCard";
 import { CapacityIndicator } from "./CapacityIndicator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/utils/functions";
 
 type DayColumnOrder = ScheduledOrder & { pinned: boolean };
@@ -20,6 +21,8 @@ interface DroppableDayColumnProps {
   onUnschedule: (itemId: string, actualDay: DayName) => void;
   onTogglePin: (itemId: string, actualDay: DayName) => void;
   date: Date;
+  autoPlanEnabled: boolean;
+  onToggleAutoPlan: () => void;
 }
 
 export function DroppableDayColumn({
@@ -32,6 +35,8 @@ export function DroppableDayColumn({
   onUnschedule,
   onTogglePin,
   date,
+  autoPlanEnabled,
+  onToggleAutoPlan,
 }: DroppableDayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: day,
@@ -53,7 +58,12 @@ export function DroppableDayColumn({
       )}
     >
       {/* Header */}
-      <div className="p-3 pb-2 border-b border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-t-xl sticky top-0 z-10">
+      <div
+        className={cn(
+          "p-3 pb-2 border-b border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-t-xl sticky top-0 z-10 transition-opacity duration-200",
+          !autoPlanEnabled && "opacity-50"
+        )}
+      >
         <div className="flex items-baseline justify-between mb-2">
           <h3 className="font-semibold text-gray-900 dark:text-gray-100">{day}</h3>
           <span className="text-xs text-gray-500 font-medium">{dateLabel}</span>
@@ -62,7 +72,12 @@ export function DroppableDayColumn({
       </div>
 
       {/* List */}
-      <div className="flex-1 p-2 overflow-y-auto min-h-[150px]">
+      <div
+        className={cn(
+          "flex-1 p-2 overflow-y-auto min-h-[150px] transition-opacity duration-200",
+          !autoPlanEnabled && "opacity-50"
+        )}
+      >
         <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
           {orders.length === 0 ? (
             <div className="h-full flex items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg m-1">
@@ -122,6 +137,24 @@ export function DroppableDayColumn({
           )}
         </SortableContext>
       </div>
+
+      {/* Auto-plan opt-in. Faded column body above signals when this day is
+          excluded from the next auto-plan run. */}
+      <label
+        className={cn(
+          "flex items-center justify-center gap-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800 cursor-pointer text-[11px] uppercase tracking-wide font-medium select-none rounded-b-xl transition-colors",
+          autoPlanEnabled
+            ? "text-gray-700 dark:text-gray-300 hover:bg-gray-100/60 dark:hover:bg-gray-800/40"
+            : "text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100/60 dark:hover:bg-gray-800/40"
+        )}
+      >
+        <Checkbox
+          checked={autoPlanEnabled}
+          onCheckedChange={() => onToggleAutoPlan()}
+          aria-label={`Include ${day} in auto-plan`}
+        />
+        <span>Auto-plan</span>
+      </label>
     </div>
   );
 }

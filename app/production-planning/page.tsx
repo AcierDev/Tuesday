@@ -3,7 +3,6 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   addWeeks,
-  subWeeks,
   endOfWeek,
   format,
   isBefore,
@@ -14,6 +13,7 @@ import {
   parseISO,
 } from "date-fns";
 import { toast } from "sonner";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   DndContext,
   DragOverlay,
@@ -155,6 +155,13 @@ function compareByDueUrgency(
   return a.id.localeCompare(b.id);
 }
 
+const WEEK_SLIDE_OFFSET = 60;
+const WEEK_SLIDE_VARIANTS = {
+  enter: (dir: number) => ({ x: dir * WEEK_SLIDE_OFFSET, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (dir: number) => ({ x: dir * -WEEK_SLIDE_OFFSET, opacity: 0 }),
+};
+
 const dropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
     styles: {
@@ -236,10 +243,6 @@ export default function ProductionPlanningPage() {
   const currentWeekStart = useMemo(
     () => startOfWeek(parseISO(currentWeekKey), { weekStartsOn: 0 }),
     [currentWeekKey]
-  );
-  const currentWeekEnd = useMemo(
-    () => endOfWeek(currentWeekStart, { weekStartsOn: 0 }),
-    [currentWeekStart]
   );
 
   // Filter orders: must be unscheduled-ready (New / OnDeck), not deleted, and
@@ -736,7 +739,7 @@ export default function ProductionPlanningPage() {
         Tuesday: [...lockedByDay.Tuesday, ...newPlacements.Tuesday],
         Wednesday: [...lockedByDay.Wednesday, ...newPlacements.Wednesday],
         Thursday: [...lockedByDay.Thursday, ...newPlacements.Thursday],
-        Friday: lockedByDay.Friday,
+        Friday: [...lockedByDay.Friday, ...newPlacements.Friday],
         Saturday: lockedByDay.Saturday,
       },
     };
@@ -757,6 +760,7 @@ export default function ProductionPlanningPage() {
     addWeeks(startOfWeek(new Date(), { weekStartsOn: 0 }), 1),
     "yyyy-MM-dd"
   );
+  const viewingNextWeek = currentWeekKey === nextWeekKey;
 
   return (
     <DndContext
@@ -777,36 +781,13 @@ export default function ProductionPlanningPage() {
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0">
           <ProductionPlanningHeader
-            currentWeekStart={currentWeekStart}
-            currentWeekEnd={currentWeekEnd}
-            isCurrentWeek={
-              currentWeekKey ===
-              format(startOfWeek(new Date(), { weekStartsOn: 0 }), "yyyy-MM-dd")
-            }
+            viewingNextWeek={viewingNextWeek}
             hasScheduledOrders={!!currentSchedule}
             stats={stats}
-            onPreviousWeek={() => {
-              const prev = subWeeks(parseISO(currentWeekKey), 1);
-              setCurrentWeekKey(
-                format(startOfWeek(prev, { weekStartsOn: 0 }), "yyyy-MM-dd")
-              );
-            }}
-            onNextWeek={() => {
-              const next = addWeeks(parseISO(currentWeekKey), 1);
-              setCurrentWeekKey(
-                format(startOfWeek(next, { weekStartsOn: 0 }), "yyyy-MM-dd")
-              );
-            }}
-            onToday={() => {
-              setCurrentWeekKey(
-                format(
-                  startOfWeek(new Date(), { weekStartsOn: 0 }),
-                  "yyyy-MM-dd"
-                )
-              );
-            }}
-            onAutoFillThisWeek={() => handleAutoFill(thisWeekKey)}
-            onAutoFillNextWeek={() => handleAutoFill(nextWeekKey)}
+            onToggleWeek={() =>
+              setCurrentWeekKey(viewingNextWeek ? thisWeekKey : nextWeekKey)
+            }
+            onAutoFill={() => handleAutoFill(currentWeekKey)}
             onClearWeek={() => {
               if (currentSchedule) {
                 const clearedSchedule = {
@@ -827,38 +808,56 @@ export default function ProductionPlanningPage() {
             }}
           />
 
-          <div className="flex-1 p-6 overflow-x-auto overflow-y-hidden">
-            <div
-              className="flex gap-4 h-full"
-              style={{ minWidth: SIDEBAR_MIN_COLUMNS_WIDTH }}
+          {/* Day columns slide horizontally on week toggle. Direction is
+              passed via AnimatePresence's `custom` so the latest value drives
+              both the exiting and entering child. */}
+          <div className="flex-1 p-6 overflow-x-auto overflow-y-hidden relative">
+            <AnimatePresence
+              initial={false}
+              mode="wait"
+              custom={viewingNextWeek ? 1 : -1}
             >
-              {DAYS.map((day) => {
-                const date = addDays(
-                  currentWeekStart,
-                  DAY_OFFSET_FROM_WEEK_START[day]
-                );
+              <motion.div
+                key={currentWeekKey}
+                custom={viewingNextWeek ? 1 : -1}
+                variants={WEEK_SLIDE_VARIANTS}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+                className="flex gap-4 h-full"
+                style={{ minWidth: SIDEBAR_MIN_COLUMNS_WIDTH }}
+              >
+                {DAYS.map((day) => {
+                  const date = addDays(
+                    currentWeekStart,
+                    DAY_OFFSET_FROM_WEEK_START[day]
+                  );
 
-                return (
-                  <div key={day} className="flex-1 min-w-[200px] h-full">
-                    <DroppableDayColumn
-                      day={day}
-                      dateLabel={format(date, "MMM d")}
-                      orders={dayGroups[day].orders}
-                      ordersById={allOrdersById}
-                      totalBlocks={dayGroups[day].totalBlocks}
-                      capacity={DAILY_CAPACITY_BLOCKS}
-                      onUnschedule={(id, actualDay) =>
-                        removeItemFromDay(currentWeekKey, actualDay, id)
-                      }
-                      onTogglePin={(id, actualDay) =>
-                        toggleItemPinned(currentWeekKey, actualDay, id)
-                      }
-                      date={date}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+                  return (
+                    <div key={day} className="flex-1 min-w-[200px] h-full">
+                      <DroppableDayColumn
+                        day={day}
+                        dateLabel={format(date, "MMM d")}
+                        orders={dayGroups[day].orders}
+                        ordersById={allOrdersById}
+                        totalBlocks={dayGroups[day].totalBlocks}
+                        capacity={DAILY_CAPACITY_BLOCKS}
+                        onUnschedule={(id, actualDay) =>
+                          removeItemFromDay(currentWeekKey, actualDay, id)
+                        }
+                        onTogglePin={(id, actualDay) =>
+                          toggleItemPinned(currentWeekKey, actualDay, id)
+                        }
+                        date={date}
+                        autoPlanEnabled={autoPlanDays[day]}
+                        onToggleAutoPlan={() => toggleAutoPlanDay(day)}
+                      />
+                    </div>
+                  );
+                })}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>

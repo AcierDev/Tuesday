@@ -70,7 +70,7 @@ export function ProductionPlanningSidebar({ orders, onPinToDay }: ProductionPlan
     >
       <div className="p-4 border-b border-gray-200 dark:border-gray-800 space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Unscheduled</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Planner</h2>
           <span className="text-xs font-medium bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full text-gray-600 dark:text-gray-400">
             {orders.length}
           </span>
