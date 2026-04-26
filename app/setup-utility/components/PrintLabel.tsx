@@ -4,8 +4,8 @@ import { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/utils/functions";
 import React from "react";
-import { backIn } from "framer-motion";
 
 interface PrintLabelProps {
   labelContent: React.ReactNode;
@@ -101,7 +101,19 @@ export function PrintLabel({
 
   return (
     <>
-      <Button className={`gap-2 ${buttonClassName}`} onClick={handlePrint}>
+      <Button
+        size="sm"
+        onClick={handlePrint}
+        className={cn(
+          "gap-2 rounded-lg text-white",
+          "bg-gradient-to-b from-blue-500 to-blue-600",
+          "hover:from-blue-400 hover:to-blue-500",
+          "shadow-sm shadow-blue-600/30 ring-1 ring-blue-600/40",
+          "dark:shadow-blue-500/20 dark:ring-blue-400/30",
+          "transition-all",
+          buttonClassName
+        )}
+      >
         <Printer className="h-4 w-4" />
         {buttonLabel}
       </Button>
