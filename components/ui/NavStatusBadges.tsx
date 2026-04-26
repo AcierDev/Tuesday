@@ -141,6 +141,7 @@ export function NavMetricsBadges() {
   }, [items]);
 
   const [debtHistory, setDebtHistory] = useState<number[]>([]);
+  const [backlogHistory, setBacklogHistory] = useState<number[]>([]);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -156,6 +157,21 @@ export function NavMetricsBadges() {
         setDebtHistory(json.series.map((p) => p.totalDebt));
       } catch (err) {
         console.error("Failed to load debt snapshots", err);
+      }
+    })();
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/backlog-snapshots?days=${DEBT_HISTORY_DAYS}`
+        );
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          series: { date: string; squares: number }[];
+        };
+        if (cancelled) return;
+        setBacklogHistory(json.series.map((p) => p.squares));
+      } catch (err) {
+        console.error("Failed to load backlog snapshots", err);
       }
     })();
     return () => {
@@ -192,7 +208,7 @@ export function NavMetricsBadges() {
       <Link
         href="/orders"
         className={cn(
-          "flex flex-col items-center justify-center w-14 h-14 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
+          "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
           backlogSquares && backlogSquares > 0
             ? "text-sky-500 dark:text-sky-400"
             : "text-slate-400"
@@ -212,6 +228,12 @@ export function NavMetricsBadges() {
         <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
           squares
         </span>
+        <MiniSparkline
+          data={backlogHistory}
+          width={44}
+          height={12}
+          className="mt-1 opacity-70"
+        />
       </Link>
       <Link
         href="/stats/debt"
