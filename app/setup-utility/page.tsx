@@ -160,11 +160,21 @@ function UtilitiesContent({
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-black dark:text-white">
-      <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
+    <div className="relative flex flex-col min-h-[calc(100vh-3.5rem)] bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/40 dark:from-slate-950 dark:via-blue-950/20 dark:to-slate-950 text-black dark:text-white overflow-hidden">
+      {/* Ambient color blobs — purely decorative, behind everything */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 overflow-hidden -z-0"
+      >
+        <div className="absolute -top-32 -left-24 h-96 w-96 rounded-full bg-blue-300/30 dark:bg-blue-600/15 blur-3xl" />
+        <div className="absolute top-1/3 -right-32 h-[28rem] w-[28rem] rounded-full bg-indigo-300/25 dark:bg-indigo-600/10 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-cyan-300/20 dark:bg-cyan-600/10 blur-3xl" />
+      </div>
+
+      <div className="relative z-10 select-none bg-white/70 dark:bg-gray-950/70 backdrop-blur-xl border-b border-gray-200/80 dark:border-white/10 sticky top-0 z-50">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3 py-3 sm:min-w-[220px]">
-            <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
+            <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 shadow-sm shadow-blue-500/40" />
             <h1 className="text-lg sm:text-xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] [forced-color-adjust:none]">
               Setup Utility
             </h1>
@@ -172,7 +182,7 @@ function UtilitiesContent({
         </div>
       </div>
 
-      <div className="max-w-full mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div className="relative z-10 max-w-full mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       <DesignSelector
         designs={designs}
         selectedDesign={selectedDesign}

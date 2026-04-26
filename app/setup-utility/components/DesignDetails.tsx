@@ -21,7 +21,7 @@ export function DesignDetails({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="relative">
+        <div className="relative overflow-hidden rounded-xl ring-1 ring-black/5 dark:ring-white/10">
           <Image
             src={design.imageUrl}
             alt={design.name}
@@ -43,7 +43,7 @@ export function DesignDetails({
             </>
           )}
         </div>
-        <div className="h-8 w-full flex">
+        <div className="h-8 w-full flex overflow-hidden rounded-lg ring-1 ring-black/5 dark:ring-white/10">
           {design.colors.map((color, index) => (
             <div
               key={index}

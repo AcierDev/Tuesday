@@ -326,7 +326,7 @@ function DistributionDiagram({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="w-full flex flex-wrap">
+        <div className="w-full flex flex-wrap overflow-hidden rounded-lg ring-1 ring-black/5 dark:ring-white/10">
           {distribution.map(({ color, count }, index) => (
             <div
               key={index}
