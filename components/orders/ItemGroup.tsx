@@ -42,6 +42,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { LoadMoreSentinel } from "./LoadMoreSentinel";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
+import { useTrackingStore } from "@/stores/useTrackingStore";
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🚚 IN-TRANSIT TRACKER STATUSES                                        ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+const IN_TRANSIT_TRACKER_STATUSES = new Set([
+  "in_transit",
+  "out_for_delivery",
+]);
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
 
@@ -206,19 +215,55 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     .map(([columnName]) => columnName as ColumnTitles)
     .filter((columnName) => !FRONTEND_HIDDEN_COLUMN_TITLES.has(columnName));
 
+  const trackingInfo = useTrackingStore((state) => state.trackingInfo);
+
+  // Map<orderId, true> for orders whose latest tracker reports in-transit
+  // (in_transit or out_for_delivery). Built once per trackingInfo change so
+  // the Done-section sort can float these to the top in O(n).
+  const inTransitOrderIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const info of trackingInfo) {
+      const trackers = info.trackers;
+      if (!trackers || trackers.length === 0) continue;
+      const status = trackers[trackers.length - 1]?.status?.toLowerCase();
+      if (status && IN_TRANSIT_TRACKER_STATUSES.has(status)) {
+        ids.add(info.orderId);
+      }
+    }
+    return ids;
+  }, [trackingInfo]);
+
   const sortedItems = useMemo(() => {
     let items = [...group.items];
 
-    // First sort by index
-    items.sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+    const isDone = group.title === ItemStatus.Done;
+    items.sort((a, b) => {
+      // In the Done section, in-transit packages float above non-transit
+      // items. Once a tracker flips to "delivered" the item drops out of
+      // the in-transit tier and falls back to its natural index position.
+      if (isDone) {
+        const aTier = inTransitOrderIds.has(a.id) ? 0 : 1;
+        const bTier = inTransitOrderIds.has(b.id) ? 0 : 1;
+        if (aTier !== bTier) return aTier - bTier;
+      }
+      return (a.index ?? 0) - (b.index ?? 0);
+    });
 
-    // Then apply column sorting if specified
     if (sortColumn && sortDirection && itemSortFuncs[sortColumn]) {
       items = itemSortFuncs[sortColumn](items, sortDirection === "asc");
     }
 
     return items;
-  }, [group.items, sortColumn, sortDirection]);
+  }, [group.items, sortColumn, sortDirection, group.title, inTransitOrderIds]);
+
+  const inTransitCount = useMemo(() => {
+    if (group.title !== ItemStatus.Done) return 0;
+    let count = 0;
+    for (const item of group.items) {
+      if (inTransitOrderIds.has(item.id)) count += 1;
+    }
+    return count;
+  }, [group.title, group.items, inTransitOrderIds]);
 
   const handleDaySelect = useCallback(
     async (itemId: string, selectedDate: Date) => {
@@ -317,7 +362,13 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     >
       <div
         className={cn(
-          "group relative w-[98%] mx-auto p-4 transition-colors duration-200 ease-out rounded-xl",
+          "group relative mx-auto p-4 rounded-xl",
+          group.title !== ItemStatus.Done
+            ? "transition-[width,background-color,color] duration-200 ease-out"
+            : "transition-colors duration-200 ease-out",
+          group.title !== ItemStatus.Done && isCollapsible && !isCollapsed
+            ? "w-[95%]"
+            : "w-[98%]",
           `text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           } dark:text-${
@@ -342,6 +393,11 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                 ({group.items.length} hidden)
               </span>
             )}
+            {group.title === ItemStatus.Done && inTransitCount > 0 && (
+              <span className="ml-2 font-normal text-[15.4px] text-blue-500">
+                ({inTransitCount} in transit)
+              </span>
+            )}
           </span>
           {isCollapsible && (
             <ChevronDown
@@ -354,7 +410,13 @@ export const ItemGroupSection = memo(function ItemGroupSection({
         </div>
       </div>
       {(!isCollapsible || !isCollapsed) && (
-        <div className="relative overflow-visible">
+        <div
+          className={cn(
+            "relative overflow-visible",
+            group.title !== ItemStatus.Done &&
+              "animate-in fade-in slide-in-from-top-1 duration-150 ease-out"
+          )}
+        >
           {!shouldShowSkeleton && sortedItems.length === 0 ? null : !isPreview ? (
             <BorderedTable
               className="table-fixed"
