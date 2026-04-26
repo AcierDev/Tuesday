@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import {
   AlertCircle,
   ArrowLeftRight,
@@ -78,6 +79,16 @@ const ICON_CONFIG: Record<
     className: "text-red-500",
   },
 };
+
+type CarrierBadge = { src: string; alt: string };
+
+function resolveCarrierBadge(carrier: string | undefined): CarrierBadge | null {
+  if (!carrier) return null;
+  const c = carrier.toLowerCase();
+  if (c.includes("fedex")) return { src: "/icons/fedex.webp", alt: "FedEx" };
+  if (c.includes("ups")) return { src: "/icons/ups.png", alt: "UPS" };
+  return null;
+}
 
 function resolveMergedShippingState(args: {
   status: ItemStatus;
@@ -175,6 +186,12 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
     return trackers[trackers.length - 1]?.status?.toLowerCase();
   }, [orderTracking]);
 
+  const carrier = useMemo(() => {
+    const trackers = orderTracking?.trackers;
+    if (!trackers || trackers.length === 0) return undefined;
+    return trackers[trackers.length - 1]?.carrier;
+  }, [orderTracking]);
+
   const { icon, action, tooltip } = useMemo(
     () =>
       resolveMergedShippingState({
@@ -183,6 +200,11 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
         trackerStatus,
       }),
     [item.status, hasLabel, trackerStatus]
+  );
+
+  const carrierBadge = useMemo(
+    () => (hasLabel ? resolveCarrierBadge(carrier) : null),
+    [hasLabel, carrier]
   );
 
   if (icon === "hidden") return null;
@@ -208,11 +230,22 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
-              className="w-8 h-8 p-0 flex items-center justify-center"
+              className={`h-8 p-0 flex items-center justify-center ${
+                carrierBadge ? "w-auto px-1.5 gap-1" : "w-8"
+              }`}
               onClick={handleClick}
               disabled={isLoading}
             >
               <Icon className={`${ICON_SIZE} ${iconClassName}`} />
+              {carrierBadge && (
+                <Image
+                  src={carrierBadge.src}
+                  alt={carrierBadge.alt}
+                  width={32}
+                  height={32}
+                  className="h-4 w-4 object-contain"
+                />
+              )}
             </Button>
           </TooltipTrigger>
           {tooltip && (

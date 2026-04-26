@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 
 import { ColumnVisibilitySettings } from "./ColumnVisibilitySettings";
 import { DueBadgeSettings } from "./DueBadgeSettings";
+import { OnDeckSettings } from "./OnDeckSettings";
 import { RecentEditsSettings } from "./RecentEditsSettings";
 import { ShippingSettingsEditor } from "./ShippingSettingsEditor";
 
@@ -22,6 +23,7 @@ interface SettingsPanelProps {
 
 const SECTION_TITLES: Record<string, string> = {
   "due-badge": "Due Badge",
+  "on-deck": "On Deck",
   "recent-edits": "Recent Edits",
   shipping: "Shipping",
   columns: "Column Visibility",
@@ -125,6 +127,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             {activeTab === "due-badge" && (
               <DueBadgeSettings
                 dueBadgeDays={settings.dueBadgeDays}
+                updateSettings={updateSettings}
+              />
+            )}
+            {activeTab === "on-deck" && (
+              <OnDeckSettings
                 onDeckMinCount={settings.onDeckMinCount}
                 updateSettings={updateSettings}
               />

@@ -34,6 +34,9 @@ export function DraggableOrderCard({
   justPlaced,
   placeIndex,
 }: DraggableOrderCardProps) {
+  // Pinned cards are locked in place — auto-plan won't move them and the user
+  // can't drag them either. They have to be unpinned first via the pin toggle.
+  const dragDisabled = disabled || !!isPinned;
   const {
     attributes,
     listeners,
@@ -41,7 +44,11 @@ export function DraggableOrderCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id, disabled, data: { meta, isScheduled, scheduledDay } });
+  } = useSortable({
+    id,
+    disabled: dragDisabled,
+    data: { meta, isScheduled, scheduledDay },
+  });
 
   // While dragging this card, peek at where the cursor is. If it's left this
   // day for another day's column, hide the source slot — the user wants the
@@ -67,7 +74,11 @@ export function DraggableOrderCard({
       {...attributes}
       {...listeners}
       className={`touch-none mb-2.5 ${
-        isDragging ? "cursor-grabbing" : "cursor-grab active:cursor-grabbing"
+        dragDisabled
+          ? "cursor-default"
+          : isDragging
+          ? "cursor-grabbing"
+          : "cursor-grab active:cursor-grabbing"
       }`}
     >
       <OrderCard

@@ -1,7 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Toaster, toast } from "sonner";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  defaultDropAnimationSideEffects,
+  pointerWithin,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+  type DropAnimation,
+} from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
 import { Header } from "@/components/orders/Header";
 import { NewItemModal } from "@/components/orders/NewItemModal";
@@ -22,6 +37,26 @@ import { useOrderFiltering } from "@/hooks/useOrderFiltering";
 import { useOrderStats } from "@/hooks/useOrderStats";
 import { useAutoPromoteByDueDate } from "@/hooks/useAutoPromoteByDueDate";
 import { ResponsiveOrdersView } from "@/components/orders/ResponsiveOrdersView";
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🎯 STATUS DROP TARGETS                                               ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+const VALID_DROP_STATUSES = new Set<string>([
+  ItemStatus.New,
+  ItemStatus.OnDeck,
+  ItemStatus.Wip,
+  ItemStatus.Packaging,
+  ItemStatus.At_The_Door,
+  ItemStatus.Done,
+  ItemStatus.Hidden,
+]);
+
+const DROP_ANIMATION: DropAnimation = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: { active: { opacity: "0.5" } },
+  }),
+};
 
 export default function OrderManagementPage() {
   const setSearchQuery = useOrderStore((state) => state.setSearchQuery);
@@ -52,6 +87,18 @@ export default function OrderManagementPage() {
   useEffect(() => {
     loadItems();
   }, [loadItems]);
+
+  // One-shot scroll to bottom on initial load. Wait until items are loaded so
+  // the document has its full height; rAF ensures layout is committed first.
+  const didInitialScrollRef = useRef(false);
+  useEffect(() => {
+    if (didInitialScrollRef.current) return;
+    if (items.length === 0) return;
+    didInitialScrollRef.current = true;
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: document.documentElement.scrollHeight });
+    });
+  }, [items.length]);
 
   useAutoPromoteByDueDate(items);
 
@@ -287,6 +334,46 @@ export default function OrderManagementPage() {
     }
   };
 
+  //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+  //║ 🤚 DRAG-AND-DROP STATUS REASSIGNMENT                                 ║
+  //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const activeDragItem = useMemo(() => {
+    if (!activeDragId) return null;
+    return (
+      items.find((i) => i.id === activeDragId) ??
+      doneItems.find((i) => i.id === activeDragId) ??
+      null
+    );
+  }, [activeDragId, items, doneItems]);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveDragId(null);
+      const { active, over } = event;
+      if (!over) return;
+      const itemId = String(active.id);
+      const overId = String(over.id);
+      if (!VALID_DROP_STATUSES.has(overId)) return;
+      void handleStatusChange(itemId, overId as ItemStatus);
+    },
+    [handleStatusChange]
+  );
+
   if (!orderSettingsContext) {
     return (
       <div>Error: Order settings not available. Please refresh the page.</div>
@@ -307,37 +394,61 @@ export default function OrderManagementPage() {
           dueCounts={dueCounts}
         />
       )}
-      <div className="flex-grow">
-        <div
-          className={`h-full max-w-full mx-auto pr-2 ${
-            isMobile ? "pl-4 pt-1" : "pl-4 sm:pl-6 lg:pl-8 py-8"
-          }`}
-        >
-          <div className="flex h-full relative">
-            <div
-              className="flex-grow min-w-0"
-              style={{ contain: "paint" }}
-            >
-              <ResponsiveOrdersView
-                groups={sortedGroups}
-                onDelete={handleDeleteItem}
-                onStatusChange={handleStatusChange}
-                onGetLabel={onGetLabel}
-                onMarkCompleted={markItemCompleted}
-                onShip={shipItem}
-                doneItems={doneItems}
-                loadDoneItems={loadDoneItems}
-                hasMoreDoneItems={hasMoreDoneItems}
-                isDoneLoading={isDoneLoading}
-                sortColumn={sortColumn}
-                sortDirection={sortDirection}
-                onSort={handleSort}
-                currentType={currentType}
-              />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveDragId(null)}
+      >
+        <div className="flex-grow">
+          <div
+            className={`h-full max-w-full mx-auto pr-2 ${
+              isMobile ? "pl-4 pt-1" : "pl-4 sm:pl-6 lg:pl-8 py-8"
+            }`}
+          >
+            <div className="flex h-full relative">
+              <div
+                className="flex-grow min-w-0"
+                style={{ contain: "paint" }}
+              >
+                <ResponsiveOrdersView
+                  groups={sortedGroups}
+                  onDelete={handleDeleteItem}
+                  onStatusChange={handleStatusChange}
+                  onGetLabel={onGetLabel}
+                  onMarkCompleted={markItemCompleted}
+                  onShip={shipItem}
+                  doneItems={doneItems}
+                  loadDoneItems={loadDoneItems}
+                  hasMoreDoneItems={hasMoreDoneItems}
+                  isDoneLoading={isDoneLoading}
+                  sortColumn={sortColumn}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                  currentType={currentType}
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+        <DragOverlay dropAnimation={DROP_ANIMATION}>
+          {activeDragItem ? (
+            <div className="px-3 py-2 rounded-md shadow-lg glass-surface text-sm font-medium border border-gray-200 dark:border-gray-700 cursor-grabbing rotate-1">
+              <div className="text-gray-900 dark:text-gray-100">
+                {activeDragItem.customerName || "Unnamed item"}
+              </div>
+              {(activeDragItem.design || activeDragItem.size) && (
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {[activeDragItem.design, activeDragItem.size]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
       {isSettingsOpen && (
         <SettingsPanel
           settings={settings}

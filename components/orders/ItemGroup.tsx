@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useDndContext, useDroppable } from "@dnd-kit/core";
 
 import {
   DropdownMenu,
@@ -266,12 +267,53 @@ export const ItemGroupSection = memo(function ItemGroupSection({
 
   const inTransitCount = useMemo(() => {
     if (group.title !== ItemStatus.Done) return 0;
-    let count = 0;
-    for (const item of group.items) {
-      if (inTransitOrderIds.has(item.id)) count += 1;
+    // Use global tracking set so the count survives collapse, when
+    // group.items is unloaded by removeDoneItems().
+    return inTransitOrderIds.size;
+  }, [group.title, inTransitOrderIds]);
+
+  //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+  //║ 🎯 STATUS DROP TARGET                                                ║
+  //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+  // Each section header acts as the drop zone for its status. The drop ID
+  // matches the group title (which equals the ItemStatus enum value for
+  // every visible lane), so the page-level handler can map drop → status
+  // change directly.
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: group.title,
+    data: { status: group.title },
+  });
+  const { active } = useDndContext();
+  const activeIdStr = active?.id != null ? String(active.id) : null;
+  const isDraggingFromThisGroup =
+    !!activeIdStr && group.items.some((i) => i.id === activeIdStr);
+  // For the source section, suppress the highlight until the cursor has
+  // first wandered off — only re-highlight on return. Stops the source
+  // from lighting up at the start of every drag (which the user would
+  // already know is the origin) while still treating a return-to-source
+  // as a real drop target.
+  const [hasLeftSource, setHasLeftSource] = useState(false);
+  useEffect(() => {
+    if (!activeIdStr) {
+      setHasLeftSource(false);
+      return;
     }
-    return count;
-  }, [group.title, group.items, inTransitOrderIds]);
+    if (isDraggingFromThisGroup && !isOver) {
+      setHasLeftSource(true);
+    }
+  }, [activeIdStr, isDraggingFromThisGroup, isOver]);
+  const showDropHighlight =
+    !!activeIdStr &&
+    isOver &&
+    (!isDraggingFromThisGroup || hasLeftSource);
+  // When the section is collapsed or has nothing visible to ring around, the
+  // header doubles as the drop surface — highlight it instead of the empty
+  // body. Otherwise the ring lives down on the table.
+  const isActuallyCollapsed = isCollapsible && isCollapsed;
+  const bodyIsEmpty = group.items.length === 0;
+  const highlightOnHeader =
+    showDropHighlight && (isActuallyCollapsed || bodyIsEmpty);
+  const highlightOnBody = showDropHighlight && !highlightOnHeader;
 
   const handleDaySelect = useCallback(
     async (itemId: string, selectedDate: Date) => {
@@ -364,6 +406,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
 
   return (
     <div
+      ref={setDroppableRef}
       className={cn(
         "mb-6 overflow-visible"
       )}
@@ -383,7 +426,11 @@ export const ItemGroupSection = memo(function ItemGroupSection({
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           }`,
           "sticky top-[73px] z-30 glass-surface will-change-transform select-none",
-          isCollapsible && "cursor-pointer"
+          isCollapsible && "cursor-pointer",
+          // Collapsed-section drop target: the header IS the section here,
+          // so light it up the same way the table does when expanded.
+          highlightOnHeader &&
+            "ring-2 ring-primary ring-offset-2 ring-offset-transparent transition-shadow duration-150"
         )}
         onClick={handleGroupClick}
       >
@@ -426,9 +473,18 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       {(!isCollapsible || !isCollapsed) && (
         <div
           className={cn(
-            "relative overflow-visible",
+            // mt-2 keeps the table from butting up against the section
+            // header, so the drop-target ring has clear sky above it.
+            "relative overflow-visible mt-2",
             group.title !== ItemStatus.Done &&
-              "animate-in fade-in slide-in-from-top-1 duration-150 ease-out"
+              "animate-in fade-in slide-in-from-top-1 duration-150 ease-out",
+            // While dragging an item from another section over this
+            // expanded section, ring the table. rounded-2xl + ring-offset-4
+            // matches the BorderedTable's own radius and floats the ring
+            // off the table edge so it reads as an outline rather than a
+            // bolted-on stripe.
+            highlightOnBody &&
+              "rounded-2xl ring-2 ring-primary ring-offset-4 ring-offset-transparent transition-shadow duration-150"
           )}
         >
           {!shouldShowSkeleton && sortedItems.length === 0 ? null : !isPreview ? (

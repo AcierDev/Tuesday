@@ -74,14 +74,27 @@ export function DroppableDayColumn({
   const showGhost =
     isTargetingThisColumn && !!activeMeta && !activeAlreadyHere;
 
-  // The ghost lands immediately before the unpinned card the cursor is on.
-  // Anywhere else (column body, pinned card, gap) puts it at the end of
-  // unpinned. handleDragEnd uses the same rule so the drop matches the preview.
+  // Drop position follows the cursor. When over an unpinned card, the ghost
+  // slots before (cursor on top half) or after (cursor on bottom half) — so
+  // the user can land on either side of any card, including the very last
+  // one. Hovering over a pinned card slots the ghost at the top of unpinned;
+  // column body / empty area falls through to the bottom. handleDragEnd uses
+  // the same rule.
+  const dropsAfterOver = (() => {
+    const activeRect = active?.rect.current.translated;
+    const overRect = over?.rect;
+    if (!activeRect || !overRect) return false;
+    return (
+      activeRect.top + activeRect.height / 2 >
+      overRect.top + overRect.height / 2
+    );
+  })();
   const ghostIdx = (() => {
     if (!showGhost) return -1;
     if (overId && overId !== day) {
-      const idx = unpinned.findIndex((o) => o.itemId === overId);
-      if (idx !== -1) return idx;
+      const unpinnedIdx = unpinned.findIndex((o) => o.itemId === overId);
+      if (unpinnedIdx !== -1) return unpinnedIdx + (dropsAfterOver ? 1 : 0);
+      if (pinned.some((o) => o.itemId === overId)) return 0;
     }
     return unpinned.length;
   })();
@@ -90,7 +103,7 @@ export function DroppableDayColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col h-full rounded-xl border transition-colors bg-gray-50/50 dark:bg-gray-900/50",
+        "flex flex-col rounded-xl border transition-colors bg-gray-50/50 dark:bg-gray-900/50",
         isTargetingThisColumn ? "border-primary/50 bg-primary/5 ring-2 ring-primary/20" : "border-transparent hover:border-gray-200 dark:hover:border-gray-800"
       )}
     >
@@ -217,9 +230,8 @@ export function DroppableDayColumn({
       </div>
 
       {/* Auto-plan opt-in. Faded column body above signals when this day is
-          excluded from the next auto-plan run. mt-auto keeps it pinned to the
-          column bottom now that the list is content-sized. */}
-      <div className="mt-auto flex items-center justify-center px-3 py-2 border-t border-gray-100 dark:border-gray-800 rounded-b-xl">
+          excluded from the next auto-plan run. */}
+      <div className="flex items-center justify-center px-3 py-2 border-t border-gray-100 dark:border-gray-800 rounded-b-xl">
         <Checkbox
           checked={autoPlanEnabled}
           onCheckedChange={() => onToggleAutoPlan()}

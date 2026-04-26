@@ -23,17 +23,19 @@ export const RecentEditsSettings = ({
 
   return (
     <Card className="dark:bg-gray-900">
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <Edit className="mr-2 h-5 w-5" />
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-base font-semibold flex items-center">
+          <Edit className="mr-2 h-4 w-4" />
           Recent Edits Indicator
         </CardTitle>
-        <CardDescription>Set how long to show the blue circle for recently edited items</CardDescription>
+        <CardDescription className="text-xs">
+          Set how long the blue circle shows on recently edited items
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
+      <CardContent className="p-4 pt-0">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label htmlFor="recent-edits-toggle">Show recent edit indicator</Label>
+            <Label htmlFor="recent-edits-toggle" className="text-sm">Show recent edit indicator</Label>
             <Switch
               id="recent-edits-toggle"
               checked={recentEditHours !== undefined}
@@ -41,9 +43,9 @@ export const RecentEditsSettings = ({
             />
           </div>
           {recentEditHours !== undefined && (
-            <div>
-              <Label htmlFor="recent-edits-hours">Hours to show recent edit indicator</Label>
-              <div className="flex items-center space-x-4">
+            <div className="space-y-2">
+              <Label htmlFor="recent-edits-hours" className="text-sm">Hours to show indicator</Label>
+              <div className="flex items-center space-x-3">
                 <Slider
                   className="w-[60%]"
                   id="recent-edits-hours"
@@ -54,7 +56,7 @@ export const RecentEditsSettings = ({
                   onValueChange={(value) => updateSettings({ recentEditHours: value[0] })}
                 />
                 <Input
-                  className="w-20 dark:bg-gray-800"
+                  className="w-20 h-8 dark:bg-gray-800"
                   type="number"
                   value={recentEditHours}
                   onChange={(e) => {
@@ -65,7 +67,7 @@ export const RecentEditsSettings = ({
               </div>
             </div>
           )}
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             {recentEditHours === undefined
               ? "The recent edit indicator is turned off."
               : `The blue circle will appear for items edited within the last ${recentEditHours} hours.`}

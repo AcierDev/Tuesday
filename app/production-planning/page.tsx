@@ -561,13 +561,29 @@ export default function ProductionPlanningPage() {
       newScheduleData = structuredClone(currentSchedule);
     }
 
-    // Insertion index follows the cursor. Dropping on a card inserts
-    // immediately before it; dropping on the column body or an empty area
-    // appends to the end. Mirrors the ghost-preview logic.
+    // Insertion index follows the cursor. Dropping on an unpinned card
+    // inserts before it (cursor on top half) or after it (bottom half) so the
+    // user can land on either side of any card — including the very last
+    // one when the column body is content-sized and there's no gap to hover
+    // below it. Pinned cards always slot the new arrival at the top of
+    // unpinned. Column body / empty area falls through to the end. Mirrors
+    // the ghost-preview logic in DroppableDayColumn.
+    const activeRect = active.rect.current.translated;
+    const overRect = over.rect;
+    const dropsAfterOver =
+      !!activeRect &&
+      !!overRect &&
+      activeRect.top + activeRect.height / 2 >
+        overRect.top + overRect.height / 2;
     const indexFromOver = (list: typeof newScheduleData.schedule[DayName]) => {
       if (!overId || overId === targetDay) return list.length;
       const idx = list.findIndex((item) => item.id === overId);
-      return idx !== -1 ? idx : list.length;
+      if (idx === -1) return list.length;
+      if (list[idx]?.pinned) {
+        const firstUnpinnedIdx = list.findIndex((item) => !item.pinned);
+        return firstUnpinnedIdx !== -1 ? firstUnpinnedIdx : list.length;
+      }
+      return idx + (dropsAfterOver ? 1 : 0);
     };
 
     if (activeContainer === "unscheduled") {
@@ -873,7 +889,7 @@ export default function ProductionPlanningPage() {
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-                className="flex gap-4 h-full overflow-x-auto overflow-y-hidden"
+                className="flex items-start gap-4 h-full overflow-x-auto overflow-y-auto"
                 style={{ minWidth: SIDEBAR_MIN_COLUMNS_WIDTH }}
               >
                 {DAYS.map((day) => {
@@ -883,7 +899,7 @@ export default function ProductionPlanningPage() {
                   );
 
                   return (
-                    <div key={day} className="flex-1 min-w-[200px] h-full">
+                    <div key={day} className="flex-1 min-w-[200px]">
                       <DroppableDayColumn
                         day={day}
                         dateLabel={format(date, "MMM d")}

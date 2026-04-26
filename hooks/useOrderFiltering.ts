@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Item, ItemStatus, ItemSizes, ItemDesigns } from "@/typings/types";
+import { parseSquareSize } from "@/lib/production-metrics";
 
 interface UseOrderFilteringProps {
   items: Item[] | undefined;
@@ -56,6 +57,7 @@ export function useOrderFiltering({
               return design.startsWith("Tiled") && !isMini;
             case "geometric":
               return (
+                Object.values(ItemDesigns).includes(design as ItemDesigns) &&
                 !design.startsWith("Striped") &&
                 !design.startsWith("Tiled") &&
                 !isMini
@@ -66,7 +68,7 @@ export function useOrderFiltering({
               return (
                 !isMini &&
                 (!Object.values(ItemDesigns).includes(design as ItemDesigns) ||
-                  !Object.values(ItemSizes).includes(size as ItemSizes))
+                  parseSquareSize(size) === null)
               );
             default:
               return false;

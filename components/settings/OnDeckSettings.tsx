@@ -1,9 +1,11 @@
-// components/settings/DueBadgeSettings.tsx
+// components/settings/OnDeckSettings.tsx
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { Clock } from "lucide-react"
+import { ListTodo } from "lucide-react"
+
+const ON_DECK_MIN_SLIDER_MAX = 30
 
 const BUBBLE_SLIDER_CLASSES =
   "flex-1 [&_[role=slider]]:h-5 [&_[role=slider]]:w-10 [&_[role=slider]]:border-0 [&_[role=slider]]:bg-primary [&_[role=slider]]:shadow-md"
@@ -14,43 +16,43 @@ const ReadoutBubble = ({ value }: { value: number }) => (
   </div>
 )
 
-interface DueBadgeSettingsProps {
-  dueBadgeDays: number
+interface OnDeckSettingsProps {
+  onDeckMinCount: number
   updateSettings: (updates: Partial<any>) => void
 }
 
-export const DueBadgeSettings = ({
-  dueBadgeDays,
+export const OnDeckSettings = ({
+  onDeckMinCount,
   updateSettings
-}: DueBadgeSettingsProps) => {
+}: OnDeckSettingsProps) => {
   return (
     <Card className="dark:bg-gray-900">
       <CardHeader className="p-4 pb-2">
         <CardTitle className="text-base font-semibold flex items-center">
-          <Clock className="mr-2 h-4 w-4" />
-          Due Badge
+          <ListTodo className="mr-2 h-4 w-4" />
+          On Deck Queue
         </CardTitle>
         <CardDescription className="text-xs">
-          When the day-counter badge should turn yellow
+          Minimum number of items kept on deck (shared across all browsers)
         </CardDescription>
       </CardHeader>
       <CardContent className="p-4 pt-0">
         <div className="space-y-2">
-          <Label htmlFor="due-badge-days" className="text-sm">Days before due date</Label>
+          <Label htmlFor="on-deck-min-count" className="text-sm">On Deck minimum</Label>
           <div className="flex items-center space-x-3">
             <Slider
               className={BUBBLE_SLIDER_CLASSES}
-              id="due-badge-days"
-              max={14}
-              min={1}
+              id="on-deck-min-count"
+              max={ON_DECK_MIN_SLIDER_MAX}
+              min={0}
               step={1}
-              value={[dueBadgeDays]}
-              onValueChange={(value) => updateSettings({ dueBadgeDays: value[0] })}
+              value={[onDeckMinCount]}
+              onValueChange={(value) => updateSettings({ onDeckMinCount: value[0] })}
             />
-            <ReadoutBubble value={dueBadgeDays} />
+            <ReadoutBubble value={onDeckMinCount} />
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            The day-counter badge will turn yellow when an item is within {dueBadgeDays} days of its due date.
+            On Deck will always hold at least {onDeckMinCount} items — yellow/red items get promoted first, then the closest-to-due items from New fill the rest.
           </p>
         </div>
       </CardContent>

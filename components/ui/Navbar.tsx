@@ -19,6 +19,7 @@ import {
   BarChart3,
   Clock,
   Edit,
+  ListTodo,
   UserCircle,
   Truck,
   Barcode,
@@ -63,6 +64,8 @@ import {
   NavSectionCounters,
   NavMetricsBadges,
 } from "@/components/ui/NavStatusBadges";
+import { SliderSettingPopover } from "@/components/settings/SliderSettingPopover";
+import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 
 type NavItemBase = {
   hotkey?: string;
@@ -108,6 +111,7 @@ const settingsTabs: {
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
   { value: "due-badge", label: "Due Badge", icon: Clock },
+  { value: "on-deck", label: "On Deck", icon: ListTodo },
   { value: "recent-edits", label: "Recent Edits", icon: Edit },
   { value: "shipping", label: "Shipping", icon: Truck },
 ];
@@ -256,6 +260,9 @@ export function Navbar({
   const [activeTab, setActiveTab] = useState(pathname);
   const [settingsHovered, setSettingsHovered] = useState(false);
   const settingsLeaveTimerRef = useRef<number | null>(null);
+  // Track open slider popovers so the menu doesn't fade out while one is up.
+  const [sliderPopoverOpen, setSliderPopoverOpen] = useState(false);
+  const { settings, updateSettings } = useOrderSettings();
   const [printHovered, setPrintHovered] = useState(false);
   const printLeaveTimerRef = useRef<number | null>(null);
 
@@ -303,10 +310,14 @@ export function Navbar({
       window.clearTimeout(settingsLeaveTimerRef.current);
     }
     settingsLeaveTimerRef.current = window.setTimeout(() => {
+      // Don't dismiss the menu while a slider popover is open — Radix
+      // portals the popover outside, so a mouseleave on the menu wrapper
+      // would close it from underneath the user's cursor.
+      if (sliderPopoverOpen) return;
       setSettingsHovered(false);
       settingsLeaveTimerRef.current = null;
     }, 300);
-  }, []);
+  }, [sliderPopoverOpen]);
 
   useEffect(() => {
     setActiveTab(pathname);
@@ -581,7 +592,10 @@ export function Navbar({
                   {sidebarOpen && <span className="ml-2">Quick Labels</span>}
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="right" className="py-1 leading-none">
+              <TooltipContent
+                side="right"
+                className="py-1 leading-none -translate-y-[7px]"
+              >
                 Quick Labels
               </TooltipContent>
             </Tooltip>
@@ -592,7 +606,10 @@ export function Navbar({
                   {sidebarOpen && <span className="ml-2">Setup Utility</span>}
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="right" className="py-1 leading-none">
+              <TooltipContent
+                side="right"
+                className="py-1 leading-none -translate-y-[7px]"
+              >
                 Setup Utility
               </TooltipContent>
             </Tooltip>
@@ -603,7 +620,10 @@ export function Navbar({
                   {sidebarOpen && <span className="ml-2">Calculator</span>}
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="right" className="py-1 leading-none">
+              <TooltipContent
+                side="right"
+                className="py-1 leading-none -translate-y-[7px]"
+              >
                 Calculator
               </TooltipContent>
             </Tooltip>
@@ -649,21 +669,82 @@ export function Navbar({
                     },
                   }}
                 >
-                  {settingsTabs.map(({ value, label, icon: Icon }) => (
-                    <motion.button
-                      key={value}
-                      variants={{
-                        hidden: { opacity: 0, y: 4 },
-                        visible: { opacity: 1, y: 0 },
-                      }}
-                      transition={{ duration: 0.12, ease: "easeOut" }}
-                      onClick={() => onOpenSettings(value)}
-                      className="flex items-center px-3 py-2.5 text-sm text-foreground bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition text-left"
-                    >
-                      <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
-                      {label}
-                    </motion.button>
-                  ))}
+                  {settingsTabs.map(({ value, label, icon: Icon }) => {
+                    if (value === "due-badge") {
+                      return (
+                        <SliderSettingPopover
+                          key={value}
+                          label={label}
+                          icon={Icon}
+                          value={settings.dueBadgeDays ?? 3}
+                          min={1}
+                          max={14}
+                          onChange={(v) => updateSettings({ dueBadgeDays: v })}
+                          onOpenChange={(open) => {
+                            setSliderPopoverOpen(open);
+                            if (!open) closeSettingsHover();
+                          }}
+                          description="Days before due date when the day-counter badge turns yellow."
+                        />
+                      );
+                    }
+                    if (value === "on-deck") {
+                      return (
+                        <SliderSettingPopover
+                          key={value}
+                          label={label}
+                          icon={Icon}
+                          value={settings.onDeckMinCount ?? 12}
+                          min={0}
+                          max={30}
+                          onChange={(v) => updateSettings({ onDeckMinCount: v })}
+                          onOpenChange={(open) => {
+                            setSliderPopoverOpen(open);
+                            if (!open) closeSettingsHover();
+                          }}
+                          description="Minimum items kept on deck. Yellow/red items promote first, then closest-to-due items from New fill the rest."
+                        />
+                      );
+                    }
+                    if (value === "recent-edits") {
+                      return (
+                        <SliderSettingPopover
+                          key={value}
+                          label={label}
+                          icon={Icon}
+                          value={settings.recentEditHours ?? 24}
+                          min={1}
+                          max={72}
+                          onChange={(v) => updateSettings({ recentEditHours: v })}
+                          enabled={settings.recentEditHours !== undefined}
+                          onEnabledChange={(on) =>
+                            updateSettings({ recentEditHours: on ? 24 : undefined })
+                          }
+                          onOpenChange={(open) => {
+                            setSliderPopoverOpen(open);
+                            if (!open) closeSettingsHover();
+                          }}
+                          description={`Hours the blue circle shows on recently edited items.`}
+                          offDescription="The recent edit indicator is turned off."
+                        />
+                      );
+                    }
+                    return (
+                      <motion.button
+                        key={value}
+                        variants={{
+                          hidden: { opacity: 0, y: 4 },
+                          visible: { opacity: 1, y: 0 },
+                        }}
+                        transition={{ duration: 0.12, ease: "easeOut" }}
+                        onClick={() => onOpenSettings(value)}
+                        className="flex items-center px-3 py-2.5 text-sm text-foreground bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition text-left"
+                      >
+                        <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
+                        {label}
+                      </motion.button>
+                    );
+                  })}
                 </motion.div>
               </motion.div>
             </div>

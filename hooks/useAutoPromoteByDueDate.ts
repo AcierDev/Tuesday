@@ -28,6 +28,12 @@ export function useAutoPromoteByDueDate(items: Item[] | undefined) {
   useEffect(() => {
     if (!items || items.length === 0) return;
 
+    // Don't re-evaluate while a previous batch is still settling. Each
+    // in-flight updateItem resolves at a different time and triggers a
+    // re-render with partial state — evaluating then would let the algorithm
+    // queue contradictory updates against an inconsistent view.
+    if (inFlightRef.current.size > 0) return;
+
     const range = settings.dueBadgeDays;
     if (typeof range !== "number") return;
 
@@ -103,40 +109,20 @@ export function useAutoPromoteByDueDate(items: Item[] | undefined) {
     }
 
     //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-    //║ 🚪 OVERFLOW EVICTION: cap is soft for urgent (yellow/red), hard for   ║
-    //║    green. When green OnDeck exceeds remaining slots, evict greenest.  ║
+    //║ 🔁 APPLY: self-heal, promote, or demote each item                     ║
     //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-    const onDeckLive = liveItems.filter((i) => i.status === ItemStatus.OnDeck);
-    const urgentOnDeckCount = onDeckLive.filter((i) => {
-      const d = computeDelta(i);
-      return d !== null && d <= range;
-    }).length;
-    const greenSlots = Math.max(0, minCount - urgentOnDeckCount);
-
-    const greenOnDeckSorted = onDeckLive
-      .filter((i) => {
-        const d = computeDelta(i);
-        return d === null || d > range;
-      })
-      .map((i) => ({ item: i, delta: computeDelta(i) ?? Infinity }))
-      .sort((a, b) => b.delta - a.delta); // greenest (largest delta / no due) first
-
-    const evictIds = new Set<string>();
-    for (const { item } of greenOnDeckSorted.slice(0, Math.max(0, greenOnDeckSorted.length - greenSlots))) {
-      evictIds.add(item.id);
-    }
-
-    //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-    //║ 🔁 APPLY: evict, self-heal, promote, or demote each item              ║
-    //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+    // No separate eviction phase: demotion (status=OnDeck && prevStatus &&
+    // !shouldBeOnDeck) already removes any auto-promoted items beyond the
+    // cap. The previous eviction phase also targeted manuals (no prevStatus)
+    // and could fire alongside demotion, causing a manual to be evicted AND
+    // an auto to be demoted in the same pass — pushing OnDeck below min and
+    // triggering a re-promote on the next iteration. That's the thrashing.
     for (const item of liveItems) {
       if (inFlightRef.current.has(item.id)) continue;
 
       let next: Item | null = null;
 
-      if (evictIds.has(item.id)) {
-        next = { ...item, status: ItemStatus.New, prevStatus: null };
-      } else if (selfHealIds.has(item.id)) {
+      if (selfHealIds.has(item.id)) {
         next = { ...item, status: item.prevStatus!, prevStatus: null };
       } else if (item.status === ItemStatus.New && shouldBeOnDeck.has(item.id)) {
         next = { ...item, prevStatus: item.status, status: ItemStatus.OnDeck };

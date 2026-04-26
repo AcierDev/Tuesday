@@ -1,6 +1,8 @@
 "use client";
 
 import { memo, useMemo } from "react";
+import { GripVertical } from "lucide-react";
+import { useDraggable } from "@dnd-kit/core";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { MergedShippingCell } from "../cells/MergedShippingCell";
 import { ItemTableCell } from "./ItemTableCell";
@@ -14,7 +16,6 @@ import {
   DayName,
 } from "@/typings/types";
 import { boardConfig } from "@/config/boardconfig";
-import { StatusRadialMenu } from "./StatusRadialMenu";
 
 interface ItemTableRowProps {
   item: Item;
@@ -57,6 +58,13 @@ export const ItemTableRow = memo(function ItemTableRow({
 }: ItemTableRowProps) {
   const pastDue = useMemo(() => isPastDue(item), [item.dueDate]);
 
+  // Row is draggable — drop on a status section to change status. Listeners
+  // live only on the grip cell so the rest of the row stays interactive.
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: item.id,
+    data: { item },
+  });
+
   if (!item.id) {
     console.warn("Item missing id:", item);
     return null;
@@ -64,6 +72,7 @@ export const ItemTableRow = memo(function ItemTableRow({
 
   return (
     <TableRow
+      ref={setNodeRef}
       className={cn(
         "select-none",
         index % 2 === 0
@@ -74,7 +83,8 @@ export const ItemTableRow = memo(function ItemTableRow({
           item.status !== ItemStatus.Done &&
           "shadow-[inset_0_2px_8px_-2px_rgba(239,68,68,0.5),inset_0_-2px_8px_-2px_rgba(239,68,68,0.5)]",
         clickToAddTarget &&
-          "cursor-crosshair hover:bg-blue-50 dark:hover:bg-blue-900/20"
+          "cursor-crosshair hover:bg-blue-50 dark:hover:bg-blue-900/20",
+        isDragging && "opacity-30"
       )}
       onClick={(e) => {
         if (clickToAddTarget) {
@@ -91,11 +101,14 @@ export const ItemTableRow = memo(function ItemTableRow({
       }}
     >
       <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 relative w-[3.125rem]">
-        <div className="flex items-center justify-center w-full">
-          <StatusRadialMenu
-            currentStatus={item.status}
-            onStatusSelect={(newStatus) => onStatusChange?.(item.id, newStatus)}
-          />
+        <div
+          {...listeners}
+          {...attributes}
+          className="flex items-center justify-center w-full h-full py-2 cursor-grab active:cursor-grabbing touch-none text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+          aria-label="Drag to change status"
+          role="button"
+        >
+          <GripVertical className="h-5 w-5" />
         </div>
       </TableCell>
 

@@ -45,38 +45,38 @@ export function ColumnVisibilitySettings({
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto shadow-lg dark:bg-gray-900">
-      <CardHeader>
-        <CardTitle className="text-3xl font-bold flex items-center gap-2">
-          <Settings className="w-8 h-8" />
+    <Card className="w-full max-w-4xl mx-auto shadow-sm dark:bg-gray-900">
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <Settings className="w-4 h-4" />
           Table Configuration
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs">
           Customize your table view and manage column visibility
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 pt-0">
         <Tabs defaultValue="columns" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 dark:bg-gray-800">
-            <TabsTrigger value="columns">Column Visibility</TabsTrigger>
-            <TabsTrigger value="general">General Settings</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 h-9 dark:bg-gray-800">
+            <TabsTrigger value="columns" className="text-xs">Column Visibility</TabsTrigger>
+            <TabsTrigger value="general" className="text-xs">General Settings</TabsTrigger>
           </TabsList>
-          <TabsContent value="general">
+          <TabsContent value="general" className="mt-3">
             <Card className="dark:bg-gray-800">
-              <CardHeader>
-                <CardTitle>General Options</CardTitle>
-                <CardDescription>Adjust general table settings</CardDescription>
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-sm font-semibold">General Options</CardTitle>
+                <CardDescription className="text-xs">Adjust general table settings</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between p-4 bg-secondary rounded-lg dark:bg-gray-700">
+              <CardContent className="p-3 pt-0">
+                <div className="flex items-center justify-between p-3 bg-secondary rounded-md dark:bg-gray-700">
                   <div className="space-y-0.5">
                     <Label
                       htmlFor="show-sorting-icons"
-                      className="text-base font-medium"
+                      className="text-sm font-medium"
                     >
                       Sorting Icons
                     </Label>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Display icons for sortable columns
                     </p>
                   </div>
@@ -91,35 +91,35 @@ export function ColumnVisibilitySettings({
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="columns">
+          <TabsContent value="columns" className="mt-3">
             <Card className="dark:bg-gray-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Columns className="w-5 h-5" />
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Columns className="w-4 h-4" />
                   Column Visibility
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   Manage visible columns for each item group
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="p-3 pt-0">
+                <div className="space-y-2">
                   {Object.values(ItemStatus).map((group) => (
                     <div
                       key={group}
-                      className="border rounded-lg overflow-hidden"
+                      className="border rounded-md overflow-hidden"
                     >
                       <button
                         onClick={() => toggleGroupExpansion(group)}
-                        className="w-full p-4 text-left bg-secondary hover:bg-secondary/80 transition-colors flex justify-between items-center dark:bg-gray-900"
+                        className="w-full px-3 py-2 text-left bg-secondary hover:bg-secondary/80 transition-colors flex justify-between items-center dark:bg-gray-900"
                       >
-                        <span className="text-lg font-semibold">
+                        <span className="text-sm font-semibold">
                           {group} Items
                         </span>
                         {expandedGroup === group ? (
-                          <ChevronUp className="w-5 h-5" />
+                          <ChevronUp className="w-4 h-4" />
                         ) : (
-                          <ChevronDown className="w-5 h-5" />
+                          <ChevronDown className="w-4 h-4" />
                         )}
                       </button>
                       <AnimatePresence>
@@ -130,8 +130,8 @@ export function ColumnVisibilitySettings({
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.3 }}
                           >
-                            <div className="p-4 bg-card dark:bg-gray-700">
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div className="p-3 bg-card dark:bg-gray-700">
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                 {/*
                                   FRONTEND-ONLY HIDE: columns listed in
                                   FRONTEND_HIDDEN_COLUMN_TITLES (Painted,
@@ -163,7 +163,7 @@ export function ColumnVisibilitySettings({
                                     />
                                     <Label
                                       htmlFor={`${group}-${field}`}
-                                      className="text-sm font-medium cursor-pointer"
+                                      className="text-xs font-medium cursor-pointer"
                                     >
                                       {field}
                                     </Label>
