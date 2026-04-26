@@ -92,7 +92,22 @@ export default function RootLayout({
       style={{ colorScheme: "dark", forcedColorAdjust: "none" }}
       suppressHydrationWarning
     >
-      <body className="bg-gray-900 text-gray-100" style={{ forcedColorAdjust: "none" }}>
+      <head>
+        {/* Belt-and-suspenders: re-assert .dark on the html element on
+            every load (synchronous, before paint). Some Windows Chrome
+            installs were stripping the className during hydration and
+            falling back to text-gray-900 on every dark: variant. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';",
+          }}
+        />
+      </head>
+      <body
+        className="bg-gray-900 text-gray-100"
+        style={{ forcedColorAdjust: "none", color: "rgb(243 244 246)" }}
+      >
         <TooltipProvider>
           <ThemeProvider attribute="class" forcedTheme="dark">
             <OrderSettingsProvider>
