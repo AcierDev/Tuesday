@@ -218,9 +218,11 @@ export function OrderSettingsProvider({
   }, [settings]);
 
   useEffect(() => {
-    if (!isInitialized || !serverSyncedRef.current) return;
+    if (!isInitialized) return;
 
     const handle = setInterval(async () => {
+      if (!serverSyncedRef.current) return;
+
       try {
         const res = await fetch("/api/settings");
         if (!res.ok) return;
