@@ -19,7 +19,17 @@ interface ItemListProps {
   sortColumn: ColumnTitles | null;
   sortDirection: "asc" | "desc" | null;
   onSort: (column: ColumnTitles) => void;
+  currentType?: string;
 }
+
+// Type filters that imply the user is hunting for specific incoming work,
+// so the New lane should auto-open when these are picked and auto-close
+// otherwise.
+const NEW_AUTO_EXPAND_TYPES: ReadonlySet<string> = new Set([
+  "striped",
+  "mini",
+  "custom",
+]);
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🧩 STATUS LANE LAYOUT                                                ║
@@ -53,7 +63,11 @@ export const ItemList = memo(function ItemList({
   sortColumn,
   sortDirection,
   onSort,
+  currentType,
 }: ItemListProps) {
+  const expandNew = currentType
+    ? NEW_AUTO_EXPAND_TYPES.has(currentType)
+    : false;
   const doneGroup: Group = {
     id: "done-group",
     title: ItemStatus.Done,
@@ -69,9 +83,13 @@ export const ItemList = memo(function ItemList({
   ).filter((g): g is Group => Boolean(g));
   const hiddenGroup = groups.find((g) => g.title === ItemStatus.Hidden);
 
-  const renderGroup = (group: Group, defaultCollapsed: boolean) => (
+  const renderGroup = (
+    group: Group,
+    defaultCollapsed: boolean,
+    keyOverride?: string
+  ) => (
     <div
-      key={group.id}
+      key={keyOverride ?? group.id}
       id={`section-${group.title.toLowerCase().replace(/\s+/g, "-")}`}
       className="min-h-[50px] scroll-mt-32"
     >
@@ -95,7 +113,12 @@ export const ItemList = memo(function ItemList({
 
   return (
     <div className="flex-grow">
-      {newGroup && renderGroup(newGroup, true)}
+      {newGroup &&
+        renderGroup(
+          newGroup,
+          !expandNew,
+          `${newGroup.id}-${expandNew ? "open" : "closed"}`
+        )}
       <div className="grid grid-cols-2 gap-4 items-start">
         <div className="min-w-0">
           {leftGroups.map((g) => renderGroup(g, false))}

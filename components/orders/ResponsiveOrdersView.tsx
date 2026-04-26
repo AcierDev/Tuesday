@@ -19,6 +19,7 @@ interface ResponsiveOrdersViewProps {
   sortColumn: ColumnTitles | null;
   sortDirection: "asc" | "desc" | null;
   onSort: (column: ColumnTitles) => void;
+  currentType?: string;
 }
 
 export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
@@ -37,6 +38,7 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
   sortColumn,
   sortDirection,
   onSort,
+  currentType,
 }) => {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -93,6 +95,7 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
           sortColumn={sortColumn}
           sortDirection={sortDirection}
           onSort={onSort}
+          currentType={currentType}
         />
       )}
     </div>

@@ -331,6 +331,7 @@ export default function OrderManagementPage() {
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
+                currentType={currentType}
               />
             </div>
           </div>
