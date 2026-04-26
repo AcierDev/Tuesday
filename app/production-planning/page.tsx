@@ -846,7 +846,7 @@ export default function ProductionPlanningPage() {
           {/* Day columns slide horizontally on week toggle. Direction is
               passed via AnimatePresence's `custom` so the latest value drives
               both the exiting and entering child. */}
-          <div className="flex-1 p-6 overflow-x-auto overflow-y-hidden relative">
+          <div className="flex-1 p-6 overflow-hidden relative">
             <AnimatePresence
               initial={false}
               mode="wait"
@@ -860,7 +860,7 @@ export default function ProductionPlanningPage() {
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-                className="flex gap-4 h-full"
+                className="flex gap-4 h-full overflow-x-auto overflow-y-hidden"
                 style={{ minWidth: SIDEBAR_MIN_COLUMNS_WIDTH }}
               >
                 {DAYS.map((day) => {
