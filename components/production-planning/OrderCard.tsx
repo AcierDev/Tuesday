@@ -187,6 +187,7 @@ export function OrderCard({
 
         <div className="flex flex-col items-end gap-0.5 shrink-0 -mr-1 -mt-1">
           {/* Pin (scheduled): direct toggle. Sidebar: opens day picker. */}
+          {/* Always at least faintly visible so the affordance is discoverable. */}
           {isScheduled && onTogglePin && (
             <Button
               variant="ghost"
@@ -200,7 +201,7 @@ export function OrderCard({
                 "h-6 w-6 transition-opacity",
                 isPinned
                   ? "text-amber-600 dark:text-amber-400 opacity-100"
-                  : "text-gray-400 hover:text-amber-500 opacity-0 group-hover:opacity-100"
+                  : "text-gray-400 hover:text-amber-500 opacity-50 group-hover:opacity-100"
               )}
               title={isPinned ? "Unpin from this day" : "Pin to this day"}
             >
@@ -218,7 +219,7 @@ export function OrderCard({
                   variant="ghost"
                   size="icon"
                   onPointerDown={(e) => e.stopPropagation()}
-                  className="h-6 w-6 text-gray-400 hover:text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-6 w-6 text-gray-400 hover:text-amber-500 opacity-50 group-hover:opacity-100 transition-opacity"
                   title="Pin to a specific day"
                 >
                   <Pin className="h-3.5 w-3.5" />
