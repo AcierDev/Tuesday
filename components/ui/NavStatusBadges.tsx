@@ -8,7 +8,11 @@ import { useOrderStore } from "@/stores/useOrderStore";
 import { ItemStatus } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
 import { computeTotalDebt, laDayKey } from "@/lib/debt-metrics";
-import { buildGluedEvents, computeHealthScore } from "@/lib/production-metrics";
+import {
+  buildGluedEvents,
+  computeHealthScore,
+  parseSquareSize,
+} from "@/lib/production-metrics";
 import { useActivities, useAllItems } from "@/lib/stats-shared";
 import { MiniSparkline } from "@/components/orders/MiniSparkline";
 import { cn } from "@/utils/functions";
@@ -29,6 +33,18 @@ const SECTION_COUNTER_ORDER: ItemStatus[] = [
 const HEALTH_GOOD_THRESHOLD = 85;
 const HEALTH_BAD_THRESHOLD = 60;
 const DEBT_HISTORY_DAYS = 30;
+
+const BACKLOG_STATUSES: ReadonlySet<string> = new Set([
+  ItemStatus.New,
+  ItemStatus.OnDeck,
+  ItemStatus.Wip,
+]);
+const BACKLOG_ROUND_TO = 100;
+
+function formatSquaresK(squares: number): string {
+  if (squares < 1000) return squares.toString();
+  return (squares / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+}
 
 export function NavSectionCounters() {
   const items = useOrderStore((state) => state.items);
@@ -112,6 +128,18 @@ export function NavMetricsBadges() {
     return { squares, orders: events.length };
   }, [allItems, activities]);
 
+  const backlogSquares = useMemo(() => {
+    if (!items) return null;
+    let total = 0;
+    for (const item of items) {
+      if (!BACKLOG_STATUSES.has(item.status)) continue;
+      const parsed = parseSquareSize(item.size);
+      if (!parsed) continue;
+      total += parsed.squares;
+    }
+    return Math.round(total / BACKLOG_ROUND_TO) * BACKLOG_ROUND_TO;
+  }, [items]);
+
   const [debtHistory, setDebtHistory] = useState<number[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +190,30 @@ export function NavMetricsBadges() {
         </span>
       </Link>
       <Link
+        href="/orders"
+        className={cn(
+          "flex flex-col items-center justify-center w-14 h-14 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
+          backlogSquares && backlogSquares > 0
+            ? "text-sky-500 dark:text-sky-400"
+            : "text-slate-400"
+        )}
+        title={
+          backlogSquares === null
+            ? "Backlog squares loading…"
+            : `Backlog: ~${backlogSquares.toLocaleString()} squares across New / On Deck / WIP`
+        }
+      >
+        <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
+          Backlog
+        </span>
+        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
+          {backlogSquares === null ? "—" : formatSquaresK(backlogSquares)}
+        </span>
+        <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
+          squares
+        </span>
+      </Link>
+      <Link
         href="/stats/debt"
         className={cn(
           "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
@@ -172,7 +224,7 @@ export function NavMetricsBadges() {
         title={`Total overdue debt: ${totalDebt} day${totalDebt === 1 ? "" : "s"} — click for details`}
       >
         <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
-          Debt
+          Time Debt
         </span>
         <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
           {totalDebt > 0 ? `−${totalDebt}` : "0"}
