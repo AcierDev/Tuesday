@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { motion } from "framer-motion";
 import {
   Popover,
@@ -13,17 +12,6 @@ import {
   SETTINGS_SLIDER_CLASSES,
   useSliderDraft,
 } from "@/components/settings/settingsSlider";
-
-const HOVER_CLOSE_DELAY_MS = 220;
-
-//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ 🔁 SINGLE-OPEN COORDINATOR                                            ║
-//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-// Only one slider popover is open at a time. When a new one opens it tells
-// the previous one to close immediately, so siblings don't visually overlap
-// during cursor sweeps.
-type ActivePopover = { close: () => void };
-let activePopover: ActivePopover | null = null;
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 💊 PILL + SLIDER STYLES                                               ║
@@ -80,75 +68,12 @@ export const SliderSettingPopover = ({
     onChange
   );
 
-  const [open, setOpen] = React.useState(false);
-  const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const updateOpen = React.useCallback(
-    (next: boolean) => {
-      setOpen(next);
-      onOpenChange?.(next);
-    },
-    [onOpenChange]
-  );
-
-  const cancelClose = React.useCallback(() => {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-    }
-  }, []);
-
-  const scheduleClose = React.useCallback(
-    (e?: React.MouseEvent) => {
-      // Don't close while a drag is in progress (e.g. slider thumb being held).
-      if (e && e.buttons > 0) return;
-      cancelClose();
-      closeTimer.current = setTimeout(() => updateOpen(false), HOVER_CLOSE_DELAY_MS);
-    },
-    [cancelClose, updateOpen]
-  );
-
-  React.useEffect(() => () => cancelClose(), [cancelClose]);
-
-  const selfRef = React.useRef<ActivePopover>({ close: () => {} });
-  selfRef.current.close = () => {
-    cancelClose();
-    setOpen(false);
-    onOpenChange?.(false);
-  };
-
-  React.useEffect(() => {
-    if (open) {
-      if (activePopover && activePopover !== selfRef.current) {
-        activePopover.close();
-      }
-      activePopover = selfRef.current;
-    } else if (activePopover === selfRef.current) {
-      activePopover = null;
-    }
-  }, [open]);
-
-  React.useEffect(
-    () => () => {
-      if (activePopover === selfRef.current) activePopover = null;
-    },
-    []
-  );
-
-  const handleEnter = () => {
-    cancelClose();
-    if (!open) updateOpen(true);
-  };
-
   return (
-    <Popover open={open} onOpenChange={updateOpen}>
+    <Popover onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <motion.button
           variants={ITEM_VARIANTS}
           transition={{ duration: 0.12, ease: "easeOut" }}
-          onMouseEnter={handleEnter}
-          onMouseLeave={scheduleClose}
-          onFocus={handleEnter}
           className="group flex items-center w-full px-3 py-2.5 text-sm text-foreground bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition text-left"
         >
           <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
@@ -161,11 +86,8 @@ export const SliderSettingPopover = ({
       <PopoverContent
         side="right"
         align="start"
-        sideOffset={0}
-        onMouseEnter={cancelClose}
-        onMouseLeave={scheduleClose}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        className="relative w-96 p-6 border-white/15 bg-gray-900/95 backdrop-blur-md text-foreground shadow-xl before:absolute before:content-[''] before:-left-3 before:top-0 before:h-full before:w-3 before:bg-transparent after:absolute after:content-[''] after:-bottom-3 after:left-0 after:h-3 after:w-full after:bg-transparent"
+        sideOffset={10}
+        className="w-80 border-white/15 bg-gray-900/95 backdrop-blur-md text-foreground shadow-xl"
       >
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
