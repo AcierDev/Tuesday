@@ -390,7 +390,13 @@ export const ItemGroupSection = memo(function ItemGroupSection({
         {isCollapsible && (
           <span
             aria-hidden
-            className="pointer-events-none absolute left-0 top-2 bottom-2 w-1 rounded-r bg-current opacity-0 scale-y-50 transition-all duration-200 ease-out group-hover:opacity-100 group-hover:scale-y-100"
+            className={cn(
+              "pointer-events-none absolute left-0 top-2 bottom-2 w-1 rounded-r bg-current",
+              "origin-top transition-transform duration-300 ease-out",
+              !isCollapsed
+                ? "scale-y-100"
+                : "scale-y-0 group-hover:scale-y-100 group-hover:duration-200"
+            )}
           />
         )}
         <div className="flex items-center justify-between">
