@@ -4,9 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Clock } from "lucide-react"
-
-const BUBBLE_SLIDER_CLASSES =
-  "flex-1 [&_[role=slider]]:h-5 [&_[role=slider]]:w-10 [&_[role=slider]]:border-0 [&_[role=slider]]:bg-primary [&_[role=slider]]:shadow-md"
+import { SETTINGS_SLIDER_CLASSES, useSliderDraft } from "@/components/settings/settingsSlider"
 
 const ReadoutBubble = ({ value }: { value: number }) => (
   <div className="inline-flex h-8 min-w-[3.5rem] items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm">
@@ -23,6 +21,11 @@ export const DueBadgeSettings = ({
   dueBadgeDays,
   updateSettings
 }: DueBadgeSettingsProps) => {
+  const { draft, handleValueChange, handleValueCommit } = useSliderDraft(
+    dueBadgeDays,
+    (v) => updateSettings({ dueBadgeDays: v })
+  )
+
   return (
     <Card className="dark:bg-gray-900">
       <CardHeader className="p-4 pb-2">
@@ -39,18 +42,19 @@ export const DueBadgeSettings = ({
           <Label htmlFor="due-badge-days" className="text-sm">Days before due date</Label>
           <div className="flex items-center space-x-3">
             <Slider
-              className={BUBBLE_SLIDER_CLASSES}
+              className={SETTINGS_SLIDER_CLASSES}
               id="due-badge-days"
               max={14}
               min={1}
               step={1}
-              value={[dueBadgeDays]}
-              onValueChange={(value) => updateSettings({ dueBadgeDays: value[0] })}
+              value={[draft]}
+              onValueChange={handleValueChange}
+              onValueCommit={handleValueCommit}
             />
-            <ReadoutBubble value={dueBadgeDays} />
+            <ReadoutBubble value={draft} />
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            The day-counter badge will turn yellow when an item is within {dueBadgeDays} days of its due date.
+            The day-counter badge will turn yellow when an item is within {draft} days of its due date.
           </p>
         </div>
       </CardContent>

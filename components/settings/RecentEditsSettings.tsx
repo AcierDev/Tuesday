@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Edit } from 'lucide-react'
+import { SETTINGS_SLIDER_CLASSES, useSliderDraft } from "@/components/settings/settingsSlider"
 
 interface RecentEditsSettingsProps {
   recentEditHours?: number
@@ -16,6 +17,10 @@ export const RecentEditsSettings = ({
   recentEditHours,
   updateSettings
 }: RecentEditsSettingsProps) => {
+  const { draft, setDraft, handleValueChange, handleValueCommit } = useSliderDraft(
+    recentEditHours ?? 24,
+    (v) => updateSettings({ recentEditHours: v })
+  )
 
   const toggleRecentEdits = (checked: boolean) => {
     updateSettings({ recentEditHours: checked ? 24 : undefined })
@@ -47,21 +52,27 @@ export const RecentEditsSettings = ({
               <Label htmlFor="recent-edits-hours" className="text-sm">Hours to show indicator</Label>
               <div className="flex items-center space-x-3">
                 <Slider
-                  className="w-[60%]"
+                  className={`w-[60%] ${SETTINGS_SLIDER_CLASSES}`}
                   id="recent-edits-hours"
                   max={72}
                   min={1}
                   step={1}
-                  value={[recentEditHours]}
-                  onValueChange={(value) => updateSettings({ recentEditHours: value[0] })}
+                  value={[draft]}
+                  onValueChange={handleValueChange}
+                  onValueCommit={handleValueCommit}
                 />
                 <Input
                   className="w-20 h-8 dark:bg-gray-800"
                   type="number"
-                  value={recentEditHours}
+                  value={draft}
                   onChange={(e) => {
                     const value = Number(e.target.value);
-                    updateSettings({ recentEditHours: isNaN(value) ? undefined : value })
+                    if (isNaN(value)) {
+                      updateSettings({ recentEditHours: undefined })
+                    } else {
+                      setDraft(value)
+                      updateSettings({ recentEditHours: value })
+                    }
                   }}
                 />
               </div>
@@ -70,7 +81,7 @@ export const RecentEditsSettings = ({
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {recentEditHours === undefined
               ? "The recent edit indicator is turned off."
-              : `The blue circle will appear for items edited within the last ${recentEditHours} hours.`}
+              : `The blue circle will appear for items edited within the last ${draft} hours.`}
           </p>
         </div>
       </CardContent>
