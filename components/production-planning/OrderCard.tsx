@@ -205,23 +205,16 @@ export function OrderCard({
                 {design}
               </div>
             )}
-            {badgeStatus && (
-              <div
-                className={cn(
-                  "shrink-0 ml-auto tabular-nums text-[0.80625rem] px-2 py-0.5 min-w-[2.475rem] justify-center rounded-[10px] inline-flex items-center shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
-                  badgeStatus.classes
-                )}
-              >
-                {badgeStatus.text}
-              </div>
-            )}
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-0.5 shrink-0 -mr-1 -mt-1">
+        <div className="flex flex-col items-end gap-1 shrink-0 -mr-1 -mt-1">
           {/* Pin toggle: in a day column it locks to the day; in the sidebar
-              it locks the item to the sidebar (auto-plan skips it). */}
-          {onTogglePin && (
+              it locks the item to the sidebar (auto-plan skips it). The slot
+              is always reserved (h-6 w-6) so that contexts without a pin
+              handler — e.g. the DragOverlay's floating card — keep the same
+              layout as the source card and the badge below doesn't shift. */}
+          {onTogglePin ? (
             <Button
               variant="ghost"
               size="icon"
@@ -253,6 +246,18 @@ export function OrderCard({
                 )}
               />
             </Button>
+          ) : (
+            <div className="h-6 w-6" aria-hidden />
+          )}
+          {badgeStatus && (
+            <div
+              className={cn(
+                "tabular-nums text-[0.80625rem] px-2 py-0.5 min-w-[2.475rem] justify-center rounded-[10px] inline-flex items-center shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
+                badgeStatus.classes
+              )}
+            >
+              {badgeStatus.text}
+            </div>
           )}
         </div>
       </div>

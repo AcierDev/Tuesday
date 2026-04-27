@@ -130,10 +130,11 @@ export function DroppableDayColumn({
       .map(([design, { items, squares }]) => {
         const colors =
           DESIGN_COLOR_NAMES[design as ItemDesigns]?.length ?? 0;
-        // +10% overage for paint waste/touch-ups, rounded up so we never
-        // come up short on a color.
+        // +10% overage for paint waste/touch-ups, rounded up to the next
+        // even number (paint stations work pieces in pairs, and rounding to
+        // even keeps batches balanced).
         const piecesPerColor =
-          colors > 0 ? Math.ceil((squares / colors) * 1.1) : 0;
+          colors > 0 ? Math.ceil(((squares / colors) * 1.1) / 2) * 2 : 0;
         return { design, items, squares, colors, piecesPerColor };
       })
       .sort(
@@ -168,7 +169,6 @@ export function DroppableDayColumn({
       .map(
         ({ design, items, squares, colors, piecesPerColor }) => `
           <li class="row">
-            <span class="swatch" style="background:${designSwatch(design)}"></span>
             <div class="row-text">
               <div class="design">${escape(design)}</div>
               <div class="math">${items}× · ${squares} sq ÷ ${colors} colors</div>
@@ -224,36 +224,33 @@ export function DroppableDayColumn({
             .day { font-size: 28pt; font-weight: 800; line-height: 1; }
             .date { font-size: 11pt; font-weight: 600; color: #444; }
             .subtitle {
-              font-size: 9pt; font-weight: 700; letter-spacing: 0.08em;
+              font-size: 14.3pt; font-weight: 700; letter-spacing: 0.08em;
               text-transform: uppercase; color: #555; margin-bottom: 0.08in;
             }
             .overage-note {
-              font-size: 6.5pt; font-weight: 500; letter-spacing: 0.02em;
-              text-transform: none; color: #888; margin-left: 0.05in;
+              display: block;
+              font-size: 10.45pt; font-weight: 500; letter-spacing: 0.02em;
+              text-transform: none; color: #888;
+              margin-top: 0.02in;
             }
             ul.rows { list-style: none; padding: 0; margin: 0; flex: 1; }
             li.row {
               display: flex; align-items: center; gap: 0.1in;
-              padding: 0.06in 0;
+              padding: 0.08in 0;
               border-bottom: 1px solid #ddd;
             }
             li.row:last-child { border-bottom: none; }
-            .swatch {
-              width: 0.28in; height: 0.28in; border-radius: 999px;
-              border: 1px solid rgba(0,0,0,0.2);
-              flex-shrink: 0;
-            }
             .row-text { flex: 1; min-width: 0; }
             .design {
-              font-size: 13pt; font-weight: 700; line-height: 1.1;
+              font-size: 20.9pt; font-weight: 700; line-height: 1.1;
               overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
             }
-            .math { font-size: 8pt; color: #666; font-variant-numeric: tabular-nums; }
+            .math { font-size: 12.65pt; color: #666; font-variant-numeric: tabular-nums; }
             .amount {
-              font-size: 18pt; font-weight: 800; font-variant-numeric: tabular-nums;
+              font-size: 28.6pt; font-weight: 800; font-variant-numeric: tabular-nums;
               white-space: nowrap;
             }
-            .ea { font-size: 9pt; font-weight: 600; color: #555; margin-left: 2pt; }
+            .ea { font-size: 14.3pt; font-weight: 600; color: #555; margin-left: 2pt; }
             @media print {
               html, body {
                 -webkit-print-color-adjust: exact !important;
@@ -312,7 +309,7 @@ export function DroppableDayColumn({
             checked={autoPlanEnabled}
             onCheckedChange={() => onToggleAutoPlan()}
             aria-label={`Include ${day} in auto-plan`}
-            className="cursor-pointer border-gray-300 dark:border-gray-700 opacity-60 hover:opacity-100 transition-opacity data-[state=checked]:bg-gray-400 data-[state=checked]:border-gray-400 dark:data-[state=checked]:bg-gray-600 dark:data-[state=checked]:border-gray-600 data-[state=checked]:text-white"
+            className="cursor-pointer h-3.5 w-3.5 border-gray-200 dark:border-gray-800 opacity-30 hover:opacity-70 transition-opacity data-[state=checked]:bg-gray-300/70 data-[state=checked]:border-gray-300/70 dark:data-[state=checked]:bg-gray-700/70 dark:data-[state=checked]:border-gray-700/70 data-[state=checked]:text-white/70 [&_svg]:h-2.5 [&_svg]:w-2.5"
           />
         </div>
         <CapacityIndicator
@@ -360,7 +357,7 @@ export function DroppableDayColumn({
                     <span className="inline-block w-1 h-1 rounded-full bg-amber-500" />
                     Pinned
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 cursor-pin">
                     {pinned.map((order) => {
                       const meta = ordersById.get(order.itemId);
                       if (!meta) return null;

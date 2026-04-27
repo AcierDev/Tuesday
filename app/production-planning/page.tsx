@@ -757,6 +757,19 @@ export default function ProductionPlanningPage() {
     return undefined;
   }, [activeId, currentSchedule, currentWeekStart]);
 
+  // Mirror the source card's pin state on the floating drag overlay so the
+  // pin doesn't visually pop in/out as the user grabs a card.
+  const activeIsPinned = useMemo(() => {
+    if (!activeId) return false;
+    if (excludedItemIds.has(activeId)) return true;
+    if (!currentSchedule) return false;
+    for (const dayItems of Object.values(currentSchedule.schedule)) {
+      const entry = dayItems.find((i) => i.id === activeId);
+      if (entry) return !!entry.pinned;
+    }
+    return false;
+  }, [activeId, currentSchedule, excludedItemIds]);
+
   // Auto-fill Mon-Thu of a target week with the most-due standard-size orders.
   // IDs the auto-plan just placed — consumed by OrderCard for a one-shot
   // "land" animation. Cleared a moment after each run so re-runs flash again.
@@ -1016,6 +1029,7 @@ export default function ProductionPlanningPage() {
               edge-to-edge across the page. */}
           <ProductionPlanningSidebar
             orders={unscheduledOrders}
+            allOrdersById={allOrdersById}
             excludedItemIds={excludedItemIds}
             onToggleExcluded={toggleExcluded}
             onContextMenu={handleCardContextMenu}
@@ -1102,6 +1116,8 @@ export default function ProductionPlanningPage() {
               meta={activeMeta}
               isScheduled={true}
               referenceDate={activeReferenceDate}
+              isPinned={activeIsPinned}
+              onTogglePin={() => {}}
             />
           </div>
         ) : null}
