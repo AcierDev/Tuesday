@@ -49,7 +49,7 @@ export function ProductionPlanningSidebar({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-colors w-80 shrink-0",
+        "hidden md:flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-colors w-60 shrink-0",
         isOver && "bg-gray-50 dark:bg-gray-800/50"
       )}
     >

@@ -118,6 +118,18 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
       },
 
       updateSchedule: async (weekKey: string, schedule: WeeklyScheduleData) => {
+        // Optimistic: apply locally first so the planner reflects the drop
+        // immediately. Without this, dnd-kit's drop animation flies the card
+        // back to its old DOM slot before the PATCH resolves, producing a
+        // visible snap-back on every reorder.
+        const previous = get().schedules.find((s) => s.weekKey === weekKey);
+        set((state) => ({
+          schedules: state.schedules.some((s) => s.weekKey === weekKey)
+            ? state.schedules.map((s) => (s.weekKey === weekKey ? schedule : s))
+            : [...state.schedules, schedule],
+        }));
+        useOrderStore.getState().updateIsScheduled();
+
         try {
           const response = await fetch("/api/weekly-schedules", {
             method: "PATCH",
@@ -126,19 +138,15 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
           });
 
           if (!response.ok) throw new Error("Failed to update schedule");
-
-          set((state) => ({
-            schedules: state.schedules.map((s) =>
-              s.weekKey === weekKey ? schedule : s
-            ),
-          }));
-
-          // Notify OrderStore to update `isScheduled`
-          useOrderStore.getState().updateIsScheduled();
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "An error occurred";
-          set({ error: errorMessage });
+          // Roll back the optimistic update.
+          set((state) => ({
+            schedules: previous
+              ? state.schedules.map((s) => (s.weekKey === weekKey ? previous : s))
+              : state.schedules.filter((s) => s.weekKey !== weekKey),
+            error: error instanceof Error ? error.message : "An error occurred",
+          }));
+          useOrderStore.getState().updateIsScheduled();
           toast.error("Failed to update schedule");
           throw error;
         }
