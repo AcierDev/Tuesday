@@ -53,6 +53,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Tooltip,
   TooltipContent,
@@ -758,6 +759,103 @@ export function Navbar({
           </div>
         </div>
       </aside>
+
+      {/* Mobile Navbar */}
+      <nav className="lg:hidden fixed top-0 left-0 right-0 z-40 border-b bg-gray-950 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="w-full flex h-14 items-center justify-between px-4">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="w-10 h-10 flex items-center justify-center"
+              >
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Toggle menu</span>
+              </Button>
+            </SheetTrigger>
+            <span className="text-xl font-bold text-foreground">Tuesday</span>
+
+
+            <SheetContent
+              side="left"
+              className="w-4/5 sm:max-w-sm p-0 bg-gradient-to-b from-gray-800 to-gray-600"
+            >
+              <div className="flex flex-col h-[100dvh] bg-gradient-to-b from-gray-950/90 to-gray-950/70">
+                <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                  <span className="text-xl font-bold cursor-pointer text-foreground">
+                    Tuesday
+                  </span>
+                </div>
+                <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar">
+                  {mainNavItems.map((item, index) =>
+                    item.type === "divider" ? (
+                      <Separator
+                        key={index}
+                        className="my-2 dark:bg-gray-600/50"
+                      />
+                    ) : (
+                      <div
+                        key={"href" in item ? item.href : index}
+                        className="px-2 py-1"
+                      >
+                        {"href" in item && (
+                          <motion.div
+                            initial={false}
+                            animate={
+                              activeTab === item.href ? "active" : "inactive"
+                            }
+                            variants={{
+                              active: {
+                                backgroundColor: "rgba(59, 130, 246, 0.15)",
+                                borderRadius: "0.5rem",
+                              },
+                              inactive: {
+                                backgroundColor: "rgba(0, 0, 0, 0)",
+                                borderRadius: "0.5rem",
+                              },
+                            }}
+                            transition={{ duration: 0.2 }}
+                            className="relative"
+                          >
+                            {activeTab === item.href && (
+                              <motion.div
+                                layoutId="activeNavItem"
+                                className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r-full"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                              />
+                            )}
+                            <NavLink
+                              href={"href" in item ? item.href : ""}
+                              icon={"icon" in item ? item.icon : Menu}
+                              label={"label" in item ? item.label : ""}
+                            />
+                          </motion.div>
+                        )}
+                      </div>
+                    )
+                  )}
+                </div>
+                <div className="p-4 border-t border-gray-700">
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1 flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-base"
+                      onClick={() => onOpenSettings()}
+                    >
+                      <Settings className="mr-2 h-5 w-5" />
+                      Settings
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </nav>
+
     </>
   );
 }
