@@ -92,7 +92,7 @@ export function ProductionPlanningHeader({
           </div>
 
           {/* Right group: action buttons (desktop only) */}
-          <div className="hidden sm:flex items-center gap-2 sm:flex-shrink-0">
+          <div className="hidden lg:flex items-center gap-2 sm:flex-shrink-0">
             <Button
               size="sm"
               onClick={onAutoFill}
