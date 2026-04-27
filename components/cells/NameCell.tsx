@@ -22,6 +22,7 @@ import { Item, ColumnTitles, ItemStatus } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { DueBadge } from "./DueBadge";
+import { useTodayScheduledIds } from "@/hooks/useTodayScheduledIds";
 
 // // Add this style block right after imports
 // const pulseKeyframes = `
@@ -131,12 +132,23 @@ export const NameCell: React.FC<NameCellProps> = ({
     setIsEditing(true);
   }, []);
 
+  const isToday = useTodayScheduledIds().has(item.id);
   const parsedDueDate = item.dueDate ? parseISO(item.dueDate) : null;
   const dueBadge =
     parsedDueDate &&
     isValid(parsedDueDate) &&
     item.status !== ItemStatus.Done ? (
-      <DueBadge item={item} range={settings.dueBadgeDays} />
+      <span className="relative inline-flex flex-shrink-0">
+        {isToday && (
+          <span
+            aria-label="Planned for today"
+            className="pointer-events-none absolute bottom-full left-0 right-0 mb-0.5 z-20 flex items-center justify-center h-[12px] rounded-sm bg-gradient-to-b from-amber-300 to-amber-500 dark:from-amber-400 dark:to-amber-600 text-amber-950 text-[8px] font-bold uppercase tracking-wider shadow-sm ring-1 ring-amber-600/30"
+          >
+            Today
+          </span>
+        )}
+        <DueBadge item={item} range={settings.dueBadgeDays} />
+      </span>
     ) : null;
 
   const isPrintMarker = inputValue.trim().toLowerCase() === "print";

@@ -19,15 +19,9 @@ import {
 import { boardConfig } from "@/config/boardconfig";
 import { useActivities } from "@/lib/stats-shared";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
-import { useTodayScheduledIds } from "@/hooks/useTodayScheduledIds";
 
-//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ 📂 "TODAY" FOLDER TAB                                                ║
-//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-// Rows whose item is in today's planner lane get a manilla-folder treatment:
-// a warm top edge plus a small "Today" tab nub sticking up from the row.
-const TODAY_TAB_LEFT_PX = 12;
-const TODAY_TAB_OVERLAP_PX = 4; // tab dips into the row this much for a seamless join
+// Rows whose item is in today's planner lane get a small TODAY tag above
+// the DueBadge inside NameCell — no row-level border treatment.
 
 // Item ids whose most recent status_change activity falls inside the
 // `recentEditHours` window. Computed once per (activities, hours) pair and
@@ -111,7 +105,6 @@ export const ItemTableRow = memo(function ItemTableRow({
   });
 
   const recentlyMoved = useRecentlyMovedIds().has(item.id);
-  const isToday = useTodayScheduledIds().has(item.id);
 
   if (!item.id) {
     console.warn("Item missing id:", item);
@@ -127,8 +120,6 @@ export const ItemTableRow = memo(function ItemTableRow({
           ? "bg-white dark:bg-gray-800"
           : "bg-gray-50 dark:bg-gray-800/60",
         "hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors duration-200",
-        isToday &&
-          "[&>td]:border-t-2 [&>td]:border-t-amber-400 dark:[&>td]:border-t-amber-500",
         clickToAddTarget &&
           "cursor-crosshair hover:bg-blue-50 dark:hover:bg-blue-900/20",
         isDragging && "opacity-30"
@@ -162,18 +153,6 @@ export const ItemTableRow = memo(function ItemTableRow({
             aria-label="Moved recently"
             className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500"
           />
-        )}
-        {isToday && (
-          <span
-            aria-label="Planned for today"
-            className="pointer-events-none absolute z-20 flex items-center h-5 px-2 rounded-t-md bg-amber-400 dark:bg-amber-500 text-amber-950 text-[10px] font-bold uppercase tracking-wide shadow-sm"
-            style={{
-              left: TODAY_TAB_LEFT_PX,
-              top: -(20 - TODAY_TAB_OVERLAP_PX),
-            }}
-          >
-            Today
-          </span>
         )}
       </TableCell>
 
