@@ -3,12 +3,14 @@
 import { useMemo } from "react";
 import { OrderMeta } from "./types";
 import { DraggableOrderCard } from "./DraggableOrderCard";
-import { useDroppable } from "@dnd-kit/core";
+import { OrderCard } from "./OrderCard";
+import { useDndContext, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { cn } from "@/utils/functions";
 
 interface ProductionPlanningSidebarProps {
   orders: OrderMeta[];
+  allOrdersById: Map<string, OrderMeta>;
   excludedItemIds: Set<string>;
   onToggleExcluded: (itemId: string, excluded: boolean) => void;
   onContextMenu?: (e: React.MouseEvent, itemId: string) => void;
@@ -16,6 +18,7 @@ interface ProductionPlanningSidebarProps {
 
 export function ProductionPlanningSidebar({
   orders,
+  allOrdersById,
   excludedItemIds,
   onToggleExcluded,
   onContextMenu,
@@ -24,19 +27,34 @@ export function ProductionPlanningSidebar({
     id: "unscheduled",
   });
 
-  // Sort by due-date urgency, then push pinned-to-sidebar items to the bottom
-  // so the auto-plan candidates dominate the visible top of the list.
+  // Mirror the day-column ghost: when the user drags a scheduled card into
+  // the sidebar, render a faded preview at the top so they get the same
+  // "card will land here" affordance the day columns have.
+  const { active, over } = useDndContext();
+  const activeId = active?.id != null ? String(active.id) : undefined;
+  const overId = over?.id != null ? String(over.id) : null;
+  const activeMeta = activeId ? allOrdersById.get(activeId) : undefined;
+  const activeAlreadyHere = activeId
+    ? orders.some((o) => o.id === activeId)
+    : false;
+  const isTargetingSidebar =
+    !!overId &&
+    (overId === "unscheduled" || orders.some((o) => o.id === overId));
+  const showGhost =
+    isTargetingSidebar && !!activeMeta && !activeAlreadyHere;
+
+  // Sort by due-date urgency (least urgent at top, overdue at bottom), then
+  // push pinned-to-sidebar items to the bottom so the auto-plan candidates
+  // dominate the visible top of the list.
   const sortedOrders = useMemo(() => {
     return [...orders].sort((a, b) => {
       const aPinned = excludedItemIds.has(a.id);
       const bPinned = excludedItemIds.has(b.id);
       if (aPinned !== bPinned) return aPinned ? 1 : -1;
 
-      if (a.bucket === "overdue" && b.bucket !== "overdue") return -1;
-      if (b.bucket === "overdue" && a.bucket !== "overdue") return 1;
-      if (a.dueDate && b.dueDate) return a.dueDate.getTime() - b.dueDate.getTime();
-      if (a.dueDate) return -1;
-      if (b.dueDate) return 1;
+      if (!a.dueDate && b.dueDate) return 1;
+      if (a.dueDate && !b.dueDate) return -1;
+      if (a.dueDate && b.dueDate) return b.dueDate.getTime() - a.dueDate.getTime();
       return b.blocks - a.blocks;
     });
   }, [orders, excludedItemIds]);
@@ -70,11 +88,22 @@ export function ProductionPlanningSidebar({
       <div className="flex-1 overflow-y-auto p-3">
         <SortableContext items={orderIds} strategy={verticalListSortingStrategy}>
           {sortedOrders.length === 0 ? (
-            <div className="text-center py-8 text-xs text-gray-400">
-              No orders found
-            </div>
+            showGhost && activeMeta ? (
+              <div className="opacity-40 pointer-events-none mb-2.5">
+                <OrderCard meta={activeMeta} isScheduled={false} />
+              </div>
+            ) : (
+              <div className="text-center py-8 text-xs text-gray-400">
+                No orders found
+              </div>
+            )
           ) : (
             <>
+              {showGhost && activeMeta && (
+                <div className="opacity-40 pointer-events-none mb-2.5">
+                  <OrderCard meta={activeMeta} isScheduled={false} />
+                </div>
+              )}
               {unpinnedOrders.map((meta) => (
                 <DraggableOrderCard
                   key={meta.id}
