@@ -3,12 +3,21 @@
 import { Fragment } from "react";
 import { useDndContext, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { Palette, Printer } from "lucide-react";
 import { DayName, ScheduledOrder } from "@/typings/types";
 import { OrderMeta } from "./types";
 import { DraggableOrderCard } from "./DraggableOrderCard";
 import { OrderCard } from "./OrderCard";
 import { CapacityIndicator } from "./CapacityIndicator";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { DESIGN_COLOR_NAMES, DesignBlends } from "@/typings/constants";
+import { ItemDesigns } from "@/typings/types";
 import { cn } from "@/utils/functions";
 
 type DayColumnOrder = ScheduledOrder & { pinned: boolean };
@@ -20,6 +29,7 @@ interface DroppableDayColumnProps {
   ordersById: Map<string, OrderMeta>;
   totalBlocks: number;
   capacity: number;
+  greenThreshold?: number;
   onTogglePin: (itemId: string, actualDay: DayName) => void;
   date: Date;
   autoPlanEnabled: boolean;
@@ -37,6 +47,7 @@ export function DroppableDayColumn({
   ordersById,
   totalBlocks,
   capacity,
+  greenThreshold,
   onTogglePin,
   date,
   autoPlanEnabled,
@@ -99,6 +110,184 @@ export function DroppableDayColumn({
     return unpinned.length;
   })();
 
+  // Aggregate items in this column by design and compute pieces-per-color.
+  // For each design: sum total squares across all items of that design, then
+  // divide by the number of colors in the design's palette — that's how many
+  // pieces of each color need to be painted. Multiple items of the same
+  // design fold into a single line with their squares summed first.
+  const designSummary = (() => {
+    const byDesign = new Map<string, { items: number; squares: number }>();
+    orders.forEach((order) => {
+      const meta = ordersById.get(order.itemId);
+      const design = meta?.item.design?.trim();
+      if (!design || !meta) return;
+      const entry = byDesign.get(design) ?? { items: 0, squares: 0 };
+      entry.items += 1;
+      entry.squares += meta.blocks;
+      byDesign.set(design, entry);
+    });
+    return Array.from(byDesign.entries())
+      .map(([design, { items, squares }]) => {
+        const colors =
+          DESIGN_COLOR_NAMES[design as ItemDesigns]?.length ?? 0;
+        // +10% overage for paint waste/touch-ups, rounded up so we never
+        // come up short on a color.
+        const piecesPerColor =
+          colors > 0 ? Math.ceil((squares / colors) * 1.1) : 0;
+        return { design, items, squares, colors, piecesPerColor };
+      })
+      .sort(
+        (a, b) =>
+          b.piecesPerColor - a.piecesPerColor ||
+          a.design.localeCompare(b.design)
+      );
+  })();
+
+  const formatPieces = (n: number) => n.toString();
+
+  const designSwatch = (design: string) => {
+    const colors = DesignBlends[design as keyof typeof DesignBlends];
+    if (colors && colors.length > 0) {
+      return `linear-gradient(to right, ${colors.join(", ")})`;
+    }
+    return "#6b7280";
+  };
+
+  // 4x6 portrait paint label. Renders the self-contained doc into a hidden
+  // iframe attached to this page and prints from there — no new window/tab,
+  // so popup blockers don't apply.
+  const PRINT_DELAY_MS = 250;
+  const PRINT_CLEANUP_MS = 1000;
+  const printPaintLabel = () => {
+    if (designSummary.length === 0) return;
+
+    const escape = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    const rows = designSummary
+      .map(
+        ({ design, items, squares, colors, piecesPerColor }) => `
+          <li class="row">
+            <span class="swatch" style="background:${designSwatch(design)}"></span>
+            <div class="row-text">
+              <div class="design">${escape(design)}</div>
+              <div class="math">${items}× · ${squares} sq ÷ ${colors} colors</div>
+            </div>
+            <div class="amount">${
+              colors > 0 ? `${escape(formatPieces(piecesPerColor))}<span class="ea">ea</span>` : "—"
+            }</div>
+          </li>`
+      )
+      .join("");
+
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument;
+    if (!doc) {
+      document.body.removeChild(iframe);
+      return;
+    }
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <title>Paint Label — ${escape(day)}</title>
+          <style>
+            @page { size: 4in 6in; margin: 0; }
+            html, body {
+              margin: 0; padding: 0;
+              width: 4in; height: 6in;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+              color: #000; background: #fff;
+            }
+            .label {
+              width: 100%; height: 100%;
+              box-sizing: border-box;
+              padding: 0.25in;
+              display: flex; flex-direction: column;
+            }
+            .header {
+              display: flex; align-items: baseline; justify-content: space-between;
+              border-bottom: 2px solid #000;
+              padding-bottom: 0.08in; margin-bottom: 0.12in;
+            }
+            .day { font-size: 28pt; font-weight: 800; line-height: 1; }
+            .date { font-size: 11pt; font-weight: 600; color: #444; }
+            .subtitle {
+              font-size: 9pt; font-weight: 700; letter-spacing: 0.08em;
+              text-transform: uppercase; color: #555; margin-bottom: 0.08in;
+            }
+            .overage-note {
+              font-size: 6.5pt; font-weight: 500; letter-spacing: 0.02em;
+              text-transform: none; color: #888; margin-left: 0.05in;
+            }
+            ul.rows { list-style: none; padding: 0; margin: 0; flex: 1; }
+            li.row {
+              display: flex; align-items: center; gap: 0.1in;
+              padding: 0.06in 0;
+              border-bottom: 1px solid #ddd;
+            }
+            li.row:last-child { border-bottom: none; }
+            .swatch {
+              width: 0.28in; height: 0.28in; border-radius: 999px;
+              border: 1px solid rgba(0,0,0,0.2);
+              flex-shrink: 0;
+            }
+            .row-text { flex: 1; min-width: 0; }
+            .design {
+              font-size: 13pt; font-weight: 700; line-height: 1.1;
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            }
+            .math { font-size: 8pt; color: #666; font-variant-numeric: tabular-nums; }
+            .amount {
+              font-size: 18pt; font-weight: 800; font-variant-numeric: tabular-nums;
+              white-space: nowrap;
+            }
+            .ea { font-size: 9pt; font-weight: 600; color: #555; margin-left: 2pt; }
+            @media print {
+              html, body {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="label">
+            <div class="header">
+              <div class="day">${escape(day)}</div>
+              <div class="date">${escape(dateLabel)}</div>
+            </div>
+            <div class="subtitle">
+              Paint — squares per color
+              <span class="overage-note">(includes +10% overage)</span>
+            </div>
+            <ul class="rows">${rows}</ul>
+          </div>
+        </body>
+      </html>
+    `);
+
+    doc.close();
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => {
+        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      }, PRINT_CLEANUP_MS);
+    }, PRINT_DELAY_MS);
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -114,11 +303,23 @@ export function DroppableDayColumn({
           !autoPlanEnabled && "opacity-50"
         )}
       >
-        <div className="flex items-baseline justify-between mb-2">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{day}</h3>
-          <span className="text-xs text-gray-500 font-medium">{dateLabel}</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-baseline gap-1.5">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{day}</h3>
+            <span className="text-xs text-gray-500 font-medium">{dateLabel}</span>
+          </div>
+          <Checkbox
+            checked={autoPlanEnabled}
+            onCheckedChange={() => onToggleAutoPlan()}
+            aria-label={`Include ${day} in auto-plan`}
+            className="cursor-pointer border-gray-300 dark:border-gray-700 opacity-60 hover:opacity-100 transition-opacity data-[state=checked]:bg-gray-400 data-[state=checked]:border-gray-400 dark:data-[state=checked]:bg-gray-600 dark:data-[state=checked]:border-gray-600 data-[state=checked]:text-white"
+          />
         </div>
-        <CapacityIndicator current={totalBlocks} max={capacity} />
+        <CapacityIndicator
+          current={totalBlocks}
+          max={capacity}
+          greenThreshold={greenThreshold}
+        />
       </div>
 
       {/* List — sized to content. Items pile from the top and the auto-plan
@@ -155,7 +356,7 @@ export function DroppableDayColumn({
             <div className="space-y-2">
               {pinned.length > 0 && (
                 <div className="pb-3 mb-3 border-b-2 border-dashed border-amber-300/60 dark:border-amber-700/40">
-                  <div className="text-[10px] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400 px-1 pb-2 flex items-center gap-1">
+                  <div className="text-[0.625rem] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400 px-1 pb-2 flex items-center gap-1">
                     <span className="inline-block w-1 h-1 rounded-full bg-amber-500" />
                     Pinned
                   </div>
@@ -235,15 +436,78 @@ export function DroppableDayColumn({
         </SortableContext>
       </div>
 
-      {/* Auto-plan opt-in. Faded column body above signals when this day is
-          excluded from the next auto-plan run. */}
+      {/* Paint summary trigger. Opens a popover with per-design pieces-per-color
+          and a 4×6 label print action. */}
       <div className="flex items-center justify-center px-3 py-2 border-t border-gray-100 dark:border-gray-800 rounded-b-xl">
-        <Checkbox
-          checked={autoPlanEnabled}
-          onCheckedChange={() => onToggleAutoPlan()}
-          aria-label={`Include ${day} in auto-plan`}
-          className="cursor-pointer border-gray-300 dark:border-gray-700 opacity-60 hover:opacity-100 transition-opacity data-[state=checked]:bg-gray-400 data-[state=checked]:border-gray-400 dark:data-[state=checked]:bg-gray-600 dark:data-[state=checked]:border-gray-600 data-[state=checked]:text-white"
-        />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={designSummary.length === 0}
+              className="h-7 px-3 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+            >
+              <Palette className="mr-1.5 h-3.5 w-3.5" />
+              Paint
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="center"
+            side="bottom"
+            className="w-60 p-3 rounded-2xl"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+              Paint — {day}
+            </div>
+            {designSummary.length === 0 ? (
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                No items scheduled.
+              </div>
+            ) : (
+              <>
+                <ul className="space-y-2">
+                  {designSummary.map(
+                    ({ design, items, squares, colors, piecesPerColor }) => (
+                      <li
+                        key={design}
+                        className="flex items-center justify-between gap-2 text-sm"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="h-3 w-3 shrink-0 rounded-full border border-black/10 dark:border-white/10"
+                            style={{ background: designSwatch(design) }}
+                          />
+                          <div className="min-w-0">
+                            <div className="truncate text-gray-900 dark:text-gray-100">
+                              {design}
+                            </div>
+                            <div className="text-[0.6875rem] text-gray-500 dark:text-gray-400 tabular-nums">
+                              {items}× · {squares} sq ÷ {colors}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="tabular-nums font-semibold text-gray-700 dark:text-gray-200">
+                          {colors > 0 ? `${formatPieces(piecesPerColor)} ea` : "—"}
+                        </span>
+                      </li>
+                    )
+                  )}
+                </ul>
+                <div className="mt-3 flex justify-center">
+                  <Button
+                    size="sm"
+                    onClick={printPaintLabel}
+                    className="h-7 px-3 text-xs"
+                  >
+                    <Printer className="mr-1 h-3 w-3" />
+                    Print
+                  </Button>
+                </div>
+              </>
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );
