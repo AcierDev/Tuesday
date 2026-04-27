@@ -220,7 +220,7 @@ export default function OverviewPage() {
           <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
             At a glance · {rangeLabel.toLowerCase()}
           </p>
-          <h2 className="mt-1 text-3xl font-bold text-white">
+          <h2 className="mt-1 heading-page">
             {summary
               ? `${summary.throughputTotal} items shipped, ${summary.wipTotal} in flight`
               : "—"}

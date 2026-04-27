@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { DayBucket, GluedEvent } from "@/lib/production-metrics";
+import {
+  DayBucket,
+  GluedEvent,
+  RECENCY_WEIGHTED_FORECAST,
+  RecencyWeightedStats,
+  summarizeRecencyWeighted,
+} from "@/lib/production-metrics";
 import {
   DEFAULT_RANGE,
   RANGE_OPTIONS,
@@ -106,6 +112,18 @@ export default function GluedPage() {
     () => (data ? summarizeWorkingDays(data.buckets) : null),
     [data]
   );
+
+  // Forecast is always anchored to the last 30 days regardless of the chart's
+  // range selector — the planner badge sources this same number, so keeping
+  // the window fixed means the page's breakdown matches what the badge shows.
+  const forecast = useMemo(() => {
+    if (!data) return null;
+    const recentBuckets = data.buckets.slice(
+      -RECENCY_WEIGHTED_FORECAST.lookbackDays
+    );
+    if (recentBuckets.length === 0) return null;
+    return summarizeRecencyWeighted(recentBuckets, RECENCY_WEIGHTED_FORECAST);
+  }, [data]);
 
   const weekBuckets = useMemo<WeekBucket[]>(
     () => (data ? bucketToWeeks(data.buckets) : []),
@@ -214,6 +232,10 @@ export default function GluedPage() {
           tone={velocityTone}
         />
       </section>
+
+      {forecast && (
+        <ForecastBreakdown stats={forecast} />
+      )}
 
       <section className="rounded-2xl glass-surface p-5">
         <div className="flex items-baseline justify-between mb-4">
@@ -699,6 +721,132 @@ function niceRoundTo(rawMax: number): number {
   const base = target / Math.pow(10, exp);
   const nice = base <= 1 ? 1 : base <= 2 ? 2 : base <= 5 ? 5 : 10;
   return nice * Math.pow(10, exp);
+}
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🔮 FORECAST BREAKDOWN                                                ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+function ForecastBreakdown({ stats }: { stats: RecencyWeightedStats }) {
+  const totalWindow = stats.recentWindowDays + stats.olderWindowDays;
+  const denominator =
+    (stats.recentActiveDays > 0 ? stats.recentWeight : 0) +
+    (stats.olderActiveDays > 0 ? stats.olderWeight : 0);
+  return (
+    <section id="forecast" className="rounded-2xl glass-surface p-5 mb-6">
+      <div className="flex items-baseline justify-between mb-4 gap-4 flex-wrap">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+            Recency-weighted forecast
+          </h2>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Per-active-day average from the last {totalWindow} days, with the
+            most recent {stats.recentWindowDays} days counted{" "}
+            {stats.recentWeight}× to track current capacity.
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-wider text-emerald-400/80">
+            Forecast
+          </div>
+          <div className="text-3xl font-bold tabular-nums leading-none text-emerald-400">
+            {Math.round(stats.weightedAvgActive).toLocaleString()}
+            <span className="text-sm font-medium ml-1.5 text-slate-400">
+              sq/day
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <ForecastSliceTile
+          label={`Recent ${stats.recentWindowDays}d`}
+          weightLabel={`weight ${stats.recentWeight}×`}
+          avgActive={stats.recentAvgActive}
+          total={stats.recentTotal}
+          activeDays={stats.recentActiveDays}
+          highlight
+        />
+        <ForecastSliceTile
+          label={`Prior ${stats.olderWindowDays}d`}
+          weightLabel={`weight ${stats.olderWeight}×`}
+          avgActive={stats.olderAvgActive}
+          total={stats.olderTotal}
+          activeDays={stats.olderActiveDays}
+        />
+        <div className="rounded-xl bg-emerald-500/5 ring-1 ring-inset ring-emerald-400/20 px-4 py-3 flex flex-col justify-center">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300/80">
+            Calculation
+          </div>
+          <div className="mt-1 text-xs text-slate-300 leading-relaxed">
+            <span className="text-emerald-300 font-semibold tabular-nums">
+              {Math.round(stats.recentAvgActive)}
+            </span>
+            <span className="text-slate-400"> × {stats.recentWeight} + </span>
+            <span className="text-emerald-300 font-semibold tabular-nums">
+              {Math.round(stats.olderAvgActive)}
+            </span>
+            <span className="text-slate-400"> × {stats.olderWeight}</span>
+          </div>
+          <div className="mt-1 text-xs text-slate-400">
+            <span className="text-slate-500">÷ </span>
+            <span className="tabular-nums">{denominator || 1}</span>
+            <span className="text-slate-500"> = </span>
+            <span className="text-emerald-400 font-semibold tabular-nums">
+              {Math.round(stats.weightedAvgActive)}
+            </span>
+            <span className="text-slate-500"> sq/day</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ForecastSliceTile({
+  label,
+  weightLabel,
+  avgActive,
+  total,
+  activeDays,
+  highlight,
+}: {
+  label: string;
+  weightLabel: string;
+  avgActive: number;
+  total: number;
+  activeDays: number;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={
+        "rounded-xl px-4 py-3 ring-1 ring-inset " +
+        (highlight
+          ? "bg-emerald-500/5 ring-emerald-400/20"
+          : "bg-white/5 ring-white/10")
+      }
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          {label}
+        </div>
+        <div className="text-[10px] uppercase tracking-wider text-slate-500">
+          {weightLabel}
+        </div>
+      </div>
+      <div className="mt-1 text-2xl font-bold tabular-nums leading-none text-white">
+        {activeDays > 0 ? Math.round(avgActive).toLocaleString() : "—"}
+        <span className="text-xs font-medium ml-1.5 text-slate-400">
+          sq/day
+        </span>
+      </div>
+      <div className="mt-1 text-[10px] uppercase tracking-wide text-slate-400">
+        {total.toLocaleString()} sq · {activeDays} active day
+        {activeDays === 1 ? "" : "s"}
+      </div>
+    </div>
+  );
 }
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗

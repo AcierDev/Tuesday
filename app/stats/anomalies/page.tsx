@@ -56,7 +56,7 @@ export default function AnomaliesPage() {
           <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
             Anomalies
           </p>
-          <h2 className="mt-1 text-3xl font-bold text-white">
+          <h2 className="mt-1 heading-page">
             {data?.anomalies.length ?? 0} unusual day
             {data?.anomalies.length === 1 ? "" : "s"}
           </h2>

@@ -54,7 +54,7 @@ export default function TodayPage() {
         <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
           Today
         </p>
-        <h2 className="mt-1 text-3xl font-bold text-white">
+        <h2 className="mt-1 heading-page">
           {new Date().toLocaleDateString("en-US", {
             weekday: "long",
             month: "long",

@@ -222,7 +222,7 @@ function BreakdownCard({ row }: { row: HealthBreakdownRow }) {
         <div className="text-right">
           <div
             className={cn(
-              "text-2xl font-bold tabular-nums leading-none",
+              "text-stat-value",
               TONE_TEXT[t]
             )}
           >

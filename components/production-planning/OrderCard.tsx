@@ -29,20 +29,23 @@ function getSolidDueBadge(
     (due.getTime() - ref.getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  const text = diffDays > 0 ? `+${diffDays}` : `${diffDays}`;
-  if (diffDays < 0) return { text, classes: "bg-red-500 text-white" };
-  if (diffDays <= 2) return { text, classes: "bg-amber-500 text-white" };
-  return { text, classes: "bg-emerald-500 text-white" };
+  const text = diffDays === 0 ? "0" : diffDays > 0 ? `+${diffDays}` : `${diffDays}`;
+  if (diffDays < 0) return { text, classes: "bg-red-500/70 text-white" };
+  if (diffDays <= 2) return { text, classes: "bg-yellow-500/70 text-white" };
+  return { text, classes: "bg-green-500/70 text-white" };
 }
 
 // Card tint mirrors the canonical STATUS_COLORS palette so a card's color
 // matches the same status anywhere else in the app (orders board, badges,
 // etc). A subtle light/dark surface tint plus a matching subtle border.
+// Exception: OnDeck is rendered with the same neutral gray as New on the
+// planner — once an item is on the planner the New/OnDeck distinction
+// stops carrying signal, so we collapse them visually here only.
 const STATUS_TINT: Record<ItemStatus, string> = {
   [ItemStatus.New]:
     "bg-white dark:bg-gray-900 border-y border-r border-gray-200 dark:border-gray-800",
   [ItemStatus.OnDeck]:
-    "bg-yellow-50 dark:bg-yellow-950/40 border-y-yellow-200 border-r-yellow-200 dark:border-y-yellow-900 dark:border-r-yellow-900",
+    "bg-white dark:bg-gray-900 border-y border-r border-gray-200 dark:border-gray-800", // intentionally same as New
   [ItemStatus.Wip]:
     "bg-orange-50 dark:bg-orange-950/40 border-y-orange-200 border-r-orange-200 dark:border-y-orange-900 dark:border-r-orange-900",
   [ItemStatus.Packaging]:
@@ -81,7 +84,7 @@ interface OrderCardProps {
 // so each card visually inherits the column it came from.
 const STATUS_LEFT_BORDER: Record<ItemStatus, string> = {
   [ItemStatus.New]: "border-l-gray-400 dark:border-l-gray-500",
-  [ItemStatus.OnDeck]: "border-l-yellow-500",
+  [ItemStatus.OnDeck]: "border-l-gray-400 dark:border-l-gray-500", // intentionally same as New (see STATUS_TINT note)
   [ItemStatus.Wip]: "border-l-orange-500",
   [ItemStatus.Packaging]: "border-l-red-500",
   [ItemStatus.At_The_Door]: "border-l-lime-500",
@@ -190,13 +193,13 @@ export function OrderCard({
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate leading-snug">
             {parsedCustomerName}
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <div className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="shrink-0 text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">
               {size}
             </div>
             {design && (
               <div
-                className="text-[11px] px-2 py-1 rounded-full text-white font-medium shadow-sm"
+                className="min-w-0 truncate text-[11px] px-2 py-1 rounded-full text-gray-200 font-medium shadow-sm [text-shadow:_0_0_2px_rgba(0,0,0,0.7),_0_1px_1px_rgba(0,0,0,0.4)]"
                 style={{ background: backgroundStyle }}
               >
                 {design}
@@ -205,7 +208,7 @@ export function OrderCard({
             {badgeStatus && (
               <div
                 className={cn(
-                  "text-[11px] px-2 py-1 rounded-full font-bold tabular-nums shadow-sm",
+                  "shrink-0 ml-auto tabular-nums text-[12.9px] px-2 py-0.5 min-w-[2.475rem] justify-center rounded-[10px] inline-flex items-center shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
                   badgeStatus.classes
                 )}
               >

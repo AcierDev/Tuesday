@@ -80,7 +80,7 @@ export default function DeliveryPage() {
         <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
           Delivery speed
         </p>
-        <h2 className="mt-1 text-3xl font-bold text-white">
+        <h2 className="mt-1 heading-page">
           {data ? `${data.avg.toFixed(1)} days avg` : "—"}
         </h2>
         <p className="mt-1 text-xs text-slate-400">

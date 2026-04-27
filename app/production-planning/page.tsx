@@ -37,6 +37,7 @@ import { OrderCard } from "@/components/production-planning/OrderCard";
 import { OrderMeta } from "@/components/production-planning/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
+import { useUndoRedo } from "@/hooks/useUndoRedo";
 import {
   DayName,
   ItemStatus,
@@ -389,6 +390,22 @@ export default function ProductionPlanningPage() {
     [schedules, currentWeekKey]
   );
 
+  // Undo/redo for the current week's schedule. Stack resets when the
+  // user switches between This Week and Next Week so cross-week ghosts
+  // can't reappear.
+  useUndoRedo<WeeklyScheduleData["schedule"] | undefined>({
+    current: currentSchedule?.schedule,
+    apply: (next) => {
+      if (!next || !currentSchedule) return;
+      updateSchedule(currentWeekKey, { ...currentSchedule, schedule: next });
+    },
+    isEqual: (a, b) => a === b,
+    historyKey: currentWeekKey,
+    enabled: !!currentSchedule,
+    onUndo: () => toast("Undid last change"),
+    onRedo: () => toast("Redid last change"),
+  });
+
   // Fetch done orders from DB if they're not in the store
   useEffect(() => {
     if (!currentSchedule) return;
@@ -636,16 +653,43 @@ export default function ProductionPlanningPage() {
         return;
       }
 
-      const [movedItem] = sourceList.splice(activeIndex, 1);
-      if (!movedItem) {
-        setActiveId(null);
-        return;
-      }
+      if (activeDay === targetDay) {
+        // Same-day reorder: use arrayMove semantics so the drop matches what
+        // dnd-kit's sortable already animated during the drag (active swaps
+        // into the over-card's slot). The previous logic computed
+        // indexFromOver against the post-splice list, which produced an
+        // off-by-one for "drop above an item I was already above" — the card
+        // landed back at its source slot and looked like a snap-back.
+        let newIndex: number;
+        if (!overId || overId === targetDay) {
+          newIndex = sourceList.length - 1;
+        } else if (overId === activeId) {
+          newIndex = activeIndex;
+        } else {
+          const overIdx = sourceList.findIndex((item) => item.id === overId);
+          if (overIdx === -1) {
+            newIndex = activeIndex;
+          } else if (sourceList[overIdx]?.pinned) {
+            const firstUnpinnedIdx = sourceList.findIndex((item) => !item.pinned);
+            newIndex = firstUnpinnedIdx !== -1 ? firstUnpinnedIdx : activeIndex;
+          } else {
+            newIndex = overIdx;
+          }
+        }
 
-      // Recompute against the current target list (splice above may have
-      // shifted indices when active and target are the same day).
-      const targetList = newScheduleData.schedule[targetDay];
-      targetList.splice(indexFromOver(targetList), 0, movedItem);
+        if (newIndex !== activeIndex) {
+          const [moved] = sourceList.splice(activeIndex, 1);
+          if (moved) sourceList.splice(newIndex, 0, moved);
+        }
+      } else {
+        const [movedItem] = sourceList.splice(activeIndex, 1);
+        if (!movedItem) {
+          setActiveId(null);
+          return;
+        }
+        const targetList = newScheduleData.schedule[targetDay];
+        targetList.splice(indexFromOver(targetList), 0, movedItem);
+      }
     }
 
     await updateSchedule(currentWeekKey, newScheduleData);
@@ -890,6 +934,14 @@ export default function ProductionPlanningPage() {
         <ProductionPlanningHeader
           viewingNextWeek={viewingNextWeek}
           hasScheduledOrders={!!currentSchedule}
+          scheduledItemCount={
+            currentSchedule
+              ? Object.values(currentSchedule.schedule).reduce(
+                  (sum, dayItems) => sum + dayItems.length,
+                  0
+                )
+              : 0
+          }
           onToggleWeek={() =>
             setCurrentWeekKey(viewingNextWeek ? thisWeekKey : nextWeekKey)
           }

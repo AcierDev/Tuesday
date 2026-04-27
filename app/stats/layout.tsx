@@ -77,7 +77,7 @@ export default function StatsLayout({
           Back to orders
         </Link>
 
-        <h1 className="text-3xl font-bold mb-6 text-white">Stats</h1>
+        <h1 className="heading-page mb-6">Stats</h1>
 
         <div className="flex gap-8">
           <nav className="w-48 shrink-0 flex flex-col gap-4">

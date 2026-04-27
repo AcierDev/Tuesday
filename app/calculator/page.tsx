@@ -244,7 +244,7 @@ export default function CustomArtRequest() {
         <div className="max-w-full mx-auto px-2 sm:px-3 lg:px-4">
           <div className="flex items-center gap-3 py-3 sm:min-w-[220px]">
             <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
-            <h1 className="text-lg sm:text-xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] [forced-color-adjust:none]">
+            <h1 className="heading-tool">
               Custom Art Calculator
             </h1>
           </div>

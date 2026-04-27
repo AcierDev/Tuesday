@@ -66,7 +66,7 @@ export default function ForecastPage() {
         <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
           Forecast
         </p>
-        <h2 className="mt-1 text-3xl font-bold text-white">
+        <h2 className="mt-1 heading-page">
           {data ? `${data.rows.length} active items` : "—"}
         </h2>
         <p className="mt-1 text-xs text-slate-400">

@@ -182,32 +182,6 @@ export function NavMetricsBadges() {
   return (
     <div className="px-1 py-2 flex flex-col items-center gap-1.5">
       <Link
-        href="/stats/debt"
-        className={cn(
-          "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
-          totalDebt > 0
-            ? "text-red-500 dark:text-red-400"
-            : "text-emerald-500 dark:text-emerald-400"
-        )}
-        title={`Total overdue debt: ${totalDebt} day${totalDebt === 1 ? "" : "s"} — click for details`}
-      >
-        <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
-          Time Debt
-        </span>
-        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
-          {totalDebt > 0 ? `−${totalDebt}` : "0"}
-        </span>
-        <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
-          days
-        </span>
-        <MiniSparkline
-          data={debtHistory}
-          width={44}
-          height={12}
-          className="mt-1 opacity-70"
-        />
-      </Link>
-      <Link
         href="/stats/health"
         className={cn(
           "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
@@ -236,6 +210,32 @@ export function NavMetricsBadges() {
         </span>
         <MiniSparkline
           data={debtHistory.map((d) => -d)}
+          width={44}
+          height={12}
+          className="mt-1 opacity-70"
+        />
+      </Link>
+      <Link
+        href="/stats/debt"
+        className={cn(
+          "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
+          totalDebt > 0
+            ? "text-red-500 dark:text-red-400"
+            : "text-emerald-500 dark:text-emerald-400"
+        )}
+        title={`Total overdue debt: ${totalDebt} day${totalDebt === 1 ? "" : "s"} — click for details`}
+      >
+        <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
+          Time Debt
+        </span>
+        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
+          {totalDebt > 0 ? `−${totalDebt}` : "0"}
+        </span>
+        <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
+          days
+        </span>
+        <MiniSparkline
+          data={debtHistory}
           width={44}
           height={12}
           className="mt-1 opacity-70"

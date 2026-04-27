@@ -78,7 +78,7 @@ export default function CalendarPage() {
         <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
           Activity calendar · last year
         </p>
-        <h2 className="mt-1 text-3xl font-bold text-white">
+        <h2 className="mt-1 heading-page">
           {data
             ? `${data.buckets.reduce((s, b) => s + b.value, 0)} items shipped`
             : "—"}

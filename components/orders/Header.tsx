@@ -13,7 +13,6 @@ interface HeaderProps {
   searchTerm: string
   onSearchChange: (term: string) => void
   onNewOrder: () => void
-  isMobile: boolean
   currentType: string
   onTypeChange: (type: string) => void
   dueCounts: Record<string, number>
@@ -23,7 +22,6 @@ export const Header: React.FC<HeaderProps> = ({
   searchTerm,
   onSearchChange,
   onNewOrder,
-  isMobile,
   currentType,
   onTypeChange,
   dueCounts,
@@ -59,11 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
   const TYPES = ["all", "geometric", "striped", "mini", "custom"];
 
   return (
-    <div
-      className={`select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 ${
-        isMobile ? "" : "sticky top-0 z-50"
-      }`}
-    >
+    <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3">
           <div className="flex items-center gap-4 sm:flex-shrink-0">

@@ -333,7 +333,7 @@ export default function BacklogPage() {
                   >
                     {STATUS_LABELS[status] ?? status}
                   </span>
-                  <span className="mt-1 text-2xl font-bold tabular-nums leading-none">
+                  <span className="mt-1 text-stat-value">
                     {formatSquares(bucket.squares)}
                     <span className="ml-1 text-xs font-medium text-slate-400">
                       sq

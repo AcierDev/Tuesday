@@ -116,6 +116,19 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      // Spacing scale tokens — name what existing values mean so future
+      // work picks the right one instead of guessing px-4 vs px-8.
+      // These map onto Tailwind's existing scale, so swapping does not
+      // change rendered output.
+      spacing: {
+        "page-x": "1.5rem",     // px-6  — outer page horizontal padding
+        "page-y": "2rem",       // py-8  — outer page vertical padding (default)
+        "page-y-tight": "0.75rem", // py-3  — outer page vertical padding (dense pages like planner)
+        "section-y": "1.5rem",  // py-6  — between major sections
+        "stack-md": "1rem",     // gap-4 — default vertical gap between elements
+        "stack-sm": "0.5rem",   // gap-2 — tight vertical gap
+        "stack-lg": "1.5rem",   // gap-6 — wide vertical gap
+      },
       boxShadow: {
         glass:
           "0 1px 2px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.5)",

@@ -96,7 +96,7 @@ export default function RecordsPage() {
         <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
           Records & streaks
         </p>
-        <h2 className="mt-1 text-3xl font-bold text-white">
+        <h2 className="mt-1 heading-page">
           {records ? `${records.total} items shipped lifetime` : "—"}
         </h2>
         {records?.firstShipped && (

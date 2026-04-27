@@ -2,12 +2,25 @@
 
 import { Button } from "@/components/ui/button";
 import { PageToggle } from "@/components/ui/PageToggle";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ChevronRight, RotateCcw, Wand2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { HistoricalAverageBadge } from "./HistoricalAverageBadge";
 
 interface ProductionPlanningHeaderProps {
   viewingNextWeek: boolean;
   hasScheduledOrders: boolean;
+  scheduledItemCount?: number;
   onToggleWeek: () => void;
   onClearWeek: () => void;
   onAutoFill: () => void;
@@ -16,10 +29,12 @@ interface ProductionPlanningHeaderProps {
 export function ProductionPlanningHeader({
   viewingNextWeek,
   hasScheduledOrders,
+  scheduledItemCount,
   onToggleWeek,
   onClearWeek,
   onAutoFill,
 }: ProductionPlanningHeaderProps) {
+  const weekLabel = viewingNextWeek ? "next week" : "this week";
   return (
     <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -27,7 +42,7 @@ export function ProductionPlanningHeader({
           <div className="flex items-center gap-4 sm:flex-shrink-0">
             <div className="flex items-center gap-3 sm:min-w-[220px]">
               <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
-              <h1 className="text-lg sm:text-xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] [forced-color-adjust:none]">
+              <h1 className="heading-tool">
                 Production Planner
               </h1>
             </div>
@@ -75,6 +90,7 @@ export function ProductionPlanningHeader({
 
           {/* Right group: action buttons */}
           <div className="flex items-center gap-2 w-full sm:w-auto sm:flex-shrink-0">
+            <HistoricalAverageBadge />
             <Button
               size="sm"
               onClick={onAutoFill}
@@ -83,15 +99,37 @@ export function ProductionPlanningHeader({
               <Wand2 className="h-4 w-4 mr-1.5" />
               Auto-plan
             </Button>
-            <Button
-              size="sm"
-              onClick={onClearWeek}
-              disabled={!hasScheduledOrders}
-              className="h-9 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-300 ring-1 ring-inset ring-red-400/30 dark:ring-red-400/25 backdrop-blur-sm shadow-sm shadow-red-500/10 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-red-500/20 active:translate-y-0 dark:bg-red-500/10 dark:hover:bg-red-500/20 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
-            >
-              <RotateCcw className="h-4 w-4 mr-1.5" />
-              Clear Week
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="sm"
+                  disabled={!hasScheduledOrders}
+                  className="h-9 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-300 ring-1 ring-inset ring-red-400/30 dark:ring-red-400/25 backdrop-blur-sm shadow-sm shadow-red-500/10 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-red-500/20 active:translate-y-0 dark:bg-red-500/10 dark:hover:bg-red-500/20 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+                >
+                  <RotateCcw className="h-4 w-4 mr-1.5" />
+                  Clear Week
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear {weekLabel}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {scheduledItemCount && scheduledItemCount > 0
+                      ? `This will unschedule all ${scheduledItemCount} item${scheduledItemCount === 1 ? "" : "s"} from ${weekLabel}. They'll move back to the unscheduled sidebar.`
+                      : `This will unschedule everything from ${weekLabel}. Items will move back to the unscheduled sidebar.`}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onClearWeek}
+                    className="bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Clear Week
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>

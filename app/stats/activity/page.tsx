@@ -59,7 +59,7 @@ export default function ActivityFeedPage() {
           <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
             Activity feed
           </p>
-          <h2 className="mt-1 text-3xl font-bold text-white">
+          <h2 className="mt-1 heading-page">
             {activities ? `${filtered.length} events` : "—"}
           </h2>
         </div>

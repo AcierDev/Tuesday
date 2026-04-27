@@ -68,7 +68,7 @@ export default function TrendingPage() {
           <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
             Trending designs · {days}d vs prior {days}d
           </p>
-          <h2 className="mt-1 text-3xl font-bold text-white">
+          <h2 className="mt-1 heading-page">
             {data?.rising[0]
               ? `${data.rising[0].design} +${data.rising[0].delta} items`
               : "—"}

@@ -456,40 +456,6 @@ export type ShippingStatus =
 
 export type BackboardRequirement = Record<ItemSizes, number>;
 
-export type InventoryItem = {
-  _id: number;
-  name: string;
-  quantity: number;
-  restockQuantity: number;
-  countType: string;
-  countFrequency: CountFrequency;
-  category: InventoryCategory;
-  countHistory: InventoryCount[];
-};
-
-export type InventoryCount = {
-  quantity: number;
-  timestamp: Date;
-};
-
-export enum CountFrequency {
-  Daily = "Daily",
-  Weekly = "Weekly",
-  Monthly = "Monthly",
-}
-
-export enum InventoryCategory {
-  Operations = "Operations",
-  Woodworking = "Woodworking",
-  Assembly = "Assembly",
-  Packaging = "Packaging",
-  Misc = "Miscellaneous",
-}
-
-export enum LockedInventory {
-  Boards = "Uncut Boards",
-}
-
 export interface SystemState {
   sensor1: IODevice;
   piston: IODevice;

@@ -34,7 +34,7 @@ export default function BottlenecksPage() {
         <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
           Bottlenecks
         </p>
-        <h2 className="mt-1 text-3xl font-bold text-white">
+        <h2 className="mt-1 heading-page">
           {rows && rows.length > 0
             ? `${rows[0]!.status} avg ${rows[0]!.avgDays.toFixed(1)} d`
             : "—"}

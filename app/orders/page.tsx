@@ -66,7 +66,6 @@ export default function OrderManagementPage() {
   const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false);
   const [isShippingDashboardOpen, setIsShippingDashboardOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [itemToComplete, setItemToComplete] = useState<string | null>(null);
 
@@ -127,13 +126,6 @@ export default function OrderManagementPage() {
     },
     [sortColumn, sortDirection]
   );
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   const dueCounts = useOrderStats({
     items,
@@ -383,17 +375,14 @@ export default function OrderManagementPage() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-black dark:text-white">
       <Toaster position="top-center" />
-      {!isMobile && (
-        <Header
-          isMobile={isMobile}
-          searchTerm={searchTerm}
-          onNewOrder={() => setIsNewItemModalOpen(true)}
-          onSearchChange={setSearchQuery}
-          currentType={currentType}
-          onTypeChange={setCurrentType}
-          dueCounts={dueCounts}
-        />
-      )}
+      <Header
+        searchTerm={searchTerm}
+        onNewOrder={() => setIsNewItemModalOpen(true)}
+        onSearchChange={setSearchQuery}
+        currentType={currentType}
+        onTypeChange={setCurrentType}
+        dueCounts={dueCounts}
+      />
       <DndContext
         sensors={sensors}
         collisionDetection={pointerWithin}
@@ -402,11 +391,7 @@ export default function OrderManagementPage() {
         onDragCancel={() => setActiveDragId(null)}
       >
         <div className="flex-grow">
-          <div
-            className={`h-full max-w-full mx-auto pr-2 ${
-              isMobile ? "pl-4 pt-1" : "pl-4 sm:pl-6 lg:pl-8 py-8"
-            }`}
-          >
+          <div className="h-full max-w-full mx-auto pr-2 pl-4 sm:pl-6 lg:pl-8 py-8">
             <div className="flex h-full relative">
               <div
                 className="flex-grow min-w-0"

@@ -53,7 +53,7 @@ export default function DayPatternsPage() {
           <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
             Day-of-week patterns · {rangeLabel}
           </p>
-          <h2 className="mt-1 text-3xl font-bold text-white">
+          <h2 className="mt-1 heading-page">
             {top ? `${top.day} is your best day` : "—"}
           </h2>
         </div>

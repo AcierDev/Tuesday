@@ -161,6 +161,92 @@ export function bucketGluedSquaresByDay(
 }
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🔮 RECENCY-WEIGHTED FORECAST                                          ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+// Shared config so the planner badge and the glued-stats breakdown agree on
+// the same lookback window + weighting.
+export const RECENCY_WEIGHTED_FORECAST = {
+  lookbackDays: 30,
+  recentWindowDays: 15,
+  recentWeight: 2,
+  olderWeight: 1,
+} as const;
+
+// Per-active-day average, biased toward the most recent window. The newest
+// `recentWindowDays` buckets are weighted `recentWeight`x; the rest weight
+// `olderWeight`x. Active = days with value > 0 (matches the planner's
+// "working day" rule). Buckets are expected oldest → newest.
+export type RecencyWeightedStats = {
+  weightedAvgActive: number;
+  recentAvgActive: number;
+  olderAvgActive: number;
+  recentTotal: number;
+  olderTotal: number;
+  recentActiveDays: number;
+  olderActiveDays: number;
+  recentWindowDays: number;
+  olderWindowDays: number;
+  recentWeight: number;
+  olderWeight: number;
+};
+
+export function summarizeRecencyWeighted(
+  buckets: DayBucket[],
+  options: {
+    recentWindowDays: number;
+    recentWeight: number;
+    olderWeight: number;
+  }
+): RecencyWeightedStats {
+  const { recentWindowDays, recentWeight, olderWeight } = options;
+  const split = Math.max(0, buckets.length - recentWindowDays);
+  const older = buckets.slice(0, split);
+  const recent = buckets.slice(split);
+
+  const sliceStats = (slice: DayBucket[]) => {
+    let total = 0;
+    let activeDays = 0;
+    for (const b of slice) {
+      total += b.value;
+      if (b.value > 0) activeDays += 1;
+    }
+    const avgActive = activeDays > 0 ? total / activeDays : 0;
+    return { total, activeDays, avgActive };
+  };
+
+  const r = sliceStats(recent);
+  const o = sliceStats(older);
+
+  // Combine the two per-active-day averages by weight. Slices with zero
+  // active days drop out so we don't pull the result toward 0 on idle weeks.
+  let num = 0;
+  let den = 0;
+  if (r.activeDays > 0) {
+    num += r.avgActive * recentWeight;
+    den += recentWeight;
+  }
+  if (o.activeDays > 0) {
+    num += o.avgActive * olderWeight;
+    den += olderWeight;
+  }
+
+  return {
+    weightedAvgActive: den > 0 ? num / den : 0,
+    recentAvgActive: r.avgActive,
+    olderAvgActive: o.avgActive,
+    recentTotal: r.total,
+    olderTotal: o.total,
+    recentActiveDays: r.activeDays,
+    olderActiveDays: o.activeDays,
+    recentWindowDays: recent.length,
+    olderWindowDays: older.length,
+    recentWeight,
+    olderWeight,
+  };
+}
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ ⏱️ LEAD TIME                                                          ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 

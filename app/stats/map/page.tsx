@@ -26,7 +26,7 @@ export default function MapPage() {
         <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
           Geographic distribution
         </p>
-        <h2 className="mt-1 text-3xl font-bold text-white">
+        <h2 className="mt-1 heading-page">
           {data ? `${data.distinctStates} states` : "—"}
         </h2>
       </header>
@@ -70,7 +70,7 @@ export default function MapPage() {
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   {r.state}
                 </div>
-                <div className="mt-1 text-2xl font-bold tabular-nums leading-none text-white">
+                <div className="mt-1 text-stat-value text-white">
                   {r.count}
                   <span className="ml-1 text-xs font-medium text-slate-400">
                     items

@@ -74,7 +74,7 @@ export default function GoalsPage() {
         <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
           Goals · last 30 days
         </p>
-        <h2 className="mt-1 text-3xl font-bold text-white">
+        <h2 className="mt-1 heading-page">
           Set targets, track progress
         </h2>
       </header>

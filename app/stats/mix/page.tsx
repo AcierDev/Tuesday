@@ -135,7 +135,7 @@ function MixGrid({ rows, barColor, showDesignSwatch }: MixGridProps) {
           <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
             {row.key}
           </span>
-          <span className="mt-1 text-2xl font-bold tabular-nums leading-none">
+          <span className="mt-1 text-stat-value">
             {row.count}
           </span>
           <span className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">

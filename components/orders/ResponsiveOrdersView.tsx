@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import MobileOrderView from "./mobile/MobileOrderView";
+import React from "react";
 import { ItemList } from "./ItemList";
 import { Group, Item, ItemStatus, DayName, ColumnTitles } from "@/typings/types";
 
@@ -40,64 +39,26 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
   onSort,
   currentType,
 }) => {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    // Check if we're on the client side
-    if (typeof window !== "undefined") {
-      const checkMobile = () => {
-        setIsMobile(window.innerWidth < 768);
-      };
-
-      // Initial check
-      checkMobile();
-
-      // Set up the resize listener
-      window.addEventListener("resize", checkMobile);
-
-      // Clean up
-      return () => {
-        window.removeEventListener("resize", checkMobile);
-      };
-    }
-  }, []);
-
   return (
     <div className="h-full">
-      {isMobile ? (
-        <MobileOrderView
-          items={groups.flatMap((group) => group.items)}
-          doneItems={doneItems}
-          loadDoneItems={loadDoneItems}
-          hasMoreDoneItems={hasMoreDoneItems}
-          isDoneLoading={isDoneLoading}
-          onDelete={onDelete}
-          onGetLabel={onGetLabel}
-          onMarkCompleted={onMarkCompleted}
-          onShip={onShip}
-          clickToAddTarget={clickToAddTarget}
-          onItemClick={onItemClick}
-        />
-      ) : (
-        <ItemList
-          groups={groups}
-          doneItems={doneItems}
-          loadDoneItems={loadDoneItems}
-          hasMoreDoneItems={hasMoreDoneItems}
-          isDoneLoading={isDoneLoading}
-          onStatusChange={onStatusChange}
-          onDelete={onDelete}
-          onGetLabel={onGetLabel}
-          onMarkCompleted={onMarkCompleted}
-          onShip={onShip}
-          clickToAddTarget={clickToAddTarget}
-          onItemClick={onItemClick}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          onSort={onSort}
-          currentType={currentType}
-        />
-      )}
+      <ItemList
+        groups={groups}
+        doneItems={doneItems}
+        loadDoneItems={loadDoneItems}
+        hasMoreDoneItems={hasMoreDoneItems}
+        isDoneLoading={isDoneLoading}
+        onStatusChange={onStatusChange}
+        onDelete={onDelete}
+        onGetLabel={onGetLabel}
+        onMarkCompleted={onMarkCompleted}
+        onShip={onShip}
+        clickToAddTarget={clickToAddTarget}
+        onItemClick={onItemClick}
+        sortColumn={sortColumn}
+        sortDirection={sortDirection}
+        onSort={onSort}
+        currentType={currentType}
+      />
     </div>
   );
 };

@@ -92,6 +92,28 @@
   .sidebar-action-btn {
     @apply flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition;
   }
+
+  /* Typography scale — semantic page-level text classes.
+     Use these instead of ad-hoc text-{size} font-{weight} combinations
+     so the same role looks the same everywhere. */
+  .heading-page {
+    @apply text-3xl font-bold text-white;
+  }
+  .heading-tool {
+    @apply text-lg sm:text-xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] [forced-color-adjust:none];
+  }
+  .heading-section {
+    @apply text-xl font-semibold tracking-tight;
+  }
+  .heading-subsection {
+    @apply text-lg font-semibold;
+  }
+  .text-stat-value {
+    @apply text-2xl font-bold tabular-nums leading-none;
+  }
+  .text-stat-value-lg {
+    @apply text-3xl font-bold tabular-nums leading-none;
+  }
 }
 
 @layer utilities {

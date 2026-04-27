@@ -78,7 +78,7 @@ export default function QualityPage() {
         <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
           Quality
         </p>
-        <h2 className="mt-1 text-3xl font-bold text-white">
+        <h2 className="mt-1 heading-page">
           {ratingData
             ? ratingData.count > 0
               ? `${ratingData.avg.toFixed(2)} avg rating`

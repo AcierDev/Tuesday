@@ -371,7 +371,7 @@ export default function DebtPage() {
                     >
                       {STATUS_LABELS[s]}
                     </span>
-                    <span className="mt-1 text-2xl font-bold tabular-nums leading-none">
+                    <span className="mt-1 text-stat-value">
                       −{days}
                       <span className="ml-1 text-xs font-medium text-slate-400">
                         d
