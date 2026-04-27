@@ -32,7 +32,9 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -54,6 +56,27 @@ interface NewItemModalProps {
 
 const COMPANIES = ["Everwood", "Woodform", "Sheppit"] as const;
 type Company = (typeof COMPANIES)[number];
+
+const SIZES_BY_HEIGHT: { height: number; sizes: string[] }[] = (() => {
+  const map = new Map<number, string[]>();
+  const other: string[] = [];
+  for (const s of Object.values(ItemSizes)) {
+    const m = s.match(/x\s*(\d+)/i);
+    if (!m) {
+      other.push(s);
+      continue;
+    }
+    const h = parseInt(m[1]!, 10);
+    const arr = map.get(h) ?? [];
+    arr.push(s);
+    map.set(h, arr);
+  }
+  const grouped = [...map.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([height, sizes]) => ({ height, sizes }));
+  if (other.length) grouped.push({ height: -1, sizes: other });
+  return grouped;
+})();
 
 const SuccessAnimation = () => (
   <motion.div
@@ -287,10 +310,17 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
                       <SelectValue placeholder="Select size" />
                     </SelectTrigger>
                     <SelectContent className="dark:bg-gray-800">
-                      {Object.values(ItemSizes).map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
+                      {SIZES_BY_HEIGHT.map(({ height, sizes }) => (
+                        <SelectGroup key={height}>
+                          <SelectLabel className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                            {height === -1 ? "Other" : `${height} Tall`}
+                          </SelectLabel>
+                          {sizes.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       ))}
                     </SelectContent>
                   </Select>

@@ -179,7 +179,7 @@ export const SizeDropdownCell = ({
           {grouped.ordered.map(([height, sizes]) => (
             <Section
               key={height}
-              label={`Height ${height}"`}
+              label={`${height} Tall`}
               options={sizes}
               selected={columnValue.text}
               onPick={handleUpdate}
