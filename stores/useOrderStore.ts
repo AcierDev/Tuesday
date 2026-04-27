@@ -377,21 +377,38 @@ export const useOrderStore = create<OrderState>()(
           invalidateStatsCaches();
 
           // Update local state
-          const { items: currentItems, doneItems: currentDoneItems } = get();
+          const {
+            items: currentItems,
+            doneItems: currentDoneItems,
+            scheduledItems: currentScheduledItems,
+          } = get();
           const processedUpdate = ItemUtil.processItem(itemToUpdate);
-          
+
           let newItems = [...currentItems];
           let newDoneItems = [...currentDoneItems];
-          
+          let newScheduledItems = [...currentScheduledItems];
+
           const isDone = processedUpdate.status === ItemStatus.Done;
           const isHidden = processedUpdate.status === ItemStatus.Hidden;
-          
+
           // Remove from all lists first (simplest way to handle moves)
           // But we want to preserve order if staying in same list.
-          
+
           const inItemsIndex = newItems.findIndex(i => i.id === processedUpdate.id);
           const inDoneIndex = newDoneItems.findIndex(i => i.id === processedUpdate.id);
-          
+          const inScheduledIndex = newScheduledItems.findIndex(i => i.id === processedUpdate.id);
+
+          // scheduledItems is a flat cache of items referenced by the planner
+          // schedule (any status). Keep it in sync so consumers reading from
+          // it — like the planner's lock-by-status check — see fresh data.
+          if (inScheduledIndex !== -1) {
+            if (isHidden) {
+              newScheduledItems.splice(inScheduledIndex, 1);
+            } else {
+              newScheduledItems[inScheduledIndex] = processedUpdate;
+            }
+          }
+
           if (isDone) {
               if (inItemsIndex !== -1) newItems.splice(inItemsIndex, 1);
               if (inDoneIndex !== -1) {
@@ -412,7 +429,11 @@ export const useOrderStore = create<OrderState>()(
               }
           }
 
-          set({ items: newItems, doneItems: newDoneItems });
+          set({
+            items: newItems,
+            doneItems: newDoneItems,
+            scheduledItems: newScheduledItems,
+          });
           
           return processedUpdate;
         } catch (err) {

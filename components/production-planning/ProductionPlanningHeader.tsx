@@ -47,10 +47,46 @@ export function ProductionPlanningHeader({
               </h1>
             </div>
 
-            <PageToggle currentPage="planner" />
+            <div className="hidden lg:flex items-center gap-2">
+              <PageToggle currentPage="planner" />
+              <div className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60">
+                <button
+                  type="button"
+                  onClick={onToggleWeek}
+                  aria-label={
+                    viewingNextWeek
+                      ? "Switch to This Week"
+                      : "Switch to Next Week"
+                  }
+                  className="group flex items-center gap-1.5 h-8 pl-3 pr-1 rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white/70 dark:hover:bg-gray-700/50 transition-colors"
+                >
+                  <span className="relative inline-block w-[72px] h-5 overflow-hidden text-left">
+                    <AnimatePresence initial={false} mode="popLayout">
+                      <motion.span
+                        key={viewingNextWeek ? "next" : "this"}
+                        initial={{ y: viewingNextWeek ? 16 : -16, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: viewingNextWeek ? -16 : 16, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeOut" }}
+                        className="absolute inset-0"
+                      >
+                        {viewingNextWeek ? "Next Week" : "This Week"}
+                      </motion.span>
+                    </AnimatePresence>
+                  </span>
+                  <motion.span
+                    animate={{ rotate: viewingNextWeek ? 180 : 0 }}
+                    transition={{ duration: 0.22, ease: "easeOut" }}
+                    className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-gray-700 shadow-sm"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </motion.span>
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between gap-2 sm:gap-3 lg:flex-1 lg:justify-center lg:min-w-0">
+          <div className="flex items-center justify-between gap-2 sm:gap-3 lg:hidden">
             <HistoricalAverageBadge />
             <div className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60">
               <button
@@ -66,7 +102,7 @@ export function ProductionPlanningHeader({
                 <span className="relative inline-block w-[72px] h-5 overflow-hidden text-left">
                   <AnimatePresence initial={false} mode="popLayout">
                     <motion.span
-                      key={viewingNextWeek ? "next" : "this"}
+                      key={viewingNextWeek ? "next-mobile" : "this-mobile"}
                       initial={{ y: viewingNextWeek ? 16 : -16, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       exit={{ y: viewingNextWeek ? -16 : 16, opacity: 0 }}
@@ -90,6 +126,7 @@ export function ProductionPlanningHeader({
 
           {/* Right group: action buttons (desktop only) */}
           <div className="hidden lg:flex items-center gap-2 sm:flex-shrink-0">
+            <HistoricalAverageBadge />
             <Button
               size="sm"
               onClick={onAutoFill}

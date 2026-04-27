@@ -68,7 +68,9 @@ export const Header: React.FC<HeaderProps> = ({
               </h1>
             </div>
 
-            <PageToggle currentPage="orders" />
+            <div className="hidden lg:block">
+              <PageToggle currentPage="orders" />
+            </div>
           </div>
 
           {/* Type toggle — center of the same row. Active pill slides
