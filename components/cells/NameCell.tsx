@@ -22,7 +22,10 @@ import { Item, ColumnTitles, ItemStatus } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { DueBadge } from "./DueBadge";
-import { useTodayScheduledIds } from "@/hooks/useTodayScheduledIds";
+import {
+  useTodayScheduledIds,
+  useTomorrowScheduledIds,
+} from "@/hooks/useTodayScheduledIds";
 
 // // Add this style block right after imports
 // const pulseKeyframes = `
@@ -133,18 +136,32 @@ export const NameCell: React.FC<NameCellProps> = ({
   }, []);
 
   const isToday = useTodayScheduledIds().has(item.id);
+  const isTomorrowRaw = useTomorrowScheduledIds().has(item.id);
+  const isTomorrow = !isToday && isTomorrowRaw;
+  const scheduleTag = isToday
+    ? { label: "Today", classes: "bg-amber-500/80 hover:bg-amber-500/90" }
+    : isTomorrow
+    ? { label: "Tomorrow", classes: "bg-sky-500/70 hover:bg-sky-500/80" }
+    : null;
   const parsedDueDate = item.dueDate ? parseISO(item.dueDate) : null;
   const dueBadge =
     parsedDueDate &&
     isValid(parsedDueDate) &&
     item.status !== ItemStatus.Done ? (
       <span className="relative inline-flex flex-shrink-0">
-        {isToday && (
+        {scheduleTag && (
           <span
-            aria-label="Planned for today"
-            className="pointer-events-none absolute bottom-full left-0 right-0 mb-0.5 z-20 flex items-center justify-center h-[12px] rounded-sm bg-gradient-to-b from-amber-300 to-amber-500 dark:from-amber-400 dark:to-amber-600 text-amber-950 text-[8px] font-bold uppercase tracking-wider shadow-sm ring-1 ring-amber-600/30"
+            aria-label={`Planned for ${scheduleTag.label.toLowerCase()}`}
+            className={cn(
+              "pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 z-20",
+              "inline-flex items-center justify-center h-[13px] px-1.5 rounded-sm whitespace-nowrap",
+              "text-white text-[8px] font-bold uppercase tracking-wider",
+              "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]",
+              "[text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
+              scheduleTag.classes
+            )}
           >
-            Today
+            {scheduleTag.label}
           </span>
         )}
         <DueBadge item={item} range={settings.dueBadgeDays} />
