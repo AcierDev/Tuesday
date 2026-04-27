@@ -421,7 +421,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
           } dark:text-${
             GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
           }`,
-          "sticky top-0 md:top-[73px] z-30 glass-surface will-change-transform select-none",
+          "sticky top-[88px] lg:top-[73px] z-30 glass-surface will-change-transform select-none",
           isCollapsible && "cursor-pointer",
           // Collapsed-section drop target: the header IS the section here,
           // so light it up the same way the table does when expanded.

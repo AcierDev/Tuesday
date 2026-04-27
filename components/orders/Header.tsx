@@ -57,10 +57,10 @@ export const Header: React.FC<HeaderProps> = ({
   const TYPES = ["all", "geometric", "striped", "mini", "custom"];
 
   return (
-    <div className="hidden md:block select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
+    <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3">
-          <div className="flex items-center gap-4 sm:flex-shrink-0">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-2 lg:gap-4 py-2 lg:py-3">
+          <div className="flex items-center justify-between lg:justify-start gap-4 w-full lg:w-auto lg:flex-shrink-0">
             <div className="flex items-center gap-3 sm:min-w-[220px]">
               <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
               <h1 className="text-lg sm:text-xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 to-blue-700 dark:from-white dark:to-blue-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] [forced-color-adjust:none]">
@@ -73,7 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Type toggle — center of the same row. Active pill slides
               between options via framer-motion's shared layoutId. */}
-          <div className="flex justify-center sm:flex-1 sm:min-w-0">
+          <div className="flex justify-center lg:flex-1 lg:min-w-0">
             <ToggleGroup
               type="single"
               value={currentType}
@@ -114,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
             </ToggleGroup>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto sm:flex-shrink-0">
+          <div className="hidden lg:flex items-center gap-2 lg:flex-shrink-0">
             <div className="w-full sm:w-64 flex">
               <div
                 className={`group relative w-full sm:w-44 sm:ml-auto hover:sm:w-full focus-within:sm:w-full transition-[width] duration-300 ease-out ${
