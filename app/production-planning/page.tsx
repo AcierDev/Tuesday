@@ -36,6 +36,7 @@ import { DroppableDayColumn } from "@/components/production-planning/DroppableDa
 import { OrderCard } from "@/components/production-planning/OrderCard";
 import { OrderContextMenu } from "@/components/production-planning/OrderContextMenu";
 import { OrderMeta } from "@/components/production-planning/types";
+import { PRE_WIP_STATUSES } from "@/components/production-planning/constants";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
@@ -140,11 +141,6 @@ function classifyDueBucket(
 // Pre-WIP statuses are the only ones eligible for auto-fill redistribution.
 // Once an item hits Wip or beyond, its day-placement is treated as locked
 // (the team has already committed to / completed the work).
-const PRE_WIP_STATUSES: ReadonlySet<ItemStatus> = new Set([
-  ItemStatus.New,
-  ItemStatus.OnDeck,
-]);
-
 // Compares two items by due-date urgency: most overdue first, then earliest
 // upcoming, then no-due last. Stable tiebreak on id so the result is
 // deterministic across re-runs.
@@ -975,7 +971,7 @@ export default function ProductionPlanningPage() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
+      <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden select-none">
         {/* Header — full width across the top, above sidebar + content. */}
         <ProductionPlanningHeader
           viewingNextWeek={viewingNextWeek}
