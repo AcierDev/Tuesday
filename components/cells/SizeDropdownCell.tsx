@@ -15,6 +15,9 @@ import { useOrderStore } from "@/stores/useOrderStore";
 const PILL_BASE_CLASSES =
   "inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 transition-[transform,opacity,box-shadow] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(0,0,0,0.10)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_48%)] bg-sky-500/80 dark:bg-sky-600/80 hover:opacity-95 hover:-translate-y-px active:translate-y-0";
 
+const PILL_TRIGGER_CLASSES =
+  "inline-flex items-center justify-center px-1.5 sm:px-3 h-5 sm:h-6 min-h-0 max-w-full truncate text-[10px] sm:text-xs font-medium text-white rounded-lg sm:rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 transition-[transform,opacity,box-shadow] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(0,0,0,0.10)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_48%)] bg-sky-500/80 dark:bg-sky-600/80 hover:opacity-95 hover:-translate-y-px active:translate-y-0";
+
 const SELECTED_RING_CLASSES =
   "ring-2 ring-blue-400 ring-offset-2 ring-offset-white dark:ring-offset-gray-900";
 
@@ -143,7 +146,7 @@ export const SizeDropdownCell = ({
       <PopoverTrigger asChild>
         <Button
           disabled={disabled}
-          className={PILL_BASE_CLASSES}
+          className={PILL_TRIGGER_CLASSES}
         >
           {columnValue.text || "Select Size"}
         </Button>

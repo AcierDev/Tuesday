@@ -65,7 +65,7 @@ export const DueBadge = ({ item, range }: DueBadgeProps) => {
           tabIndex={0}
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            "tabular-nums text-[12.9px] px-2 py-0.5 min-w-[2.475rem] justify-center rounded-[10px] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)] cursor-pointer transition-transform hover:scale-105",
+            "tabular-nums text-[10px] sm:text-[12.9px] px-1.5 sm:px-2 py-0.5 min-w-[1.875rem] sm:min-w-[2.475rem] justify-center rounded-md sm:rounded-[10px] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)] cursor-pointer transition-transform hover:scale-105",
             "outline-none focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
             colorClasses
           )}
