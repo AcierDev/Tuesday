@@ -38,8 +38,8 @@ export function ProductionPlanningHeader({
   return (
     <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3">
-          <div className="flex items-center gap-4 sm:flex-shrink-0">
+        <div className="flex items-center justify-between gap-2 sm:gap-4 py-3">
+          <div className="flex items-center gap-2 sm:gap-4 sm:flex-shrink-0">
             <div className="flex items-center gap-3 sm:min-w-[220px]">
               <span className="hidden sm:block h-7 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
               <h1 className="heading-tool">
@@ -50,10 +50,11 @@ export function ProductionPlanningHeader({
             <PageToggle currentPage="planner" />
           </div>
 
-          {/* Week toggle — middle of the row on desktop; drops to its own row
-              under the page toggle on mobile so the orders/planner toggle
-              stays in the same place when switching pages. */}
-          <div className="flex justify-center sm:flex-1 sm:min-w-0">
+          {/* Center cluster: avg-squares badge sits left of the week toggle.
+              On mobile it's pushed to the right so the row reads
+              [title] [avg] [week-toggle]; on desktop it stays centered. */}
+          <div className="flex items-center justify-end gap-2 sm:gap-3 sm:flex-1 sm:justify-center sm:min-w-0">
+            <HistoricalAverageBadge />
             <div className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60">
               <button
                 type="button"
@@ -90,9 +91,8 @@ export function ProductionPlanningHeader({
             </div>
           </div>
 
-          {/* Right group: action buttons */}
-          <div className="flex items-center gap-2 w-full sm:w-auto sm:flex-shrink-0">
-            <HistoricalAverageBadge />
+          {/* Right group: action buttons (desktop only) */}
+          <div className="hidden sm:flex items-center gap-2 sm:flex-shrink-0">
             <Button
               size="sm"
               onClick={onAutoFill}

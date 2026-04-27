@@ -460,11 +460,11 @@ export function Navbar({
 
   return (
     <>
-      {/* Sidebar — shown at all viewport sizes */}
+      {/* Sidebar — desktop only; mobile uses a floating PageToggle. */}
       <aside
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } fixed h-screen transition-all duration-300 ease-in-out bg-[hsl(var(--sidebar))] block z-30`}
+        } fixed h-screen transition-all duration-300 ease-in-out bg-[hsl(var(--sidebar))] hidden lg:block z-30`}
       >
         <div className="h-screen flex flex-col bg-[hsl(var(--sidebar))]">
           <NavMetricsBadges />

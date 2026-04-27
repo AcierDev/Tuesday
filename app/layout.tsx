@@ -14,6 +14,7 @@ import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UploadProgressToast } from "@/components/shipping/UploadProgress";
+import { MobilePageSwitcher } from "@/components/ui/MobilePageSwitcher";
 
 // Load custom fonts
 const geistSans = localFont({
@@ -58,12 +59,13 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       <div className="flex-1 overflow-auto no-scrollbar border-t border-sky-400/40">
         <div
           className={`${
-            sidebarOpen ? "ml-64" : "ml-16"
+            sidebarOpen ? "lg:ml-64" : "lg:ml-16"
           } transition-[margin] duration-300`}
         >
           <main className="w-full">{children}</main>
         </div>
       </div>
+      <MobilePageSwitcher />
       {isSettingsOpen && (
         <SettingsPanel
           onClose={handleCloseSettings}

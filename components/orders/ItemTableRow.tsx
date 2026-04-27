@@ -147,7 +147,7 @@ export const ItemTableRow = memo(function ItemTableRow({
         onContextMenu(e, item);
       }}
     >
-      <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 relative w-[3.125rem]">
+      <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 relative w-7 sm:w-[3.125rem]">
         <div
           {...listeners}
           {...attributes}
@@ -155,7 +155,7 @@ export const ItemTableRow = memo(function ItemTableRow({
           aria-label="Drag to change status"
           role="button"
         >
-          <GripVertical className="h-5 w-5" />
+          <GripVertical className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
         {recentlyMoved && (
           <span
@@ -178,7 +178,7 @@ export const ItemTableRow = memo(function ItemTableRow({
       </TableCell>
 
       {visibleColumns.includes("Shipping" as ColumnTitles) && (
-        <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 text-center w-[3.625rem]">
+        <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 text-center w-8 sm:w-[3.625rem]">
           <MergedShippingCell item={item} />
         </TableCell>
       )}

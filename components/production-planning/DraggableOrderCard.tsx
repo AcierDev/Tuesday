@@ -5,7 +5,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { OrderCard } from "./OrderCard";
 import { OrderMeta } from "./types";
-import { PRE_WIP_STATUSES } from "./constants";
+import { POST_WIP_STATUSES } from "./constants";
 import { DayName } from "@/typings/types";
 
 interface DraggableOrderCardProps {
@@ -37,10 +37,11 @@ export function DraggableOrderCard({
 }: DraggableOrderCardProps) {
   // Pinned cards are locked in place — auto-plan won't move them and the user
   // can't drag them either. They have to be unpinned first via the pin toggle.
-  // Scheduled cards past Wip are also locked so historical day assignments
-  // stay accurate (auto-plan already treats them as immovable).
+  // Scheduled cards past Wip (Packaging and beyond) are also locked so
+  // historical day assignments stay accurate. Moving the order back to Wip
+  // or earlier unlocks the card.
   const lockedByStatus =
-    !!isScheduled && !PRE_WIP_STATUSES.has(meta.item.status);
+    !!isScheduled && POST_WIP_STATUSES.has(meta.item.status);
   const dragDisabled = disabled || !!isPinned || lockedByStatus;
   const {
     attributes,

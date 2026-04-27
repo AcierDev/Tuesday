@@ -1035,7 +1035,7 @@ export default function ProductionPlanningPage() {
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-                className="flex items-start gap-4 h-full overflow-x-auto overflow-y-auto min-w-[1000px]"
+                className="flex items-start gap-4 h-full overflow-x-auto overflow-y-auto snap-x snap-mandatory md:snap-none md:min-w-[1000px] pb-20 md:pb-0"
                 ref={(node) => {
                   if (!node) return;
                   // Center today's column on mount so the user lands on the
@@ -1064,7 +1064,7 @@ export default function ProductionPlanningPage() {
                     <div
                       key={day}
                       data-today-column={isToday ? "true" : undefined}
-                      className="flex-1 min-w-[200px]"
+                      className="shrink-0 w-[66vw] snap-center md:w-auto md:flex-1 md:snap-align-none min-w-[150px] md:min-w-[200px]"
                     >
                       <DroppableDayColumn
                         day={day}
