@@ -76,6 +76,9 @@ function calculateBlocks(item: { size?: string }): number {
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 const DAILY_CAPACITY_BLOCKS = 1000;
+// Daily total turns green once it crosses this — the full capacity (1000) is
+// the displayed denominator, but anything past 850 is "good enough" in practice.
+const DAILY_GREEN_THRESHOLD_BLOCKS = 850;
 
 const DAYS: DayName[] = [
   "Monday",
@@ -1073,6 +1076,7 @@ export default function ProductionPlanningPage() {
                         ordersById={allOrdersById}
                         totalBlocks={dayGroups[day].totalBlocks}
                         capacity={DAILY_CAPACITY_BLOCKS}
+                        greenThreshold={DAILY_GREEN_THRESHOLD_BLOCKS}
                         onTogglePin={(id, actualDay) =>
                           toggleItemPinned(currentWeekKey, actualDay, id)
                         }

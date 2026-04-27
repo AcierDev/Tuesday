@@ -53,8 +53,16 @@ export function ProductionPlanningSidebar({
         isOver && "bg-gray-50 dark:bg-gray-800/50"
       )}
     >
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex justify-end">
-        <span className="text-xs font-medium bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full text-gray-600 dark:text-gray-400">
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight">
+            Unscheduled
+          </h2>
+          <p className="text-[0.6875rem] text-gray-500 dark:text-gray-400 leading-snug mt-0.5">
+            Items not yet placed. Drag onto a day to schedule.
+          </p>
+        </div>
+        <span className="text-xs font-medium bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full text-gray-600 dark:text-gray-400 shrink-0">
           {orders.length}
         </span>
       </div>
@@ -83,7 +91,7 @@ export function ProductionPlanningSidebar({
               ))}
               {pinnedOrders.length > 0 && (
                 <div className="pt-3 mt-1 border-t border-dashed border-amber-300/60 dark:border-amber-700/40">
-                  <div className="text-[10px] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400 px-1 pb-2 flex items-center gap-1">
+                  <div className="text-[0.625rem] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400 px-1 pb-2 flex items-center gap-1">
                     <span className="inline-block w-1 h-1 rounded-full bg-amber-500" />
                     Pinned (skipped by auto-plan)
                   </div>

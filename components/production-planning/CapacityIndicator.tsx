@@ -6,16 +6,24 @@ import { Progress } from "@/components/ui/progress";
 interface CapacityIndicatorProps {
   current: number;
   max: number;
+  // Threshold at which the value is considered "good" and turns green. The
+  // bar still scales against `max` (the displayed denominator) — this only
+  // controls the color stop, not the geometry.
+  greenThreshold?: number;
   label?: string;
 }
 
-export function CapacityIndicator({ current, max, label }: CapacityIndicatorProps) {
+const AMBER_FRACTION = 0.9;
+
+export function CapacityIndicator({ current, max, greenThreshold, label }: CapacityIndicatorProps) {
   const percentage = Math.min(100, Math.max(0, (current / max) * 100));
-  const isTargetMet = current >= max;
-  
+  const greenAt = greenThreshold ?? max;
+  const isTargetMet = current >= greenAt;
+  const isNearTarget = current >= greenAt * AMBER_FRACTION;
+
   let colorClass = "bg-red-500";
   if (isTargetMet) colorClass = "bg-emerald-500";
-  else if (percentage >= 90) colorClass = "bg-amber-500";
+  else if (isNearTarget) colorClass = "bg-amber-500";
 
   return (
     <div className="w-full">
@@ -28,7 +36,7 @@ export function CapacityIndicator({ current, max, label }: CapacityIndicatorProp
         <div className="text-xs tabular-nums">
           <span className={cn(
             "font-semibold",
-            isTargetMet ? "text-emerald-600" : percentage >= 90 ? "text-amber-600" : "text-red-600"
+            isTargetMet ? "text-emerald-600" : isNearTarget ? "text-amber-600" : "text-red-600"
           )}>
             {current}
           </span>

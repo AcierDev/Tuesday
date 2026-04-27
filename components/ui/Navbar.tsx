@@ -269,7 +269,7 @@ export function Navbar({
     printLeaveTimerRef.current = window.setTimeout(() => {
       setPrintHovered(false);
       printLeaveTimerRef.current = null;
-    }, 300);
+    }, 400);
   }, []);
 
   const handleQuickPrint = useCallback((tpl: PrintTemplate) => {
