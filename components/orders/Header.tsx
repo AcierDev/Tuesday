@@ -106,7 +106,7 @@ export const Header: React.FC<HeaderProps> = ({
                       {type.charAt(0).toUpperCase() + type.slice(1)}
                     </span>
                     {(dueCounts[type] ?? 0) > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center ring-2 ring-white dark:ring-gray-950 z-20">
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[0.625rem] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center ring-2 ring-white dark:ring-gray-950 z-20">
                         {dueCounts[type]}
                       </span>
                     )}

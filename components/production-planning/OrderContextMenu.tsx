@@ -90,7 +90,7 @@ export function OrderContextMenu({
       className="fixed z-[100] min-w-[180px] rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg py-1"
       style={{ top: pos.y, left: pos.x }}
     >
-      <div className="px-3 pt-1 pb-1 text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-semibold">
+      <div className="px-3 pt-1 pb-1 text-[0.625rem] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-semibold">
         Move to
       </div>
       {STATUS_OPTIONS.map((status) => (

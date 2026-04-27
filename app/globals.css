@@ -246,6 +246,28 @@ body {
   forced-color-adjust: none;
 }
 
+/* ──────────────────────────────────────────────────────────────────
+   Viewport-relative root font size on desktop.
+
+   Tailwind's text-*, p-*, gap-*, etc. are rem-based. With a fixed
+   16px root, the same row of an order table claims a much larger
+   share of a 1366px laptop than a 1728px M1 Pro 16" — so 12 rows
+   wrap and consume more vertical space on smaller screens despite
+   identical aspect ratios.
+
+   Scaling root font-size with vw (capped at 16px so the M1 Pro
+   stays the baseline, floored at 13px so 1024px iPads don't
+   collapse) keeps the layout proportionally consistent across
+   desktop resolutions. Slope = 16/1728 ≈ 0.926vw.
+
+   Applied at md+ only — phones keep the OS-default 16px root and
+   their existing mobile-specific Tailwind classes. */
+@media (min-width: 768px) {
+  html {
+    font-size: clamp(13px, 0.926vw, 16px);
+  }
+}
+
 /* Inside an active forced-colors media query, explicitly restore
    our colors. Some Chrome builds ignore the property above unless
    we re-state intent here. */

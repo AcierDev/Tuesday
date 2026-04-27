@@ -194,12 +194,12 @@ export function OrderCard({
             {parsedCustomerName}
           </div>
           <div className="flex items-center gap-[3px] md:gap-1.5 min-w-0">
-            <div className="shrink-0 text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md">
+            <div className="shrink-0 text-[0.625rem] md:text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md">
               {size}
             </div>
             {design && (
               <div
-                className="min-w-0 truncate text-[9px] md:text-[11px] px-1.5 py-0.5 md:px-2 md:py-1 rounded-full text-gray-200 font-medium shadow-sm [text-shadow:_0_0_2px_rgba(0,0,0,0.7),_0_1px_1px_rgba(0,0,0,0.4)]"
+                className="min-w-0 truncate text-[0.5625rem] md:text-[0.6875rem] px-1.5 py-0.5 md:px-2 md:py-1 rounded-full text-gray-200 font-medium shadow-sm [text-shadow:_0_0_2px_rgba(0,0,0,0.7),_0_1px_1px_rgba(0,0,0,0.4)]"
                 style={{ background: backgroundStyle }}
               >
                 {design}
@@ -208,7 +208,7 @@ export function OrderCard({
             {badgeStatus && (
               <div
                 className={cn(
-                  "shrink-0 ml-auto tabular-nums text-[12.9px] px-2 py-0.5 min-w-[2.475rem] justify-center rounded-[10px] inline-flex items-center shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
+                  "shrink-0 ml-auto tabular-nums text-[0.80625rem] px-2 py-0.5 min-w-[2.475rem] justify-center rounded-[10px] inline-flex items-center shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
                   badgeStatus.classes
                 )}
               >
@@ -264,7 +264,7 @@ export function OrderCard({
               key={day}
               variant="secondary"
               size="sm"
-              className="text-[10px] h-6 flex-1 font-medium px-0 hover:bg-primary hover:text-primary-foreground transition-colors"
+              className="text-[0.625rem] h-6 flex-1 font-medium px-0 hover:bg-primary hover:text-primary-foreground transition-colors"
               onClick={() => onSchedule(day)}
             >
               {dayAbbr[day]}

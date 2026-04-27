@@ -63,7 +63,7 @@ export const DateCell = ({ item, columnValue }: DateCellProps) => {
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            className="w-full h-full justify-center p-1 sm:p-2 text-[11px] sm:text-sm dark:text-white"
+            className="w-full h-full justify-center p-1 sm:p-2 text-[0.6875rem] sm:text-sm dark:text-white"
             variant="ghost"
           >
             <CalendarIcon

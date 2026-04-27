@@ -444,12 +444,12 @@ export const ItemGroupSection = memo(function ItemGroupSection({
           <span className="font-semibold text-lg sticky top-0 z-10 transition-transform duration-200 ease-out group-hover:translate-x-2">
             {group.title}
             {isCollapsible && isCollapsed && group.title !== ItemStatus.Done && (
-              <span className="ml-2 font-normal text-[15.4px] opacity-70">
+              <span className="ml-2 font-normal text-[0.9625rem] opacity-70">
                 ({group.items.length} hidden)
               </span>
             )}
             {group.title === ItemStatus.Done && inTransitCount > 0 && (
-              <span className="ml-2 font-normal text-[15.4px] text-blue-500">
+              <span className="ml-2 font-normal text-[0.9625rem] text-blue-500">
                 ({inTransitCount} in transit)
               </span>
             )}

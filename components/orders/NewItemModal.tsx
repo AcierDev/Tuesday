@@ -312,7 +312,7 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
                     <SelectContent className="dark:bg-gray-800">
                       {SIZES_BY_HEIGHT.map(({ height, sizes }) => (
                         <SelectGroup key={height}>
-                          <SelectLabel className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                          <SelectLabel className="text-[0.625rem] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                             {height === -1 ? "Other" : `${height} Tall`}
                           </SelectLabel>
                           {sizes.map((s) => (
