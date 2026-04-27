@@ -80,7 +80,7 @@ export function DraggableOrderCard({
       {...attributes}
       {...listeners}
       onContextMenu={onContextMenu}
-      className={`touch-none select-none mb-2.5 ${
+      className={`touch-pan-x touch-pan-y select-none mb-2.5 ${
         dragDisabled
           ? "cursor-default"
           : isDragging
