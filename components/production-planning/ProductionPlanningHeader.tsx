@@ -48,10 +48,12 @@ export function ProductionPlanningHeader({
             </div>
 
             <PageToggle currentPage="planner" />
+          </div>
 
-
-            {/* Week toggle — outer ring matches PageToggle's wrapper exactly
-                (p-1 + inner h-8 = 40px) so both sit at the same level. */}
+          {/* Week toggle — middle of the row on desktop; drops to its own row
+              under the page toggle on mobile so the orders/planner toggle
+              stays in the same place when switching pages. */}
+          <div className="flex justify-center sm:flex-1 sm:min-w-0">
             <div className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60">
               <button
                 type="button"

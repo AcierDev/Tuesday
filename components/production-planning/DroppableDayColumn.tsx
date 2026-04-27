@@ -27,6 +27,7 @@ interface DroppableDayColumnProps {
   // Item IDs the auto-plan run just landed in any day — used to trigger a
   // one-shot "drop in" animation on those cards.
   recentlyPlacedIds?: Set<string>;
+  onContextMenu?: (e: React.MouseEvent, itemId: string) => void;
 }
 
 export function DroppableDayColumn({
@@ -41,6 +42,7 @@ export function DroppableDayColumn({
   autoPlanEnabled,
   onToggleAutoPlan,
   recentlyPlacedIds,
+  onContextMenu,
 }: DroppableDayColumnProps) {
   const { setNodeRef } = useDroppable({
     id: day,
@@ -173,6 +175,11 @@ export function DroppableDayColumn({
                           }
                           isPinned
                           referenceDate={date}
+                          onContextMenu={
+                            onContextMenu
+                              ? (e) => onContextMenu(e, order.itemId)
+                              : undefined
+                          }
                         />
                       );
                     })}
@@ -204,6 +211,11 @@ export function DroppableDayColumn({
                       referenceDate={date}
                       justPlaced={recentlyPlacedIds?.has(order.itemId) ?? false}
                       placeIndex={idx}
+                      onContextMenu={
+                        onContextMenu
+                          ? (e) => onContextMenu(e, order.itemId)
+                          : undefined
+                      }
                     />
                   </Fragment>
                 );

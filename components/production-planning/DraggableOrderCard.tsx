@@ -18,6 +18,7 @@ interface DraggableOrderCardProps {
   onTogglePin?: () => void;
   justPlaced?: boolean;
   placeIndex?: number;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }
 
 export function DraggableOrderCard({
@@ -31,6 +32,7 @@ export function DraggableOrderCard({
   onTogglePin,
   justPlaced,
   placeIndex,
+  onContextMenu,
 }: DraggableOrderCardProps) {
   // Pinned cards are locked in place — auto-plan won't move them and the user
   // can't drag them either. They have to be unpinned first via the pin toggle.
@@ -71,6 +73,7 @@ export function DraggableOrderCard({
       style={style}
       {...attributes}
       {...listeners}
+      onContextMenu={onContextMenu}
       className={`touch-none mb-2.5 ${
         dragDisabled
           ? "cursor-default"

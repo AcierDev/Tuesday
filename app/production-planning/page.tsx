@@ -34,6 +34,7 @@ import { ProductionPlanningHeader } from "@/components/production-planning/Produ
 import { ProductionPlanningSidebar } from "@/components/production-planning/ProductionPlanningSidebar";
 import { DroppableDayColumn } from "@/components/production-planning/DroppableDayColumn";
 import { OrderCard } from "@/components/production-planning/OrderCard";
+import { OrderContextMenu } from "@/components/production-planning/OrderContextMenu";
 import { OrderMeta } from "@/components/production-planning/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
@@ -74,7 +75,6 @@ function calculateBlocks(item: { size?: string }): number {
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 const DAILY_CAPACITY_BLOCKS = 1000;
-const SIDEBAR_MIN_COLUMNS_WIDTH = 1000;
 
 const DAYS: DayName[] = [
   "Monday",
@@ -180,7 +180,8 @@ const dropAnimation: DropAnimation = {
 };
 
 export default function ProductionPlanningPage() {
-  const { items, doneItems, scheduledItems, fetchItemsByIds } = useOrderStore();
+  const { items, doneItems, scheduledItems, fetchItemsByIds, updateItem } =
+    useOrderStore();
   const {
     schedules,
     updateSchedule,
@@ -193,6 +194,44 @@ export default function ProductionPlanningPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [currentWeekKey, setCurrentWeekKey] = useState(() =>
     format(startOfWeek(new Date(), { weekStartsOn: 0 }), "yyyy-MM-dd")
+  );
+
+  // Right-click context menu for changing an order's status from the planner.
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    itemId: string;
+  } | null>(null);
+  const handleCardContextMenu = useCallback(
+    (e: React.MouseEvent, itemId: string) => {
+      e.preventDefault();
+      setContextMenu({ x: e.clientX, y: e.clientY, itemId });
+    },
+    []
+  );
+  const handleSelectStatus = useCallback(
+    async (itemId: string, status: ItemStatus) => {
+      const target = [...items, ...doneItems, ...scheduledItems].find(
+        (i) => i.id === itemId
+      );
+      if (!target) {
+        toast.error("Could not find that order");
+        return;
+      }
+      if (target.status === status) return;
+      try {
+        await updateItem({
+          ...target,
+          prevStatus: target.status,
+          status,
+        });
+        toast.success(`Moved to ${status}`);
+      } catch (err) {
+        console.error("Failed to update status", err);
+        toast.error("Failed to update status");
+      }
+    },
+    [items, doneItems, scheduledItems, updateItem]
   );
 
   const [autoPlanDays, setAutoPlanDays] =
@@ -922,6 +961,13 @@ export default function ProductionPlanningPage() {
   );
   const viewingNextWeek = currentWeekKey === nextWeekKey;
 
+  // Today's column gets centered on mount in the mobile snap-scroller. Sat/Sun
+  // fold into Monday's column to match the display rule.
+  const todayColumnDay = useMemo<DayName>(() => {
+    const dayName = format(new Date(), "EEEE") as DayName;
+    return DAYS_FOLDED_INTO_MONDAY.includes(dayName) ? "Monday" : dayName;
+  }, []);
+
   return (
     <DndContext
       sensors={sensors}
@@ -973,12 +1019,13 @@ export default function ProductionPlanningPage() {
             orders={unscheduledOrders}
             excludedItemIds={excludedItemIds}
             onToggleExcluded={toggleExcluded}
+            onContextMenu={handleCardContextMenu}
           />
 
           {/* Day columns slide horizontally on week toggle. Direction is
               passed via AnimatePresence's `custom` so the latest value drives
               both the exiting and entering child. */}
-          <div className="flex-1 p-6 overflow-hidden relative">
+          <div className="flex-1 p-3 md:p-6 overflow-hidden relative">
             <AnimatePresence
               initial={false}
               mode="wait"
@@ -992,17 +1039,37 @@ export default function ProductionPlanningPage() {
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-                className="flex items-start gap-4 h-full overflow-x-auto overflow-y-auto"
-                style={{ minWidth: SIDEBAR_MIN_COLUMNS_WIDTH }}
+                className="flex items-start gap-4 h-full overflow-x-auto overflow-y-auto snap-x snap-mandatory md:snap-none md:min-w-[1000px]"
+                ref={(node) => {
+                  if (!node) return;
+                  // Center today's column on mount so the user lands on the
+                  // right day instead of Monday. rAF lets layout settle first.
+                  const todayEl = node.querySelector<HTMLElement>(
+                    `[data-today-column="true"]`
+                  );
+                  if (!todayEl) return;
+                  requestAnimationFrame(() => {
+                    todayEl.scrollIntoView({
+                      block: "nearest",
+                      inline: "center",
+                    });
+                  });
+                }}
               >
                 {DAYS.map((day) => {
                   const date = addDays(
                     currentWeekStart,
                     DAY_OFFSET_FROM_WEEK_START[day]
                   );
+                  const isToday =
+                    !viewingNextWeek && day === todayColumnDay;
 
                   return (
-                    <div key={day} className="flex-1 min-w-[200px]">
+                    <div
+                      key={day}
+                      data-today-column={isToday ? "true" : undefined}
+                      className="shrink-0 w-[88vw] snap-center md:w-auto md:flex-1 md:snap-align-none min-w-[200px]"
+                    >
                       <DroppableDayColumn
                         day={day}
                         dateLabel={format(date, "MMM d")}
@@ -1017,6 +1084,7 @@ export default function ProductionPlanningPage() {
                         autoPlanEnabled={autoPlanDays[day]}
                         onToggleAutoPlan={() => toggleAutoPlanDay(day)}
                         recentlyPlacedIds={recentlyPlacedIds}
+                        onContextMenu={handleCardContextMenu}
                       />
                     </div>
                   );
@@ -1038,6 +1106,18 @@ export default function ProductionPlanningPage() {
           </div>
         ) : null}
       </DragOverlay>
+
+      {contextMenu && (
+        <OrderContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          currentStatus={allOrdersById.get(contextMenu.itemId)?.item.status}
+          onSelectStatus={(status) =>
+            handleSelectStatus(contextMenu.itemId, status)
+          }
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </DndContext>
   );
 }

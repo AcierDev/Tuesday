@@ -189,17 +189,17 @@ export function OrderCard({
       )}
     >
       <div className="flex items-start justify-between gap-2 px-3 py-2.5">
-        <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="flex-1 min-w-0 space-y-[3px] md:space-y-1.5">
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate leading-snug">
             {parsedCustomerName}
           </div>
-          <div className="flex items-center gap-1.5 min-w-0">
-            <div className="shrink-0 text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">
+          <div className="flex items-center gap-[3px] md:gap-1.5 min-w-0">
+            <div className="shrink-0 text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md">
               {size}
             </div>
             {design && (
               <div
-                className="min-w-0 truncate text-[11px] px-2 py-1 rounded-full text-gray-200 font-medium shadow-sm [text-shadow:_0_0_2px_rgba(0,0,0,0.7),_0_1px_1px_rgba(0,0,0,0.4)]"
+                className="min-w-0 truncate text-[9px] md:text-[11px] px-1.5 py-0.5 md:px-2 md:py-1 rounded-full text-gray-200 font-medium shadow-sm [text-shadow:_0_0_2px_rgba(0,0,0,0.7),_0_1px_1px_rgba(0,0,0,0.4)]"
                 style={{ background: backgroundStyle }}
               >
                 {design}

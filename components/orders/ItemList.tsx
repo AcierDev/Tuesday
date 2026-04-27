@@ -119,7 +119,7 @@ export const ItemList = memo(function ItemList({
           !expandNew,
           `${newGroup.id}-${expandNew ? "open" : "closed"}`
         )}
-      <div className="grid grid-cols-2 gap-4 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
         <div className="min-w-0">
           {leftGroups.map((g) => renderGroup(g, false))}
         </div>

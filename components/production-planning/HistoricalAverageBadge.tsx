@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { TrendingUp } from "lucide-react";
 
 import {
   RECENCY_WEIGHTED_FORECAST,
@@ -47,7 +46,6 @@ export function HistoricalAverageBadge() {
       title={tooltip}
       className="hidden md:inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 ring-1 ring-inset ring-emerald-400/30 dark:ring-emerald-400/25 text-emerald-700 dark:text-emerald-200 text-sm font-medium tabular-nums transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-emerald-500/20 active:translate-y-0"
     >
-      <TrendingUp className="h-4 w-4" />
       <span>
         {hasData ? Math.round(stats.weightedAvgActive).toLocaleString() : "—"}
       </span>
