@@ -46,10 +46,10 @@ export function ProductionPlanningSidebar({
   const orderIds = sortedOrders.map((o) => o.id);
 
   return (
-    <div 
+    <div
       ref={setNodeRef}
       className={cn(
-        "hidden md:flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-colors w-80 shrink-0",
+        "flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-colors w-80 shrink-0",
         isOver && "bg-gray-50 dark:bg-gray-800/50"
       )}
     >

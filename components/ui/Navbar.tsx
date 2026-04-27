@@ -52,8 +52,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Tooltip,
   TooltipContent,
@@ -230,26 +228,6 @@ interface NavLinkProps {
   label: string;
 }
 
-// Simple hook for responsive design
-const useMediaQuery = (query: string) => {
-  const [matches, setMatches] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const media = window.matchMedia(query);
-      const updateMatch = () => setMatches(media.matches);
-
-      updateMatch(); // Initial check
-      media.addEventListener("change", updateMatch);
-
-      return () => media.removeEventListener("change", updateMatch);
-    }
-    return undefined;
-  }, [query]);
-
-  return matches;
-};
-
 export function Navbar({
   onOpenSettings,
   sidebarOpen,
@@ -384,9 +362,8 @@ export function Navbar({
   const NavLink = ({ href, icon: Icon, label }: NavLinkProps) => {
     if (!href) return null;
 
-    const isMobile = useMediaQuery("(max-width: 1023px)");
     const isActive = activeTab === href;
-    const isCollapsed = !sidebarOpen && !isMobile;
+    const isCollapsed = !sidebarOpen;
     const [hovered, setHovered] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
@@ -424,11 +401,7 @@ export function Navbar({
           <Link
             href={href}
             className={`flex items-center w-full rounded-lg text-sm font-medium
-              ${
-                isMobile
-                  ? "px-4 py-4"
-                  : `px-3 py-3 ${isCollapsed ? "justify-center" : ""}`
-              }
+              px-3 py-3 ${isCollapsed ? "justify-center" : ""}
               ${
                 isActive
                   ? "bg-secondary text-secondary-foreground dark:bg-blue-900/30 dark:text-blue-200"
@@ -448,12 +421,12 @@ export function Navbar({
             ) : (
               <Icon
                 data-nav-icon
-                className={`${isMobile ? "h-5 w-5" : "h-5 w-5 flex-shrink-0"} ${
+                className={`h-5 w-5 flex-shrink-0 ${
                   isCollapsed ? "mr-0" : "mr-3"
                 }`}
               />
             )}
-            {(sidebarOpen || isMobile) && <span>{label}</span>}
+            {sidebarOpen && <span>{label}</span>}
             {isActive && (
               <span className="absolute inset-y-0 left-0 w-1 bg-blue-500 rounded-r-full" />
             )}
@@ -487,11 +460,11 @@ export function Navbar({
 
   return (
     <>
-      {/* Desktop Sidebar */}
+      {/* Sidebar — shown at all viewport sizes */}
       <aside
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } fixed h-screen transition-all duration-300 ease-in-out bg-[hsl(var(--sidebar))] hidden lg:block z-30`}
+        } fixed h-screen transition-all duration-300 ease-in-out bg-[hsl(var(--sidebar))] block z-30`}
       >
         <div className="h-screen flex flex-col bg-[hsl(var(--sidebar))]">
           <NavMetricsBadges />
@@ -759,102 +732,6 @@ export function Navbar({
           </div>
         </div>
       </aside>
-
-      {/* Mobile Navbar */}
-      <nav className="lg:hidden fixed top-0 left-0 right-0 z-40 border-b bg-gray-950 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="w-full flex h-14 items-center justify-between px-4">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="w-10 h-10 flex items-center justify-center"
-              >
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            <span className="text-xl font-bold text-foreground">Tuesday</span>
-
-
-            <SheetContent
-              side="left"
-              className="w-4/5 sm:max-w-sm p-0 bg-gradient-to-b from-gray-800 to-gray-600"
-            >
-              <div className="flex flex-col h-[100dvh] bg-gradient-to-b from-gray-950/90 to-gray-950/70">
-                <div className="flex items-center justify-between p-4 border-b border-gray-700">
-                  <span className="text-xl font-bold cursor-pointer text-foreground">
-                    Tuesday
-                  </span>
-                </div>
-                <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar">
-                  {mainNavItems.map((item, index) =>
-                    item.type === "divider" ? (
-                      <Separator
-                        key={index}
-                        className="my-2 dark:bg-gray-600/50"
-                      />
-                    ) : (
-                      <div
-                        key={"href" in item ? item.href : index}
-                        className="px-2 py-1"
-                      >
-                        {"href" in item && (
-                          <motion.div
-                            initial={false}
-                            animate={
-                              activeTab === item.href ? "active" : "inactive"
-                            }
-                            variants={{
-                              active: {
-                                backgroundColor: "rgba(59, 130, 246, 0.15)",
-                                borderRadius: "0.5rem",
-                              },
-                              inactive: {
-                                backgroundColor: "rgba(0, 0, 0, 0)",
-                                borderRadius: "0.5rem",
-                              },
-                            }}
-                            transition={{ duration: 0.2 }}
-                            className="relative"
-                          >
-                            {activeTab === item.href && (
-                              <motion.div
-                                layoutId="activeNavItem"
-                                className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r-full"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.2 }}
-                              />
-                            )}
-                            <NavLink
-                              href={"href" in item ? item.href : ""}
-                              icon={"icon" in item ? item.icon : Menu}
-                              label={"label" in item ? item.label : ""}
-                            />
-                          </motion.div>
-                        )}
-                      </div>
-                    )
-                  )}
-                </div>
-                <div className="p-4 border-t border-gray-700">
-                  <div className="flex gap-2">
-                    <Button
-                      className="flex-1 flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-base"
-                      onClick={() => onOpenSettings()}
-                    >
-                      <Settings className="mr-2 h-5 w-5" />
-                      Settings
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </nav>
 
     </>
   );
