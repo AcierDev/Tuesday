@@ -190,49 +190,6 @@ export default function OrderManagementPage() {
     setIsShippingDashboardOpen(true);
   }, []);
 
-  const getStatusChangeMessage = (newStatus: ItemStatus) => {
-    switch (newStatus) {
-      case ItemStatus.New:
-        return "Item added to New orders";
-      case ItemStatus.OnDeck:
-        return "Item moved to On Deck - ready to start";
-      case ItemStatus.Wip:
-        return "Item moved to Work in Progress";
-      case ItemStatus.Packaging:
-        return "Item ready for packaging";
-      case ItemStatus.At_The_Door:
-        return "Item is at the door - ready for pickup";
-      case ItemStatus.Done:
-        return "Item marked as completed";
-      case ItemStatus.Hidden:
-        return "Item hidden from view";
-      default:
-        return `Item moved to ${newStatus}`;
-    }
-  };
-
-  const undoStatusChange = useCallback(
-    async (item: Item, previousStatus: ItemStatus) => {
-      try {
-        const restoredItem = {
-          ...item,
-          status: previousStatus,
-          prevStatus: null,
-          completedAt: undefined,
-        };
-
-        await updateItem(restoredItem);
-
-      } catch (error) {
-        console.error("Failed to undo status change:", error);
-        toast.error("Failed to undo status change", {
-          style: { background: "#EF4444", color: "white" },
-        });
-      }
-    },
-    [updateItem]
-  );
-
   const handleStatusChange = useCallback(
     async (itemId: string, newStatus: ItemStatus) => {
       const item =
@@ -243,7 +200,6 @@ export default function OrderManagementPage() {
       if (item.status === newStatus) return;
 
       try {
-        const previousStatus = item.status;
         const updatedItem = {
           ...item,
           status: newStatus,
@@ -252,20 +208,11 @@ export default function OrderManagementPage() {
         };
 
         await updateItem(updatedItem);
-
-        toast.success(getStatusChangeMessage(newStatus), {
-          style: { background: "#10B981", color: "white" },
-          action: {
-            label: "Undo",
-            onClick: () => undoStatusChange(item, previousStatus),
-          },
-        });
       } catch (error) {
         console.error("Failed to update status:", error);
-        toast.error("Failed to update status");
       }
     },
-    [items, doneItems, updateItem, undoStatusChange]
+    [items, doneItems, updateItem]
   );
 
   const undoItemDeletion = useCallback(
