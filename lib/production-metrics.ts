@@ -864,13 +864,16 @@ export function computeStateMix(items: Item[]): { state: string; count: number; 
 //║ ❤️ HEALTH SCORE                                                       ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
-const HEALTH_WEIGHT_ON_TIME = 35;
-const HEALTH_WEIGHT_DEBT = 25;
-const HEALTH_WEIGHT_LATE_NOW = 20;
-const HEALTH_WEIGHT_VELOCITY = 20;
+const HEALTH_WEIGHT_ON_TIME = 30;
+const HEALTH_WEIGHT_DEBT = 20;
+const HEALTH_WEIGHT_LATE_NOW = 15;
+const HEALTH_WEIGHT_VELOCITY = 15;
+const HEALTH_WEIGHT_FORECAST = 20;
 const HEALTH_ON_TIME_TARGET = 95;
 const HEALTH_DEBT_HEAVY_DAYS = 30;
 const HEALTH_LATE_HEAVY_COUNT = 10;
+const HEALTH_FORECAST_DRIFT_HEAVY_DAYS = 30;
+const HEALTH_FORECAST_FALLBACK_LEAD = 14;
 const HEALTH_RANGE_DAYS = 30;
 
 export type HealthBreakdownRow = {
@@ -906,6 +909,31 @@ export function computeHealthScore(items: Item[]): {
   const throughput = summarizeDayBuckets(buckets);
   const onTime = computeOnTimeStats(items, start, today);
 
+  const leadStats = computeLeadTimeStats(items);
+  const designAvg = new Map(leadStats.byDesign.map((r) => [r.key, r.avgDays]));
+  const sizeAvg = new Map(leadStats.bySize.map((r) => [r.key, r.avgDays]));
+  const overallLead = leadStats.avgDays || HEALTH_FORECAST_FALLBACK_LEAD;
+  const nowMs = Date.now();
+  let forecastDrift = 0;
+  let forecastLateItems = 0;
+  let forecastDueItems = 0;
+  for (const item of active) {
+    const due = item.dueDate?.slice(0, 10);
+    if (!due || due.length !== 10) continue;
+    forecastDueItems += 1;
+    const designLead = item.design ? designAvg.get(item.design) : undefined;
+    const sizeLead = item.size ? sizeAvg.get(item.size) : undefined;
+    const baseAvg = designLead ?? sizeLead ?? overallLead;
+    const ageDays = (nowMs - item.createdAt) / MS_PER_DAY;
+    const remaining = Math.max(1, baseAvg - ageDays);
+    const projectedKey = shiftDayKey(today, Math.ceil(remaining));
+    const slip = dayDiffKeys(due, projectedKey);
+    if (slip > 0) {
+      forecastDrift += slip;
+      forecastLateItems += 1;
+    }
+  }
+
   const onTimeScore =
     onTime.total === 0
       ? HEALTH_WEIGHT_ON_TIME
@@ -927,9 +955,14 @@ export function computeHealthScore(items: Item[]): {
       ? HEALTH_WEIGHT_VELOCITY
       : Math.max(0, 1 + velocityDelta / Math.max(throughput.priorAverage, 1)) *
         HEALTH_WEIGHT_VELOCITY;
+  const forecastScore =
+    forecastDrift <= 0
+      ? HEALTH_WEIGHT_FORECAST
+      : Math.max(0, 1 - forecastDrift / HEALTH_FORECAST_DRIFT_HEAVY_DAYS) *
+        HEALTH_WEIGHT_FORECAST;
 
   const total = Math.round(
-    onTimeScore + debtScore + lateScore + velocityScore
+    onTimeScore + debtScore + lateScore + velocityScore + forecastScore
   );
   return {
     total,
@@ -986,6 +1019,25 @@ export function computeHealthScore(items: Item[]): {
           velocityDelta >= 0
             ? "Pace holding or improving."
             : `Down ${Math.abs(velocityDelta).toFixed(1)} / day vs the prior week.`,
+      },
+      {
+        label: "Forecast drift",
+        earned: forecastScore,
+        weight: HEALTH_WEIGHT_FORECAST,
+        raw: `${forecastDrift} projected late-days`,
+        actual:
+          forecastDueItems === 0
+            ? "no items with due dates"
+            : forecastDrift === 0
+              ? `${forecastDueItems} on track`
+              : `${forecastLateItems}/${forecastDueItems} projected late · ${forecastDrift} day${forecastDrift === 1 ? "" : "s"} of slip`,
+        target: "0 projected late-days",
+        hint:
+          forecastDueItems === 0
+            ? "No active items with due dates — full credit by default."
+            : forecastDrift === 0
+              ? "Every active item projects to ship on or before its due date."
+              : `Each projected late-day cleared adds ${(HEALTH_WEIGHT_FORECAST / HEALTH_FORECAST_DRIFT_HEAVY_DAYS).toFixed(2)} pts. Hits 0 at ${HEALTH_FORECAST_DRIFT_HEAVY_DAYS}+ days. Projection = avg lead time for design/size − age so far.`,
       },
     ],
   };

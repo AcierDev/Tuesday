@@ -54,6 +54,7 @@ const COMPONENT_FILL: Record<string, string> = {
   "Time Debt": "bg-rose-400",
   "Late items": "bg-amber-400",
   Velocity: "bg-violet-400",
+  "Forecast drift": "bg-teal-400",
 };
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
