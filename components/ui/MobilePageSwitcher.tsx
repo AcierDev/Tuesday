@@ -95,34 +95,38 @@ export function MobilePageSwitcher() {
         transition: "transform 0.25s ease-out",
       }}
     >
-      {/* Toggle: anchored to screen center. Fades up and out when searching. */}
-      <motion.div
-        ref={toggleRef}
-        animate={{
-          y: searching ? -TOGGLE_LIFT_PX : 0,
-          opacity: searching ? 0 : 1,
-          scale: searching ? 0.96 : 1,
-        }}
-        transition={SPRING}
-        className="absolute left-1/2 bottom-0 -translate-x-1/2 rounded-full bg-gray-950/85 backdrop-blur-md ring-1 ring-white/15 shadow-lg shadow-black/30"
-        style={{ pointerEvents: searching ? "none" : "auto" }}
-      >
-        <PageToggle currentPage={currentPage} />
-      </motion.div>
+      {/* Toggle: anchored to screen center. Fades up and out when searching.
+          Wrapper holds the -translate-x-1/2 so framer-motion's animated
+          transform on the inner motion.div doesn't clobber it. */}
+      <div className="absolute left-1/2 bottom-0 -translate-x-1/2">
+        <motion.div
+          ref={toggleRef}
+          animate={{
+            y: searching ? -TOGGLE_LIFT_PX : 0,
+            opacity: searching ? 0 : 1,
+            scale: searching ? 0.96 : 1,
+          }}
+          transition={SPRING}
+          className="rounded-full bg-gray-950/85 backdrop-blur-md ring-1 ring-white/15 shadow-lg shadow-black/30"
+          style={{ pointerEvents: searching ? "none" : "auto" }}
+        >
+          <PageToggle currentPage={currentPage} />
+        </motion.div>
+      </div>
 
       {/* Search bar: collapsed = just to the right of the centered toggle.
-          Expanded = full-width centered above the keyboard. */}
+          Expanded = full-width centered above the keyboard. We anchor at
+          left-1/2 and bake the centering offset into x, since framer-motion's
+          transform would otherwise override Tailwind's -translate-x-1/2. */}
       <motion.div
         animate={{
           width: searching ? expandedSearchWidth : SEARCH_BUTTON_SIZE,
           x: searching
-            ? 0
-            : toggleWidth / 2 +
-              TOGGLE_SEARCH_GAP_PX +
-              SEARCH_BUTTON_SIZE / 2,
+            ? -expandedSearchWidth / 2
+            : toggleWidth / 2 + TOGGLE_SEARCH_GAP_PX,
         }}
         transition={SPRING}
-        className="absolute left-1/2 bottom-0 -translate-x-1/2 flex items-center rounded-full bg-gray-950/85 backdrop-blur-md ring-1 ring-white/15 shadow-lg shadow-black/30 overflow-hidden"
+        className="absolute left-1/2 bottom-0 flex items-center rounded-full bg-gray-950/85 backdrop-blur-md ring-1 ring-white/15 shadow-lg shadow-black/30 overflow-hidden"
         style={{ height: SEARCH_BUTTON_SIZE, pointerEvents: "auto" }}
       >
           <AnimatePresence>
