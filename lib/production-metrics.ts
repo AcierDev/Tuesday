@@ -875,6 +875,11 @@ const HEALTH_LATE_HEAVY_COUNT = 10;
 const HEALTH_FORECAST_DRIFT_HEAVY_DAYS = 30;
 const HEALTH_FORECAST_FALLBACK_LEAD = 14;
 const HEALTH_FORECAST_MAX_DAYS_OUT = 365 * 5;
+// On-time rate: recent shipments weigh more than older ones in the
+// 30-day window. Older than N days, each on-time/late event counts
+// for half.
+const HEALTH_ON_TIME_RECENT_DAYS = 14;
+const HEALTH_ON_TIME_OLD_WEIGHT = 0.5;
 const HEALTH_RANGE_DAYS = 30;
 
 export type HealthBreakdownRow = {
@@ -909,6 +914,26 @@ export function computeHealthScore(items: Item[]): {
   const buckets = bucketCompletionsByDay(items, start, today);
   const throughput = summarizeDayBuckets(buckets);
   const onTime = computeOnTimeStats(items, start, today);
+
+  // Recency-weighted on-time pct: shipments older than N days count
+  // for less, so a recent miss matters more than an old one.
+  const onTimeRecentCutoff = shiftDayKey(today, -HEALTH_ON_TIME_RECENT_DAYS);
+  let weightedOnTime = 0;
+  let weightedTotal = 0;
+  for (const item of items) {
+    if (!item.completedAt) continue;
+    const due = item.dueDate?.slice(0, 10);
+    if (!due || due.length !== 10) continue;
+    const completedKey = laDayKey(new Date(item.completedAt));
+    if (completedKey < start || completedKey > today) continue;
+    const weight =
+      completedKey >= onTimeRecentCutoff ? 1 : HEALTH_ON_TIME_OLD_WEIGHT;
+    weightedTotal += weight;
+    const diff = dayDiffKeys(due, completedKey);
+    if (diff <= 0) weightedOnTime += weight;
+  }
+  const weightedOnTimePct =
+    weightedTotal === 0 ? 0 : (weightedOnTime / weightedTotal) * 100;
 
   const leadStats = computeLeadTimeStats(items);
   const designAvg = new Map(leadStats.byDesign.map((r) => [r.key, r.avgDays]));
@@ -949,9 +974,9 @@ export function computeHealthScore(items: Item[]): {
   }
 
   const onTimeScore =
-    onTime.total === 0
+    weightedTotal === 0
       ? HEALTH_WEIGHT_ON_TIME
-      : (Math.min(onTime.onTimePct, HEALTH_ON_TIME_TARGET) /
+      : (Math.min(weightedOnTimePct, HEALTH_ON_TIME_TARGET) /
           HEALTH_ON_TIME_TARGET) *
         HEALTH_WEIGHT_ON_TIME;
   const debtScore =
@@ -1006,18 +1031,18 @@ export function computeHealthScore(items: Item[]): {
         label: "On-time rate",
         earned: onTimeScore,
         weight: HEALTH_WEIGHT_ON_TIME,
-        raw: `${Math.round(onTime.onTimePct)}% (target ${HEALTH_ON_TIME_TARGET}%)`,
+        raw: `${Math.round(weightedOnTimePct)}% weighted (target ${HEALTH_ON_TIME_TARGET}%)`,
         actual:
-          onTime.total === 0
+          weightedTotal === 0
             ? "no shipments"
-            : `${Math.round(onTime.onTimePct)}% on time`,
+            : `${Math.round(weightedOnTimePct)}% recency-weighted (${Math.round(onTime.onTimePct)}% raw)`,
         target: `${HEALTH_ON_TIME_TARGET}% target`,
         hint:
-          onTime.total === 0
+          weightedTotal === 0
             ? "Nothing shipped yet — full credit by default."
-            : onTime.onTimePct >= HEALTH_ON_TIME_TARGET
+            : weightedOnTimePct >= HEALTH_ON_TIME_TARGET
               ? "Hitting your target. Nice."
-              : `Ship ${onTime.total - onTime.onTime} more on-time of next ${onTime.total} to reach target.`,
+              : `Recent shipments count fully; older than ${HEALTH_ON_TIME_RECENT_DAYS} days count ${Math.round(HEALTH_ON_TIME_OLD_WEIGHT * 100)}%. Ship ${onTime.total - onTime.onTime} more on-time of next ${onTime.total} to reach target.`,
       },
       {
         label: "Time Debt",
