@@ -60,16 +60,16 @@ const SELECTED_RING_CLASSES =
   "ring-2 ring-blue-400 ring-offset-2 ring-offset-white dark:ring-offset-gray-900";
 
 const TRIGGER_BASE_CLASSES =
-  "relative overflow-hidden h-10 w-full justify-start text-left font-normal rounded-lg border transition-all duration-300";
+  "relative overflow-hidden h-10 px-4 inline-flex items-center justify-start text-left text-sm font-normal border transition-colors duration-300";
 
 const TRIGGER_EMPTY_CLASSES =
-  "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/70 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700";
+  "w-full rounded-lg border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/70 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700";
 
 const SIZE_FILLED_CLASSES =
-  "border-transparent text-white bg-sky-500/80 dark:bg-sky-600/80 hover:bg-sky-500/80 dark:hover:bg-sky-600/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(0,0,0,0.10)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_48%)]";
+  "h-[34px] px-3.5 text-[13px] w-fit rounded-full justify-center text-center border-transparent text-white bg-sky-500/80 dark:bg-sky-600/80 hover:bg-sky-500/80 dark:hover:bg-sky-600/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(0,0,0,0.10)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_48%)]";
 
 const DESIGN_FILLED_CLASSES =
-  "border-transparent text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.05)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_24%)]";
+  "h-[34px] px-3.5 text-[13px] w-fit rounded-full justify-center text-center border-transparent text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.05)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_24%)]";
 
 const WOODFORM_DESIGNS = new Set(["Mint", "Brisket", "Nevada"]);
 
@@ -477,23 +477,20 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
             <Field icon={<Columns3 className="h-3.5 w-3.5" />} label="Size">
               <Popover open={sizeOpen} onOpenChange={setSizeOpen}>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
+                  <motion.button
+                    type="button"
+                    layout
+                    style={{ transformOrigin: "left center" }}
+                    transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
                     className={cn(
                       TRIGGER_BASE_CLASSES,
                       size ? SIZE_FILLED_CLASSES : TRIGGER_EMPTY_CLASSES
                     )}
                   >
-                    <motion.span
-                      key={size || "empty"}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="relative z-10"
-                    >
+                    <span className="relative z-10">
                       {size || "Select size"}
-                    </motion.span>
-                  </Button>
+                    </span>
+                  </motion.button>
                 </PopoverTrigger>
                 <PopoverContent
                   align="start"
@@ -561,8 +558,11 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
             <Field icon={<Palette className="h-3.5 w-3.5" />} label="Design">
               <Popover open={designOpen} onOpenChange={setDesignOpen}>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
+                  <motion.button
+                    type="button"
+                    layout
+                    style={{ transformOrigin: "left center" }}
+                    transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
                     className={cn(
                       TRIGGER_BASE_CLASSES,
                       design ? DESIGN_FILLED_CLASSES : TRIGGER_EMPTY_CLASSES
@@ -586,16 +586,10 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
                         />
                       )}
                     </AnimatePresence>
-                    <motion.span
-                      key={design || "empty"}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="relative z-10"
-                    >
+                    <span className="relative z-10">
                       {design || "Select design"}
-                    </motion.span>
-                  </Button>
+                    </span>
+                  </motion.button>
                 </PopoverTrigger>
                 <PopoverContent
                   align="start"
