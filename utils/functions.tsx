@@ -40,6 +40,41 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Split a customer name into [head, tail] at the boundary after the first two
+// real words. Color codes (&a) and brand prefixes ([EW]/[WF]/[SH]) don't count
+// as words but stay grouped with the head. Used to render the first two words
+// at full weight and dim the rest, both on the orders board and the planner.
+export function splitFirstTwoWords(text: string): [string, string] {
+  let wordCount = 0;
+  let inWord = false;
+  let i = 0;
+  let splitAt = text.length;
+  while (i < text.length) {
+    if (/^&[0-9a-f]/i.test(text.slice(i, i + 2))) {
+      i += 2;
+      continue;
+    }
+    const prefixMatch = text.slice(i).match(/^\[(EW|WF|SH)\]/);
+    if (prefixMatch) {
+      i += prefixMatch[0].length;
+      continue;
+    }
+    const isSpace = /\s/.test(text[i]!);
+    if (!isSpace && !inWord) {
+      wordCount++;
+      if (wordCount > 2) {
+        splitAt = i;
+        break;
+      }
+      inWord = true;
+    } else if (isSpace) {
+      inWord = false;
+    }
+    i++;
+  }
+  return [text.slice(0, splitAt), text.slice(splitAt)];
+}
+
 export const getCellClassName = (columnValue: ColumnValue): string => {
   if (columnValue.type === ColumnTypes.Dropdown) {
     switch (columnValue.text) {

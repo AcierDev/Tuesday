@@ -15,7 +15,7 @@ import {
   Printer,
 } from "lucide-react";
 import { parseISO, isValid } from "date-fns";
-import { cn } from "@/utils/functions";
+import { cn, splitFirstTwoWords } from "@/utils/functions";
 import React from "react";
 import { Item, ColumnTitles, ItemStatus } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
@@ -153,8 +153,7 @@ export const NameCell: React.FC<NameCellProps> = ({
     <span
       aria-label={`Planned for ${scheduleTag.label.toLowerCase()}`}
       className={cn(
-        "pointer-events-none absolute left-0 -top-0.5 -translate-y-full z-20",
-        "inline-flex items-center justify-center h-[0.89375rem] px-1.5 rounded-sm whitespace-nowrap",
+        "inline-flex items-center justify-center h-[0.89375rem] px-1.5 rounded-sm whitespace-nowrap flex-shrink-0",
         "text-white text-[0.5rem] leading-none font-bold uppercase tracking-wider",
         "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]",
         "[text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
@@ -175,38 +174,6 @@ export const NameCell: React.FC<NameCellProps> = ({
     ? inputValue.slice(brandPrefixMatch[0].length)
     : inputValue;
 
-  // Split off the first two real words. Color codes (&a) and brand prefixes
-  // ([EW]/[WF]/[SH]) don't count as words but stay grouped with the head.
-  const splitFirstTwoWords = (text: string): [string, string] => {
-    let wordCount = 0;
-    let inWord = false;
-    let i = 0;
-    let splitAt = text.length;
-    while (i < text.length) {
-      if (/^&[0-9a-f]/i.test(text.slice(i, i + 2))) {
-        i += 2;
-        continue;
-      }
-      const prefixMatch = text.slice(i).match(/^\[(EW|WF|SH)\]/);
-      if (prefixMatch) {
-        i += prefixMatch[0].length;
-        continue;
-      }
-      const isSpace = /\s/.test(text[i]!);
-      if (!isSpace && !inWord) {
-        wordCount++;
-        if (wordCount > 2) {
-          splitAt = i;
-          break;
-        }
-        inWord = true;
-      } else if (isSpace) {
-        inWord = false;
-      }
-      i++;
-    }
-    return [text.slice(0, splitAt), text.slice(splitAt)];
-  };
   const [firstTwoWords, restOfName] = splitFirstTwoWords(displayName);
 
   const brandTag = brandPrefix ? (
@@ -281,7 +248,7 @@ export const NameCell: React.FC<NameCellProps> = ({
         {isEditing ? (
           <div className="flex flex-1 min-w-0 items-center justify-start gap-2">
             {dueBadge}
-            <div className="relative flex-1 min-w-0">
+            <div className="flex flex-col items-start gap-0.5 flex-1 min-w-0">
               {scheduleBadge}
               <input
                 type="text"
@@ -315,30 +282,32 @@ export const NameCell: React.FC<NameCellProps> = ({
             }}
           >
             {dueBadge}
-            <span className="relative">
+            <div className="flex flex-col items-start gap-0.5">
               {scheduleBadge}
-              {isPrintMarker ? (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5",
-                    "bg-amber-100 text-amber-900 ring-1 ring-amber-300",
-                    "dark:bg-amber-500/20 dark:text-amber-200 dark:ring-amber-400/40",
-                    "text-xs font-bold uppercase tracking-wider"
-                  )}
-                >
-                  <Printer className="h-3.5 w-3.5" strokeWidth={2.5} />
-                  Print
-                </span>
-              ) : (
-                <>
-                  {parseMinecraftColors(firstTwoWords)}
-                  <span className="opacity-55 text-[0.92em]">
-                    {parseMinecraftColors(restOfName)}
+              <span className="inline-flex items-center gap-2">
+                {isPrintMarker ? (
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5",
+                      "bg-amber-100 text-amber-900 ring-1 ring-amber-300",
+                      "dark:bg-amber-500/20 dark:text-amber-200 dark:ring-amber-400/40",
+                      "text-xs font-bold uppercase tracking-wider"
+                    )}
+                  >
+                    <Printer className="h-3.5 w-3.5" strokeWidth={2.5} />
+                    Print
                   </span>
-                </>
-              )}
-            </span>
-            {brandTag}
+                ) : (
+                  <span>
+                    {parseMinecraftColors(firstTwoWords)}
+                    <span className="opacity-55 text-[0.92em]">
+                      {parseMinecraftColors(restOfName)}
+                    </span>
+                  </span>
+                )}
+                {brandTag}
+              </span>
+            </div>
             {verticalIcon}
           </div>
         )}

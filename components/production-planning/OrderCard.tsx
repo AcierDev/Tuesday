@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ColumnTitles, DayName, ItemStatus } from "@/typings/types";
 import { OrderMeta } from "./types";
-import { cn, formatDueDelta } from "@/utils/functions";
+import { cn, formatDueDelta, splitFirstTwoWords } from "@/utils/functions";
 import { Pin } from "lucide-react";
 import { DesignBlends } from "@/typings/constants";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
@@ -135,8 +135,9 @@ export function OrderCard({
     STATUS_LEFT_BORDER[ItemStatus.New];
   const backgroundStyle = design ? createBackground(design) : undefined;
 
-  // Parse customer name with Minecraft colors
-  const parsedCustomerName = parseMinecraftColors(customerName);
+  // Match the orders-board treatment: first two real words render at full
+  // weight, the rest dims to ~55% opacity at a slightly smaller size.
+  const [firstTwoWords, restOfName] = splitFirstTwoWords(customerName);
 
   const badgeStatus = meta.item.dueDate
     ? getSolidDueBadge(new Date(meta.item.dueDate), referenceDate)
@@ -190,8 +191,11 @@ export function OrderCard({
     >
       <div className="flex items-start justify-between gap-2 px-3 py-2.5">
         <div className="flex-1 min-w-0 space-y-[3px] md:space-y-1.5">
-          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate leading-snug">
-            {parsedCustomerName}
+          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 break-words">
+            {parseMinecraftColors(firstTwoWords)}
+            <span className="opacity-55 text-[0.92em]">
+              {parseMinecraftColors(restOfName)}
+            </span>
           </div>
           <div className="flex items-center gap-[3px] md:gap-1.5 min-w-0">
             <div className="shrink-0 text-[0.625rem] md:text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md">
