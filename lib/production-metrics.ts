@@ -949,11 +949,32 @@ export function computeHealthScore(items: Item[]): {
       ? HEALTH_WEIGHT_LATE_NOW
       : Math.max(0, 1 - lateNow / HEALTH_LATE_HEAVY_COUNT) *
         HEALTH_WEIGHT_LATE_NOW;
-  const velocityDelta = throughput.recentAverage - throughput.priorAverage;
+  // Velocity here uses per-working-day pace (days with > 0 completions),
+  // mirroring the glued/week chart. A weekday off should not look like a
+  // velocity drop.
+  const recentValues = buckets
+    .slice(-RECENT_VELOCITY_DAYS)
+    .map((b) => b.value);
+  const priorValues = buckets
+    .slice(-RECENT_VELOCITY_DAYS * 2, -RECENT_VELOCITY_DAYS)
+    .map((b) => b.value);
+  const recentWorking = recentValues.filter((v) => v > 0);
+  const priorWorking = priorValues.filter((v) => v > 0);
+  const recentPerWorkingDay =
+    recentWorking.length > 0
+      ? recentWorking.reduce((s, v) => s + v, 0) / recentWorking.length
+      : 0;
+  const priorPerWorkingDay =
+    priorWorking.length > 0
+      ? priorWorking.reduce((s, v) => s + v, 0) / priorWorking.length
+      : 0;
+  const velocityDelta = recentPerWorkingDay - priorPerWorkingDay;
   const velocityScore =
+    recentWorking.length === 0 ||
+    priorWorking.length === 0 ||
     velocityDelta >= 0
       ? HEALTH_WEIGHT_VELOCITY
-      : Math.max(0, 1 + velocityDelta / Math.max(throughput.priorAverage, 1)) *
+      : Math.max(0, 1 + velocityDelta / Math.max(priorPerWorkingDay, 1)) *
         HEALTH_WEIGHT_VELOCITY;
   const forecastScore =
     forecastDrift <= 0
@@ -1012,13 +1033,21 @@ export function computeHealthScore(items: Item[]): {
         label: "Velocity",
         earned: velocityScore,
         weight: HEALTH_WEIGHT_VELOCITY,
-        raw: `${velocityDelta > 0 ? "+" : ""}${velocityDelta.toFixed(1)} / day vs prior`,
-        actual: `${throughput.recentAverage.toFixed(1)} / day last 7d`,
-        target: `≥ ${throughput.priorAverage.toFixed(1)} / day (prior 7d)`,
+        raw: `${velocityDelta > 0 ? "+" : ""}${velocityDelta.toFixed(1)} / working day vs prior`,
+        actual:
+          recentWorking.length === 0
+            ? "no working days last 7"
+            : `${recentPerWorkingDay.toFixed(1)} / working day (${recentWorking.length} of last 7)`,
+        target:
+          priorWorking.length === 0
+            ? "no prior working days"
+            : `≥ ${priorPerWorkingDay.toFixed(1)} / working day (${priorWorking.length} of prior 7)`,
         hint:
-          velocityDelta >= 0
-            ? "Pace holding or improving."
-            : `Down ${Math.abs(velocityDelta).toFixed(1)} / day vs the prior week.`,
+          recentWorking.length === 0 || priorWorking.length === 0
+            ? "Not enough working days to compare — full credit by default."
+            : velocityDelta >= 0
+              ? "Per-working-day pace holding or improving. Days off don't count."
+              : `Down ${Math.abs(velocityDelta).toFixed(1)} / working day vs the prior week.`,
       },
       {
         label: "Forecast drift",
