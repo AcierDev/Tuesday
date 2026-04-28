@@ -62,19 +62,16 @@ export const getCellClassName = (columnValue: ColumnValue): string => {
 //║ 📅 DUE-DATE DELTA FORMAT                                             ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 // Format a signed day delta for the due-date badge.
-//   • delta < 7 → signed days: "+5", "-3", "0"
-//   • delta ≥ 7 → weeks with stacked label: "1 Week", "1.3 Weeks", "2 Weeks"
-// Whole multiples of 7 render as integers; everything else gets one decimal.
+//   • delta < 14 → signed days: "+5", "-3", "0"
+//   • delta ≥ 14 → whole weeks with stacked label: "2 Weeks", "3 Weeks"
 export function formatDueDelta(delta: number): {
   primary: string;
   suffix?: "Week" | "Weeks";
 } {
-  if (delta >= 7) {
-    const weeks = delta / 7;
-    const isWhole = delta % 7 === 0;
+  if (delta >= 14) {
     return {
-      primary: isWhole ? String(weeks) : weeks.toFixed(1),
-      suffix: delta === 7 ? "Week" : "Weeks",
+      primary: String(Math.round(delta / 7)),
+      suffix: "Weeks",
     };
   }
   return {

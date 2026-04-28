@@ -258,7 +258,7 @@ export function OrderCard({
             >
               {badgeStatus.suffix ? (
                 <span className="flex flex-col items-center leading-[0.95]">
-                  <span>{badgeStatus.primary}</span>
+                  <span className="text-[1.0078125rem]">{badgeStatus.primary}</span>
                   <span className="text-[0.5625rem] font-medium tracking-wide opacity-95">
                     {badgeStatus.suffix}
                   </span>
