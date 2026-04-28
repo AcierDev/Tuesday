@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
@@ -10,9 +10,11 @@ import { useOrderStore } from "@/stores/useOrderStore";
 
 const SWITCHER_ROUTES = new Set(["/orders", "/production-planning"]);
 
-const SEARCH_BAR_WIDTH = 240;
 const SEARCH_BUTTON_SIZE = 40;
+const TOGGLE_SEARCH_GAP_PX = 8;
 const TOGGLE_LIFT_PX = 52;
+const SEARCH_SIDE_MARGIN_PX = 16;
+const SEARCH_KEYBOARD_GAP_PX = 12;
 const SPRING = { duration: 0.32, ease: [0.32, 1.2, 0.55, 1] as const };
 
 export function MobilePageSwitcher() {
@@ -21,11 +23,48 @@ export function MobilePageSwitcher() {
   const setSearchQuery = useOrderStore((s) => s.setSearchQuery);
   const searchQuery = useOrderStore((s) => s.searchQuery);
   const [searching, setSearching] = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(0);
+  const [toggleWidth, setToggleWidth] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const toggleRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (toggleRef.current) {
+      setToggleWidth(toggleRef.current.offsetWidth);
+    }
+  }, []);
 
   useEffect(() => {
     if (searching) inputRef.current?.focus();
   }, [searching]);
+
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+
+    const update = () => {
+      const inset = Math.max(
+        0,
+        window.innerHeight - vv.height - vv.offsetTop,
+      );
+      setKeyboardOffset(inset);
+      setViewportWidth(vv.width);
+    };
+
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  const expandedSearchWidth = Math.max(
+    240,
+    (viewportWidth || 360) - SEARCH_SIDE_MARGIN_PX * 2,
+  );
 
   if (!SWITCHER_ROUTES.has(pathname)) return null;
 
@@ -41,31 +80,51 @@ export function MobilePageSwitcher() {
     setSearchQuery("");
   };
 
+  const liftPx = searching
+    ? keyboardOffset > 0
+      ? keyboardOffset + SEARCH_KEYBOARD_GAP_PX
+      : 0
+    : 0;
+
   return (
     <div
-      className="lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-50 pointer-events-auto"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className="lg:hidden fixed bottom-3 left-0 right-0 z-50 pointer-events-none"
+      style={{
+        paddingBottom: "env(safe-area-inset-bottom)",
+        transform: `translate3d(0, ${-liftPx}px, 0)`,
+        transition: "transform 0.25s ease-out",
+      }}
     >
-      <div className="relative flex items-end gap-2">
-        <motion.div
-          animate={{
-            y: searching ? -TOGGLE_LIFT_PX : 0,
-            opacity: searching ? 0 : 1,
-            scale: searching ? 0.96 : 1,
-          }}
-          transition={SPRING}
-          className="rounded-full bg-gray-950/85 backdrop-blur-md ring-1 ring-white/15 shadow-lg shadow-black/30"
-          style={{ pointerEvents: searching ? "none" : "auto" }}
-        >
-          <PageToggle currentPage={currentPage} />
-        </motion.div>
+      {/* Toggle: anchored to screen center. Fades up and out when searching. */}
+      <motion.div
+        ref={toggleRef}
+        animate={{
+          y: searching ? -TOGGLE_LIFT_PX : 0,
+          opacity: searching ? 0 : 1,
+          scale: searching ? 0.96 : 1,
+        }}
+        transition={SPRING}
+        className="absolute left-1/2 bottom-0 -translate-x-1/2 rounded-full bg-gray-950/85 backdrop-blur-md ring-1 ring-white/15 shadow-lg shadow-black/30"
+        style={{ pointerEvents: searching ? "none" : "auto" }}
+      >
+        <PageToggle currentPage={currentPage} />
+      </motion.div>
 
-        <motion.div
-          animate={{ width: searching ? SEARCH_BAR_WIDTH : SEARCH_BUTTON_SIZE }}
-          transition={SPRING}
-          className="relative flex items-center rounded-full bg-gray-950/85 backdrop-blur-md ring-1 ring-white/15 shadow-lg shadow-black/30 overflow-hidden"
-          style={{ height: SEARCH_BUTTON_SIZE }}
-        >
+      {/* Search bar: collapsed = just to the right of the centered toggle.
+          Expanded = full-width centered above the keyboard. */}
+      <motion.div
+        animate={{
+          width: searching ? expandedSearchWidth : SEARCH_BUTTON_SIZE,
+          x: searching
+            ? 0
+            : toggleWidth / 2 +
+              TOGGLE_SEARCH_GAP_PX +
+              SEARCH_BUTTON_SIZE / 2,
+        }}
+        transition={SPRING}
+        className="absolute left-1/2 bottom-0 -translate-x-1/2 flex items-center rounded-full bg-gray-950/85 backdrop-blur-md ring-1 ring-white/15 shadow-lg shadow-black/30 overflow-hidden"
+        style={{ height: SEARCH_BUTTON_SIZE, pointerEvents: "auto" }}
+      >
           <AnimatePresence>
             {searching && (
               <motion.input
@@ -114,8 +173,7 @@ export function MobilePageSwitcher() {
               )}
             </AnimatePresence>
           </button>
-        </motion.div>
-      </div>
+      </motion.div>
     </div>
   );
 }
