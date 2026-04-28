@@ -132,7 +132,7 @@ export const Header: React.FC<HeaderProps> = ({
                 />
                 <Input
                   ref={searchInputRef}
-                  className="h-10 pl-9 pr-3 w-full rounded-full border-gray-200 bg-gray-50 text-sm placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 focus-visible:bg-white dark:bg-gray-800/60 dark:text-gray-200 dark:border-gray-700 dark:placeholder:text-gray-500 dark:focus-visible:bg-gray-800 dark:focus-visible:border-blue-400 dark:focus-visible:ring-blue-400/30 transition-colors"
+                  className="h-10 pl-9 pr-3 w-full rounded-full border-gray-200 bg-gray-50 text-sm placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500 focus-visible:bg-white dark:bg-gray-800/60 dark:text-gray-200 dark:border-gray-700 dark:placeholder:text-gray-500 dark:focus-visible:bg-gray-800 dark:focus-visible:border-blue-400 transition-colors"
                   placeholder="Search orders..."
                   value={searchTerm}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}

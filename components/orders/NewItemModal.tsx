@@ -1,12 +1,11 @@
-import React, { useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { addMonths, endOfMonth, format, startOfMonth } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar as CalendarIcon,
-  Pencil,
   X,
   User,
-  Box,
+  Columns3,
   Palette,
   CalendarDays,
   RotateCw,
@@ -29,21 +28,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/utils/functions";
+import { boardConfig } from "@/config/boardconfig";
+import { DesignBlends } from "@/typings/constants";
 
 import {
-  ItemDesigns,
-  ItemSizes,
+  ColumnTitles,
   ItemStatus,
   Item,
 } from "../../typings/types";
@@ -57,26 +48,163 @@ interface NewItemModalProps {
 const COMPANIES = ["Everwood", "Woodform", "Sheppit"] as const;
 type Company = (typeof COMPANIES)[number];
 
-const SIZES_BY_HEIGHT: { height: number; sizes: string[] }[] = (() => {
-  const map = new Map<number, string[]>();
-  const other: string[] = [];
-  for (const s of Object.values(ItemSizes)) {
-    const m = s.match(/x\s*(\d+)/i);
-    if (!m) {
-      other.push(s);
+const DESIGN_TAG_ALPHA = 0.8;
+
+const SIZE_PILL_CLASSES =
+  "inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 transition-[transform,opacity,box-shadow] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(0,0,0,0.10)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_48%)] bg-sky-500/80 dark:bg-sky-600/80 hover:opacity-95 hover:-translate-y-px active:translate-y-0";
+
+const DESIGN_PILL_CLASSES =
+  "inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 transition-[transform,opacity,box-shadow] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.05)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_24%)] hover:opacity-95 hover:-translate-y-px active:translate-y-0";
+
+const SELECTED_RING_CLASSES =
+  "ring-2 ring-blue-400 ring-offset-2 ring-offset-white dark:ring-offset-gray-900";
+
+const TRIGGER_BASE_CLASSES =
+  "relative overflow-hidden h-10 w-full justify-start text-left font-normal rounded-lg border transition-all duration-300";
+
+const TRIGGER_EMPTY_CLASSES =
+  "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/70 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700";
+
+const SIZE_FILLED_CLASSES =
+  "border-transparent text-white bg-sky-500/80 dark:bg-sky-600/80 hover:bg-sky-500/80 dark:hover:bg-sky-600/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(0,0,0,0.10)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_48%)]";
+
+const DESIGN_FILLED_CLASSES =
+  "border-transparent text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.05)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_24%)]";
+
+const WOODFORM_DESIGNS = new Set(["Mint", "Brisket", "Nevada"]);
+
+const parseHeight = (size: string): number | null => {
+  const m = size.match(/x\s*(\d+)/i);
+  return m ? parseInt(m[1]!, 10) : null;
+};
+
+const groupByHeight = (opts: string[]) => {
+  const map = new Map<string, string[]>();
+  const noHeight: string[] = [];
+  for (const o of opts) {
+    const h = parseHeight(o);
+    if (h === null) {
+      noHeight.push(o);
       continue;
     }
-    const h = parseInt(m[1]!, 10);
-    const arr = map.get(h) ?? [];
-    arr.push(s);
-    map.set(h, arr);
+    const key = String(h);
+    const arr = map.get(key) ?? [];
+    arr.push(o);
+    map.set(key, arr);
   }
-  const grouped = [...map.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([height, sizes]) => ({ height, sizes }));
-  if (other.length) grouped.push({ height: -1, sizes: other });
-  return grouped;
-})();
+  const ordered = [...map.entries()].sort(
+    (a, b) => parseInt(a[0], 10) - parseInt(b[0], 10)
+  );
+  return { ordered, noHeight };
+};
+
+const splitByCompany = (opts: string[]) => {
+  const woodform: string[] = [];
+  const everwood: string[] = [];
+  const striped: string[] = [];
+  for (const o of opts) {
+    if (WOODFORM_DESIGNS.has(o)) woodform.push(o);
+    else if (o.toLowerCase().startsWith("striped ")) striped.push(o);
+    else everwood.push(o);
+  }
+  return { woodform, everwood, striped };
+};
+
+const hexToRgba = (hex: string, alpha: number) => {
+  const normalized = hex.replace("#", "");
+  const full =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : normalized;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const createDesignBackground = (option: string, alpha = 1) => {
+  const colors = DesignBlends[option as keyof typeof DesignBlends];
+  if (colors && colors.length > 0) {
+    const stops =
+      alpha < 1 ? colors.map((c) => hexToRgba(c, alpha)) : colors;
+    return `linear-gradient(to right, ${stops.join(", ")})`;
+  }
+  return null;
+};
+
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <div className="text-[0.625rem] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 px-0.5">
+    {children}
+  </div>
+);
+
+const SizeSection = ({
+  label,
+  options,
+  selected,
+  onPick,
+}: {
+  label: string;
+  options: string[];
+  selected?: string;
+  onPick: (value: string) => void;
+}) => (
+  <div>
+    <SectionLabel>{label}</SectionLabel>
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onPick(option)}
+          className={`${SIZE_PILL_CLASSES} ${
+            option === selected ? SELECTED_RING_CLASSES : ""
+          }`}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+const DesignSection = ({
+  label,
+  options,
+  selected,
+  onPick,
+}: {
+  label: string;
+  options: string[];
+  selected?: string;
+  onPick: (value: string) => void;
+}) => (
+  <div>
+    <SectionLabel>{label}</SectionLabel>
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onPick(option)}
+          className={`${DESIGN_PILL_CLASSES} ${
+            option === selected ? SELECTED_RING_CLASSES : ""
+          }`}
+          style={{
+            background:
+              createDesignBackground(option) ??
+              "linear-gradient(to right, #4b5563, #1f2937)",
+          }}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  </div>
+);
 
 const SuccessAnimation = () => (
   <motion.div
@@ -127,17 +255,61 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [customSize, setCustomSize] = useState(false);
-  const [customDesign, setCustomDesign] = useState(false);
 
-  const toggleCustomInput = (field: "size" | "design") => {
-    if (field === "size") {
-      setCustomSize(!customSize);
-      if (customSize) setSize("");
-    } else {
-      setCustomDesign(!customDesign);
-      if (customDesign) setDesign("");
-    }
+  const [sizeOpen, setSizeOpen] = useState(false);
+  const [sizeQuery, setSizeQuery] = useState("");
+  const sizeInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [designOpen, setDesignOpen] = useState(false);
+  const [designQuery, setDesignQuery] = useState("");
+  const designInputRef = useRef<HTMLInputElement | null>(null);
+
+  const sizeOptions = boardConfig.columns[ColumnTitles.Size].options ?? [];
+  const designOptions = (
+    boardConfig.columns[ColumnTitles.Design].options ?? []
+  ).filter((o) => !o.toLowerCase().startsWith("tiled "));
+
+  const sizeFiltered = useMemo(() => {
+    const q = sizeQuery.trim().toLowerCase();
+    if (!q) return sizeOptions;
+    return sizeOptions.filter((o) => o.toLowerCase().includes(q));
+  }, [sizeOptions, sizeQuery]);
+
+  const sizeGrouped = useMemo(() => groupByHeight(sizeFiltered), [sizeFiltered]);
+
+  const sizeTrimmed = sizeQuery.trim();
+  const sizeExact = sizeOptions.some(
+    (o) => o.toLowerCase() === sizeTrimmed.toLowerCase()
+  );
+  const showCustomSize = sizeTrimmed.length > 0 && !sizeExact;
+
+  const designFiltered = useMemo(() => {
+    const q = designQuery.trim().toLowerCase();
+    if (!q) return designOptions;
+    return designOptions.filter((o) => o.toLowerCase().includes(q));
+  }, [designOptions, designQuery]);
+
+  const designGrouped = useMemo(
+    () => splitByCompany(designFiltered),
+    [designFiltered]
+  );
+
+  const designTrimmed = designQuery.trim();
+  const designExact = designOptions.some(
+    (o) => o.toLowerCase() === designTrimmed.toLowerCase()
+  );
+  const showCustomDesign = designTrimmed.length > 0 && !designExact;
+
+  const handlePickSize = (value: string) => {
+    setSize(value);
+    setSizeQuery("");
+    setSizeOpen(false);
+  };
+
+  const handlePickDesign = (value: string) => {
+    setDesign(value);
+    setDesignQuery("");
+    setDesignOpen(false);
   };
 
   const sendNotification = async (
@@ -302,81 +474,201 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
               />
             </Field>
 
-            <Field icon={<Box className="h-3.5 w-3.5" />} label="Size">
-              <div className="flex items-center gap-2">
-                {!customSize ? (
-                  <Select value={size} onValueChange={setSize}>
-                    <SelectTrigger className="h-10 rounded-lg bg-white dark:bg-gray-700/70 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-50">
-                      <SelectValue placeholder="Select size" />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-gray-800">
-                      {SIZES_BY_HEIGHT.map(({ height, sizes }) => (
-                        <SelectGroup key={height}>
-                          <SelectLabel className="text-[0.625rem] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                            {height === -1 ? "Other" : `${height} Tall`}
-                          </SelectLabel>
-                          {sizes.map((s) => (
-                            <SelectItem key={s} value={s}>
-                              {s}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    className="h-10 rounded-lg bg-white dark:bg-gray-700/70 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-50 placeholder:text-gray-400 dark:placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500"
-                    value={size}
-                    onChange={(e) => setSize(e.target.value)}
-                    placeholder="Enter custom size"
-                  />
-                )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => toggleCustomInput("size")}
-                  className="h-10 w-10 shrink-0 rounded-lg border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/70 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-50 hover:bg-gray-50 dark:hover:bg-gray-700"
-                  aria-label={customSize ? "Use preset sizes" : "Enter custom size"}
+            <Field icon={<Columns3 className="h-3.5 w-3.5" />} label="Size">
+              <Popover open={sizeOpen} onOpenChange={setSizeOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      TRIGGER_BASE_CLASSES,
+                      size ? SIZE_FILLED_CLASSES : TRIGGER_EMPTY_CLASSES
+                    )}
+                  >
+                    <motion.span
+                      key={size || "empty"}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="relative z-10"
+                    >
+                      {size || "Select size"}
+                    </motion.span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  sideOffset={6}
+                  className="w-80 p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-xl"
+                  onOpenAutoFocus={(e) => {
+                    e.preventDefault();
+                    sizeInputRef.current?.focus();
+                  }}
                 >
-                  {customSize ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
-                </Button>
-              </div>
+                  <input
+                    ref={sizeInputRef}
+                    value={sizeQuery}
+                    onChange={(e) => setSizeQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (showCustomSize) handlePickSize(sizeTrimmed);
+                        else if (sizeFiltered[0]) handlePickSize(sizeFiltered[0]);
+                      }
+                    }}
+                    placeholder="Search or type a custom size"
+                    className="w-full mb-3 px-3 h-8 rounded-md text-sm bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <div className="px-1 pt-1.5 pb-1 space-y-3">
+                    {sizeGrouped.ordered.map(([height, sizes]) => (
+                      <SizeSection
+                        key={height}
+                        label={`${height} Tall`}
+                        options={sizes}
+                        selected={size}
+                        onPick={handlePickSize}
+                      />
+                    ))}
+                    {sizeGrouped.noHeight.length > 0 && (
+                      <SizeSection
+                        label="Other"
+                        options={sizeGrouped.noHeight}
+                        selected={size}
+                        onPick={handlePickSize}
+                      />
+                    )}
+                    {showCustomSize && (
+                      <div>
+                        <SectionLabel>Custom</SectionLabel>
+                        <button
+                          type="button"
+                          onClick={() => handlePickSize(sizeTrimmed)}
+                          className={SIZE_PILL_CLASSES}
+                        >
+                          Use &ldquo;{sizeTrimmed}&rdquo;
+                        </button>
+                      </div>
+                    )}
+                    {sizeFiltered.length === 0 && !showCustomSize && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 py-1 px-1">
+                        No matches.
+                      </p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </Field>
 
             <Field icon={<Palette className="h-3.5 w-3.5" />} label="Design">
-              <div className="flex items-center gap-2">
-                {!customDesign ? (
-                  <Select value={design} onValueChange={setDesign}>
-                    <SelectTrigger className="h-10 rounded-lg bg-white dark:bg-gray-700/70 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-50">
-                      <SelectValue placeholder="Select design" />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-gray-800">
-                      {Object.values(ItemDesigns).map((d) => (
-                        <SelectItem key={d} value={d}>
-                          {d}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    className="h-10 rounded-lg bg-white dark:bg-gray-700/70 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-50 placeholder:text-gray-400 dark:placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500"
-                    value={design}
-                    onChange={(e) => setDesign(e.target.value)}
-                    placeholder="Enter custom design"
-                  />
-                )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => toggleCustomInput("design")}
-                  className="h-10 w-10 shrink-0 rounded-lg border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/70 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-50 hover:bg-gray-50 dark:hover:bg-gray-700"
-                  aria-label={customDesign ? "Use preset designs" : "Enter custom design"}
+              <Popover open={designOpen} onOpenChange={setDesignOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      TRIGGER_BASE_CLASSES,
+                      design ? DESIGN_FILLED_CLASSES : TRIGGER_EMPTY_CLASSES
+                    )}
+                  >
+                    <AnimatePresence>
+                      {design && (
+                        <motion.span
+                          key={design}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="absolute inset-0 pointer-events-none"
+                          style={{
+                            background: createDesignBackground(
+                              design,
+                              DESIGN_TAG_ALPHA
+                            ) ?? undefined,
+                          }}
+                        />
+                      )}
+                    </AnimatePresence>
+                    <motion.span
+                      key={design || "empty"}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="relative z-10"
+                    >
+                      {design || "Select design"}
+                    </motion.span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  sideOffset={6}
+                  className="w-80 p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-xl"
+                  onOpenAutoFocus={(e) => {
+                    e.preventDefault();
+                    designInputRef.current?.focus();
+                  }}
                 >
-                  {customDesign ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
-                </Button>
-              </div>
+                  <input
+                    ref={designInputRef}
+                    value={designQuery}
+                    onChange={(e) => setDesignQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (showCustomDesign) handlePickDesign(designTrimmed);
+                        else if (designFiltered[0]) handlePickDesign(designFiltered[0]);
+                      }
+                    }}
+                    placeholder="Search or type a custom design"
+                    className="w-full mb-3 px-3 h-8 rounded-md text-sm bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <div className="px-1 pt-1.5 pb-1 space-y-3">
+                    {designGrouped.everwood.length > 0 && (
+                      <DesignSection
+                        label="Everwood-Geometric"
+                        options={designGrouped.everwood}
+                        selected={design}
+                        onPick={handlePickDesign}
+                      />
+                    )}
+                    {designGrouped.striped.length > 0 && (
+                      <DesignSection
+                        label="Everwood-Striped"
+                        options={designGrouped.striped}
+                        selected={design}
+                        onPick={handlePickDesign}
+                      />
+                    )}
+                    {designGrouped.woodform.length > 0 && (
+                      <DesignSection
+                        label="WoodForm-Geometric"
+                        options={designGrouped.woodform}
+                        selected={design}
+                        onPick={handlePickDesign}
+                      />
+                    )}
+                    {showCustomDesign && (
+                      <div>
+                        <SectionLabel>Custom</SectionLabel>
+                        <button
+                          type="button"
+                          onClick={() => handlePickDesign(designTrimmed)}
+                          className={DESIGN_PILL_CLASSES}
+                          style={{
+                            background:
+                              "linear-gradient(to right, #4b5563, #1f2937)",
+                          }}
+                        >
+                          Use &ldquo;{designTrimmed}&rdquo;
+                        </button>
+                      </div>
+                    )}
+                    {designFiltered.length === 0 && !showCustomDesign && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 py-1 px-1">
+                        No matches.
+                      </p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </Field>
 
             <div className="grid grid-cols-2 gap-4">
