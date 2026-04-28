@@ -923,8 +923,18 @@ export function computeHealthScore(items: Item[]): {
     forecastDueItems += 1;
     const designLead = item.design ? designAvg.get(item.design) : undefined;
     const sizeLead = item.size ? sizeAvg.get(item.size) : undefined;
-    const baseAvg = designLead ?? sizeLead ?? overallLead;
-    const ageDays = (nowMs - item.createdAt) / MS_PER_DAY;
+    const candidate =
+      (Number.isFinite(designLead) ? designLead : undefined) ??
+      (Number.isFinite(sizeLead) ? sizeLead : undefined) ??
+      overallLead;
+    const baseAvg = Number.isFinite(candidate)
+      ? (candidate as number)
+      : HEALTH_FORECAST_FALLBACK_LEAD;
+    const ageDaysRaw =
+      typeof item.createdAt === "number"
+        ? (nowMs - item.createdAt) / MS_PER_DAY
+        : 0;
+    const ageDays = Number.isFinite(ageDaysRaw) ? ageDaysRaw : 0;
     const remaining = Math.max(1, baseAvg - ageDays);
     const projectedKey = shiftDayKey(today, Math.ceil(remaining));
     const slip = dayDiffKeys(due, projectedKey);
