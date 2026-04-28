@@ -61,15 +61,26 @@ const HOVER_TOOLTIP_HEIGHT_OFFSET = 56;
 //║ 🎚️ RANGE SELECTOR                                                    ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
-interface RangeSelectorProps {
-  value: RangeKey;
-  onChange: (next: RangeKey) => void;
+export interface RangeOption {
+  key: string;
+  label: string;
+  days: number;
 }
 
-export function RangeSelector({ value, onChange }: RangeSelectorProps) {
+interface RangeSelectorProps {
+  value: string;
+  onChange: (next: string) => void;
+  options?: ReadonlyArray<RangeOption>;
+}
+
+export function RangeSelector({
+  value,
+  onChange,
+  options = RANGE_OPTIONS,
+}: RangeSelectorProps) {
   return (
     <div className="inline-flex rounded-xl glass-surface p-1 gap-1">
-      {RANGE_OPTIONS.map((opt) => {
+      {options.map((opt) => {
         const isActive = opt.key === value;
         return (
           <button

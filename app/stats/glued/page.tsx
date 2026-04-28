@@ -10,14 +10,19 @@ import {
   summarizeRecencyWeighted,
 } from "@/lib/production-metrics";
 import {
-  DEFAULT_RANGE,
   RANGE_OPTIONS,
-  RangeKey,
   RangeSelector,
   StatTile,
   smoothPath,
   useGluedStats,
 } from "@/lib/stats-shared";
+
+const GLUED_RANGE_OPTIONS = [
+  { key: "7d", label: "7 days", days: 7 },
+  ...RANGE_OPTIONS,
+] as const;
+type GluedRangeKey = (typeof GLUED_RANGE_OPTIONS)[number]["key"];
+const GLUED_DEFAULT_RANGE: GluedRangeKey = "30d";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ ⚙️ CONFIG                                                            ║
@@ -100,11 +105,12 @@ function summarizeWorkingDays(buckets: DayBucket[]): WorkingDayStats {
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function GluedPage() {
-  const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
+  const [range, setRange] = useState<GluedRangeKey>(GLUED_DEFAULT_RANGE);
   const [showAllDays, setShowAllDays] = useState(false);
 
-  const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
-  const rangeLabel = RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+  const days = GLUED_RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
+  const rangeLabel =
+    GLUED_RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
 
   const { data, loading, error } = useGluedStats(days);
 
@@ -125,10 +131,17 @@ export default function GluedPage() {
     return summarizeRecencyWeighted(recentBuckets, RECENCY_WEIGHTED_FORECAST);
   }, [data]);
 
+  const dayBuckets = useMemo<DayBucket[]>(
+    () => data?.buckets ?? [],
+    [data]
+  );
+
   const weekBuckets = useMemo<WeekBucket[]>(
     () => (data ? bucketToWeeks(data.buckets) : []),
     [data]
   );
+
+  const isDailyView = range === "7d";
 
   // Group events by day for the timeline
   const eventsByDay = useMemo(() => {
@@ -176,7 +189,11 @@ export default function GluedPage() {
             {stats?.daysWithValue === 1 ? "" : "s"}
           </p>
         </div>
-        <RangeSelector value={range} onChange={setRange} />
+        <RangeSelector
+          value={range}
+          onChange={(next) => setRange(next as GluedRangeKey)}
+          options={GLUED_RANGE_OPTIONS}
+        />
       </header>
 
       {(loading || error) && (
@@ -188,26 +205,32 @@ export default function GluedPage() {
       <section className="rounded-2xl glass-surface p-5 mb-6">
         <div className="flex items-baseline justify-between mb-3 gap-4 flex-wrap">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-            Weekly squares · {rangeLabel}
+            {isDailyView ? "Daily" : "Weekly"} squares · {rangeLabel}
           </h2>
-          <div className="flex items-center gap-4 text-[10px] uppercase tracking-wider text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <span
-                className="inline-block w-3 h-3 rounded-sm"
-                style={{ background: TOTAL_COLOR, opacity: 0.6 }}
-              />
-              Total / week
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span
-                className="inline-block w-3 h-[2px] rounded"
-                style={{ background: AVG_COLOR }}
-              />
-              Avg / active day
-            </span>
-          </div>
+          {!isDailyView && (
+            <div className="flex items-center gap-4 text-[10px] uppercase tracking-wider text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="inline-block w-3 h-3 rounded-sm"
+                  style={{ background: TOTAL_COLOR, opacity: 0.6 }}
+                />
+                Total / week
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="inline-block w-3 h-[2px] rounded"
+                  style={{ background: AVG_COLOR }}
+                />
+                Avg / active day
+              </span>
+            </div>
+          )}
         </div>
-        <WeeklyDualChart weeks={weekBuckets} />
+        {isDailyView ? (
+          <DailyChart days={dayBuckets} />
+        ) : (
+          <WeeklyDualChart weeks={weekBuckets} />
+        )}
       </section>
 
       <section className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
@@ -288,6 +311,234 @@ export default function GluedPage() {
 }
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 📊 DAILY CHART                                                       ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+const MONTH_NAMES_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+const MONTH_NAMES_FULL = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const WEEKDAY_NAMES_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function formatDayLabel(dateIso: string): string {
+  const [y, m, d] = dateIso.split("-").map(Number);
+  if (!y || !m || !d) return dateIso;
+  return `${MONTH_NAMES_SHORT[m - 1]} ${d}`;
+}
+
+function formatDayTooltip(dateIso: string): string {
+  const [y, m, d] = dateIso.split("-").map(Number);
+  if (!y || !m || !d) return dateIso;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const wd = WEEKDAY_NAMES_SHORT[date.getUTCDay()];
+  return `${wd}, ${MONTH_NAMES_FULL[m - 1]} ${d}`;
+}
+
+function DailyChart({ days }: { days: DayBucket[] }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(800);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    const update = () => {
+      if (wrapRef.current) setWidth(wrapRef.current.clientWidth);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  if (days.length === 0) {
+    return (
+      <div className="h-72 flex items-center justify-center text-sm text-slate-400">
+        No glued events in this range yet.
+      </div>
+    );
+  }
+
+  const innerWidth = Math.max(
+    width - CHART_PADDING_X_LEFT - CHART_PADDING_X_RIGHT,
+    1
+  );
+  const innerHeight = CHART_HEIGHT - CHART_PADDING_TOP - CHART_PADDING_BOTTOM;
+  const slotWidth = innerWidth / days.length;
+
+  const totals = days.map((d) => d.value);
+  const totalRawMax = Math.max(...totals, 0);
+  const totalRoundTo = niceRoundTo(totalRawMax);
+  const totalYMax = Math.max(
+    Math.ceil((totalRawMax + 1) / totalRoundTo) * totalRoundTo,
+    totalRoundTo
+  );
+
+  const slotCenter = (i: number) =>
+    CHART_PADDING_X_LEFT + (i + 0.5) * slotWidth;
+  const totalToY = (v: number) =>
+    CHART_PADDING_TOP + innerHeight - (v / totalYMax) * innerHeight;
+
+  const barInset = slotWidth * BAR_INSET_RATIO;
+  const barWidth = Math.max(slotWidth - barInset * 2, 1);
+
+  const totalTickStep = totalRoundTo / 2;
+  const totalTickCount = Math.min(
+    Math.floor(totalYMax / totalTickStep),
+    Y_AXIS_TICK_TARGET * 2
+  );
+  const totalTicks = Array.from({ length: totalTickCount + 1 }, (_, i) => ({
+    value: i * totalTickStep,
+    y: totalToY(i * totalTickStep),
+  }));
+
+  const targetXLabels = Math.min(8, days.length);
+  const xLabelStep = Math.max(
+    1,
+    Math.floor((days.length - 1) / Math.max(targetXLabels - 1, 1))
+  );
+  const xLabels = days
+    .map((d, i) => ({ ...d, i }))
+    .filter(
+      (_, i, arr) => i === 0 || i === arr.length - 1 || i % xLabelStep === 0
+    );
+
+  const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left - CHART_PADDING_X_LEFT;
+    const idx = Math.floor(x / slotWidth);
+    if (idx < 0 || idx >= days.length) {
+      setHoverIndex(null);
+      return;
+    }
+    setHoverIndex(idx);
+  };
+
+  const hovered = hoverIndex !== null ? days[hoverIndex] : null;
+  const hoveredX = hoverIndex !== null ? slotCenter(hoverIndex) : 0;
+  const tooltipAnchorY = hovered ? totalToY(hovered.value) : 0;
+
+  return (
+    <div ref={wrapRef} className="w-full relative">
+      <svg
+        width={width}
+        height={CHART_HEIGHT}
+        className="overflow-visible"
+        onMouseMove={handleMove}
+        onMouseLeave={() => setHoverIndex(null)}
+      >
+        {totalTicks.map((t) => (
+          <g key={`tt-${t.value}`}>
+            <line
+              x1={CHART_PADDING_X_LEFT}
+              x2={width - CHART_PADDING_X_RIGHT}
+              y1={t.y}
+              y2={t.y}
+              stroke="currentColor"
+              strokeOpacity="0.08"
+              strokeDasharray="3 3"
+            />
+            <text
+              x={CHART_PADDING_X_LEFT - 8}
+              y={t.y + 4}
+              textAnchor="end"
+              className="fill-slate-400"
+              fontSize="11"
+            >
+              {Math.round(t.value).toLocaleString()}
+            </text>
+          </g>
+        ))}
+
+        {days.map((d, i) => {
+          const x = CHART_PADDING_X_LEFT + i * slotWidth + barInset;
+          const y = totalToY(d.value);
+          const h = CHART_PADDING_TOP + innerHeight - y;
+          return (
+            <rect
+              key={d.date}
+              x={x}
+              y={y}
+              width={barWidth}
+              height={Math.max(h, 0)}
+              rx={2}
+              fill={TOTAL_COLOR}
+              fillOpacity={hoverIndex === i ? 0.9 : 0.55}
+            />
+          );
+        })}
+
+        {xLabels.map((p) => (
+          <text
+            key={p.date}
+            x={slotCenter(p.i)}
+            y={CHART_HEIGHT - 8}
+            textAnchor="middle"
+            className="fill-slate-400"
+            fontSize="11"
+          >
+            {formatDayLabel(p.date)}
+          </text>
+        ))}
+
+        {hovered && (
+          <g pointerEvents="none">
+            <line
+              x1={hoveredX}
+              x2={hoveredX}
+              y1={CHART_PADDING_TOP}
+              y2={CHART_PADDING_TOP + innerHeight}
+              stroke="currentColor"
+              strokeOpacity="0.2"
+              strokeDasharray="2 3"
+            />
+          </g>
+        )}
+      </svg>
+
+      {hovered && (
+        <div
+          className="pointer-events-none absolute glass-surface px-3 py-2 rounded-lg text-xs shadow-lg"
+          style={{
+            left: Math.min(
+              Math.max(hoveredX - HOVER_TOOLTIP_WIDTH / 2, 0),
+              Math.max(width - HOVER_TOOLTIP_WIDTH, 0)
+            ),
+            top: Math.max(tooltipAnchorY - HOVER_TOOLTIP_HEIGHT_OFFSET, 0),
+            width: HOVER_TOOLTIP_WIDTH,
+          }}
+        >
+          <div className="text-[10px] uppercase tracking-wider text-slate-400">
+            {formatDayTooltip(hovered.date)}
+          </div>
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <span
+              className="text-base font-bold tabular-nums leading-tight"
+              style={{ color: TOTAL_COLOR }}
+            >
+              {hovered.value.toLocaleString()}
+            </span>
+            <span className="text-[10px] text-slate-400">
+              square{hovered.value === 1 ? "" : "s"}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function niceRoundTo(rawMax: number): number {
+  if (rawMax <= 0) return 1;
+  const target = rawMax / 5;
+  const exp = Math.floor(Math.log10(target));
+  const base = target / Math.pow(10, exp);
+  const nice = base <= 1 ? 1 : base <= 2 ? 2 : base <= 5 ? 5 : 10;
+  return nice * Math.pow(10, exp);
+}
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 📊 WEEKLY DUAL CHART                                                 ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
@@ -335,15 +586,6 @@ function bucketToWeeks(buckets: DayBucket[]): WeekBucket[] {
   weeks.sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1));
   return weeks;
 }
-
-const MONTH_NAMES_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-const MONTH_NAMES_FULL = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 
 function ordinalSuffix(n: number): string {
   const v = n % 100;
@@ -712,15 +954,6 @@ function WeeklyDualChart({ weeks }: { weeks: WeekBucket[] }) {
       )}
     </div>
   );
-}
-
-function niceRoundTo(rawMax: number): number {
-  if (rawMax <= 0) return 1;
-  const target = rawMax / 5;
-  const exp = Math.floor(Math.log10(target));
-  const base = target / Math.pow(10, exp);
-  const nice = base <= 1 ? 1 : base <= 2 ? 2 : base <= 5 ? 5 : 10;
-  return nice * Math.pow(10, exp);
 }
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
