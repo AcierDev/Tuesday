@@ -9,7 +9,7 @@ export interface Design {
 }
 
 export interface ColorDistribution {
-  totalPieces: number;
+  totalSquares: number;
   colorCount: number;
   distribution: { color: string; count: number }[];
   adjustmentCount: number;

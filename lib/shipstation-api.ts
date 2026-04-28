@@ -219,7 +219,7 @@ function parseDimensions(str: string) {
     }
   }
 
-  // Convert the inches to dimensions in blocks
+  // Convert the inches to dimensions in squares
   const size = convertInchesToSize(length, width);
 
   return size;

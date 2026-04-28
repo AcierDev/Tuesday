@@ -55,7 +55,7 @@ export function ProductionPlanningSidebar({
       if (!a.dueDate && b.dueDate) return 1;
       if (a.dueDate && !b.dueDate) return -1;
       if (a.dueDate && b.dueDate) return b.dueDate.getTime() - a.dueDate.getTime();
-      return b.blocks - a.blocks;
+      return b.squares - a.squares;
     });
   }, [orders, excludedItemIds]);
 

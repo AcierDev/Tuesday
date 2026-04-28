@@ -239,41 +239,41 @@ export const calculateTotalSquares = (
         // If either dimension is indeterminate, we have an indeterminate count
         const hasIndeterminate = width === null || height === null;
 
-        // Calculate base blocks from known dimensions
-        let baseBlocks = 0;
+        // Calculate base squares from known dimensions
+        let baseSquares = 0;
         if (
           width !== null &&
           height !== null &&
           !isNaN(width) &&
           !isNaN(height)
         ) {
-          baseBlocks = width * height;
+          baseSquares = width * height;
         } else if (
           width !== null &&
           !isNaN(width) &&
           (height === null || isNaN(height))
         ) {
           // Width known, height unknown - use width as minimum
-          baseBlocks = width;
+          baseSquares = width;
         } else if (
           height !== null &&
           !isNaN(height) &&
           (width === null || isNaN(width))
         ) {
           // Height known, width unknown - use height as minimum
-          baseBlocks = height;
+          baseSquares = height;
         }
 
-        // Ensure baseBlocks is never NaN
-        if (isNaN(baseBlocks)) {
-          baseBlocks = 0;
+        // Ensure baseSquares is never NaN
+        if (isNaN(baseSquares)) {
+          baseSquares = 0;
         }
 
-        // Look for additional blocks in other fields (like a +122 value)
-        const additionalBlocksPattern = /\+(\d+)/;
-        let additionalBlocks = 0;
+        // Look for additional squares in other fields (like a +122 value)
+        const additionalSquaresPattern = /\+(\d+)/;
+        let additionalSquares = 0;
 
-        // Check various fields for additional blocks
+        // Check various fields for additional squares
         const fieldsToCheck = [
           item.size || "",
           item.design || "",
@@ -281,13 +281,13 @@ export const calculateTotalSquares = (
         ];
 
         for (const field of fieldsToCheck) {
-          const match = field.match(additionalBlocksPattern);
+          const match = field.match(additionalSquaresPattern);
           if (match?.[1]) {
-            additionalBlocks += parseInt(match[1], 10);
+            additionalSquares += parseInt(match[1], 10);
           }
         }
 
-        const itemTotal = baseBlocks + additionalBlocks;
+        const itemTotal = baseSquares + additionalSquares;
         const safeItemTotal = isNaN(itemTotal) ? 0 : itemTotal;
 
         return {

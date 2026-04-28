@@ -48,7 +48,7 @@ import {
 } from "@/typings/types";
 import { parseSquareSize } from "@/lib/production-metrics";
 
-function calculateBlocks(item: { size?: string }): number {
+function calculateSquares(item: { size?: string }): number {
   const sizeStr = item.size || "";
   // Accept any of x / X / × (Unicode mult sign) as the dimension separator —
   // the size-picker can emit any of them depending on entry method, and the
@@ -75,10 +75,10 @@ function calculateBlocks(item: { size?: string }): number {
 //║ ⚙️ CONFIG                                                            ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
-const DAILY_CAPACITY_BLOCKS = 1000;
+const DAILY_CAPACITY_SQUARES = 1000;
 // Daily total turns green once it crosses this — the full capacity (1000) is
 // the displayed denominator, but anything past 850 is "good enough" in practice.
-const DAILY_GREEN_THRESHOLD_BLOCKS = 850;
+const DAILY_GREEN_THRESHOLD_SQUARES = 850;
 
 const DAYS: DayName[] = [
   "Monday",
@@ -375,7 +375,7 @@ export default function ProductionPlanningPage() {
 
   // Filter orders: must be unscheduled-ready (New / OnDeck), not deleted, and
   // have a parseable W×H size. Custom/named sizes don't count toward the
-  // 1000-blocks-per-day target since they aren't square units.
+  // 1000-squares-per-day target since they aren't square units.
   const availableOrders = useMemo(
     () =>
       items.filter(
@@ -405,7 +405,7 @@ export default function ProductionPlanningPage() {
       const meta: OrderMeta = {
         id: item.id,
         item,
-        blocks: calculateBlocks(item),
+        squares: calculateSquares(item),
         dueDate,
         bucket,
       };
@@ -498,7 +498,7 @@ export default function ProductionPlanningPage() {
       combined.set(item.id, {
         id: item.id,
         item,
-        blocks: calculateBlocks(item),
+        squares: calculateSquares(item),
         dueDate,
         bucket,
       });
@@ -518,15 +518,15 @@ export default function ProductionPlanningPage() {
   const dayGroups = useMemo(() => {
     const groups: Record<
       DayName,
-      { orders: ScheduledDisplayOrder[]; totalBlocks: number }
+      { orders: ScheduledDisplayOrder[]; totalSquares: number }
     > = {
-      Sunday: { orders: [], totalBlocks: 0 },
-      Monday: { orders: [], totalBlocks: 0 },
-      Tuesday: { orders: [], totalBlocks: 0 },
-      Wednesday: { orders: [], totalBlocks: 0 },
-      Thursday: { orders: [], totalBlocks: 0 },
-      Friday: { orders: [], totalBlocks: 0 },
-      Saturday: { orders: [], totalBlocks: 0 },
+      Sunday: { orders: [], totalSquares: 0 },
+      Monday: { orders: [], totalSquares: 0 },
+      Tuesday: { orders: [], totalSquares: 0 },
+      Wednesday: { orders: [], totalSquares: 0 },
+      Thursday: { orders: [], totalSquares: 0 },
+      Friday: { orders: [], totalSquares: 0 },
+      Saturday: { orders: [], totalSquares: 0 },
     };
 
     if (currentSchedule) {
@@ -546,7 +546,7 @@ export default function ProductionPlanningPage() {
             day: dayName,
             pinned: !!item.pinned,
           });
-          groups[targetDay].totalBlocks += meta.blocks;
+          groups[targetDay].totalSquares += meta.squares;
         });
       });
     }
@@ -792,7 +792,7 @@ export default function ProductionPlanningPage() {
         DayName,
         { id: string; done: boolean; pinned?: boolean }[]
       >;
-      lockedBlocksByDay: Record<DayName, number>;
+      lockedSquaresByDay: Record<DayName, number>;
       remaining: Record<DayName, number>;
       newPlacements: Record<DayName, { id: string; done: boolean }[]>;
       pulled: Set<string>;
@@ -826,7 +826,7 @@ export default function ProductionPlanningPage() {
         Sunday: [], Monday: [], Tuesday: [], Wednesday: [],
         Thursday: [], Friday: [], Saturday: [],
       };
-      const lockedBlocksByDay: Record<DayName, number> = {
+      const lockedSquaresByDay: Record<DayName, number> = {
         Sunday: 0, Monday: 0, Tuesday: 0, Wednesday: 0,
         Thursday: 0, Friday: 0, Saturday: 0,
       };
@@ -835,7 +835,7 @@ export default function ProductionPlanningPage() {
       (Object.keys(baseSchedule.schedule) as DayName[]).forEach((day) => {
         baseSchedule.schedule[day].forEach((entry) => {
           const item = allOrdersById.get(entry.id)?.item;
-          const blocks = item ? calculateBlocks(item) : 0;
+          const squares = item ? calculateSquares(item) : 0;
           const isMovable =
             !entry.pinned &&
             item &&
@@ -846,7 +846,7 @@ export default function ProductionPlanningPage() {
             pulled.add(entry.id);
           } else {
             lockedByDay[day].push(entry);
-            lockedBlocksByDay[day] += blocks;
+            lockedSquaresByDay[day] += squares;
           }
         });
       });
@@ -854,22 +854,22 @@ export default function ProductionPlanningPage() {
       const remaining: Record<DayName, number> = {
         Monday: Math.max(
           0,
-          DAILY_CAPACITY_BLOCKS -
-            lockedBlocksByDay.Monday -
-            lockedBlocksByDay.Sunday -
-            lockedBlocksByDay.Saturday
+          DAILY_CAPACITY_SQUARES -
+            lockedSquaresByDay.Monday -
+            lockedSquaresByDay.Sunday -
+            lockedSquaresByDay.Saturday
         ),
-        Tuesday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Tuesday),
-        Wednesday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Wednesday),
-        Thursday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Thursday),
-        Friday: Math.max(0, DAILY_CAPACITY_BLOCKS - lockedBlocksByDay.Friday),
+        Tuesday: Math.max(0, DAILY_CAPACITY_SQUARES - lockedSquaresByDay.Tuesday),
+        Wednesday: Math.max(0, DAILY_CAPACITY_SQUARES - lockedSquaresByDay.Wednesday),
+        Thursday: Math.max(0, DAILY_CAPACITY_SQUARES - lockedSquaresByDay.Thursday),
+        Friday: Math.max(0, DAILY_CAPACITY_SQUARES - lockedSquaresByDay.Friday),
         Sunday: 0, Saturday: 0,
       };
 
       plans.push({
         weekKey,
         lockedByDay,
-        lockedBlocksByDay,
+        lockedSquaresByDay,
         remaining,
         newPlacements: {
           Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [],
@@ -907,10 +907,10 @@ export default function ProductionPlanningPage() {
       .map((item) => ({
         id: item.id,
         item,
-        blocks: calculateBlocks(item),
+        squares: calculateSquares(item),
         dueDate: item.dueDate ? startOfDay(new Date(item.dueDate)) : null,
       }))
-      .filter((entry) => entry.blocks > 0)
+      .filter((entry) => entry.squares > 0)
       .sort(compareByDueUrgency);
 
     // Build the slot order: for each week (this → next), each enabled day
@@ -928,11 +928,11 @@ export default function ProductionPlanningPage() {
     for (const entry of pool) {
       const slot = slots.find((s) => {
         const plan = planByWeekKey.get(s.weekKey)!;
-        return plan.remaining[s.day] >= entry.blocks;
+        return plan.remaining[s.day] >= entry.squares;
       });
       if (!slot) continue;
       const plan = planByWeekKey.get(slot.weekKey)!;
-      plan.remaining[slot.day] -= entry.blocks;
+      plan.remaining[slot.day] -= entry.squares;
       plan.newPlacements[slot.day].push({ id: entry.id, done: false });
       placedIds.add(entry.id);
     }
@@ -1088,9 +1088,9 @@ export default function ProductionPlanningPage() {
                         dateLabel={format(date, "MMM d")}
                         orders={dayGroups[day].orders}
                         ordersById={allOrdersById}
-                        totalBlocks={dayGroups[day].totalBlocks}
-                        capacity={DAILY_CAPACITY_BLOCKS}
-                        greenThreshold={DAILY_GREEN_THRESHOLD_BLOCKS}
+                        totalSquares={dayGroups[day].totalSquares}
+                        capacity={DAILY_CAPACITY_SQUARES}
+                        greenThreshold={DAILY_GREEN_THRESHOLD_SQUARES}
                         onTogglePin={(id, actualDay) =>
                           toggleItemPinned(currentWeekKey, actualDay, id)
                         }

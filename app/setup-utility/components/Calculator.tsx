@@ -89,7 +89,7 @@ export function Calculator({
                         <div style={{ marginBottom: "12px" }}>
                           <span style={printStyles.label}>Total Squares:</span>{" "}
                           <span style={printStyles.value}>
-                            {colorDistribution.totalPieces}
+                            {colorDistribution.totalSquares}
                           </span>
                         </div>
 
@@ -128,7 +128,7 @@ export function Calculator({
                                   key={index}
                                   style={{
                                     width: `${
-                                      (count / colorDistribution.totalPieces) *
+                                      (count / colorDistribution.totalSquares) *
                                       100
                                     }%`,
                                     display: "flex",
@@ -270,7 +270,7 @@ export function Calculator({
           <>
             <DistributionCard
               title="Total Squares"
-              content={colorDistribution.totalPieces.toString()}
+              content={colorDistribution.totalSquares.toString()}
             />
             <DistributionCard
               title="Adjustment"
@@ -316,7 +316,7 @@ function DistributionDiagram({
 }: {
   distribution: ColorDistribution["distribution"];
 }) {
-  const totalPieces = distribution.reduce((sum, { count }) => sum + count, 0);
+  const totalSquares = distribution.reduce((sum, { count }) => sum + count, 0);
 
   return (
     <Card className="rounded-xl bg-white/90 dark:bg-gray-900/70 backdrop-blur-md border-gray-200/80 dark:border-white/10 shadow-md">
@@ -332,7 +332,7 @@ function DistributionDiagram({
               key={index}
               style={{
                 backgroundColor: color,
-                width: `${(count / totalPieces) * 100}%`,
+                width: `${(count / totalSquares) * 100}%`,
               }}
               className="h-20 flex items-center justify-center"
             >

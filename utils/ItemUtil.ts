@@ -55,7 +55,7 @@ export class ItemUtil {
     ) {
       const totalArea = SIZE_MULTIPLIERS[size];
       const colorCount = DESIGN_COLOR_NAMES[design].length;
-      const piecesPerColor = totalArea / colorCount;
+      const squaresPerColor = totalArea / colorCount;
 
       DESIGN_COLOR_NAMES[design].forEach((color) => {
         if (
@@ -64,13 +64,13 @@ export class ItemUtil {
           (design === ItemDesigns.Tidal && typeof color === "number")
         ) {
           requirements[`Coastal-${color}`] =
-            (requirements[`Coastal-${color}`] || 0) + piecesPerColor;
+            (requirements[`Coastal-${color}`] || 0) + squaresPerColor;
         } else if (design === ItemDesigns.Tidal && typeof color === "string") {
           requirements[`Tidal-${color}`] =
-            (requirements[`Tidal-${color}`] || 0) + piecesPerColor;
+            (requirements[`Tidal-${color}`] || 0) + squaresPerColor;
         } else {
           requirements[`${design}-${color}`] =
-            (requirements[`${design}-${color}`] || 0) + piecesPerColor;
+            (requirements[`${design}-${color}`] || 0) + squaresPerColor;
         }
       });
     }

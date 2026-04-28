@@ -47,27 +47,27 @@ function UtilitiesContent({
   const calculateColorCount = (): ColorDistribution | null => {
     if (!selectedDesign || !width || !height) return null;
 
-    const totalPieces = parseInt(width) * parseInt(height);
+    const totalSquares = parseInt(width) * parseInt(height);
     const colorCount = selectedDesign.colors.length;
-    const averagePiecesPerColor = totalPieces / colorCount;
+    const averageSquaresPerColor = totalSquares / colorCount;
 
-    const basePiecesPerColor1 = Math.floor(averagePiecesPerColor);
-    const extrasToAdd = totalPieces - basePiecesPerColor1 * colorCount;
+    const baseSquaresPerColor1 = Math.floor(averageSquaresPerColor);
+    const extrasToAdd = totalSquares - baseSquaresPerColor1 * colorCount;
 
-    const basePiecesPerColor2 = Math.ceil(averagePiecesPerColor);
-    const extrasToSubtract = basePiecesPerColor2 * colorCount - totalPieces;
+    const baseSquaresPerColor2 = Math.ceil(averageSquaresPerColor);
+    const extrasToSubtract = baseSquaresPerColor2 * colorCount - totalSquares;
 
     const useMethod1 = extrasToAdd <= extrasToSubtract;
 
-    const basePiecesPerColor = useMethod1
-      ? basePiecesPerColor1
-      : basePiecesPerColor2;
+    const baseSquaresPerColor = useMethod1
+      ? baseSquaresPerColor1
+      : baseSquaresPerColor2;
     const adjustmentCount = useMethod1 ? extrasToAdd : extrasToSubtract;
     const adjustmentType = useMethod1 ? "add" : "subtract";
 
     const distribution = selectedDesign.colors.map((color) => ({
       color,
-      count: basePiecesPerColor,
+      count: baseSquaresPerColor,
     }));
 
     for (let i = 0; i < adjustmentCount; i++) {
@@ -76,7 +76,7 @@ function UtilitiesContent({
     }
 
     return {
-      totalPieces,
+      totalSquares,
       colorCount,
       distribution,
       adjustmentCount,

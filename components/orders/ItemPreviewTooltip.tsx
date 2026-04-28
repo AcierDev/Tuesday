@@ -55,11 +55,11 @@ export function ItemPreviewTooltip({
   if (!size || !design) return null;
 
   const [width = 0, height = 0] = size.split("x").map(Number);
-  const totalPieces = width * height;
+  const totalSquares = width * height;
 
   const colorNames = DESIGN_COLOR_NAMES[design] || [];
-  const piecesPerColor = Math.floor(totalPieces / colorNames.length);
-  const extraPieces = totalPieces % colorNames.length;
+  const squaresPerColor = Math.floor(totalSquares / colorNames.length);
+  const extraSquares = totalSquares % colorNames.length;
 
   const decimalAmountPerColor = calculateAmountRequiredPerColor(
     design,
@@ -167,7 +167,7 @@ export function ItemPreviewTooltip({
           <div className="grid grid-cols-2 gap-3 text-sm">
             {[
               { label: "Size", value: size },
-              { label: "Total", value: `${totalPieces} pcs` },
+              { label: "Total", value: `${totalSquares} sq` },
               { label: "Colors", value: colorNames.length },
               {
                 label: "Per Color",
@@ -208,11 +208,11 @@ export function ItemPreviewTooltip({
                 className="space-y-2 overflow-hidden"
               >
                 {colorNames.map((colorName, index) => {
-                  const pieces =
-                    index < extraPieces ? piecesPerColor + 1 : piecesPerColor;
+                  const squares =
+                    index < extraSquares ? squaresPerColor + 1 : squaresPerColor;
                   const color =
                     DESIGN_COLORS[design]?.[colorName as number]?.hex;
-                  const percentage = ((pieces / totalPieces) * 100).toFixed(1);
+                  const percentage = ((squares / totalSquares) * 100).toFixed(1);
 
                   return (
                     <motion.div
@@ -240,7 +240,7 @@ export function ItemPreviewTooltip({
                       </div>
                       <div className="flex items-center gap-2 z-10">
                         <span className="text-sm tabular-nums font-medium">
-                          {pieces}
+                          {squares}
                         </span>
                         <span className="text-xs text-gray-500">
                           ({percentage}%)
