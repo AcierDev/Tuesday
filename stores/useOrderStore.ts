@@ -11,6 +11,12 @@ import { invalidateStatsCaches } from "@/lib/stats-shared";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
+const SSE_RECONNECT_BASE_MS = 2_000;
+const SSE_RECONNECT_MAX_MS = 60_000;
+
+let sseReconnectAttempts = 0;
+let sseReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
 // Coalesces search keystrokes into a single API call. Lodash.debounce keeps the
 // latest args, so the trailing fire uses the most recent query.
 const debouncedSearchDoneItems = debounce(
@@ -290,20 +296,37 @@ export const useOrderStore = create<OrderState>()(
         };
 
 
-        eventSource.onerror = (error) => {
-          console.error("EventSource failed:", error);
+        eventSource.onopen = () => {
+          // Successful (re)connection — reset backoff
+          sseReconnectAttempts = 0;
+        };
+
+        eventSource.onerror = () => {
+          // The error event from EventSource carries no useful info, so we don't log it.
+          // Browser auto-reconnect can fire repeatedly; we close and back off ourselves.
           get().stopWatchingChanges();
 
-          // Try to reconnect after a delay
-          setTimeout(() => {
+          const delay = Math.min(
+            SSE_RECONNECT_BASE_MS * 2 ** sseReconnectAttempts,
+            SSE_RECONNECT_MAX_MS
+          );
+          sseReconnectAttempts += 1;
+
+          if (sseReconnectTimer) clearTimeout(sseReconnectTimer);
+          sseReconnectTimer = setTimeout(() => {
+            sseReconnectTimer = null;
             get().startWatchingChanges();
-          }, 5000);
+          }, delay);
         };
 
         set({ eventSource });
       },
 
       stopWatchingChanges: () => {
+        if (sseReconnectTimer) {
+          clearTimeout(sseReconnectTimer);
+          sseReconnectTimer = null;
+        }
         const { eventSource } = get();
         if (eventSource) {
           eventSource.close();
