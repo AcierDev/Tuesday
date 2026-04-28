@@ -213,7 +213,7 @@ export const NameCell: React.FC<NameCellProps> = ({
                 transform: "translate(-50%, calc(-100% - 2px))",
               }}
               className={cn(
-                "pointer-events-none z-[60]",
+                "pointer-events-none z-20",
                 "inline-flex items-center justify-center h-[0.89375rem] px-1.5 rounded-sm whitespace-nowrap",
                 "text-white text-[0.5rem] font-bold uppercase tracking-wider",
                 "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]",
