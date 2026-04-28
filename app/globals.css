@@ -354,3 +354,12 @@ input[type="number"] {
   cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='%23dc2626' stroke='%23dc2626' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><line x1='12' y1='17' x2='12' y2='22'/><path d='M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z'/></svg>")
     9 17, default;
 }
+
+/* Per-row spacer for the New section's two-column bottom alignment. The
+   ::after pseudo *adds* height to each cell (independent of any existing
+   padding) so the row grows uniformly without fighting other padding rules. */
+table[data-row-pad="true"] tbody > tr > td::after {
+  content: "";
+  display: block;
+  height: var(--row-extra-pb, 0px);
+}

@@ -1,7 +1,15 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  memo,
+} from "react";
 import { format } from "date-fns";
 import { useDndContext, useDroppable } from "@dnd-kit/core";
 
@@ -103,6 +111,18 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+
+  //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+  //║ 📐 NEW SECTION COLUMN ALIGNMENT                                      ║
+  //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+  // Two-column New layout: distribute the height delta across the shorter
+  // column's rows as extra padding-bottom so both columns end at the same Y.
+  const newLeftBodyRef = useRef<HTMLTableSectionElement | null>(null);
+  const newRightBodyRef = useRef<HTMLTableSectionElement | null>(null);
+  const [newRowPad, setNewRowPad] = useState<{
+    side: "left" | "right" | null;
+    px: number;
+  }>({ side: null, px: 0 });
 
   const addItemToDay = useWeeklyScheduleStore((s) => s.addItemToDay);
 
@@ -265,6 +285,79 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     return inTransitOrderIds.size;
   }, [group.title, inTransitOrderIds]);
 
+  // Measure both halves of the New section and balance bottom edges by
+  // padding the shorter column's rows. Re-runs on item changes; a
+  // ResizeObserver picks up content reflow (window resize, cell wrap).
+  useLayoutEffect(() => {
+    if (
+      group.title !== ItemStatus.New ||
+      isPreview ||
+      isCollapsed ||
+      sortedItems.length < 2
+    ) {
+      if (newRowPad.side !== null || newRowPad.px !== 0) {
+        setNewRowPad({ side: null, px: 0 });
+      }
+      return;
+    }
+    const splitAt = Math.ceil(sortedItems.length / 2);
+    const leftCount = splitAt;
+    const rightCount = sortedItems.length - splitAt;
+    if (leftCount === 0 || rightCount === 0) return;
+    const leftEl = newLeftBodyRef.current;
+    const rightEl = newRightBodyRef.current;
+    if (!leftEl || !rightEl) return;
+
+    const recompute = () => {
+      const lRect = leftEl.getBoundingClientRect();
+      const rRect = rightEl.getBoundingClientRect();
+      const lH = lRect.height;
+      const rH = rRect.height;
+      // On narrow viewports the grid collapses to a single column and the
+      // two tables stack vertically — no bottom alignment needed.
+      if (Math.abs(lRect.top - rRect.top) > 4) {
+        setNewRowPad((cur) =>
+          cur.side === null && cur.px === 0 ? cur : { side: null, px: 0 }
+        );
+        return;
+      }
+      setNewRowPad((cur) => {
+        const lApplied = cur.side === "left" ? cur.px * leftCount : 0;
+        const rApplied = cur.side === "right" ? cur.px * rightCount : 0;
+        const lRaw = lH - lApplied;
+        const rRaw = rH - rApplied;
+        const diff = lRaw - rRaw;
+        // Fractional px: sub-pixel padding avoids the ceil-overshoot that
+        // would leave one column slightly taller. Browsers handle decimals
+        // in CSS lengths and round per-row consistently.
+        if (Math.abs(diff) < 0.5) {
+          return cur.side === null && cur.px === 0
+            ? cur
+            : { side: null, px: 0 };
+        }
+        if (diff > 0) {
+          const px = diff / rightCount;
+          return cur.side === "right" && Math.abs(cur.px - px) < 0.05
+            ? cur
+            : { side: "right", px };
+        }
+        const px = -diff / leftCount;
+        return cur.side === "left" && Math.abs(cur.px - px) < 0.05
+          ? cur
+          : { side: "left", px };
+      });
+    };
+
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(leftEl);
+    ro.observe(rightEl);
+    return () => ro.disconnect();
+    // newRowPad is read via setState updater; excluding it keeps the effect
+    // from re-running on every adjustment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group.title, isPreview, isCollapsed, sortedItems]);
+
   //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
   //║ 🎯 STATUS DROP TARGET                                                ║
   //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
@@ -404,9 +497,21 @@ export const ItemGroupSection = memo(function ItemGroupSection({
         "mb-6 overflow-visible"
       )}
     >
+      {group.title === ItemStatus.Done && (
+        <div
+          aria-hidden
+          className={cn(
+            "mb-6 mx-auto h-px w-[90%] rounded-full",
+            `bg-${
+              GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
+            }`,
+            "[mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]"
+          )}
+        />
+      )}
       <div
         className={cn(
-          "group relative mx-auto p-2 sm:p-4 rounded-xl",
+          "group relative mx-auto p-2 sm:p-4 rounded-xl flex items-center min-h-[3.5rem] sm:min-h-[4rem]",
           "transition-[width,background-color,color] duration-200 ease-out",
           isCollapsible && !isCollapsed ? "w-[95%]" : "w-[98%]",
           `text-${
@@ -433,9 +538,9 @@ export const ItemGroupSection = memo(function ItemGroupSection({
             )}
           />
         )}
-        <div className="flex items-center justify-between">
-          <span className="font-semibold text-lg sticky top-0 z-10 transition-transform duration-200 ease-out group-hover:translate-x-2">
-            {group.title}
+        <div className="flex items-center justify-between flex-1">
+          <span className="font-semibold text-lg whitespace-nowrap leading-none transition-transform duration-200 ease-out group-hover:translate-x-2">
+            {group.title === ItemStatus.Wip ? "WIP" : group.title}
             {isCollapsible && isCollapsed && group.title !== ItemStatus.Done && (
               <span className="ml-2 font-normal text-[0.9625rem] opacity-70">
                 ({group.items.length} hidden)
@@ -475,37 +580,92 @@ export const ItemGroupSection = memo(function ItemGroupSection({
           )}
         >
           {!shouldShowSkeleton && sortedItems.length === 0 ? null : !isPreview ? (
-            <BorderedTable
-              className="table-fixed"
-              borderColor={`bg-${
-                GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
-              }`}
-            >
-              <TableBody key={`${group.title}-body`}>
-                {shouldShowSkeleton
-                  ? renderSkeletonRows()
-                  : sortedItems.map((item, index) => (
-                      <ItemTableRow
-                        key={item.id}
-                        item={item}
-                        index={index}
-                        visibleColumns={visibleColumns}
-                        onContextMenu={handleContextMenu}
-                        onDaySelect={handleDaySelect}
-                        onAddToSchedule={addItemToDay}
-                        onScheduleUpdate={handleScheduleUpdate}
-                        onDelete={handleDelete}
-                        onEdit={handleEdit}
-                        onGetLabel={onGetLabel}
-                        onMarkCompleted={onMarkCompleted}
-                        onShip={onShip}
-                        onStatusChange={onStatusChange}
-                        clickToAddTarget={clickToAddTarget}
-                        onItemClick={onItemClick}
-                      />
-                    ))}
-              </TableBody>
-            </BorderedTable>
+            (() => {
+              const renderTable = (
+                items: Item[],
+                indexOffset: number,
+                keySuffix: string,
+                bodyRef?: React.Ref<HTMLTableSectionElement>,
+                rowExtraPx: number = 0
+              ) => (
+                <BorderedTable
+                  key={keySuffix}
+                  className="table-fixed"
+                  data-row-pad={rowExtraPx > 0 ? "true" : undefined}
+                  style={
+                    rowExtraPx > 0
+                      ? ({
+                          ["--row-extra-pb" as any]: `${rowExtraPx}px`,
+                        } as React.CSSProperties)
+                      : undefined
+                  }
+                  borderColor={`bg-${
+                    GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
+                  }`}
+                >
+                  <TableBody
+                    ref={bodyRef}
+                    key={`${group.title}-body-${keySuffix}`}
+                  >
+                    {shouldShowSkeleton
+                      ? renderSkeletonRows()
+                      : items.map((item, index) => (
+                          <ItemTableRow
+                            key={item.id}
+                            item={item}
+                            index={index + indexOffset}
+                            visibleColumns={visibleColumns}
+                            onContextMenu={handleContextMenu}
+                            onDaySelect={handleDaySelect}
+                            onAddToSchedule={addItemToDay}
+                            onScheduleUpdate={handleScheduleUpdate}
+                            onDelete={handleDelete}
+                            onEdit={handleEdit}
+                            onGetLabel={onGetLabel}
+                            onMarkCompleted={onMarkCompleted}
+                            onShip={onShip}
+                            onStatusChange={onStatusChange}
+                            clickToAddTarget={clickToAddTarget}
+                            onItemClick={onItemClick}
+                          />
+                        ))}
+                  </TableBody>
+                </BorderedTable>
+              );
+
+              if (group.title === ItemStatus.New && !shouldShowSkeleton) {
+                const splitAt = Math.ceil(sortedItems.length / 2);
+                const left = sortedItems.slice(0, splitAt);
+                const right = sortedItems.slice(splitAt);
+                const leftExtra =
+                  newRowPad.side === "left" ? newRowPad.px : 0;
+                const rightExtra =
+                  newRowPad.side === "right" ? newRowPad.px : 0;
+                return (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                      {renderTable(
+                        left,
+                        0,
+                        "left",
+                        newLeftBodyRef,
+                        leftExtra
+                      )}
+                      {right.length > 0 &&
+                        renderTable(
+                          right,
+                          splitAt,
+                          "right",
+                          newRightBodyRef,
+                          rightExtra
+                        )}
+                    </div>
+                  </>
+                );
+              }
+
+              return renderTable(sortedItems, 0, "body");
+            })()
           ) : (
             <BorderedTable
               className="table-fixed"
@@ -538,6 +698,18 @@ export const ItemGroupSection = memo(function ItemGroupSection({
             />
           )}
         </div>
+      )}
+      {group.title === ItemStatus.New && (
+        <div
+          aria-hidden
+          className={cn(
+            "mt-6 mx-auto h-px w-[90%] rounded-full",
+            `bg-${
+              GROUP_COLORS[group.title as keyof typeof GROUP_COLORS]
+            }`,
+            "[mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]"
+          )}
+        />
       )}
       <EditItemDialog
         editingItem={editingItem}
