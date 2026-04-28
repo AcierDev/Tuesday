@@ -869,6 +869,7 @@ const HEALTH_WEIGHT_DEBT = 20;
 const HEALTH_WEIGHT_LATE_NOW = 15;
 const HEALTH_WEIGHT_VELOCITY = 15;
 const HEALTH_WEIGHT_FORECAST = 20;
+const HEALTH_VELOCITY_PENALTY_MULTIPLIER = 2;
 const HEALTH_ON_TIME_TARGET = 95;
 const HEALTH_DEBT_HEAVY_DAYS = 30;
 const HEALTH_LATE_HEAVY_COUNT = 10;
@@ -1013,8 +1014,12 @@ export function computeHealthScore(items: Item[]): {
     priorWorking.length === 0 ||
     velocityDelta >= 0
       ? HEALTH_WEIGHT_VELOCITY
-      : Math.max(0, 1 + velocityDelta / Math.max(priorPerWorkingDay, 1)) *
-        HEALTH_WEIGHT_VELOCITY;
+      : Math.max(
+          0,
+          1 +
+            (velocityDelta / Math.max(priorPerWorkingDay, 1)) *
+              HEALTH_VELOCITY_PENALTY_MULTIPLIER
+        ) * HEALTH_WEIGHT_VELOCITY;
   const forecastScore =
     forecastDrift <= 0
       ? HEALTH_WEIGHT_FORECAST
