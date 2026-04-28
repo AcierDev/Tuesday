@@ -874,6 +874,7 @@ const HEALTH_DEBT_HEAVY_DAYS = 30;
 const HEALTH_LATE_HEAVY_COUNT = 10;
 const HEALTH_FORECAST_DRIFT_HEAVY_DAYS = 30;
 const HEALTH_FORECAST_FALLBACK_LEAD = 14;
+const HEALTH_FORECAST_MAX_DAYS_OUT = 365 * 5;
 const HEALTH_RANGE_DAYS = 30;
 
 export type HealthBreakdownRow = {
@@ -936,7 +937,10 @@ export function computeHealthScore(items: Item[]): {
         : 0;
     const ageDays = Number.isFinite(ageDaysRaw) ? ageDaysRaw : 0;
     const remaining = Math.max(1, baseAvg - ageDays);
-    const projectedKey = shiftDayKey(today, Math.ceil(remaining));
+    const remainingDays = Number.isFinite(remaining)
+      ? Math.min(Math.ceil(remaining), HEALTH_FORECAST_MAX_DAYS_OUT)
+      : HEALTH_FORECAST_FALLBACK_LEAD;
+    const projectedKey = shiftDayKey(today, remainingDays);
     const slip = dayDiffKeys(due, projectedKey);
     if (slip > 0) {
       forecastDrift += slip;
