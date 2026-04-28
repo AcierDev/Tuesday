@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { createPortal } from "react-dom";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
 import {
   Tooltip,
@@ -143,87 +142,28 @@ export const NameCell: React.FC<NameCellProps> = ({
     : null;
   const parsedDueDate = item.dueDate ? parseISO(item.dueDate) : null;
 
-  // The badge sits inside BoarderedTable's clipPath, which clips anything
-  // floating above the row. Render the tag through a portal anchored to
-  // the badge's screen rect so it can float above without being cut off
-  // and without adding row height.
-  const badgeWrapperRef = useRef<HTMLSpanElement>(null);
-  const [tagCoords, setTagCoords] = useState<{
-    left: number;
-    top: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!scheduleTag) {
-      setTagCoords(null);
-      return;
-    }
-    const el = badgeWrapperRef.current;
-    if (!el) return;
-
-    let raf = 0;
-    const update = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const r = el.getBoundingClientRect();
-        if (r.width === 0 && r.height === 0) {
-          setTagCoords(null);
-          return;
-        }
-        setTagCoords({ left: r.left + r.width / 2, top: r.top });
-      });
-    };
-
-    update();
-    window.addEventListener("scroll", update, true);
-    window.addEventListener("resize", update);
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
-      ro.disconnect();
-    };
-  }, [scheduleTag, item.id]);
-
   const dueBadge =
     parsedDueDate &&
     isValid(parsedDueDate) &&
     item.status !== ItemStatus.Done ? (
-      <span
-        ref={badgeWrapperRef}
-        className="relative inline-flex flex-shrink-0"
-      >
-        <DueBadge item={item} range={settings.dueBadgeDays} />
-        {scheduleTag &&
-          tagCoords &&
-          typeof document !== "undefined" &&
-          createPortal(
-            <span
-              aria-label={`Planned for ${scheduleTag.label.toLowerCase()}`}
-              style={{
-                position: "fixed",
-                left: tagCoords.left,
-                top: tagCoords.top,
-                transform: "translate(-50%, calc(-100% - 2px))",
-              }}
-              className={cn(
-                "pointer-events-none z-20",
-                "inline-flex items-center justify-center h-[0.89375rem] px-1.5 rounded-sm whitespace-nowrap",
-                "text-white text-[0.5rem] font-bold uppercase tracking-wider",
-                "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]",
-                "[text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
-                scheduleTag.classes
-              )}
-            >
-              {scheduleTag.label}
-            </span>,
-            document.body
-          )}
-      </span>
+      <DueBadge item={item} range={settings.dueBadgeDays} />
     ) : null;
+
+  const scheduleBadge = scheduleTag ? (
+    <span
+      aria-label={`Planned for ${scheduleTag.label.toLowerCase()}`}
+      className={cn(
+        "pointer-events-none absolute left-0 -top-0.5 -translate-y-full z-20",
+        "inline-flex items-center justify-center h-[0.89375rem] px-1.5 rounded-sm whitespace-nowrap",
+        "text-white text-[0.5rem] leading-none font-bold uppercase tracking-wider",
+        "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]",
+        "[text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
+        scheduleTag.classes
+      )}
+    >
+      {scheduleTag.label}
+    </span>
+  ) : null;
 
   const isPrintMarker = inputValue.trim().toLowerCase() === "print";
 
@@ -341,21 +281,24 @@ export const NameCell: React.FC<NameCellProps> = ({
         {isEditing ? (
           <div className="flex flex-1 min-w-0 items-center justify-start gap-2">
             {dueBadge}
-            <input
-              type="text"
-              value={inputValue}
-              onChange={handleInputChange}
-              onBlur={handleBlur}
-              onKeyDown={handleKeyDown}
-              className={cn(
-                "min-w-0 flex-1 py-2 pr-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                "font-medium text-left break-words",
-                "transition-shadow duration-200",
-                "rounded-md",
-                "bg-background border border-input"
-              )}
-              autoFocus
-            />
+            <div className="relative flex-1 min-w-0">
+              {scheduleBadge}
+              <input
+                type="text"
+                value={inputValue}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                onKeyDown={handleKeyDown}
+                className={cn(
+                  "w-full py-2 pr-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                  "font-medium text-left break-words",
+                  "transition-shadow duration-200",
+                  "rounded-md",
+                  "bg-background border border-input"
+                )}
+                autoFocus
+              />
+            </div>
             {verticalIcon}
           </div>
         ) : (
@@ -372,26 +315,29 @@ export const NameCell: React.FC<NameCellProps> = ({
             }}
           >
             {dueBadge}
-            {isPrintMarker ? (
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5",
-                  "bg-amber-100 text-amber-900 ring-1 ring-amber-300",
-                  "dark:bg-amber-500/20 dark:text-amber-200 dark:ring-amber-400/40",
-                  "text-xs font-bold uppercase tracking-wider"
-                )}
-              >
-                <Printer className="h-3.5 w-3.5" strokeWidth={2.5} />
-                Print
-              </span>
-            ) : (
-              <>
-                {parseMinecraftColors(firstTwoWords)}
-                <span className="opacity-55 text-[0.92em]">
-                  {parseMinecraftColors(restOfName)}
+            <span className="relative">
+              {scheduleBadge}
+              {isPrintMarker ? (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5",
+                    "bg-amber-100 text-amber-900 ring-1 ring-amber-300",
+                    "dark:bg-amber-500/20 dark:text-amber-200 dark:ring-amber-400/40",
+                    "text-xs font-bold uppercase tracking-wider"
+                  )}
+                >
+                  <Printer className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  Print
                 </span>
-              </>
-            )}
+              ) : (
+                <>
+                  {parseMinecraftColors(firstTwoWords)}
+                  <span className="opacity-55 text-[0.92em]">
+                    {parseMinecraftColors(restOfName)}
+                  </span>
+                </>
+              )}
+            </span>
             {brandTag}
             {verticalIcon}
           </div>
