@@ -7,7 +7,6 @@ import { addWeeks, format, startOfWeek } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { isSameDay, addDays } from "date-fns";
 import { cn } from "@/utils/functions";
-import { toast } from "sonner";
 import { DayName, Item } from "@/typings/types";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 
@@ -89,14 +88,8 @@ export function DueDateTooltip({
       if (onScheduleUpdate) {
         onScheduleUpdate();
       }
-
-      toast.success(`Added to schedule for ${day}`, {
-        style: { background: "#10B981", color: "white" },
-      });
     } catch (error) {
-      toast.error("Failed to add item to schedule", {
-        style: { background: "#EF4444", color: "white" },
-      });
+      console.error("Failed to add item to schedule", error);
     }
   };
 

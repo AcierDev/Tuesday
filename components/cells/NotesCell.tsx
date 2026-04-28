@@ -15,7 +15,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { StickyNoteIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 
@@ -37,10 +36,8 @@ export const NotesCell = ({
         notes: notesValue,
       };
       await updateItem(updatedItem, columnValue.columnName);
-      toast.success("Notes updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
-      toast.error("Failed to update the notes. Please try again.");
     }
   };
 

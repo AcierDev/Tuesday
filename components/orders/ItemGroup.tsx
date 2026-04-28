@@ -2,7 +2,6 @@
 
 import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
-import { toast } from "sonner";
 import { format } from "date-fns";
 import { useDndContext, useDroppable } from "@dnd-kit/core";
 
@@ -149,14 +148,8 @@ export const ItemGroupSection = memo(function ItemGroupSection({
           await updateItem(updatedItem);
           setEditingItem(null);
           console.log("Item updated successfully");
-          toast.success("Item updated successfully", {
-            style: { background: "#10B981", color: "white" },
-          });
         } catch (error) {
           console.error("Failed to update item:", error);
-          toast.error("Failed to update item. Please try again.", {
-            style: { background: "#EF4444", color: "white" },
-          });
         }
       }
     },

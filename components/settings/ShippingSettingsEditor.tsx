@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Loader2, Plus, Truck, X } from "lucide-react";
-import { toast } from "sonner";
 
 import {
   Accordion,
@@ -135,10 +134,9 @@ export function ShippingSettingsEditor() {
 
   const persistDraft = (value: ShippingSettings) => {
     saveSettings(normalizeShippingSettings(value)).catch((saveError) => {
-      toast.error(
-        saveError instanceof Error
-          ? saveError.message
-          : "Failed to save shipping settings"
+      console.error(
+        "Failed to save shipping settings",
+        saveError instanceof Error ? saveError.message : saveError
       );
     });
   };

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Toaster, toast } from "sonner";
 import {
   DndContext,
   DragOverlay,
@@ -143,11 +142,7 @@ export default function OrderManagementPage() {
     fetch("/api/backlog-snapshots", { method: "POST" }).catch(() => {});
   }, []);
 
-  const shipItem = useCallback(async (itemId: string) => {
-    toast.success("Item marked as shipped", {
-      style: { background: "#10B981", color: "white" },
-    });
-  }, []);
+  const shipItem = useCallback(async (_itemId: string) => {}, []);
 
   const markItemCompleted = useCallback(async (itemId: string) => {
     setItemToComplete(itemId);
@@ -171,14 +166,8 @@ export default function OrderManagementPage() {
       };
 
       await updateItem(updatedItem);
-
-      toast.success("Item marked as completed", {
-        style: { background: "#10B981", color: "white" },
-      });
     } catch (error) {
-      toast.error("Failed to mark item as completed", {
-        style: { background: "#EF4444", color: "white" },
-      });
+      console.error("Failed to mark item as completed:", error);
     } finally {
       setIsConfirmationOpen(false);
       setItemToComplete(null);
@@ -215,61 +204,22 @@ export default function OrderManagementPage() {
     [items, doneItems, updateItem]
   );
 
-  const undoItemDeletion = useCallback(
-    async (item: Item) => {
-      try {
-        const restoredItem = {
-          ...item,
-          deleted: false,
-        };
-        await updateItem(restoredItem);
-
-        toast.success("Item restored");
-      } catch (error) {
-        console.error("Failed to restore item:", error);
-        toast.error("Failed to restore item", {
-          style: { background: "#EF4444", color: "white" },
-        });
-      }
-    },
-    [updateItem]
-  );
-
   const handleDeleteItem = useCallback(
     async (itemId: string) => {
       try {
-        const itemToDelete = items.find((item) => item.id === itemId);
-        if (!itemToDelete) {
-          return;
-        }
-
         await deleteItem(itemId);
-
-        toast.success("Item deleted", {
-          style: { background: "#10B981", color: "white" },
-          action: {
-            label: "Undo",
-            onClick: () => undoItemDeletion(itemToDelete),
-          },
-        });
       } catch (error) {
-        toast.error("Failed to delete item", {
-          style: { background: "#EF4444", color: "white" },
-        });
+        console.error("Failed to delete item:", error);
       }
     },
-    [items, deleteItem, undoItemDeletion]
+    [deleteItem]
   );
 
   const handleAddNewItem = async (newItem: Partial<Item>) => {
     try {
-      const createdItem = await addNewItem(newItem);
-
+      await addNewItem(newItem);
     } catch (error) {
       console.error("Failed to add new item:", error);
-      toast.error("Failed to add new item", {
-        style: { background: "#EF4444", color: "white" },
-      });
     }
   };
 
@@ -321,7 +271,6 @@ export default function OrderManagementPage() {
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-black dark:text-white">
-      <Toaster position="top-center" />
       <Header
         searchTerm={searchTerm}
         onNewOrder={() => setIsNewItemModalOpen(true)}

@@ -11,7 +11,6 @@ import {
   useOrderSettings,
 } from "@/contexts/OrderSettingsContext";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
-import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UploadProgressToast } from "@/components/shipping/UploadProgress";
 import { MobilePageSwitcher } from "@/components/ui/MobilePageSwitcher";
@@ -109,7 +108,6 @@ export default function RootLayout({
       >
         <TooltipProvider>
           <OrderSettingsProvider>
-            <Toaster position="top-center" />
             <LayoutContent>{children}</LayoutContent>
             <UploadProgressToast />
           </OrderSettingsProvider>

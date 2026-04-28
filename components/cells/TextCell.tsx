@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
 import { ColumnValue, Item, ColumnTitles } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 
@@ -45,11 +44,8 @@ export const TextCell = ({
             // Fallback for unknown columns (shouldn't happen with strict types but safe to keep)
              console.warn("Updating unknown column in TextCell:", columnValue.columnName);
         }
-        
-        toast.success("Value updated successfully");
       } catch (err) {
         console.error("Failed to update ColumnValue", err);
-        toast.error("Failed to update the value. Please try again.");
       }
     }
   };

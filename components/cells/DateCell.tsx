@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { CalendarIcon } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
 import { cn } from "../../utils/functions";
-import { toast } from "sonner";
 import { ColumnTitles, ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 
@@ -49,10 +48,8 @@ export const DateCell = ({ item, columnValue }: DateCellProps) => {
         dueDate: newValue,
       };
       await updateItem(updatedItem, columnValue.columnName);
-      toast.success("Date updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
-      toast.error("Failed to update the date. Please try again.");
     }
   };
 

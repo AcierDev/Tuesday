@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { XCircle } from "lucide-react";
-import { toast } from "sonner";
 import { boardConfig } from "@/config/boardconfig";
 import { ColumnTitles, GenericColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
@@ -72,10 +71,8 @@ function BaseDropdownCell({
         };
 
         await updateItem(updatedItem, columnValue.columnName);
-        toast.success("Value updated successfully");
       } catch (err) {
         console.error("Failed to update ColumnValue", err);
-        toast.error("Failed to update the value. Please try again.");
       }
     },
     [item, columnValue.columnName, updateItem]

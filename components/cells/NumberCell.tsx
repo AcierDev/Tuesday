@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { StarIcon } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { toast } from "sonner";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 
@@ -32,10 +31,8 @@ export const NumberCell = ({
         rating: newRating.toString(),
       };
       await updateItem(updatedItem, columnValue.columnName);
-      toast.success("Rating updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
-      toast.error("Failed to update the rating. Please try again.");
     }
   };
 

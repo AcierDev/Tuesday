@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { OrderTrackingInfo } from "@/typings/types";
-import { toast } from "sonner";
 
 interface TrackingState {
   trackingInfo: OrderTrackingInfo[];
@@ -90,7 +89,6 @@ export const useTrackingStore = create<TrackingState>()(
           const errorMessage =
             error instanceof Error ? error.message : "An error occurred";
           set({ error: errorMessage, isLoading: false });
-          toast.error("Failed to fetch tracking information");
         }
       },
 
@@ -107,13 +105,10 @@ export const useTrackingStore = create<TrackingState>()(
           if (!response.ok) {
             throw new Error("Failed to update tracking information");
           }
-
-          toast.success("Tracking information updated successfully");
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : "An error occurred";
           set({ error: errorMessage });
-          toast.error("Failed to update tracking information");
         }
       },
 
@@ -139,12 +134,10 @@ export const useTrackingStore = create<TrackingState>()(
               tracking,
             ],
           }));
-          toast.success("Tracking information added successfully");
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : "An error occurred";
           set({ error: errorMessage });
-          toast.error("Failed to add tracking information");
         }
       },
 

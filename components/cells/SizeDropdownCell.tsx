@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { boardConfig } from "@/config/boardconfig";
-import { toast } from "sonner";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 
@@ -129,10 +128,8 @@ export const SizeDropdownCell = ({
         size: newValue,
       };
       await updateItem(updatedItem as Item, columnValue.columnName);
-      toast.success("Size updated successfully");
     } catch (err) {
       console.error("Failed to update size", err);
-      toast.error("Failed to update the size. Please try again.");
     }
   };
 

@@ -12,7 +12,6 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -469,7 +468,6 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
       }
 
       await Promise.all([fetchAllLabels(), fetchTrackingInfo(), loadItems()]);
-      toast.success(`FedEx label purchased for order ${item.id}`);
       clearFedExShipmentDraft(item.id);
       setDraft(null);
       setRates([]);

@@ -11,7 +11,6 @@ import { useOrderStore } from "@/stores/useOrderStore";
 import { Item, ItemStatus, ColumnTitles, DayName } from "@/typings/types";
 import { DeleteConfirmationDialog } from "@/components/ui/DeleteConfirmationDialog";
 import { EditItemDialog } from "../EditItemDialog";
-import { toast } from "sonner";
 import { cn } from "@/utils/functions";
 import { STATUS_COLORS } from "@/typings/constants";
 
@@ -218,10 +217,8 @@ export const MobileOrderView = ({
         try {
           await storeData.updateItem(updatedItem);
           setEditingItem(null);
-          toast.success("Item updated successfully");
         } catch (error) {
           console.error("Failed to update item:", error);
-          toast.error("Failed to update item. Please try again.");
         }
       }
     },
@@ -244,10 +241,8 @@ export const MobileOrderView = ({
           await storeData.deleteItem(deletingItem.id);
         }
         setDeletingItem(null);
-        toast.success("Item deleted successfully");
       } catch (error) {
         console.error("Failed to delete item:", error);
-        toast.error("Failed to delete item. Please try again.");
       }
     }
   }, [deletingItem, externalHandleDelete, storeData]);
@@ -257,9 +252,6 @@ export const MobileOrderView = ({
     async (itemId: string) => {
       if (externalHandleShip) {
         await externalHandleShip(itemId);
-      } else {
-        // Fallback to local implementation
-        toast.success("Item marked as shipped");
       }
     },
     [externalHandleShip]
@@ -270,9 +262,6 @@ export const MobileOrderView = ({
     async (itemId: string) => {
       if (externalHandleMarkCompleted) {
         await externalHandleMarkCompleted(itemId);
-      } else {
-        // Fallback to local implementation
-        toast.success("Item marked as completed");
       }
     },
     [externalHandleMarkCompleted]
@@ -283,9 +272,6 @@ export const MobileOrderView = ({
     (item: Item) => {
       if (externalHandleGetLabel) {
         externalHandleGetLabel(item);
-      } else {
-        // Fallback to local implementation
-        toast.success("Navigating to shipping dashboard");
       }
     },
     [externalHandleGetLabel]

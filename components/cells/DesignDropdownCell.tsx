@@ -7,7 +7,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { boardConfig } from "../../config/boardconfig";
 import { DesignBlends } from "@/typings/constants";
-import { toast } from "sonner";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 
@@ -146,10 +145,8 @@ export const DesignDropdownCell = ({
         design: newValue,
       };
       await updateItem(updatedItem, columnValue.columnName);
-      toast.success("Design updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
-      toast.error("Failed to update the design. Please try again.");
     }
   };
 

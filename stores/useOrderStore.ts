@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import { toast } from "sonner";
 import debounce from "lodash/debounce";
 import { Item, ColumnTitles, ItemStatus, Settings } from "@/typings/types";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
@@ -176,7 +175,6 @@ export const useOrderStore = create<OrderState>()(
           if (schedules.length > 0) get().updateIsScheduled();
         } catch (err) {
           console.error("Failed to load orders", err);
-          toast.error("Failed to load orders. Please try again.");
           set({ isLoading: false });
         }
       },
@@ -461,7 +459,6 @@ export const useOrderStore = create<OrderState>()(
           return processedUpdate;
         } catch (err) {
           console.error("Failed to update item", err);
-          toast.error("Failed to update item. Please try again.");
           throw err;
         }
       },
@@ -516,12 +513,9 @@ export const useOrderStore = create<OrderState>()(
           invalidateStatsCaches();
 
           set({ items: [...items, ItemUtil.processItem(fullNewItem)] });
-
-          toast.success("New item added successfully");
           return fullNewItem;
         } catch (err) {
           console.error("Failed to add new item", err);
-          toast.error("Failed to add new item. Please try again.");
           throw err;
         }
       },
@@ -550,11 +544,8 @@ export const useOrderStore = create<OrderState>()(
           );
 
           set({ items: updatedItems });
-
-          toast.success("Item marked as deleted successfully");
         } catch (err) {
           console.error("Failed to mark item as deleted", err);
-          toast.error("Failed to delete item. Please try again.");
         }
       },
 
@@ -647,7 +638,6 @@ export const useOrderStore = create<OrderState>()(
           console.log("Items reordered successfully.");
         } catch (err) {
           console.error("Failed to reorder items:", err);
-          toast.error("Failed to reorder items. Please try again.");
           throw err;
         }
       },
@@ -702,7 +692,6 @@ export const useOrderStore = create<OrderState>()(
           }));
         } catch (err) {
           console.error("Failed to load done items", err);
-          toast.error("Failed to load done items. Please try again.");
           set({ isDoneLoading: false });
         }
       },
@@ -960,7 +949,6 @@ function applyAutomatronRules(
     console.log(
       `Automatron applied: Item ${item.id} status updated to ${updatedItem.status}`
     );
-    toast.success(`Item status updated to ${updatedItem.status}`);
   }
 
   return updatedItem;

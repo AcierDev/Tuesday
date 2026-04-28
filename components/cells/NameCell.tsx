@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
 import {
   Tooltip,
@@ -95,10 +94,8 @@ export const NameCell: React.FC<NameCellProps> = ({
         // For now, simple update.
       };
       await updateItem(updatedItem, ColumnTitles.Customer_Name);
-      toast.success("Name updated successfully");
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
-      toast.error("Failed to update the name. Please try again.");
       setInputValue(columnValue.text || "");
     }
   }, [inputValue, columnValue.text, item, updateItem]);

@@ -12,7 +12,6 @@ import {
   addDays,
   parseISO,
 } from "date-fns";
-import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   DndContext,
@@ -214,7 +213,7 @@ export default function ProductionPlanningPage() {
         (i) => i.id === itemId
       );
       if (!target) {
-        toast.error("Could not find that order");
+        console.error("Could not find that order");
         return;
       }
       if (target.status === status) return;
@@ -224,10 +223,8 @@ export default function ProductionPlanningPage() {
           prevStatus: target.status,
           status,
         });
-        toast.success(`Moved to ${status}`);
       } catch (err) {
         console.error("Failed to update status", err);
-        toast.error("Failed to update status");
       }
     },
     [items, doneItems, scheduledItems, updateItem]
@@ -335,7 +332,6 @@ export default function ProductionPlanningPage() {
         }
       } catch (err) {
         console.error("Failed to toggle sidebar pin", err);
-        toast.error("Failed to update pin");
         // Roll back on failure.
         setExcludedItemIds((prev) => {
           const next = new Set(prev);
@@ -440,8 +436,6 @@ export default function ProductionPlanningPage() {
     isEqual: (a, b) => a === b,
     historyKey: currentWeekKey,
     enabled: !!currentSchedule,
-    onUndo: () => toast("Undid last change"),
-    onRedo: () => toast("Redid last change"),
   });
 
   // Fetch done orders from DB if they're not in the store
@@ -1019,7 +1013,6 @@ export default function ProductionPlanningPage() {
                 },
               };
               updateSchedule(currentWeekKey, clearedSchedule);
-              toast.success("Week cleared");
             }
           }}
         />

@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { DayName, Item, WeeklyScheduleData } from "@/typings/types";
-import { toast } from "sonner";
 import { useOrderStore } from "./useOrderStore";
 
 interface WeeklyScheduleState {
@@ -90,10 +89,7 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
             schedules: [...state.schedules, emptySchedule],
             currentWeek: weekKey,
           }));
-
-          toast.success("Created new week schedule");
         } catch (error) {
-          toast.error("Failed to create week schedule");
           throw error;
         }
       },
@@ -113,7 +109,6 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
           const errorMessage =
             error instanceof Error ? error.message : "An error occurred";
           set({ error: errorMessage, isLoading: false });
-          toast.error("Failed to fetch schedules");
         }
       },
 
@@ -147,7 +142,6 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
             error: error instanceof Error ? error.message : "An error occurred",
           }));
           useOrderStore.getState().updateIsScheduled();
-          toast.error("Failed to update schedule");
           throw error;
         }
       },
@@ -169,9 +163,7 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
           useOrderStore.getState().updateIsScheduled();
 
           await get().updateSchedule(weekKey, updatedSchedule);
-          toast.success("Item added to schedule");
         } catch (error) {
-          toast.error("Failed to add item to schedule");
           throw error;
         }
       },
@@ -199,10 +191,7 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
 
           // Notify OrderStore to update `isScheduled`
           useOrderStore.getState().updateIsScheduled();
-
-          toast.success("Item removed from schedule");
         } catch (error) {
-          toast.error("Failed to remove item from schedule");
           throw error;
         }
       },
@@ -224,7 +213,6 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
 
           await get().updateSchedule(weekKey, updatedSchedule);
         } catch (error) {
-          toast.error("Failed to update item status");
           throw error;
         }
       },
@@ -250,7 +238,6 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
 
           await get().updateSchedule(weekKey, updatedSchedule);
         } catch (error) {
-          toast.error("Failed to update pin");
           throw error;
         }
       },
@@ -288,7 +275,6 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
             schedule: stripped,
           });
         } catch (error) {
-          toast.error("Failed to pin item");
           throw error;
         }
       },

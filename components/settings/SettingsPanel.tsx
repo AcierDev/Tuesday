@@ -2,7 +2,6 @@
 
 import { X } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
@@ -80,7 +79,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   const saveSettings = () => {
     updateSettings(settings);
-    toast.success("Settings saved successfully");
     onClose();
   };
 

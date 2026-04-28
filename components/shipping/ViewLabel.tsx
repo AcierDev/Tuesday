@@ -27,7 +27,6 @@ import { useUploadProgressStore } from "@/stores/useUploadProgressStore";
 import { useShippingStore } from "@/stores/useShippingStore";
 import { UploadStep, TrackingInfo, FileProgress } from "@/types/shipping";
 import { cn } from "@/utils/functions";
-import { toast } from "sonner";
 import { FedExBuyLabelDialog } from "./FedExBuyLabelDialog";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
