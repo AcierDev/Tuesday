@@ -148,21 +148,12 @@ export const NameCell: React.FC<NameCellProps> = ({
     parsedDueDate &&
     isValid(parsedDueDate) &&
     item.status !== ItemStatus.Done ? (
-      <span
-        className={cn(
-          "relative inline-flex flex-shrink-0",
-          // Reserve vertical room for the floating tag so it stays inside
-          // the table's clipPath. Without this, rows at the top of a
-          // section have their tag cut off by BoarderedTable.
-          scheduleTag && "pt-[1.0125rem]"
-        )}
-      >
+      <span className="inline-flex flex-shrink-0 items-center gap-1">
         {scheduleTag && (
           <span
             aria-label={`Planned for ${scheduleTag.label.toLowerCase()}`}
             className={cn(
-              "pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 z-20",
-              "inline-flex items-center justify-center h-[0.89375rem] px-1.5 rounded-sm whitespace-nowrap",
+              "inline-flex items-center justify-center h-[0.89375rem] px-1 rounded-sm whitespace-nowrap",
               "text-white text-[0.5rem] font-bold uppercase tracking-wider",
               "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]",
               "[text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
