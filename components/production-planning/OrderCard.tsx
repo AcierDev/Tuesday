@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ColumnTitles, DayName, ItemStatus } from "@/typings/types";
 import { OrderMeta } from "./types";
-import { cn } from "@/utils/functions";
+import { cn, formatDueDelta } from "@/utils/functions";
 import { Pin } from "lucide-react";
 import { DesignBlends } from "@/typings/constants";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
@@ -17,9 +17,9 @@ import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 function getSolidDueBadge(
   dueDate: Date | null | undefined,
   referenceDate: Date | undefined
-): { text: string; classes: string } {
+): { primary: string; suffix?: "Week" | "Weeks"; classes: string } {
   if (!dueDate) {
-    return { text: "?", classes: "bg-gray-500 text-white" };
+    return { primary: "?", classes: "bg-gray-500 text-white" };
   }
   const ref = new Date(referenceDate ?? new Date());
   ref.setHours(0, 0, 0, 0);
@@ -29,10 +29,10 @@ function getSolidDueBadge(
     (due.getTime() - ref.getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  const text = diffDays === 0 ? "0" : diffDays > 0 ? `+${diffDays}` : `${diffDays}`;
-  if (diffDays < 0) return { text, classes: "bg-red-500/70 text-white" };
-  if (diffDays <= 2) return { text, classes: "bg-yellow-500/70 text-white" };
-  return { text, classes: "bg-green-500/70 text-white" };
+  const { primary, suffix } = formatDueDelta(diffDays);
+  if (diffDays < 0) return { primary, suffix, classes: "bg-red-500/70 text-white" };
+  if (diffDays <= 2) return { primary, suffix, classes: "bg-yellow-500/70 text-white" };
+  return { primary, suffix, classes: "bg-green-500/70 text-white" };
 }
 
 // Card tint mirrors the canonical STATUS_COLORS palette so a card's color
@@ -256,7 +256,16 @@ export function OrderCard({
                 badgeStatus.classes
               )}
             >
-              {badgeStatus.text}
+              {badgeStatus.suffix ? (
+                <span className="flex flex-col items-center leading-[0.95]">
+                  <span>{badgeStatus.primary}</span>
+                  <span className="text-[0.5625rem] font-medium tracking-wide opacity-95">
+                    {badgeStatus.suffix}
+                  </span>
+                </span>
+              ) : (
+                badgeStatus.primary
+              )}
             </div>
           )}
         </div>

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { differenceInCalendarDays, parseISO, isValid } from "date-fns";
-import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,7 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/utils/functions";
+import { cn, formatDueDelta } from "@/utils/functions";
 import { Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 
@@ -42,18 +41,16 @@ export const DueBadge = ({ item, range }: DueBadgeProps) => {
     colorClasses = "bg-green-500/70 hover:bg-green-500/90 text-white";
   }
 
-  const label = delta === 0 ? "0" : delta > 0 ? `+${delta}` : `${delta}`;
+  const { primary, suffix } = formatDueDelta(delta);
 
   const handleSelect = async (newDate: Date | undefined) => {
     if (!newDate) return;
     try {
       const updated = { ...item, dueDate: newDate.toISOString() };
       await updateItem(updated);
-      toast.success("Due date updated");
       setOpen(false);
     } catch (err) {
       console.error("Failed to update due date", err);
-      toast.error("Failed to update due date");
     }
   };
 
@@ -70,7 +67,16 @@ export const DueBadge = ({ item, range }: DueBadgeProps) => {
             colorClasses
           )}
         >
-          {label}
+          {suffix ? (
+            <span className="flex flex-col items-center leading-[0.95]">
+              <span>{primary}</span>
+              <span className="text-[0.4375rem] sm:text-[0.5625rem] font-medium tracking-wide opacity-95">
+                {suffix}
+              </span>
+            </span>
+          ) : (
+            primary
+          )}
         </Badge>
       </PopoverTrigger>
       <PopoverContent
