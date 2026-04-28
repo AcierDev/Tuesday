@@ -1,75 +1,567 @@
 "use client";
 
-import {
-  PencilRuler,
-  Ruler,
-  LayoutGrid,
-  Grid3x3,
-  SquareStack,
-  ClipboardList,
-  ListChecks,
-  Sliders,
-  SlidersHorizontal,
-  Settings2,
-  Wrench,
-  type LucideIcon,
-} from "lucide-react";
+import type { ReactNode } from "react";
 
-const SETUP_CANDIDATES: { name: string; Icon: LucideIcon }[] = [
-  { name: "PencilRuler", Icon: PencilRuler },
-  { name: "Ruler", Icon: Ruler },
-  { name: "LayoutGrid", Icon: LayoutGrid },
-  { name: "Grid3x3", Icon: Grid3x3 },
-  { name: "SquareStack", Icon: SquareStack },
-  { name: "ClipboardList", Icon: ClipboardList },
-  { name: "ListChecks", Icon: ListChecks },
-  { name: "Sliders", Icon: Sliders },
-  { name: "SlidersHorizontal", Icon: SlidersHorizontal },
-  { name: "Settings2", Icon: Settings2 },
-  { name: "Wrench", Icon: Wrench },
+const TWO_PI = Math.PI * 2;
+const CENTER = 32;
+
+const teethPoints = (n: number, R: number, r: number, phase = 0): string => {
+  const pts: string[] = [];
+  for (let i = 0; i < n * 2; i++) {
+    const a = (i / (n * 2)) * TWO_PI - Math.PI / 2 + phase;
+    const radius = i % 2 === 0 ? R : r;
+    pts.push(
+      `${(CENTER + radius * Math.cos(a)).toFixed(2)},${(CENTER + radius * Math.sin(a)).toFixed(2)}`
+    );
+  }
+  return pts.join(" ");
+};
+
+const skewTeethPoints = (n: number, R: number, r: number, skew: number): string => {
+  const pts: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const aValley = (i / n) * TWO_PI - Math.PI / 2;
+    const aTip = aValley + Math.PI / n - skew;
+    pts.push(
+      `${(CENTER + r * Math.cos(aValley)).toFixed(2)},${(CENTER + r * Math.sin(aValley)).toFixed(2)}`
+    );
+    pts.push(
+      `${(CENTER + R * Math.cos(aTip)).toFixed(2)},${(CENTER + R * Math.sin(aTip)).toFixed(2)}`
+    );
+  }
+  return pts.join(" ");
+};
+
+const gearPoints = (n: number, R: number, r: number, duty = 0.55): string => {
+  const pts: string[] = [];
+  const slice = TWO_PI / n;
+  for (let i = 0; i < n; i++) {
+    const aStart = (i / n) * TWO_PI - Math.PI / 2;
+    const aRise = aStart + (slice * (1 - duty)) / 2;
+    const aFall = aStart + (slice * (1 + duty)) / 2;
+    pts.push(
+      `${(CENTER + r * Math.cos(aStart)).toFixed(2)},${(CENTER + r * Math.sin(aStart)).toFixed(2)}`
+    );
+    pts.push(
+      `${(CENTER + r * Math.cos(aRise)).toFixed(2)},${(CENTER + r * Math.sin(aRise)).toFixed(2)}`
+    );
+    pts.push(
+      `${(CENTER + R * Math.cos(aRise)).toFixed(2)},${(CENTER + R * Math.sin(aRise)).toFixed(2)}`
+    );
+    pts.push(
+      `${(CENTER + R * Math.cos(aFall)).toFixed(2)},${(CENTER + R * Math.sin(aFall)).toFixed(2)}`
+    );
+    pts.push(
+      `${(CENTER + r * Math.cos(aFall)).toFixed(2)},${(CENTER + r * Math.sin(aFall)).toFixed(2)}`
+    );
+  }
+  return pts.join(" ");
+};
+
+const asymStarPoints = (n: number, Rlong: number, Rshort: number, r: number): string => {
+  const pts: string[] = [];
+  for (let i = 0; i < n * 2; i++) {
+    const a = (i / (n * 2)) * TWO_PI - Math.PI / 2;
+    const radius =
+      i % 2 === 0 ? ((i / 2) % 2 === 0 ? Rlong : Rshort) : r;
+    pts.push(
+      `${(CENTER + radius * Math.cos(a)).toFixed(2)},${(CENTER + radius * Math.sin(a)).toFixed(2)}`
+    );
+  }
+  return pts.join(" ");
+};
+
+const hexPoints = (radius: number): string =>
+  Array.from({ length: 6 }, (_, i) => {
+    const a = (i / 6) * TWO_PI - Math.PI / 2;
+    return `${(CENTER + radius * Math.cos(a)).toFixed(2)},${(CENTER + radius * Math.sin(a)).toFixed(2)}`;
+  }).join(" ");
+
+type Blade = { name: string; render: (id: string) => ReactNode };
+
+const BLADES: Blade[] = [
+  {
+    name: "Classic 12",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(12, 30, 22)} />
+        <circle className="blade" cx="32" cy="32" r="5" />
+      </>
+    ),
+  },
+  {
+    name: "Chunky 8",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(8, 30, 18)} />
+        <circle className="blade" cx="32" cy="32" r="5" />
+      </>
+    ),
+  },
+  {
+    name: "Fine 24",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(24, 30, 26)} />
+        <circle className="blade" cx="32" cy="32" r="4" />
+      </>
+    ),
+  },
+  {
+    name: "Sun-Ray 16",
+    render: () => (
+      <>
+        {Array.from({ length: 16 }).map((_, i) => {
+          const a = (i / 16) * TWO_PI;
+          const x1 = (CENTER + 11 * Math.cos(a)).toFixed(2);
+          const y1 = (CENTER + 11 * Math.sin(a)).toFixed(2);
+          const x2 = (CENTER + 30 * Math.cos(a)).toFixed(2);
+          const y2 = (CENTER + 30 * Math.sin(a)).toFixed(2);
+          return <line key={i} className="blade" x1={x1} y1={y1} x2={x2} y2={y2} />;
+        })}
+        <circle className="blade" cx="32" cy="32" r="11" />
+        <circle className="blade" cx="32" cy="32" r="3" />
+      </>
+    ),
+  },
+  {
+    name: "Star 6",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(6, 30, 12)} />
+        <circle className="blade" cx="32" cy="32" r="4" />
+      </>
+    ),
+  },
+  {
+    name: "Aggressive 10",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(10, 30, 17)} />
+        <circle className="blade" cx="32" cy="32" r="5" />
+      </>
+    ),
+  },
+  {
+    name: "Concentric 12",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(12, 30, 24)} />
+        <polygon className="blade" points={teethPoints(8, 18, 13)} />
+        <circle className="blade" cx="32" cy="32" r="3" />
+      </>
+    ),
+  },
+  {
+    name: "Gear 12",
+    render: () => (
+      <>
+        <polygon className="blade" points={gearPoints(12, 30, 23)} />
+        <circle className="blade" cx="32" cy="32" r="5" />
+      </>
+    ),
+  },
+  {
+    name: "Diamond-Tip 14",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(14, 28, 22)} />
+        {Array.from({ length: 14 }).map((_, i) => {
+          const a = (i / 14) * TWO_PI - Math.PI / 2;
+          const cx = (CENTER + 28 * Math.cos(a)).toFixed(2);
+          const cy = (CENTER + 28 * Math.sin(a)).toFixed(2);
+          return <circle key={i} className="blade" cx={cx} cy={cy} r="1.6" />;
+        })}
+        <circle className="blade" cx="32" cy="32" r="4" />
+      </>
+    ),
+  },
+  {
+    name: "Filled Disc",
+    render: () => (
+      <>
+        <polygon className="blade-fill" points={teethPoints(12, 30, 22)} />
+        <circle className="blade-bg" cx="32" cy="32" r="5" />
+      </>
+    ),
+  },
+  {
+    name: "Hex Arbor",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(12, 30, 22)} />
+        <polygon className="blade" points={hexPoints(6)} />
+      </>
+    ),
+  },
+  {
+    name: "Cross Arbor",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(12, 30, 22)} />
+        <circle className="blade" cx="32" cy="32" r="7" />
+        <line className="blade" x1="25" y1="32" x2="39" y2="32" />
+        <line className="blade" x1="32" y1="25" x2="32" y2="39" />
+      </>
+    ),
+  },
+  {
+    name: "Sharp 14",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(14, 30, 18)} />
+        <circle className="blade" cx="32" cy="32" r="4" />
+      </>
+    ),
+  },
+  {
+    name: "Double Disc",
+    render: () => (
+      <>
+        <g transform="translate(-7 0)">
+          <polygon className="blade" points={teethPoints(10, 22, 16)} />
+        </g>
+        <g transform="translate(7 0)">
+          <polygon className="blade" points={teethPoints(10, 22, 16)} />
+        </g>
+      </>
+    ),
+  },
+  {
+    name: "Half Blade",
+    render: (id) => (
+      <>
+        <defs>
+          <clipPath id={`half-${id}`}>
+            <rect x="0" y="0" width="64" height="34" />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#half-${id})`}>
+          <polygon className="blade" points={teethPoints(12, 30, 22)} />
+          <circle className="blade" cx="32" cy="32" r="5" />
+        </g>
+        <line className="blade" x1="2" y1="34" x2="62" y2="34" />
+      </>
+    ),
+  },
+  {
+    name: "Skew 14",
+    render: () => (
+      <>
+        <polygon className="blade" points={skewTeethPoints(14, 30, 22, 0.2)} />
+        <circle className="blade" cx="32" cy="32" r="5" />
+      </>
+    ),
+  },
+  {
+    name: "Bolt Center",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(12, 30, 22)} />
+        <rect className="blade" x="26" y="26" width="12" height="12" rx="1.5" />
+        <line className="blade" x1="32" y1="26" x2="32" y2="38" />
+      </>
+    ),
+  },
+  {
+    name: "Mini 20",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(20, 30, 27)} />
+        <circle className="blade" cx="32" cy="32" r="4" />
+      </>
+    ),
+  },
+  {
+    name: "Asym Star 8",
+    render: () => (
+      <>
+        <polygon className="blade" points={asymStarPoints(8, 30, 23, 14)} />
+        <circle className="blade" cx="32" cy="32" r="4" />
+      </>
+    ),
+  },
+  {
+    name: "Triple Spoke",
+    render: () => (
+      <>
+        <polygon className="blade" points={teethPoints(12, 30, 22)} />
+        <circle className="blade" cx="32" cy="32" r="13" />
+        {Array.from({ length: 3 }).map((_, i) => {
+          const a = (i / 3) * TWO_PI - Math.PI / 2;
+          const x = (CENTER + 13 * Math.cos(a)).toFixed(2);
+          const y = (CENTER + 13 * Math.sin(a)).toFixed(2);
+          return (
+            <line key={i} className="blade" x1="32" y1="32" x2={x} y2={y} />
+          );
+        })}
+        <circle className="blade" cx="32" cy="32" r="3" />
+      </>
+    ),
+  },
 ];
+
+const halfBlade = (
+  id: string,
+  cy: number,
+  base: ReactNode,
+  cutLine: ReactNode
+): ReactNode => (
+  <>
+    <defs>
+      <clipPath id={`clip-${id}`}>
+        <rect x="0" y="0" width="64" height={cy} />
+      </clipPath>
+    </defs>
+    <g clipPath={`url(#clip-${id})`}>{base}</g>
+    {cutLine}
+  </>
+);
+
+const classicBase = (
+  <>
+    <polygon className="blade" points={teethPoints(12, 30, 22)} />
+    <circle className="blade" cx="32" cy="32" r="5" />
+  </>
+);
+
+const HALF_VARIANTS: Blade[] = [
+  {
+    name: "15a · Standard",
+    render: (id) =>
+      halfBlade(
+        id,
+        34,
+        classicBase,
+        <line className="blade" x1="2" y1="34" x2="62" y2="34" />
+      ),
+  },
+  {
+    name: "15b · Shallow",
+    render: (id) =>
+      halfBlade(
+        id,
+        44,
+        classicBase,
+        <line className="blade" x1="2" y1="44" x2="62" y2="44" />
+      ),
+  },
+  {
+    name: "15c · Deep",
+    render: (id) =>
+      halfBlade(
+        id,
+        24,
+        classicBase,
+        <line className="blade" x1="2" y1="24" x2="62" y2="24" />
+      ),
+  },
+  {
+    name: "15d · Just Teeth",
+    render: (id) =>
+      halfBlade(
+        id,
+        14,
+        classicBase,
+        <line className="blade" x1="2" y1="14" x2="62" y2="14" />
+      ),
+  },
+  {
+    name: "15e · Diagonal",
+    render: (id) => (
+      <>
+        <defs>
+          <clipPath id={`clip-${id}`}>
+            <polygon points="0,0 64,0 64,28 0,40" />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#clip-${id})`}>{classicBase}</g>
+        <line className="blade" x1="0" y1="40" x2="64" y2="28" />
+      </>
+    ),
+  },
+  {
+    name: "15f · Plank",
+    render: (id) => (
+      <>
+        <defs>
+          <clipPath id={`clip-${id}`}>
+            <rect x="0" y="0" width="64" height="36" />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#clip-${id})`}>{classicBase}</g>
+        <rect className="blade" x="4" y="36" width="56" height="14" rx="1.5" />
+      </>
+    ),
+  },
+  {
+    name: "15g · Vertical Cut",
+    render: (id) => (
+      <>
+        <defs>
+          <clipPath id={`clip-${id}`}>
+            <rect x="0" y="0" width="34" height="64" />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#clip-${id})`}>{classicBase}</g>
+        <line className="blade" x1="34" y1="2" x2="34" y2="62" />
+      </>
+    ),
+  },
+  {
+    name: "15h · With Sawdust",
+    render: (id) => (
+      <>
+        <defs>
+          <clipPath id={`clip-${id}`}>
+            <rect x="0" y="0" width="64" height="34" />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#clip-${id})`}>{classicBase}</g>
+        <line className="blade" x1="2" y1="34" x2="62" y2="34" />
+        <circle className="blade" cx="10" cy="42" r="1.5" />
+        <circle className="blade" cx="18" cy="48" r="1.5" />
+        <circle className="blade" cx="50" cy="44" r="1.5" />
+        <circle className="blade" cx="56" cy="50" r="1.5" />
+      </>
+    ),
+  },
+];
+
+const skewBase = (skew: number, n = 14, R = 30, r = 22): ReactNode => (
+  <>
+    <polygon className="blade" points={skewTeethPoints(n, R, r, skew)} />
+    <circle className="blade" cx="32" cy="32" r="5" />
+  </>
+);
+
+const SKEW_VARIANTS: Blade[] = [
+  {
+    name: "16a · Light skew",
+    render: () => skewBase(0.1),
+  },
+  {
+    name: "16b · Medium",
+    render: () => skewBase(0.2),
+  },
+  {
+    name: "16c · Heavy",
+    render: () => skewBase(0.32),
+  },
+  {
+    name: "16d · Reverse",
+    render: () => skewBase(-0.22),
+  },
+  {
+    name: "16e · Skew 10",
+    render: () => skewBase(0.22, 10),
+  },
+  {
+    name: "16f · Skew 20",
+    render: () => skewBase(0.18, 20, 30, 26),
+  },
+  {
+    name: "16g · Deep gullet",
+    render: () => skewBase(0.22, 14, 30, 17),
+  },
+  {
+    name: "16h · Skew + hex",
+    render: () => (
+      <>
+        <polygon className="blade" points={skewTeethPoints(14, 30, 22, 0.22)} />
+        <polygon className="blade" points={hexPoints(6)} />
+      </>
+    ),
+  },
+];
+
+const BLADE_STYLE = `
+  .blade { stroke: #0f172a; fill: none; stroke-width: 3.5; stroke-linejoin: round; stroke-linecap: round; }
+  .blade-fill { fill: #0f172a; stroke: none; }
+  .blade-bg { fill: #f9fafb; stroke: #0f172a; stroke-width: 1.5; }
+  @media (prefers-color-scheme: dark) {
+    .blade { stroke: #ffffff; }
+    .blade-fill { fill: #ffffff; }
+    .blade-bg { fill: #030712; stroke: #ffffff; }
+  }
+`;
+
+function Section({
+  title,
+  blades,
+  prefix,
+  numbered,
+}: {
+  title: string;
+  blades: Blade[];
+  prefix: string;
+  numbered?: boolean;
+}) {
+  return (
+    <section>
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+        {title}
+      </h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        {blades.map((b, i) => (
+          <div
+            key={b.name}
+            className="flex flex-col items-center justify-center gap-3 p-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm"
+          >
+            <svg viewBox="0 0 64 64" className="h-20 w-20">
+              {b.render(`${prefix}-big-${i}`)}
+            </svg>
+            <div className="flex items-center gap-2">
+              <svg viewBox="0 0 64 64" className="h-4 w-4">
+                {b.render(`${prefix}-xs-${i}`)}
+              </svg>
+              <svg viewBox="0 0 64 64" className="h-6 w-6">
+                {b.render(`${prefix}-sm-${i}`)}
+              </svg>
+            </div>
+            <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400 text-center">
+              {numbered ? `#${i + 1} · ` : ""}
+              {b.name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function IconsPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Setup Utility — Icon Candidates
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
-          Pick one to replace the current Accessibility icon in the sidebar.
-        </p>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-12">
-          {SETUP_CANDIDATES.map(({ name, Icon }) => (
-            <div
-              key={name}
-              className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm"
-            >
-              <Icon className="h-16 w-16 text-gray-700 dark:text-gray-300" />
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                {name}
-              </span>
-            </div>
-          ))}
+      <style dangerouslySetInnerHTML={{ __html: BLADE_STYLE }} />
+      <div className="max-w-6xl mx-auto space-y-12">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            Favicon — Saw Blade Candidates
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Pick one to replace <code className="text-xs">app/icon.svg</code>.
+          </p>
         </div>
 
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
-          Preview at sidebar size
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {SETUP_CANDIDATES.map(({ name, Icon }) => (
-            <div
-              key={name}
-              className="flex flex-col items-center justify-center w-20 h-20 rounded-xl px-1 bg-white/70 dark:bg-gray-900/40 backdrop-blur-md border border-white/30 dark:border-white/10 shadow"
-            >
-              <Icon className="h-7 w-7 text-blue-500" />
-              <span className="mt-0.5 w-full truncate text-center text-[9px] font-medium uppercase tracking-wide opacity-80 text-gray-700 dark:text-gray-300">
-                {name}
-              </span>
-            </div>
-          ))}
-        </div>
+        <Section
+          title="Variations of #15 — Half Blade (cutting through)"
+          blades={HALF_VARIANTS}
+          prefix="half"
+        />
+
+        <Section
+          title="Variations of #16 — Skew teeth (rake angle)"
+          blades={SKEW_VARIANTS}
+          prefix="skew"
+        />
+
+        <Section
+          title="Original 20 candidates"
+          blades={BLADES}
+          prefix="all"
+          numbered
+        />
       </div>
     </div>
   );
