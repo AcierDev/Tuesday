@@ -15,7 +15,9 @@ import {
   computeHealthScore,
   computeOnTimeStats,
   parseSquareSize,
+  RECENCY_WEIGHTED_FORECAST,
   summarizeDayBuckets,
+  summarizeRecencyWeighted,
 } from "@/lib/production-metrics";
 import {
   DEFAULT_RANGE,
@@ -46,6 +48,18 @@ const COMBINED_CHART_HEIGHT = 280;
 const COMBINED_PADDING_X = 16;
 const COMBINED_PADDING_TOP = 16;
 const COMBINED_PADDING_BOTTOM = 28;
+
+// Backlog = work that still needs gluing. Post-Wip squares are already done,
+// so they don't pull on glue capacity.
+const BACKLOG_STATUSES: ReadonlySet<ItemStatus> = new Set([
+  ItemStatus.New,
+  ItemStatus.OnDeck,
+  ItemStatus.Wip,
+]);
+
+// Default Mon–Thu in production-planning's auto-plan defaults — this is the
+// shop's typical week. Keep in sync with AUTO_PLAN_DEFAULTS over there.
+const WORKING_DAYS_PER_WEEK = 4;
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🧩 PAGE                                                              ║
@@ -114,6 +128,7 @@ export default function OverviewPage() {
     const active = items.filter(
       (i) => i.status !== ItemStatus.Done && i.status !== ItemStatus.Hidden
     );
+    const backlogItems = active.filter((i) => BACKLOG_STATUSES.has(i.status));
     const debt = computeDebtBreakdown(active);
     const lateNow = computeCurrentlyLate(active);
     const buckets = bucketCompletionsByDay(items, start, today);
@@ -132,13 +147,36 @@ export default function OverviewPage() {
     });
     const shippedSquares = sumSquares(shippedInRange);
     const wipSquares = sumSquares(active);
+    const backlogSquares = sumSquares(backlogItems);
     const health = computeHealthScore(items).total;
-    // Throughput already reflects the 4-day work week (it's measured over the
-    // calendar range), so converting calendar days → calendar weeks gives a
-    // realistic "weeks of work in flight" figure without extra adjustment.
-    const avgSquaresPerWeek = days > 0 ? (shippedSquares / days) * 7 : 0;
-    const weeksToClear =
-      avgSquaresPerWeek > 0 ? wipSquares / avgSquaresPerWeek : null;
+
+    // Pace = recency-weighted squares glued per active (working) day, same
+    // model as the planner's HistoricalAverageBadge. Multiplying by the
+    // shop's 4-day work week converts that into squares per calendar week.
+    let weeksToClear: number | null = null;
+    let glueRatePerWorkingDay = 0;
+    if (activities) {
+      const scheduledDay = buildScheduledDayByItemId(schedules);
+      const events = buildGluedEvents(activities, items, scheduledDay);
+      const forecastStart = shiftDayKey(
+        today,
+        -(RECENCY_WEIGHTED_FORECAST.lookbackDays - 1)
+      );
+      const gluedBuckets = bucketGluedSquaresByDay(
+        events,
+        forecastStart,
+        today
+      );
+      const forecast = summarizeRecencyWeighted(
+        gluedBuckets,
+        RECENCY_WEIGHTED_FORECAST
+      );
+      glueRatePerWorkingDay = forecast.weightedAvgActive;
+      const squaresPerWeek = glueRatePerWorkingDay * WORKING_DAYS_PER_WEEK;
+      if (squaresPerWeek > 0) {
+        weeksToClear = backlogSquares / squaresPerWeek;
+      }
+    }
 
     return {
       debt: debt.total,
@@ -150,10 +188,12 @@ export default function OverviewPage() {
       wipTotal: active.length,
       shippedSquares,
       wipSquares,
+      backlogSquares,
       weeksToClear,
+      glueRatePerWorkingDay,
       health,
     };
-  }, [items, days]);
+  }, [items, days, activities, schedules]);
 
   const combinedChart = useMemo(() => {
     if (!items) return null;
@@ -259,12 +299,14 @@ export default function OverviewPage() {
           {summary && (
             <p className="mt-1 heading-page text-slate-400">
               {summary.shippedSquares.toLocaleString()} sq shipped,{" "}
-              {summary.wipSquares.toLocaleString()} sq in flight
+              {summary.backlogSquares.toLocaleString()} sq backlog
             </p>
           )}
           {summary?.weeksToClear != null && (
             <p className="mt-1 text-sm text-slate-500">
-              ≈ {summary.weeksToClear.toFixed(1)} weeks at current pace
+              ≈ {summary.weeksToClear.toFixed(1)} weeks to clear at{" "}
+              {Math.round(summary.glueRatePerWorkingDay).toLocaleString()} sq /
+              working day · {WORKING_DAYS_PER_WEEK}-day week
             </p>
           )}
         </div>
