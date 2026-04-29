@@ -7,12 +7,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { ItemStatus } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
-import { computeTotalDebt, laDayKey } from "@/lib/debt-metrics";
+import { computeTotalDebt, laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import {
+  bucketGluedSquaresByDay,
   buildGluedEvents,
   buildScheduledDayByItemId,
   computeHealthScore,
   parseSquareSize,
+  RECENCY_WEIGHTED_FORECAST,
+  summarizeRecencyWeighted,
 } from "@/lib/production-metrics";
 import { useActivities, useAllItems } from "@/lib/stats-shared";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
@@ -121,16 +124,33 @@ export function NavMetricsBadges() {
     [allItems]
   );
 
-  const gluedToday = useMemo(() => {
+  const gluedStats = useMemo(() => {
     if (!allItems || !activities) return null;
     const today = laDayKey();
     const scheduledDay = buildScheduledDayByItemId(schedules);
-    const events = buildGluedEvents(activities, allItems, scheduledDay).filter(
-      (e) => e.dayKey === today
+    const events = buildGluedEvents(activities, allItems, scheduledDay);
+
+    const todayEvents = events.filter((e) => e.dayKey === today);
+    const todaySquares = todayEvents.reduce((s, e) => s + e.squares, 0);
+
+    const forecastStart = shiftDayKey(
+      today,
+      -(RECENCY_WEIGHTED_FORECAST.lookbackDays - 1)
     );
-    const squares = events.reduce((s, e) => s + e.squares, 0);
-    return { squares, orders: events.length };
+    const buckets = bucketGluedSquaresByDay(events, forecastStart, today);
+    const forecast = summarizeRecencyWeighted(
+      buckets,
+      RECENCY_WEIGHTED_FORECAST
+    );
+
+    return {
+      today: { squares: todaySquares, orders: todayEvents.length },
+      forecastPerDay: forecast.weightedAvgActive,
+    };
   }, [allItems, activities, schedules]);
+
+  const gluedToday = gluedStats?.today ?? null;
+  const forecastPerDay = gluedStats?.forecastPerDay ?? null;
 
   const backlogSquares = useMemo(() => {
     if (!items) return null;
@@ -274,6 +294,32 @@ export function NavMetricsBadges() {
           height={12}
           className="mt-1 opacity-70"
         />
+      </Link>
+      <Link
+        href="/stats/glued"
+        className={cn(
+          "flex flex-col items-center justify-center w-14 h-14 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
+          forecastPerDay && forecastPerDay > 0
+            ? "text-violet-500 dark:text-violet-400"
+            : "text-slate-400"
+        )}
+        title={
+          forecastPerDay === null
+            ? "Forecast loading…"
+            : `Recency-weighted glue pace: ${Math.round(forecastPerDay).toLocaleString()} sq / working day (last ${RECENCY_WEIGHTED_FORECAST.lookbackDays}d, recent ${RECENCY_WEIGHTED_FORECAST.recentWindowDays}d weighted ${RECENCY_WEIGHTED_FORECAST.recentWeight}×)`
+        }
+      >
+        <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
+          Forecast
+        </span>
+        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
+          {forecastPerDay === null || forecastPerDay === 0
+            ? "—"
+            : Math.round(forecastPerDay).toLocaleString()}
+        </span>
+        <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
+          sq/day
+        </span>
       </Link>
       <Link
         href="/stats/glued"
