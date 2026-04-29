@@ -18,6 +18,8 @@ import {
   Eye,
   Settings2,
   Barcode,
+  Check,
+  ClipboardCopy,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -74,7 +76,13 @@ export function ViewLabel({
   const [manualCarrier, setManualCarrier] =
     useState<TrackingInfo["carrier"]>("UPS");
   const [retryingFiles, setRetryingFiles] = useState<Set<string>>(new Set());
+  const [copiedTracking, setCopiedTracking] = useState(false);
   const { addTrackingInfo } = useTrackingStore();
+  const latestTrackingCode = useTrackingStore((state) => {
+    const info = state.trackingInfo.find((t) => t.orderId === orderId);
+    if (!info || info.trackers.length === 0) return null;
+    return info.trackers[info.trackers.length - 1]?.tracking_code ?? null;
+  });
   const { updateFileProgress, markFileComplete } = useUploadProgressStore();
   const { labels, fetchAllLabels, removeLabel, addLabel, getLabelUrl, isLoading } = useShippingStore();
   const orderLabels = labels[orderId] || [];
@@ -658,9 +666,32 @@ export function ViewLabel({
             <h2 className="text-xl font-semibold text-foreground leading-tight">
               Shipping Labels
             </h2>
-            <p className="text-xs text-muted-foreground mt-0.5 font-mono">
-              Order {orderId}
-            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs text-muted-foreground font-mono">
+                Order {orderId}
+              </p>
+              {pdfExists && latestTrackingCode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(latestTrackingCode);
+                    setCopiedTracking(true);
+                    setTimeout(() => setCopiedTracking(false), 1500);
+                  }}
+                  title={`Copy tracking ${latestTrackingCode}`}
+                  className="group inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-mono text-blue-300 bg-blue-500/10 ring-1 ring-inset ring-blue-400/30 hover:bg-blue-500/20 hover:text-blue-200 transition-colors"
+                >
+                  <span className="max-w-[10rem] truncate">
+                    {latestTrackingCode}
+                  </span>
+                  {copiedTracking ? (
+                    <Check className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+                  ) : (
+                    <ClipboardCopy className="h-3 w-3 flex-shrink-0 opacity-70 group-hover:opacity-100" />
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
