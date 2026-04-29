@@ -16,6 +16,12 @@ import {
   createDesignBackground,
 } from "@/components/ui/order-pills";
 import { DueBadge } from "@/components/cells/DueBadge";
+import {
+  BrandTag,
+  parseNameTokens,
+  PrintMarkerTag,
+  RushedTag,
+} from "@/components/orders/name-tokens";
 
 // Card tint mirrors the canonical STATUS_COLORS palette so a card's color
 // matches the same status anywhere else in the app (orders board, badges,
@@ -111,9 +117,11 @@ export function OrderCard({
     ? createDesignBackground(design, DESIGN_TAG_ALPHA)
     : undefined;
 
+  const { displayName, isRushed, brandPrefix, isPrintMarker } =
+    parseNameTokens(customerName);
   // Match the orders-board treatment: first two real words render at full
   // weight, the rest dims to ~55% opacity at a slightly smaller size.
-  const [firstTwoWords, restOfName] = splitFirstTwoWords(customerName);
+  const [firstTwoWords, restOfName] = splitFirstTwoWords(displayName);
 
 
   // Auto-plan placement animation: a quick scale+drop-in with an amber glow
@@ -165,9 +173,19 @@ export function OrderCard({
       <div className="flex items-start justify-between gap-2 px-3 py-2.5">
         <div className="flex-1 min-w-0 space-y-[3px] md:space-y-1.5">
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 break-words">
-            {parseMinecraftColors(firstTwoWords)}
-            <span className="opacity-55 text-[0.92em]">
-              {parseMinecraftColors(restOfName)}
+            <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+              {isPrintMarker ? (
+                <PrintMarkerTag />
+              ) : (
+                <span>
+                  {parseMinecraftColors(firstTwoWords)}
+                  <span className="opacity-55 text-[0.92em]">
+                    {parseMinecraftColors(restOfName)}
+                  </span>
+                </span>
+              )}
+              {brandPrefix && <BrandTag prefix={brandPrefix} />}
+              {isRushed && <RushedTag />}
             </span>
           </div>
           <div className="flex items-center gap-[3px] md:gap-1.5 min-w-0">

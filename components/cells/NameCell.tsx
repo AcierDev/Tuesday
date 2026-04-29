@@ -12,8 +12,6 @@ import {
   FileWarning,
   MessageCircleWarning,
   MoveVertical,
-  Printer,
-  Zap,
 } from "lucide-react";
 import { parseISO, isValid } from "date-fns";
 import { cn, splitFirstTwoWords } from "@/utils/functions";
@@ -26,6 +24,12 @@ import {
   useTodayScheduledIds,
   useTomorrowScheduledIds,
 } from "@/hooks/useTodayScheduledIds";
+import {
+  BrandTag,
+  parseNameTokens,
+  PrintMarkerTag,
+  RushedTag,
+} from "@/components/orders/name-tokens";
 
 // // Add this style block right after imports
 // const pulseKeyframes = `
@@ -165,58 +169,13 @@ export const NameCell: React.FC<NameCellProps> = ({
     </span>
   ) : null;
 
-  const isPrintMarker = inputValue.trim().toLowerCase() === "print";
-
-  // "(rushed)" anywhere in the name is stripped from the displayed text and
-  // surfaced as a red urgency tag.
-  const RUSHED_TOKEN = /\(rushed\)/i;
-  const isRushed = RUSHED_TOKEN.test(inputValue);
-  const nameWithoutRushed = inputValue.replace(RUSHED_TOKEN, "").replace(/\s{2,}/g, " ").trim();
-
-  // Brand prefix ([EW]/[WF]/[SH]) is stripped from the displayed name and
-  // shown as a tag to the right of the text.
-  const brandPrefixMatch = nameWithoutRushed.match(/^\[(EW|WF|SH)\]\s*/);
-  const brandPrefix = brandPrefixMatch ? brandPrefixMatch[1] : null;
-  const displayName = brandPrefixMatch
-    ? nameWithoutRushed.slice(brandPrefixMatch[0].length)
-    : nameWithoutRushed;
+  const { displayName, isRushed, brandPrefix, isPrintMarker } =
+    parseNameTokens(inputValue);
 
   const [firstTwoWords, restOfName] = splitFirstTwoWords(displayName);
 
-  const brandTag = brandPrefix ? (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-md px-1.5",
-        "bg-slate-200 text-slate-700 ring-1 ring-slate-300",
-        "dark:bg-slate-700 dark:text-slate-200 dark:ring-slate-600",
-        "text-[0.7rem] font-bold uppercase tracking-wide flex-shrink-0"
-      )}
-    >
-      {brandPrefix}
-    </span>
-  ) : null;
-
-  const rushedTag = isRushed ? (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5",
-            "bg-red-500 text-white ring-1 ring-red-600",
-            "dark:bg-red-500/90 dark:ring-red-400/60",
-            "text-[0.7rem] font-bold uppercase tracking-wide flex-shrink-0",
-            "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_1px_2px_rgba(0,0,0,0.08)]"
-          )}
-        >
-          <Zap className="h-3 w-3" strokeWidth={2.75} fill="currentColor" />
-          Rushed
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>Rushed order</p>
-      </TooltipContent>
-    </Tooltip>
-  ) : null;
+  const brandTag = brandPrefix ? <BrandTag prefix={brandPrefix} /> : null;
+  const rushedTag = isRushed ? <RushedTag /> : null;
 
   const verticalIcon = tags?.isVertical && (
     <Tooltip>
@@ -315,17 +274,7 @@ export const NameCell: React.FC<NameCellProps> = ({
               {scheduleBadge}
               <span className="inline-flex items-center gap-2">
                 {isPrintMarker ? (
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5",
-                      "bg-amber-100 text-amber-900 ring-1 ring-amber-300",
-                      "dark:bg-amber-500/20 dark:text-amber-200 dark:ring-amber-400/40",
-                      "text-xs font-bold uppercase tracking-wider"
-                    )}
-                  >
-                    <Printer className="h-3.5 w-3.5" strokeWidth={2.5} />
-                    Print
-                  </span>
+                  <PrintMarkerTag />
                 ) : (
                   <span>
                     {parseMinecraftColors(firstTwoWords)}
