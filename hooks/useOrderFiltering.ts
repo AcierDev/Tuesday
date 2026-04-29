@@ -53,13 +53,10 @@ export function useOrderFiltering({
               return true;
             case "striped":
               return design.startsWith("Striped") && !isMini;
-            case "tiled":
-              return design.startsWith("Tiled") && !isMini;
             case "geometric":
               return (
                 Object.values(ItemDesigns).includes(design as ItemDesigns) &&
                 !design.startsWith("Striped") &&
-                !design.startsWith("Tiled") &&
                 !isMini
               );
             case "mini":

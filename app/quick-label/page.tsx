@@ -18,6 +18,8 @@ import {
 const FONT_SIZE_PT = 64;
 const LABEL_WIDTH_IN = 4;
 const LABEL_HEIGHT_IN = 6;
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MB ceiling for label uploads
+const PRINT_WINDOW_CLOSE_FALLBACK_MS = 30_000;
 
 type UploadKind = "image" | "pdf";
 type Orientation = "portrait" | "landscape";
@@ -42,6 +44,61 @@ function kindFromFilename(name: string): UploadKind {
 
 function proxyUrlForKey(key: string): string {
   return `/api/quick-labels?key=${encodeURIComponent(key)}`;
+}
+
+// Best-effort: API errors are JSON `{ error: string }`, but a proxy or
+// network blip can return plain text or nothing. Fall back to status text so
+// the user always sees a specific reason.
+async function readErrorMessage(res: Response): Promise<string> {
+  try {
+    const data = await res.clone().json();
+    if (data && typeof data.error === "string") return data.error;
+  } catch {
+    // not JSON — keep going
+  }
+  try {
+    const text = (await res.text()).trim();
+    if (text) return text;
+  } catch {
+    // ignore
+  }
+  return res.statusText || `HTTP ${res.status}`;
+}
+
+// Drive print on document-ready and close on `afterprint` instead of fixed
+// setTimeouts — fixed delays race on slow devices and trim print dialogs on
+// fast ones. Falls back to a long timer in case `afterprint` never fires.
+function printAndCloseWindow(printWindow: Window): void {
+  const closeWindow = () => {
+    try {
+      printWindow.close();
+    } catch {
+      // window already closed
+    }
+  };
+  const fallback = window.setTimeout(
+    closeWindow,
+    PRINT_WINDOW_CLOSE_FALLBACK_MS
+  );
+  printWindow.addEventListener("afterprint", () => {
+    window.clearTimeout(fallback);
+    closeWindow();
+  });
+  const triggerPrint = () => {
+    try {
+      printWindow.focus();
+      printWindow.print();
+    } catch (err) {
+      console.error("Print failed", err);
+      window.clearTimeout(fallback);
+      closeWindow();
+    }
+  };
+  if (printWindow.document.readyState === "complete") {
+    triggerPrint();
+  } else {
+    printWindow.addEventListener("load", triggerPrint, { once: true });
+  }
 }
 
 export default function QuickLabelPage() {
@@ -86,6 +143,12 @@ export default function QuickLabelPage() {
       alert("Please choose an image or PDF file.");
       return;
     }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      const mb = (file.size / (1024 * 1024)).toFixed(1);
+      const limitMb = (MAX_UPLOAD_BYTES / (1024 * 1024)).toFixed(0);
+      alert(`File is ${mb} MB; the limit is ${limitMb} MB.`);
+      return;
+    }
 
     setUploading(true);
     try {
@@ -96,7 +159,8 @@ export default function QuickLabelPage() {
         body: formData,
       });
       if (!res.ok) {
-        alert("Upload failed.");
+        const reason = await readErrorMessage(res);
+        alert(`Upload failed: ${reason}`);
         return;
       }
       const saved = (await res.json()) as SavedLabel;
@@ -110,7 +174,8 @@ export default function QuickLabelPage() {
       refreshSavedLabels();
     } catch (err) {
       console.error("Upload failed", err);
-      alert("Upload failed.");
+      const message = err instanceof Error ? err.message : "Network error";
+      alert(`Upload failed: ${message}`);
     } finally {
       setUploading(false);
     }
@@ -131,11 +196,16 @@ export default function QuickLabelPage() {
         { method: "DELETE" }
       );
       if (!res.ok) {
-        alert("Delete failed.");
+        const reason = await readErrorMessage(res);
+        alert(`Delete failed: ${reason}`);
         return;
       }
       setSavedLabels((prev) => prev.filter((s) => s.key !== key));
       if (upload?.key === key) clearUpload();
+    } catch (err) {
+      console.error("Delete failed", err);
+      const message = err instanceof Error ? err.message : "Network error";
+      alert(`Delete failed: ${message}`);
     } finally {
       setDeletingKey(null);
     }
@@ -213,12 +283,7 @@ export default function QuickLabelPage() {
     `);
 
     printWindow.document.close();
-    printWindow.focus();
-
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
+    printAndCloseWindow(printWindow);
   };
 
   const printImageFile = (url: string) => {
@@ -259,11 +324,7 @@ export default function QuickLabelPage() {
       </html>
     `);
     printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 500);
+    printAndCloseWindow(printWindow);
   };
 
   const printPdfFile = (url: string) => {

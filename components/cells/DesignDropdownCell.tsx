@@ -6,20 +6,20 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { boardConfig } from "../../config/boardconfig";
-import { DesignBlends } from "@/typings/constants";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import {
+  CUSTOM_DESIGN_GRADIENT,
+  DESIGN_PILL_FULL,
+  DESIGN_PILL_TRIGGER,
+  DESIGN_TAG_ALPHA,
+  PILL_INTERACTIVE,
+  PILL_SELECTED_RING,
+  createDesignBackground,
+} from "@/components/ui/order-pills";
 
-const DESIGN_TAG_ALPHA = 0.8;
-
-const PILL_BASE_CLASSES =
-  "inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 transition-[transform,opacity,box-shadow] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.05)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_24%)] hover:opacity-95 hover:-translate-y-px active:translate-y-0";
-
-const PILL_TRIGGER_CLASSES =
-  "inline-flex items-center justify-center px-1.5 sm:px-3 h-5 sm:h-6 min-h-0 max-w-full truncate text-[0.625rem] sm:text-xs font-medium text-white rounded-lg sm:rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 transition-[transform,opacity,box-shadow] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.05)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_24%)] hover:opacity-95 hover:-translate-y-px active:translate-y-0";
-
-const SELECTED_RING_CLASSES =
-  "ring-2 ring-blue-400 ring-offset-2 ring-offset-white dark:ring-offset-gray-900";
+const PILL_BASE_CLASSES = `${DESIGN_PILL_FULL} ${PILL_INTERACTIVE}`;
+const PILL_TRIGGER_CLASSES = `${DESIGN_PILL_TRIGGER} ${PILL_INTERACTIVE}`;
 
 const WOODFORM_DESIGNS = new Set(["Mint", "Brisket", "Nevada"]);
 
@@ -63,9 +63,9 @@ const Section = ({
             type="button"
             onClick={() => onPick(option)}
             className={`${PILL_BASE_CLASSES} ${
-              isSelected ? SELECTED_RING_CLASSES : ""
+              isSelected ? PILL_SELECTED_RING : ""
             }`}
-            style={{ background: createBackground(option) }}
+            style={{ background: createDesignBackground(option) }}
           >
             {option}
           </button>
@@ -75,30 +75,6 @@ const Section = ({
   </div>
 );
 
-const hexToRgba = (hex: string, alpha: number) => {
-  const normalized = hex.replace("#", "");
-  const full =
-    normalized.length === 3
-      ? normalized
-          .split("")
-          .map((c) => c + c)
-          .join("")
-      : normalized;
-  const r = parseInt(full.slice(0, 2), 16);
-  const g = parseInt(full.slice(2, 4), 16);
-  const b = parseInt(full.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
-const createBackground = (option: string, alpha = 1) => {
-  const colors = DesignBlends[option as keyof typeof DesignBlends];
-  if (colors && colors.length > 0) {
-    const stops =
-      alpha < 1 ? colors.map((c) => hexToRgba(c, alpha)) : colors;
-    return `linear-gradient(to right, ${stops.join(", ")})`;
-  }
-  return alpha < 1 ? `rgba(0, 0, 0, ${alpha})` : "#000000";
-};
 
 export const DesignDropdownCell = ({
   item,
@@ -115,9 +91,7 @@ export const DesignDropdownCell = ({
 
   const { updateItem } = useOrderStore();
 
-  const options = (
-    boardConfig.columns[columnValue.columnName].options ?? []
-  ).filter((o) => !o.toLowerCase().startsWith("tiled "));
+  const options = boardConfig.columns[columnValue.columnName].options ?? [];
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -155,8 +129,10 @@ export const DesignDropdownCell = ({
     handleUpdate(trimmed);
   };
 
-  const currentDesign = columnValue.text as keyof typeof DesignBlends;
-  const backgroundStyle = createBackground(currentDesign, DESIGN_TAG_ALPHA);
+  const backgroundStyle = createDesignBackground(
+    columnValue.text ?? "",
+    DESIGN_TAG_ALPHA
+  );
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -228,7 +204,7 @@ export const DesignDropdownCell = ({
                 type="button"
                 onClick={handleSubmitCustom}
                 className={PILL_BASE_CLASSES}
-                style={{ background: "linear-gradient(to right, #4b5563, #1f2937)" }}
+                style={{ background: CUSTOM_DESIGN_GRADIENT }}
               >
                 Use &ldquo;{trimmed}&rdquo;
               </button>

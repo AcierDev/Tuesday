@@ -265,9 +265,8 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
   const designInputRef = useRef<HTMLInputElement | null>(null);
 
   const sizeOptions = boardConfig.columns[ColumnTitles.Size].options ?? [];
-  const designOptions = (
-    boardConfig.columns[ColumnTitles.Design].options ?? []
-  ).filter((o) => !o.toLowerCase().startsWith("tiled "));
+  const designOptions =
+    boardConfig.columns[ColumnTitles.Design].options ?? [];
 
   const sizeFiltered = useMemo(() => {
     const q = sizeQuery.trim().toLowerCase();
@@ -330,6 +329,7 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     if (!customerName || !size || !design) {
       alert("Please fill in all required fields");
       return;
@@ -340,10 +340,9 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
     const prefix =
       company === "Woodform" ? "[WF] " : company === "Sheppit" ? "[SH] " : "";
 
-    const newItem: any = {
+    const newItem: Partial<Item> = {
       status: ItemStatus.New,
       createdAt: Date.now(),
-      vertical,
       visible: true,
       deleted: false,
       isScheduled: false,
@@ -351,6 +350,7 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
       size,
       design,
       dueDate: dueDate ? format(dueDate, "yyyy-MM-dd") : "",
+      tags: { isVertical: vertical },
     };
 
     try {
@@ -746,10 +746,11 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
               onClick={handleSubmit}
               disabled={isSubmitting}
               className={cn(
-                "group h-11 w-full rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium",
-                "shadow-sm shadow-blue-600/20 transition-all duration-200 ease-out",
-                "hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-600/30 active:translate-y-0",
-                "dark:bg-blue-600 dark:hover:bg-blue-500",
+                "group h-11 w-full rounded-full bg-blue-500/40 hover:bg-blue-500/55 text-blue-800 dark:text-white text-sm font-semibold",
+                "ring-1 ring-inset ring-blue-500/50 dark:ring-blue-400/40 backdrop-blur-sm",
+                "shadow-sm shadow-blue-500/20 transition-all duration-200 ease-out",
+                "hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-500/30 active:translate-y-0",
+                "dark:bg-blue-500/30 dark:hover:bg-blue-500/45",
                 "flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               )}
             >

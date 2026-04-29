@@ -14,8 +14,6 @@ import { BackboardDetails } from "./components/BackboardDetails";
 const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
   const category = design.toLowerCase().includes("stripe")
     ? "striped"
-    : design.toLowerCase().includes("tile")
-    ? "tiled"
     : "geometric";
 
   return {

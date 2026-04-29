@@ -163,7 +163,7 @@ export function ProductionPlanningHeader({
             <Button
               size="sm"
               onClick={onAutoFill}
-              className="h-9 rounded-full bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-200 ring-1 ring-inset ring-blue-400/30 dark:ring-blue-400/25 backdrop-blur-sm shadow-sm shadow-blue-500/10 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-500/20 active:translate-y-0 dark:bg-blue-500/10 dark:hover:bg-blue-500/20"
+              className="h-9 rounded-full bg-blue-500/25 hover:bg-blue-500/40 text-blue-800 dark:text-white font-semibold ring-1 ring-inset ring-blue-500/40 dark:ring-blue-400/30 backdrop-blur-sm shadow-sm shadow-blue-500/15 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-500/25 active:translate-y-0 dark:bg-blue-500/20 dark:hover:bg-blue-500/30"
             >
               <Wand2 className="h-4 w-4 mr-1.5" />
               Auto-plan
@@ -173,7 +173,7 @@ export function ProductionPlanningHeader({
                 <Button
                   size="sm"
                   disabled={!hasScheduledOrders}
-                  className="h-9 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-300 ring-1 ring-inset ring-red-400/30 dark:ring-red-400/25 backdrop-blur-sm shadow-sm shadow-red-500/10 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-red-500/20 active:translate-y-0 dark:bg-red-500/10 dark:hover:bg-red-500/20 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+                  className="h-9 rounded-full bg-red-500/25 hover:bg-red-500/40 text-red-800 dark:text-white font-semibold ring-1 ring-inset ring-red-500/40 dark:ring-red-400/30 backdrop-blur-sm shadow-sm shadow-red-500/15 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-red-500/25 active:translate-y-0 dark:bg-red-500/20 dark:hover:bg-red-500/30 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
                 >
                   <RotateCcw className="h-4 w-4 mr-1.5" />
                   Clear Week

@@ -34,7 +34,6 @@ export function useOrderStats({ items, dueBadgeDays }: UseOrderStatsProps) {
       all: 0,
       geometric: 0,
       striped: 0,
-      tiled: 0,
       mini: 0,
       custom: 0,
     };
@@ -51,13 +50,7 @@ export function useOrderStats({ items, dueBadgeDays }: UseOrderStatsProps) {
 
         if (design.startsWith("Striped") && !isMini)
           counts.striped = (counts.striped || 0) + 1;
-        else if (design.startsWith("Tiled") && !isMini)
-          counts.tiled = (counts.tiled || 0) + 1;
-        else if (
-          !design.startsWith("Striped") &&
-          !isMini &&
-          !design.startsWith("Tiled")
-        )
+        else if (!design.startsWith("Striped") && !isMini)
           counts.geometric = (counts.geometric || 0) + 1;
 
         if (isMini) counts.mini = (counts.mini || 0) + 1;

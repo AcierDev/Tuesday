@@ -5,35 +5,17 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ColumnTitles, DayName, ItemStatus } from "@/typings/types";
 import { OrderMeta } from "./types";
-import { cn, formatDueDelta, splitFirstTwoWords } from "@/utils/functions";
+import { cn, splitFirstTwoWords } from "@/utils/functions";
 import { Pin } from "lucide-react";
-import { DesignBlends } from "@/typings/constants";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
-
-// Solid, number-only due-date badge (overdue=red, due-soon=amber, on-time=emerald).
-// `referenceDate` lets a scheduled card show the diff relative to its day rather
-// than today.
-function getSolidDueBadge(
-  dueDate: Date | null | undefined,
-  referenceDate: Date | undefined
-): { primary: string; suffix?: "Week" | "Weeks"; classes: string } {
-  if (!dueDate) {
-    return { primary: "?", classes: "bg-gray-500 text-white" };
-  }
-  const ref = new Date(referenceDate ?? new Date());
-  ref.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
-  const diffDays = Math.ceil(
-    (due.getTime() - ref.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  const { primary, suffix } = formatDueDelta(diffDays);
-  if (diffDays < 0) return { primary, suffix, classes: "bg-red-500/70 text-white" };
-  if (diffDays <= 2) return { primary, suffix, classes: "bg-yellow-500/70 text-white" };
-  return { primary, suffix, classes: "bg-green-500/70 text-white" };
-}
+import {
+  DESIGN_PILL_TRIGGER,
+  DESIGN_TAG_ALPHA,
+  SIZE_PILL_TRIGGER,
+  createDesignBackground,
+} from "@/components/ui/order-pills";
+import { DueBadge } from "@/components/cells/DueBadge";
 
 // Card tint mirrors the canonical STATUS_COLORS palette so a card's color
 // matches the same status anywhere else in the app (orders board, badges,
@@ -104,14 +86,6 @@ const dayAbbr: Record<DayName, string> = {
 
 const workDays: DayName[] = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 
-const createBackground = (design: string) => {
-  const colors = DesignBlends[design as keyof typeof DesignBlends];
-  if (colors && colors.length > 0) {
-    return `linear-gradient(to right, ${colors.join(", ")})`;
-  }
-  return "#6b7280"; // fallback gray
-};
-
 export function OrderCard({
   meta,
   isScheduled = false,
@@ -133,15 +107,14 @@ export function OrderCard({
   const leftBorderColor =
     STATUS_LEFT_BORDER[meta.item.status ?? ItemStatus.New] ??
     STATUS_LEFT_BORDER[ItemStatus.New];
-  const backgroundStyle = design ? createBackground(design) : undefined;
+  const designBackground = design
+    ? createDesignBackground(design, DESIGN_TAG_ALPHA)
+    : undefined;
 
   // Match the orders-board treatment: first two real words render at full
   // weight, the rest dims to ~55% opacity at a slightly smaller size.
   const [firstTwoWords, restOfName] = splitFirstTwoWords(customerName);
 
-  const badgeStatus = meta.item.dueDate
-    ? getSolidDueBadge(new Date(meta.item.dueDate), referenceDate)
-    : null;
 
   // Auto-plan placement animation: a quick scale+drop-in with an amber glow
   // pulse, staggered per card. We key the motion.div on justPlaced so React
@@ -198,13 +171,13 @@ export function OrderCard({
             </span>
           </div>
           <div className="flex items-center gap-[3px] md:gap-1.5 min-w-0">
-            <div className="shrink-0 text-[0.625rem] md:text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md">
+            <div className={cn("shrink-0", SIZE_PILL_TRIGGER)}>
               {size}
             </div>
             {design && (
               <div
-                className="min-w-0 truncate text-[0.5625rem] md:text-[0.6875rem] px-1.5 py-0.5 md:px-2 md:py-1 rounded-full text-gray-200 font-medium shadow-sm [text-shadow:_0_0_2px_rgba(0,0,0,0.7),_0_1px_1px_rgba(0,0,0,0.4)]"
-                style={{ background: backgroundStyle }}
+                className={cn("min-w-0", DESIGN_PILL_TRIGGER)}
+                style={{ background: designBackground }}
               >
                 {design}
               </div>
@@ -253,25 +226,12 @@ export function OrderCard({
           ) : (
             <div className="h-6 w-6" aria-hidden />
           )}
-          {badgeStatus && (
-            <div
-              className={cn(
-                "tabular-nums text-[0.80625rem] px-2 py-0.5 min-w-[2.475rem] justify-center rounded-[10px] inline-flex items-center shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
-                badgeStatus.classes
-              )}
-            >
-              {badgeStatus.suffix ? (
-                <span className="flex flex-col items-center leading-[0.95]">
-                  <span className="text-[1.0078125rem]">{badgeStatus.primary}</span>
-                  <span className="text-[0.5625rem] font-medium tracking-wide opacity-95">
-                    {badgeStatus.suffix}
-                  </span>
-                </span>
-              ) : (
-                badgeStatus.primary
-              )}
-            </div>
-          )}
+          <DueBadge
+            item={meta.item}
+            range={settings.dueBadgeDays}
+            referenceDate={referenceDate}
+            interactive={false}
+          />
         </div>
       </div>
 

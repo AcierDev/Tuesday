@@ -13,6 +13,7 @@ import {
   MessageCircleWarning,
   MoveVertical,
   Printer,
+  Zap,
 } from "lucide-react";
 import { parseISO, isValid } from "date-fns";
 import { cn, splitFirstTwoWords } from "@/utils/functions";
@@ -166,13 +167,19 @@ export const NameCell: React.FC<NameCellProps> = ({
 
   const isPrintMarker = inputValue.trim().toLowerCase() === "print";
 
+  // "(rushed)" anywhere in the name is stripped from the displayed text and
+  // surfaced as a red urgency tag.
+  const RUSHED_TOKEN = /\(rushed\)/i;
+  const isRushed = RUSHED_TOKEN.test(inputValue);
+  const nameWithoutRushed = inputValue.replace(RUSHED_TOKEN, "").replace(/\s{2,}/g, " ").trim();
+
   // Brand prefix ([EW]/[WF]/[SH]) is stripped from the displayed name and
   // shown as a tag to the right of the text.
-  const brandPrefixMatch = inputValue.match(/^\[(EW|WF|SH)\]\s*/);
+  const brandPrefixMatch = nameWithoutRushed.match(/^\[(EW|WF|SH)\]\s*/);
   const brandPrefix = brandPrefixMatch ? brandPrefixMatch[1] : null;
   const displayName = brandPrefixMatch
-    ? inputValue.slice(brandPrefixMatch[0].length)
-    : inputValue;
+    ? nameWithoutRushed.slice(brandPrefixMatch[0].length)
+    : nameWithoutRushed;
 
   const [firstTwoWords, restOfName] = splitFirstTwoWords(displayName);
 
@@ -187,6 +194,28 @@ export const NameCell: React.FC<NameCellProps> = ({
     >
       {brandPrefix}
     </span>
+  ) : null;
+
+  const rushedTag = isRushed ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5",
+            "bg-red-500 text-white ring-1 ring-red-600",
+            "dark:bg-red-500/90 dark:ring-red-400/60",
+            "text-[0.7rem] font-bold uppercase tracking-wide flex-shrink-0",
+            "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_1px_2px_rgba(0,0,0,0.08)]"
+          )}
+        >
+          <Zap className="h-3 w-3" strokeWidth={2.75} fill="currentColor" />
+          Rushed
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Rushed order</p>
+      </TooltipContent>
+    </Tooltip>
   ) : null;
 
   const verticalIcon = tags?.isVertical && (
@@ -306,6 +335,7 @@ export const NameCell: React.FC<NameCellProps> = ({
                   </span>
                 )}
                 {brandTag}
+                {rushedTag}
               </span>
             </div>
             {verticalIcon}

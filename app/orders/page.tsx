@@ -22,6 +22,7 @@ import { NewItemModal } from "@/components/orders/NewItemModal";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import {
   Item,
@@ -57,6 +58,28 @@ const DROP_ANIMATION: DropAnimation = {
   }),
 };
 
+const SKELETON_ROW_COUNT = 4;
+
+function InitialOrdersSkeleton() {
+  return (
+    <div className="space-y-6">
+      {Array.from({ length: 3 }).map((_, sectionIdx) => (
+        <div key={`skeleton-section-${sectionIdx}`} className="space-y-2">
+          <Skeleton className="h-10 w-48 rounded-md" />
+          <div className="space-y-2 px-2">
+            {Array.from({ length: SKELETON_ROW_COUNT }).map((_, rowIdx) => (
+              <Skeleton
+                key={`skeleton-row-${sectionIdx}-${rowIdx}`}
+                className="h-10 w-full rounded-md"
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function OrderManagementPage() {
   const setSearchQuery = useOrderStore((state) => state.setSearchQuery);
   const searchTerm = useOrderStore((state) => state.searchQuery);
@@ -81,6 +104,13 @@ export default function OrderManagementPage() {
   const addNewItem = useOrderStore((state) => state.addNewItem);
   const deleteItem = useOrderStore((state) => state.deleteItem);
   const loadItems = useOrderStore((state) => state.loadItems);
+  const isLoading = useOrderStore((state) => state.isLoading);
+  const lastFetched = useOrderStore((state) => state.lastFetched);
+  // First-paint skeleton: show only on the very first load (lastFetched is
+  // null until the initial fetch resolves). Subsequent refreshes keep the
+  // existing UI visible to avoid layout flashing.
+  const showInitialSkeleton =
+    lastFetched === null && isLoading && items.length === 0;
 
   useEffect(() => {
     loadItems();
@@ -293,22 +323,26 @@ export default function OrderManagementPage() {
                 className="flex-grow min-w-0"
                 style={{ contain: "paint" }}
               >
-                <ResponsiveOrdersView
-                  groups={sortedGroups}
-                  onDelete={handleDeleteItem}
-                  onStatusChange={handleStatusChange}
-                  onGetLabel={onGetLabel}
-                  onMarkCompleted={markItemCompleted}
-                  onShip={shipItem}
-                  doneItems={doneItems}
-                  loadDoneItems={loadDoneItems}
-                  hasMoreDoneItems={hasMoreDoneItems}
-                  isDoneLoading={isDoneLoading}
-                  sortColumn={sortColumn}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  currentType={currentType}
-                />
+                {showInitialSkeleton ? (
+                  <InitialOrdersSkeleton />
+                ) : (
+                  <ResponsiveOrdersView
+                    groups={sortedGroups}
+                    onDelete={handleDeleteItem}
+                    onStatusChange={handleStatusChange}
+                    onGetLabel={onGetLabel}
+                    onMarkCompleted={markItemCompleted}
+                    onShip={shipItem}
+                    doneItems={doneItems}
+                    loadDoneItems={loadDoneItems}
+                    hasMoreDoneItems={hasMoreDoneItems}
+                    isDoneLoading={isDoneLoading}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    currentType={currentType}
+                  />
+                )}
               </div>
             </div>
           </div>

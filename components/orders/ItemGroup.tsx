@@ -4,12 +4,12 @@ import { ChevronDown } from "lucide-react";
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   memo,
 } from "react";
+import { useItemGroupLayout } from "./useItemGroupLayout";
 import { format } from "date-fns";
 import { useDndContext, useDroppable } from "@dnd-kit/core";
 
@@ -112,18 +112,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
-  //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-  //║ 📐 NEW SECTION COLUMN ALIGNMENT                                      ║
-  //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-  // Two-column New layout: distribute the height delta across the shorter
-  // column's rows as extra padding-bottom so both columns end at the same Y.
-  const newLeftBodyRef = useRef<HTMLTableSectionElement | null>(null);
-  const newRightBodyRef = useRef<HTMLTableSectionElement | null>(null);
-  const [newRowPad, setNewRowPad] = useState<{
-    side: "left" | "right" | null;
-    px: number;
-  }>({ side: null, px: 0 });
-
   const addItemToDay = useWeeklyScheduleStore((s) => s.addItemToDay);
 
   const loadDoneItems = useOrderStore((state) => state.loadDoneItems);
@@ -137,17 +125,24 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   const isDoneLoading = useOrderStore((state) => state.isDoneLoading);
   const searchQuery = useOrderStore((state) => state.searchQuery);
 
+  // Auto-expand Done/New while a search is active, then auto-collapse when
+  // the search clears — but only if *we* were the ones who opened it. A
+  // manual click flips this ref back so we don't fight the user.
+  const isSearchAutoExpandable =
+    group.title === ItemStatus.Done || group.title === ItemStatus.New;
+  const autoExpandedBySearchRef = useRef(false);
   useEffect(() => {
-    // Auto-expand "Done" section if searching and there are items
-    if (
-      group.title === ItemStatus.Done &&
-      searchQuery &&
-      group.items.length > 0 &&
-      isCollapsed
-    ) {
+    if (!isSearchAutoExpandable) return;
+    if (searchQuery && group.items.length > 0 && isCollapsed) {
+      autoExpandedBySearchRef.current = true;
       setIsCollapsed(false);
+      return;
     }
-  }, [group.title, searchQuery, group.items.length, isCollapsed]);
+    if (!searchQuery && autoExpandedBySearchRef.current && !isCollapsed) {
+      autoExpandedBySearchRef.current = false;
+      setIsCollapsed(true);
+    }
+  }, [isSearchAutoExpandable, searchQuery, group.items.length, isCollapsed]);
 
   const handleScheduleUpdate = useCallback(() => {
     const event = new CustomEvent("weeklyScheduleUpdate");
@@ -155,36 +150,28 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   }, []);
 
   const handleEdit = useCallback((item: Item) => {
-    console.log("Editing item:", item);
     setEditingItem(item);
     setContextMenu(null);
   }, []);
 
   const handleSaveEdit = useCallback(
     async (updatedItem: Item) => {
-      if (updatedItem) {
-        console.log("Saving edited item:", updatedItem);
-        try {
-          await updateItem(updatedItem);
-          setEditingItem(null);
-          console.log("Item updated successfully");
-        } catch (error) {
-          console.error("Failed to update item:", error);
-        }
-      }
+      if (!updatedItem) return;
+      // Let errors bubble up so EditItemDialog keeps the dialog open and shows
+      // the user a message; otherwise a swallowed error looks like success.
+      await updateItem(updatedItem);
+      setEditingItem(null);
     },
     [updateItem]
   );
 
   const handleDelete = useCallback((item: Item) => {
-    console.log("Deleting item:", item);
     setDeletingItem(item);
     setContextMenu(null);
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
     if (deletingItem) {
-      console.log("Confirming delete for item:", deletingItem);
       await onDelete(deletingItem.id);
       setDeletingItem(null);
     }
@@ -285,78 +272,12 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     return inTransitOrderIds.size;
   }, [group.title, inTransitOrderIds]);
 
-  // Measure both halves of the New section and balance bottom edges by
-  // padding the shorter column's rows. Re-runs on item changes; a
-  // ResizeObserver picks up content reflow (window resize, cell wrap).
-  useLayoutEffect(() => {
-    if (
-      group.title !== ItemStatus.New ||
-      isPreview ||
-      isCollapsed ||
-      sortedItems.length < 2
-    ) {
-      if (newRowPad.side !== null || newRowPad.px !== 0) {
-        setNewRowPad({ side: null, px: 0 });
-      }
-      return;
-    }
-    const splitAt = Math.ceil(sortedItems.length / 2);
-    const leftCount = splitAt;
-    const rightCount = sortedItems.length - splitAt;
-    if (leftCount === 0 || rightCount === 0) return;
-    const leftEl = newLeftBodyRef.current;
-    const rightEl = newRightBodyRef.current;
-    if (!leftEl || !rightEl) return;
-
-    const recompute = () => {
-      const lRect = leftEl.getBoundingClientRect();
-      const rRect = rightEl.getBoundingClientRect();
-      const lH = lRect.height;
-      const rH = rRect.height;
-      // On narrow viewports the grid collapses to a single column and the
-      // two tables stack vertically — no bottom alignment needed.
-      if (Math.abs(lRect.top - rRect.top) > 4) {
-        setNewRowPad((cur) =>
-          cur.side === null && cur.px === 0 ? cur : { side: null, px: 0 }
-        );
-        return;
-      }
-      setNewRowPad((cur) => {
-        const lApplied = cur.side === "left" ? cur.px * leftCount : 0;
-        const rApplied = cur.side === "right" ? cur.px * rightCount : 0;
-        const lRaw = lH - lApplied;
-        const rRaw = rH - rApplied;
-        const diff = lRaw - rRaw;
-        // Fractional px: sub-pixel padding avoids the ceil-overshoot that
-        // would leave one column slightly taller. Browsers handle decimals
-        // in CSS lengths and round per-row consistently.
-        if (Math.abs(diff) < 0.5) {
-          return cur.side === null && cur.px === 0
-            ? cur
-            : { side: null, px: 0 };
-        }
-        if (diff > 0) {
-          const px = diff / rightCount;
-          return cur.side === "right" && Math.abs(cur.px - px) < 0.05
-            ? cur
-            : { side: "right", px };
-        }
-        const px = -diff / leftCount;
-        return cur.side === "left" && Math.abs(cur.px - px) < 0.05
-          ? cur
-          : { side: "left", px };
-      });
-    };
-
-    recompute();
-    const ro = new ResizeObserver(recompute);
-    ro.observe(leftEl);
-    ro.observe(rightEl);
-    return () => ro.disconnect();
-    // newRowPad is read via setState updater; excluding it keeps the effect
-    // from re-running on every adjustment.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [group.title, isPreview, isCollapsed, sortedItems]);
+  const { newLeftBodyRef, newRightBodyRef, newRowPad } = useItemGroupLayout({
+    groupTitle: group.title,
+    isPreview,
+    isCollapsed,
+    itemCount: sortedItems.length,
+  });
 
   //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
   //║ 🎯 STATUS DROP TARGET                                                ║
@@ -425,6 +346,9 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   const handleGroupClick = useCallback(() => {
     if (!isCollapsible) return;
 
+    // Manual toggle wins over the search auto-expand: clear the ref so a
+    // later search-clear doesn't fight the user's choice.
+    autoExpandedBySearchRef.current = false;
     setIsCollapsed(!isCollapsed);
     if (group.title === ItemStatus.Done) {
       if (isCollapsed) {
@@ -579,7 +503,17 @@ export const ItemGroupSection = memo(function ItemGroupSection({
               "rounded-2xl ring-2 ring-primary ring-offset-4 ring-offset-transparent transition-shadow duration-150"
           )}
         >
-          {!shouldShowSkeleton && sortedItems.length === 0 ? null : !isPreview ? (
+          {!shouldShowSkeleton && sortedItems.length === 0 ? (
+            // New uses a column-balancing layout that breaks if we render
+            // anything when empty; Done starts collapsed and an empty inline
+            // message would just be noise alongside the in-transit header.
+            group.title !== ItemStatus.New &&
+            group.title !== ItemStatus.Done ? (
+              <p className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 italic">
+                No items in this section.
+              </p>
+            ) : null
+          ) : !isPreview ? (
             (() => {
               const renderTable = (
                 items: Item[],
@@ -627,6 +561,10 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                             onStatusChange={onStatusChange}
                             clickToAddTarget={clickToAddTarget}
                             onItemClick={onItemClick}
+                            isInTransit={
+                              group.title === ItemStatus.Done &&
+                              inTransitOrderIds.has(item.id)
+                            }
                           />
                         ))}
                   </TableBody>

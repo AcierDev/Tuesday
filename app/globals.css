@@ -326,14 +326,20 @@ html.dark .text-gray-800 { color: rgb(229 231 235); }
   animation: fade-out 0.5s ease-out forwards;
 }
 
+/* Liquid-glass squish: pill compresses horizontally during travel (gets
+   shorter) while bulging slightly vertically to preserve volume, then
+   overshoots with a stretch on landing before settling. Outlasts the slide
+   itself so the pill arrives and *then* visibly settles. */
 @keyframes pill-squish {
-  0%   { transform: scaleX(1); }
-  45%  { transform: scaleX(0.86); }
-  100% { transform: scaleX(1); }
+  0%   { transform: scaleX(1)    scaleY(1); }
+  30%  { transform: scaleX(0.78) scaleY(1.12); }
+  60%  { transform: scaleX(1.06) scaleY(0.95); }
+  82%  { transform: scaleX(0.98) scaleY(1.02); }
+  100% { transform: scaleX(1)    scaleY(1); }
 }
 
 .animate-pill-squish {
-  animation: pill-squish 216ms ease-out;
+  animation: pill-squish 420ms cubic-bezier(0.34, 1.4, 0.5, 1);
   transform-origin: center;
 }
 

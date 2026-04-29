@@ -18,11 +18,19 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { type Item, ColumnTitles } from "../../typings/types";
+import { type Item, type ShippingDetails, ColumnTitles } from "../../typings/types";
 
 interface Shipment {
   tracking_code: string;
 }
+
+// The persisted shipping doc carries Etsy receipt fields (`id`, `shipments`)
+// that aren't on `ShippingDetails`. Capture them locally so the form can
+// edit them without `any` casts.
+type EditableReceipt = Partial<ShippingDetails> & {
+  id?: number | string;
+  shipments?: Shipment[];
+};
 
 interface EditItemDialogProps {
   editingItem: Item | null;
@@ -36,14 +44,16 @@ export const EditItemDialog = ({
   handleSaveEdit,
 }: EditItemDialogProps) => {
   const [activeTab, setActiveTab] = useState("item");
-  const [localReceipt, setLocalReceipt] = useState<Partial<Address> | null>(
+  const [localReceipt, setLocalReceipt] = useState<EditableReceipt | null>(
     null
   );
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (editingItem) {
-      setLocalReceipt(editingItem.shippingDetails || {});
+      setLocalReceipt(
+        (editingItem.shippingDetails as EditableReceipt | undefined) ?? {}
+      );
     } else {
       setLocalReceipt(null);
     }
@@ -76,7 +86,10 @@ export const EditItemDialog = ({
     }
   };
 
-  const updateReceiptValue = (key: keyof Address, value: any) => {
+  const updateReceiptValue = <K extends keyof EditableReceipt>(
+    key: K,
+    value: EditableReceipt[K]
+  ) => {
     if (!localReceipt) return;
     setLocalReceipt((prevReceipt) => ({
       ...prevReceipt,
@@ -86,11 +99,12 @@ export const EditItemDialog = ({
 
   const updateTrackingNumber = (value: string) => {
     if (!localReceipt) return;
-    const updatedShipments: Shipment[] = localReceipt.shipments
-      ? localReceipt.shipments.map((shipment, index) =>
+    const existing = localReceipt.shipments;
+    const updatedShipments: Shipment[] = existing
+      ? existing.map((shipment, index) =>
           index === 0 ? { ...shipment, tracking_code: value } : shipment
         )
-      : [{ tracking_code: value } as Shipment];
+      : [{ tracking_code: value }];
 
     setLocalReceipt((prevReceipt) => ({
       ...prevReceipt,
@@ -99,19 +113,27 @@ export const EditItemDialog = ({
   };
 
   const handleSave = async () => {
-    if (editingItem) {
-      setIsSaving(true);
-      try {
-        const updatedItem = {
-          ...editingItem,
-          shippingDetails: localReceipt || undefined,
-          tags: editingItem.tags || undefined,
-        };
-        setEditingItem(updatedItem);
-        await handleSaveEdit(updatedItem);
-      } finally {
-        setIsSaving(false);
-      }
+    if (!editingItem) return;
+    setIsSaving(true);
+    try {
+      const updatedItem: Item = {
+        ...editingItem,
+        shippingDetails: (localReceipt ?? undefined) as
+          | ShippingDetails
+          | undefined,
+        tags: editingItem.tags || undefined,
+      };
+      setEditingItem(updatedItem);
+      await handleSaveEdit(updatedItem);
+    } catch (error) {
+      console.error("Failed to save edits:", error);
+      alert(
+        error instanceof Error && error.message
+          ? `Save failed: ${error.message}`
+          : "Save failed. Please try again."
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -243,13 +265,14 @@ export const EditItemDialog = ({
                         <Input
                           className="col-span-3 dark:bg-gray-700 dark:border-none transition-colors"
                           id="receipt_id"
-                          value={localReceipt?.id || ""}
-                          onChange={(e) =>
+                          value={localReceipt?.id ?? ""}
+                          onChange={(e) => {
+                            const parsed = parseInt(e.target.value, 10);
                             updateReceiptValue(
-                              "receipt_id",
-                              parseInt(e.target.value) || ""
-                            )
-                          }
+                              "id",
+                              Number.isNaN(parsed) ? "" : parsed
+                            );
+                          }}
                         />
                       </motion.div>
                       <motion.div
@@ -280,13 +303,15 @@ export const EditItemDialog = ({
                         Shipping Address
                       </h3>
                       <div className="rounded-lg border border-gray-100 dark:border-gray-700 p-4 space-y-4">
-                        {[
-                          { label: "Name", key: "name" },
-                          { label: "Address", key: "street1" },
-                          { label: "City", key: "city" },
-                          { label: "State", key: "state" },
-                          { label: "ZIP", key: "postalCode" },
-                        ].map((field) => (
+                        {(
+                          [
+                            { label: "Name", key: "name" },
+                            { label: "Address", key: "street1" },
+                            { label: "City", key: "city" },
+                            { label: "State", key: "state" },
+                            { label: "ZIP", key: "postalCode" },
+                          ] as const
+                        ).map((field) => (
                           <motion.div
                             key={field.key}
                             initial={{ opacity: 0, x: -20 }}
@@ -302,7 +327,7 @@ export const EditItemDialog = ({
                             <Input
                               className="col-span-3 dark:bg-gray-700 dark:border-none transition-colors"
                               id={field.key}
-                              value={localReceipt?.[field.key] || ""}
+                              value={localReceipt?.[field.key] ?? ""}
                               onChange={(e) =>
                                 updateReceiptValue(field.key, e.target.value)
                               }
@@ -339,20 +364,20 @@ export const EditItemDialog = ({
                               updateTrackingNumber(e.target.value)
                             }
                           />
-                          {localReceipt?.shipments?.[0]?.tracking_code && (
+                          {localReceipt?.shipments?.[0]?.tracking_code ? (
                             <Button
                               variant="outline"
                               size="icon"
                               className="shrink-0"
                               onClick={() => {
-                                navigator.clipboard.writeText(
-                                  localReceipt.shipments[0].tracking_code
-                                );
+                                const code =
+                                  localReceipt?.shipments?.[0]?.tracking_code;
+                                if (code) navigator.clipboard.writeText(code);
                               }}
                             >
                               <ClipboardCopy className="h-4 w-4" />
                             </Button>
-                          )}
+                          ) : null}
                         </div>
                       </motion.div>
                     </div>

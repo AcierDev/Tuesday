@@ -55,7 +55,7 @@ export function DesignSelector({
     </motion.button>
   );
 
-  const renderDesignCategory = (category: "striped" | "tiled") => {
+  const renderDesignCategory = (category: "striped") => {
     const categoryDesigns = designs.filter(
       (design) => design.category === category
     );
@@ -155,7 +155,6 @@ export function DesignSelector({
                       style={{ overflow: "hidden" }}
                     >
                       {renderDesignCategory("striped")}
-                      {renderDesignCategory("tiled")}
                     </motion.div>
                   )}
                 </AnimatePresence>

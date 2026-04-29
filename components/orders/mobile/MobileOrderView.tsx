@@ -19,7 +19,14 @@ import { OrderItem, processItem, STATUS_ORDER } from "../utils/orderUtils";
 import { OrderCard } from "./OrderCard";
 import { OrderDetailView } from "./OrderDetailView";
 import { LoadMoreSentinel } from "../LoadMoreSentinel";
-import { OrderFilterSheet } from "./OrderFilterSheet";
+import { OrderFilterSheet, type OrderFilters } from "./OrderFilterSheet";
+
+const EMPTY_FILTERS: OrderFilters = {
+  status: [],
+  priority: [],
+  dueDateFrom: "",
+  dueDateTo: "",
+};
 
 export const MobileOrderView = ({
   items: externalItems,
@@ -52,7 +59,7 @@ export const MobileOrderView = ({
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [deletingItem, setDeletingItem] = useState<Item | null>(null);
-  const [filters, setFilters] = useState<any>({});
+  const [filters, setFilters] = useState<OrderFilters>(EMPTY_FILTERS);
 
   // Get data from stores
   const storeData = useOrderStore();
@@ -105,20 +112,11 @@ export const MobileOrderView = ({
 
       // 1. Filter by activeTab status
       if (activeTab !== "all") {
-        // Check if activeTab corresponds to a valid ItemStatus enum value
         const isValidStatusTab = Object.values(ItemStatus).includes(
           activeTab as ItemStatus
         );
-
-        if (isValidStatusTab) {
-          // If the active tab is a valid status, filter by it
-          if (item.status !== (activeTab as ItemStatus)) {
-            return false; // Item doesn't match the selected status tab
-          }
-        } else {
-          // If activeTab is not 'all' and not a valid status enum member,
-          // it might be an unexpected value. Log a warning.
-          console.warn(`Filtering by potentially invalid tab: ${activeTab}`);
+        if (isValidStatusTab && item.status !== (activeTab as ItemStatus)) {
+          return false;
         }
       }
 
@@ -210,17 +208,13 @@ export const MobileOrderView = ({
     setSelectedOrder(null);
   }, []);
 
-  // Handle saving edits
+  // Handle saving edits — let errors bubble up so EditItemDialog can surface
+  // them and keep itself open for retry.
   const handleSaveEdit = useCallback(
     async (updatedItem: Item) => {
-      if (updatedItem) {
-        try {
-          await storeData.updateItem(updatedItem);
-          setEditingItem(null);
-        } catch (error) {
-          console.error("Failed to update item:", error);
-        }
-      }
+      if (!updatedItem) return;
+      await storeData.updateItem(updatedItem);
+      setEditingItem(null);
     },
     [storeData.updateItem]
   );
@@ -278,7 +272,7 @@ export const MobileOrderView = ({
   );
 
   // Handle applying filters
-  const handleFilterApply = useCallback((newFilters: any) => {
+  const handleFilterApply = useCallback((newFilters: OrderFilters) => {
     setFilters(newFilters);
   }, []);
 
@@ -286,10 +280,11 @@ export const MobileOrderView = ({
   const handleSelectOrder = useCallback(
     (item: OrderItem) => {
       if (clickToAddTarget) {
-        onItemClick?.(item as unknown as Item);
+        // OrderItem extends Item, so it's safe to pass directly.
+        onItemClick?.(item);
         return;
       }
-    setSelectedOrder(item);
+      setSelectedOrder(item);
     },
     [clickToAddTarget, onItemClick]
   );
@@ -349,7 +344,10 @@ export const MobileOrderView = ({
 
             <Dialog>
               <DialogTrigger asChild>
-                <Button size="icon" variant="default">
+                <Button
+                  size="icon"
+                  className="rounded-full bg-blue-500/40 hover:bg-blue-500/55 text-blue-800 dark:text-white ring-1 ring-inset ring-blue-500/50 dark:ring-blue-400/40 backdrop-blur-sm shadow-sm shadow-blue-500/20 transition-all duration-200 ease-out active:translate-y-0 dark:bg-blue-500/30 dark:hover:bg-blue-500/45"
+                >
                   <Plus className="h-5 w-5" />
                 </Button>
               </DialogTrigger>

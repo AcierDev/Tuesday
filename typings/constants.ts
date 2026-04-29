@@ -66,7 +66,7 @@ export const FADE_TO_FIVE_COLORS: Record<
   21: { hex: "#21394B", name: "Nile Blue" },
 };
 
-export const LAWYER_COLORS: Record<number, { hex: string; name: string }> = {
+export const TIDAL_COLORS: Record<number, { hex: string; name: string }> = {
   1: { hex: "#C6CACA", name: "Santa Fe" },
   2: { hex: "#A0A5A7", name: "Antique Brass" },
   3: { hex: "#7F8486", name: "Tan" },
@@ -301,18 +301,15 @@ export const DESIGN_COLORS: Record<
 > = {
   [ItemDesigns.Coastal]: COASTAL_COLORS,
   [ItemDesigns.Striped_Coastal]: COASTAL_COLORS,
-  [ItemDesigns.Tiled_Coastal]: COASTAL_COLORS,
-  [ItemDesigns.Tidal]: LAWYER_COLORS,
+  [ItemDesigns.Tidal]: TIDAL_COLORS,
   [ItemDesigns.Amber]: AMBER_COLORS,
   [ItemDesigns.Elemental]: ELEMENTAL_COLORS,
   [ItemDesigns.Sapphire]: SAPHIRE_COLORS,
   [ItemDesigns.Timberline]: TIMBERLINE_COLORS,
   [ItemDesigns.Striped_Timberline]: TIMBERLINE_COLORS,
-  [ItemDesigns.Tiled_Timberline]: TIMBERLINE_COLORS,
   [ItemDesigns.Aloe]: ALOE_COLORS,
   [ItemDesigns.Oceanic_Harmony]: FADE_TO_FIVE_COLORS,
   [ItemDesigns.Striped_Oceanic_Harmony]: FADE_TO_FIVE_COLORS,
-  [ItemDesigns.Tiled_Oceanic_Harmony]: FADE_TO_FIVE_COLORS,
   [ItemDesigns.Winter]: WINTER_COLORS,
   [ItemDesigns.Forest]: FOREST_COLORS,
   [ItemDesigns.Autumn]: AUTUMN_COLORS,
@@ -330,18 +327,13 @@ export const DESIGN_COLOR_NAMES: Record<ItemDesigns, (number | string)[]> = {
   [ItemDesigns.Striped_Coastal]: [
     1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16,
   ],
-  [ItemDesigns.Tiled_Coastal]: [
-    1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16,
-  ],
   [ItemDesigns.Tidal]: [8, 10, 11, 12, 13, 14, 15, 16, "L1", "L2", "L3"],
   [ItemDesigns.Oceanic_Harmony]: [5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16],
   [ItemDesigns.Striped_Oceanic_Harmony]: [
     5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16,
   ],
-  [ItemDesigns.Tiled_Oceanic_Harmony]: [5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16],
   [ItemDesigns.Timberline]: [1, 2, 3, 4, 5, 6, 7],
   [ItemDesigns.Striped_Timberline]: [1, 2, 3, 4, 5, 6, 7],
-  [ItemDesigns.Tiled_Timberline]: [1, 2, 3, 4, 5, 6, 7],
   [ItemDesigns.Aloe]: [1, 2, 3, 4, 5, 6, 7],
   [ItemDesigns.Amber]: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
   [ItemDesigns.Sapphire]: [1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -566,16 +558,10 @@ export const ItemDesignImages: Record<ItemDesigns, string> = {
   [ItemDesigns.Spectrum]: "/images/designs/spectrum.webp?height=300&width=400",
   [ItemDesigns.Aloe]: "/images/designs/aloe.webp?height=300&width=400",
   [ItemDesigns.Mirage]: "/images/designs/mirage.webp?height=300&width=400",
-  [ItemDesigns.Tiled_Coastal]:
-    "/images/designs/tiled-coastal.webp?height=300&width=400",
   [ItemDesigns.Striped_Oceanic_Harmony]:
     "/images/designs/striped-ft5.webp?height=300&width=400",
-  [ItemDesigns.Tiled_Oceanic_Harmony]:
-    "/images/designs/tiled-ft5.webp?height=300&width=400",
   [ItemDesigns.Striped_Timberline]:
     "/images/designs/striped-timberline.webp?height=300&width=400",
-  [ItemDesigns.Tiled_Timberline]:
-    "/images/designs/tiled-timberline.webp?height=300&width=400",
   [ItemDesigns.Amethyst]: "/images/designs/amethyst.webp?height=300&width=400",
   [ItemDesigns.Brisket]: "/images/designs/brisket.webp?height=300&width=400",
   [ItemDesigns.Nevada]: "/images/designs/nevada.webp?height=300&width=400",
@@ -589,26 +575,17 @@ export const DesignBlends: Record<ItemDesigns, string[]> = {
   [ItemDesigns.Striped_Coastal]: Object.values(COASTAL_COLORS).map(
     (color) => color.hex
   ),
-  [ItemDesigns.Tiled_Coastal]: Object.values(COASTAL_COLORS).map(
-    (color) => color.hex
-  ),
-  [ItemDesigns.Tidal]: Object.values(LAWYER_COLORS).map((color) => color.hex),
+  [ItemDesigns.Tidal]: Object.values(TIDAL_COLORS).map((color) => color.hex),
   [ItemDesigns.Oceanic_Harmony]: Object.values(FADE_TO_FIVE_COLORS).map(
     (color) => color.hex
   ),
   [ItemDesigns.Striped_Oceanic_Harmony]: Object.values(FADE_TO_FIVE_COLORS).map(
     (color) => color.hex
   ),
-  [ItemDesigns.Tiled_Oceanic_Harmony]: Object.values(FADE_TO_FIVE_COLORS).map(
-    (color) => color.hex
-  ),
   [ItemDesigns.Timberline]: Object.values(TIMBERLINE_COLORS).map(
     (color) => color.hex
   ),
   [ItemDesigns.Striped_Timberline]: Object.values(TIMBERLINE_COLORS).map(
-    (color) => color.hex
-  ),
-  [ItemDesigns.Tiled_Timberline]: Object.values(TIMBERLINE_COLORS).map(
     (color) => color.hex
   ),
   [ItemDesigns.Amber]: Object.values(AMBER_COLORS).map((color) => color.hex),

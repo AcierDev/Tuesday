@@ -33,6 +33,7 @@ interface DroppableDayColumnProps {
   // one-shot "drop in" animation on those cards.
   recentlyPlacedIds?: Set<string>;
   onContextMenu?: (e: React.MouseEvent, itemId: string) => void;
+  isToday?: boolean;
 }
 
 export function DroppableDayColumn({
@@ -49,6 +50,7 @@ export function DroppableDayColumn({
   onToggleAutoPlan,
   recentlyPlacedIds,
   onContextMenu,
+  isToday = false,
 }: DroppableDayColumnProps) {
   const { setNodeRef } = useDroppable({
     id: day,
@@ -433,21 +435,45 @@ export function DroppableDayColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col rounded-xl border transition-colors bg-gray-50/50 dark:bg-gray-900/50",
-        isTargetingThisColumn ? "border-primary/50 bg-primary/5 ring-2 ring-primary/20" : "border-transparent hover:border-gray-200 dark:hover:border-gray-800"
+        "flex flex-col rounded-xl border transition-colors",
+        isToday
+          ? "bg-blue-500/10 dark:bg-blue-500/15 border-blue-400/50 dark:border-blue-500/40 shadow-sm shadow-blue-500/10"
+          : "bg-gray-50/50 dark:bg-gray-900/50 border-transparent hover:border-gray-200 dark:hover:border-gray-800",
+        isTargetingThisColumn && "border-primary/50 bg-primary/5 ring-2 ring-primary/20"
       )}
     >
       {/* Header */}
       <div
         className={cn(
-          "p-3 pb-2 border-b border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-t-xl sticky top-0 z-10 transition-opacity duration-200",
+          "p-3 pb-2 border-b backdrop-blur-sm rounded-t-xl sticky top-0 z-10 transition-opacity duration-200",
+          isToday
+            ? "border-blue-400/50 dark:border-blue-500/40 bg-blue-500/10 dark:bg-blue-500/15"
+            : "border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50",
           !autoPlanEnabled && "opacity-50"
         )}
       >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-baseline gap-1.5">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{day}</h3>
-            <span className="text-xs text-gray-500 font-medium">{dateLabel}</span>
+            <h3
+              className={cn(
+                "font-semibold",
+                isToday
+                  ? "text-blue-700 dark:text-blue-200"
+                  : "text-gray-900 dark:text-gray-100"
+              )}
+            >
+              {day}
+            </h3>
+            <span
+              className={cn(
+                "text-xs font-semibold",
+                isToday
+                  ? "text-blue-700/90 dark:text-blue-300"
+                  : "text-gray-500 font-medium"
+              )}
+            >
+              {dateLabel}
+            </span>
           </div>
           <Checkbox
             checked={autoPlanEnabled}

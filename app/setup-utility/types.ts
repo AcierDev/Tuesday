@@ -1,4 +1,4 @@
-export type DesignCategory = "geometric" | "striped" | "tiled";
+export type DesignCategory = "geometric" | "striped";
 
 export interface Design {
   id: string;

@@ -41,11 +41,13 @@ import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import {
   DayName,
+  Item,
   ItemStatus,
   WeeklyScheduleData,
   ScheduledOrder,
 } from "@/typings/types";
 import { parseSquareSize } from "@/lib/production-metrics";
+import { getDesignFamily } from "@/components/production-planning/design-family";
 
 function calculateSquares(item: { size?: string }): number {
   const sizeStr = item.size || "";
@@ -143,22 +145,6 @@ function classifyDueBucket(
 // Pre-WIP statuses are the only ones eligible for auto-fill redistribution.
 // Once an item hits Wip or beyond, its day-placement is treated as locked
 // (the team has already committed to / completed the work).
-// Compares two items by due-date urgency: most overdue first, then earliest
-// upcoming, then no-due last. Stable tiebreak on id so the result is
-// deterministic across re-runs.
-function compareByDueUrgency(
-  a: { dueDate: Date | null; id: string },
-  b: { dueDate: Date | null; id: string }
-): number {
-  if (a.dueDate && b.dueDate) {
-    const diff = a.dueDate.getTime() - b.dueDate.getTime();
-    if (diff !== 0) return diff;
-    return a.id.localeCompare(b.id);
-  }
-  if (a.dueDate) return -1;
-  if (b.dueDate) return 1;
-  return a.id.localeCompare(b.id);
-}
 
 const WEEK_SLIDE_OFFSET = 60;
 const WEEK_SLIDE_VARIANTS = {
@@ -771,29 +757,37 @@ export default function ProductionPlanningPage() {
     new Set()
   );
 
-  // Plans BOTH this and next week in a single pass: pre-WIP items locked into
-  // either week stay put, then the remaining pool is greedy-packed across
-  // this-Mon → this-Thu → next-Mon → next-Thu by due-date urgency. Sat/Sun
-  // fold into Monday's capacity bucket to match the display rule.
+  // Plans BOTH this and next week jointly: locked items (WIP+, pinned, or
+  // non-parseable size) stay put; the remaining pool is grouped by design
+  // family and packed across enabled days. Multi-item families bias toward
+  // the latest day that can hold them all (preserves slack and matches the
+  // "consolidate similar work" intent). Singletons keep the legacy earliest-
+  // valid behavior so the planner doesn't suddenly cram every item against
+  // its due date. Sat/Sun fold into Monday's capacity bucket.
   const handleAutoFill = async () => {
-    type DaySlot = { weekKey: string; day: DayName };
-    const targetWeekKeys = [thisWeekKey, nextWeekKey];
-
-    // Per-week working state.
+    type SlotKey = string; // `${weekKey}|${day}`
+    type Slot = {
+      weekKey: string;
+      day: DayName;
+      date: Date;
+      key: SlotKey;
+      remaining: number;
+    };
     type WeekPlan = {
       weekKey: string;
+      weekStart: Date;
       lockedByDay: Record<
         DayName,
         { id: string; done: boolean; pinned?: boolean }[]
       >;
-      lockedSquaresByDay: Record<DayName, number>;
-      remaining: Record<DayName, number>;
-      newPlacements: Record<DayName, { id: string; done: boolean }[]>;
-      pulled: Set<string>;
     };
 
-    const plans: WeekPlan[] = [];
+    const targetWeekKeys = [thisWeekKey, nextWeekKey];
 
+    //╔═══╗ ═══════════════════════════════════════════════════════════════ ╔═══╗
+    //║ 🔒 PARTITION LOCKED VS MOVABLE                                       ║
+    //╚═══╝ ═══════════════════════════════════════════════════════════════ ╚═══╝
+    const plans: WeekPlan[] = [];
     for (const weekKey of targetWeekKeys) {
       const existing = schedules.find((s) => s.weekKey === weekKey);
       const baseSchedule: WeeklyScheduleData = existing
@@ -814,68 +808,112 @@ export default function ProductionPlanningPage() {
         }
       }
 
-      // Partition each day's existing items into locked vs pulled. Pinned
-      // entries always count as locked.
       const lockedByDay: WeekPlan["lockedByDay"] = {
         Sunday: [], Monday: [], Tuesday: [], Wednesday: [],
         Thursday: [], Friday: [], Saturday: [],
       };
-      const lockedSquaresByDay: Record<DayName, number> = {
-        Sunday: 0, Monday: 0, Tuesday: 0, Wednesday: 0,
-        Thursday: 0, Friday: 0, Saturday: 0,
-      };
-      const pulled = new Set<string>();
-
       (Object.keys(baseSchedule.schedule) as DayName[]).forEach((day) => {
         baseSchedule.schedule[day].forEach((entry) => {
           const item = allOrdersById.get(entry.id)?.item;
-          const squares = item ? calculateSquares(item) : 0;
           const isMovable =
             !entry.pinned &&
             item &&
             PRE_WIP_STATUSES.has(item.status) &&
             parseSquareSize(item.size) !== null;
-
-          if (isMovable) {
-            pulled.add(entry.id);
-          } else {
-            lockedByDay[day].push(entry);
-            lockedSquaresByDay[day] += squares;
-          }
+          if (!isMovable) lockedByDay[day].push(entry);
         });
       });
 
-      const remaining: Record<DayName, number> = {
-        Monday: Math.max(
-          0,
-          DAILY_CAPACITY_SQUARES -
-            lockedSquaresByDay.Monday -
-            lockedSquaresByDay.Sunday -
-            lockedSquaresByDay.Saturday
-        ),
-        Tuesday: Math.max(0, DAILY_CAPACITY_SQUARES - lockedSquaresByDay.Tuesday),
-        Wednesday: Math.max(0, DAILY_CAPACITY_SQUARES - lockedSquaresByDay.Wednesday),
-        Thursday: Math.max(0, DAILY_CAPACITY_SQUARES - lockedSquaresByDay.Thursday),
-        Friday: Math.max(0, DAILY_CAPACITY_SQUARES - lockedSquaresByDay.Friday),
-        Sunday: 0, Saturday: 0,
-      };
-
       plans.push({
         weekKey,
+        weekStart: startOfDay(parseISO(weekKey)),
         lockedByDay,
-        lockedSquaresByDay,
-        remaining,
-        newPlacements: {
-          Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [],
-          Sunday: [], Saturday: [],
-        },
-        pulled,
       });
     }
 
-    // Anything locked across either target week is off-limits for the pool —
-    // prevents double placement. Items in OTHER weeks (further out) are also
-    // off-limits.
+    //╔═══╗ ═══════════════════════════════════════════════════════════════ ╔═══╗
+    //║ 🗓️ BUILD CHRONOLOGICAL SLOT LIST WITH REMAINING CAPACITY             ║
+    //╚═══╝ ═══════════════════════════════════════════════════════════════ ╚═══╝
+    const enabledDays: DayName[] = (
+      ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as DayName[]
+    ).filter((d) => autoPlanDays[d]);
+
+    // Skip days that have already passed — placing new pre-WIP work into a
+    // past day is meaningless (e.g. running auto-plan on Tuesday should never
+    // fill Monday's leftover capacity).
+    const todayMs = startOfDay(new Date()).getTime();
+
+    const slots: Slot[] = [];
+    const slotByKey = new Map<SlotKey, Slot>();
+    for (const plan of plans) {
+      for (const day of enabledDays) {
+        const date = startOfDay(
+          addDays(plan.weekStart, DAY_OFFSET_FROM_WEEK_START[day])
+        );
+        if (date.getTime() < todayMs) continue;
+        // Sat/Sun locked work folds into Monday's remaining capacity (matches
+        // the column display rule — those items show on Monday).
+        let lockedSquares = 0;
+        const accumulate = (entries: { id: string }[]) => {
+          for (const entry of entries) {
+            const item = allOrdersById.get(entry.id)?.item;
+            if (item) lockedSquares += calculateSquares(item);
+          }
+        };
+        accumulate(plan.lockedByDay[day]);
+        if (day === "Monday") {
+          accumulate(plan.lockedByDay.Saturday);
+          accumulate(plan.lockedByDay.Sunday);
+        }
+        const slot: Slot = {
+          weekKey: plan.weekKey,
+          day,
+          date,
+          key: `${plan.weekKey}|${day}`,
+          remaining: Math.max(0, DAILY_CAPACITY_SQUARES - lockedSquares),
+        };
+        slots.push(slot);
+        slotByKey.set(slot.key, slot);
+      }
+    }
+
+    //╔═══╗ ═══════════════════════════════════════════════════════════════ ╔═══╗
+    //║ ⚓ FAMILY ANCHOR SCORES (locked same-family squares per slot)        ║
+    //╚═══╝ ═══════════════════════════════════════════════════════════════ ╚═══╝
+    // Higher anchor score → that slot already has WIP/locked work in this
+    // family, so dropping more there minimises color/setup churn.
+    const anchorScore = new Map<string, number>();
+    const anchorKey = (slot: Slot, family: string) => `${slot.key}::${family}`;
+    const bumpAnchor = (slot: Slot, family: string, squares: number) => {
+      const k = anchorKey(slot, family);
+      anchorScore.set(k, (anchorScore.get(k) ?? 0) + squares);
+    };
+    for (const plan of plans) {
+      for (const day of enabledDays) {
+        const slot = slotByKey.get(`${plan.weekKey}|${day}`);
+        if (!slot) continue; // past day — skipped above
+        const accumulate = (entries: { id: string }[]) => {
+          for (const entry of entries) {
+            const item = allOrdersById.get(entry.id)?.item;
+            if (!item) continue;
+            bumpAnchor(
+              slot,
+              getDesignFamily(item.design, entry.id),
+              calculateSquares(item)
+            );
+          }
+        };
+        accumulate(plan.lockedByDay[day]);
+        if (day === "Monday") {
+          accumulate(plan.lockedByDay.Saturday);
+          accumulate(plan.lockedByDay.Sunday);
+        }
+      }
+    }
+
+    //╔═══╗ ═══════════════════════════════════════════════════════════════ ╔═══╗
+    //║ 🪣 BUILD POOL OF MOVABLE ITEMS                                       ║
+    //╚═══╝ ═══════════════════════════════════════════════════════════════ ╚═══╝
     const lockedItemIds = new Set<string>();
     plans.forEach((p) =>
       (Object.keys(p.lockedByDay) as DayName[]).forEach((d) =>
@@ -891,7 +929,24 @@ export default function ProductionPlanningPage() {
       );
     });
 
-    const pool = availableOrders
+    type PoolEntry = {
+      id: string;
+      item: Item;
+      squares: number;
+      dueMs: number; // Infinity when no due date
+      family: string;
+    };
+    const parseDueMs = (raw: string | undefined): number => {
+      if (!raw) return Infinity;
+      const t = startOfDay(new Date(raw)).getTime();
+      // Invalid date strings → "no due" (no constraint).
+      if (!Number.isFinite(t)) return Infinity;
+      // Past dates are returned as-is so the sort can prioritize the
+      // most-overdue item first. Eligibility for overdue items is handled
+      // via a date-relaxed fallback further down.
+      return t;
+    };
+    const pool: PoolEntry[] = availableOrders
       .filter(
         (item) =>
           !scheduledInOtherWeeks.has(item.id) &&
@@ -902,49 +957,172 @@ export default function ProductionPlanningPage() {
         id: item.id,
         item,
         squares: calculateSquares(item),
-        dueDate: item.dueDate ? startOfDay(new Date(item.dueDate)) : null,
+        dueMs: parseDueMs(item.dueDate),
+        family: getDesignFamily(item.design, item.id),
       }))
-      .filter((entry) => entry.squares > 0)
-      .sort(compareByDueUrgency);
+      .filter((entry) => entry.squares > 0);
 
-    // Build the slot order: for each week (this → next), each enabled day
-    // (Mon → Fri minus user-unchecked). Most-due items land in the earliest
-    // slot with room.
-    const enabledDays: DayName[] = (
-      ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as DayName[]
-    ).filter((d) => autoPlanDays[d]);
-    const slots: DaySlot[] = plans.flatMap((p) =>
-      enabledDays.map((day) => ({ weekKey: p.weekKey, day }))
-    );
-    const planByWeekKey = new Map(plans.map((p) => [p.weekKey, p]));
-
-    const placedIds = new Set<string>();
+    //╔═══╗ ═══════════════════════════════════════════════════════════════ ╔═══╗
+    //║ 👨‍👩‍👧 GROUP BY FAMILY, ORDER FAMILIES BY URGENCY                       ║
+    //╚═══╝ ═══════════════════════════════════════════════════════════════ ╚═══╝
+    const families = new Map<string, PoolEntry[]>();
     for (const entry of pool) {
-      const slot = slots.find((s) => {
-        const plan = planByWeekKey.get(s.weekKey)!;
-        return plan.remaining[s.day] >= entry.squares;
+      const arr = families.get(entry.family);
+      if (arr) arr.push(entry);
+      else families.set(entry.family, [entry]);
+    }
+    // Within a family: most-urgent first, then largest squares first (puts
+    // hardest-to-fit items at the head when we have to split the family).
+    for (const arr of families.values()) {
+      arr.sort((a, b) => {
+        if (a.dueMs !== b.dueMs) return a.dueMs - b.dueMs;
+        if (a.squares !== b.squares) return b.squares - a.squares;
+        return a.id.localeCompare(b.id);
       });
-      if (!slot) continue;
-      const plan = planByWeekKey.get(slot.weekKey)!;
-      plan.remaining[slot.day] -= entry.squares;
-      plan.newPlacements[slot.day].push({ id: entry.id, done: false });
-      placedIds.add(entry.id);
+    }
+    // Across families: most-urgent earliest-due first; tiebreak by total
+    // squares desc so big families claim a clean slot before fragments.
+    const familyOrder = Array.from(families.keys()).sort((a, b) => {
+      const aItems = families.get(a)!;
+      const bItems = families.get(b)!;
+      const aMin = aItems.reduce((m, e) => Math.min(m, e.dueMs), Infinity);
+      const bMin = bItems.reduce((m, e) => Math.min(m, e.dueMs), Infinity);
+      if (aMin !== bMin) return aMin - bMin;
+      const aSq = aItems.reduce((s, e) => s + e.squares, 0);
+      const bSq = bItems.reduce((s, e) => s + e.squares, 0);
+      if (aSq !== bSq) return bSq - aSq;
+      return a.localeCompare(b);
+    });
+
+    //╔═══╗ ═══════════════════════════════════════════════════════════════ ╔═══╗
+    //║ 🎯 PLACE EACH FAMILY                                                 ║
+    //╚═══╝ ═══════════════════════════════════════════════════════════════ ╚═══╝
+    type Placement = { slotKey: SlotKey; entry: PoolEntry };
+    const placements: Placement[] = [];
+
+    // Picks among candidates by:
+    //   1. existing same-family anchor score (higher wins → consolidation)
+    //   2. tiebreak by date (later wins for `preferLate`, earlier otherwise)
+    const pickSlot = (
+      candidates: Slot[],
+      family: string,
+      preferLate: boolean
+    ): Slot | undefined => {
+      let chosen: Slot | undefined;
+      let bestAnchor = -1;
+      let bestDate = preferLate ? -Infinity : Infinity;
+      for (const cand of candidates) {
+        const score = anchorScore.get(anchorKey(cand, family)) ?? 0;
+        const t = cand.date.getTime();
+        if (score > bestAnchor) {
+          bestAnchor = score;
+          bestDate = t;
+          chosen = cand;
+        } else if (score === bestAnchor) {
+          const better = preferLate ? t > bestDate : t < bestDate;
+          if (better) {
+            bestDate = t;
+            chosen = cand;
+          }
+        }
+      }
+      return chosen;
+    };
+
+    const place = (slot: Slot, entry: PoolEntry) => {
+      slot.remaining -= entry.squares;
+      bumpAnchor(slot, entry.family, entry.squares);
+      placements.push({ slotKey: slot.key, entry });
+    };
+
+    for (const family of familyOrder) {
+      const items = families.get(family)!;
+      const totalSquares = items.reduce((s, e) => s + e.squares, 0);
+      const familyDeadline = items.reduce(
+        (m, e) => Math.min(m, e.dueMs),
+        Infinity
+      );
+
+      // ── Try whole-family fit on a single slot ──────────────────────────
+      // Date-eligible: only slots before the family's earliest due. If that
+      // window has no slot with the capacity, fall back to any slot with the
+      // capacity so an overdue family still lands together somewhere.
+      let wholeCandidates = slots.filter(
+        (s) => s.date.getTime() <= familyDeadline && s.remaining >= totalSquares
+      );
+      if (wholeCandidates.length === 0) {
+        wholeCandidates = slots.filter((s) => s.remaining >= totalSquares);
+      }
+      if (wholeCandidates.length > 0) {
+        // Multi-item families: prefer LATEST valid slot (group + preserve
+        // slack for incoming work). Singletons: keep current earliest-valid
+        // load-balancing — anchor score still wins if a same-family
+        // locked item exists somewhere.
+        const chosen = pickSlot(
+          wholeCandidates,
+          family,
+          /* preferLate */ items.length > 1
+        );
+        if (chosen) {
+          for (const entry of items) place(chosen, entry);
+          continue;
+        }
+      }
+
+      // ── Split: place items one at a time ───────────────────────────────
+      // Each item respects its OWN due date (looser than familyDeadline for
+      // some items). The anchor that grows as we place will pull subsequent
+      // items toward the same day when capacity allows.
+      for (const entry of items) {
+        let eligible = slots.filter(
+          (s) => s.date.getTime() <= entry.dueMs && s.remaining >= entry.squares
+        );
+        // Overdue items (or items whose entire date-eligible window is full)
+        // would otherwise be silently dropped — fall back to any slot with
+        // capacity so they still get scheduled. pickSlot below picks the
+        // earliest slot among them, so overdue work bubbles to the front.
+        if (eligible.length === 0) {
+          eligible = slots.filter((s) => s.remaining >= entry.squares);
+        }
+        if (eligible.length === 0) continue; // truly too big for any day
+
+        // For splits we want earliest-valid as the cold-start fallback (the
+        // family already spans days, so spreading the head as early as
+        // possible preserves the most slack). Anchor still wins if any slot
+        // already holds same-family work.
+        const chosen = pickSlot(eligible, family, /* preferLate */ false);
+        if (chosen) place(chosen, entry);
+      }
     }
 
-    // Persist each affected week.
+    //╔═══╗ ═══════════════════════════════════════════════════════════════ ╔═══╗
+    //║ 💾 PERSIST PER WEEK                                                  ║
+    //╚═══╝ ═══════════════════════════════════════════════════════════════ ╚═══╝
+    const placementsBySlot = new Map<SlotKey, { id: string; done: boolean }[]>();
+    for (const p of placements) {
+      const arr = placementsBySlot.get(p.slotKey);
+      const placed = { id: p.entry.id, done: false };
+      if (arr) arr.push(placed);
+      else placementsBySlot.set(p.slotKey, [placed]);
+    }
     for (const plan of plans) {
+      const dayPlacements = (day: DayName) =>
+        placementsBySlot.get(`${plan.weekKey}|${day}`) ?? [];
       const finalSchedule: WeeklyScheduleData = {
         weekKey: plan.weekKey,
         schedule: {
           Sunday: plan.lockedByDay.Sunday,
-          Monday: [...plan.lockedByDay.Monday, ...plan.newPlacements.Monday],
-          Tuesday: [...plan.lockedByDay.Tuesday, ...plan.newPlacements.Tuesday],
+          Monday: [...plan.lockedByDay.Monday, ...dayPlacements("Monday")],
+          Tuesday: [...plan.lockedByDay.Tuesday, ...dayPlacements("Tuesday")],
           Wednesday: [
             ...plan.lockedByDay.Wednesday,
-            ...plan.newPlacements.Wednesday,
+            ...dayPlacements("Wednesday"),
           ],
-          Thursday: [...plan.lockedByDay.Thursday, ...plan.newPlacements.Thursday],
-          Friday: [...plan.lockedByDay.Friday, ...plan.newPlacements.Friday],
+          Thursday: [
+            ...plan.lockedByDay.Thursday,
+            ...dayPlacements("Thursday"),
+          ],
+          Friday: [...plan.lockedByDay.Friday, ...dayPlacements("Friday")],
           Saturday: plan.lockedByDay.Saturday,
         },
       };
@@ -953,7 +1131,7 @@ export default function ProductionPlanningPage() {
 
     // Trigger the placement animation. Clear after the animation has had time
     // to play out so re-running auto-plan re-flashes.
-    setRecentlyPlacedIds(placedIds);
+    setRecentlyPlacedIds(new Set(placements.map((p) => p.entry.id)));
     setTimeout(() => setRecentlyPlacedIds(new Set()), 1600);
   };
 
@@ -1092,6 +1270,7 @@ export default function ProductionPlanningPage() {
                         onToggleAutoPlan={() => toggleAutoPlanDay(day)}
                         recentlyPlacedIds={recentlyPlacedIds}
                         onContextMenu={handleCardContextMenu}
+                        isToday={isToday}
                       />
                     </div>
                   );

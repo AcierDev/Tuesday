@@ -6,8 +6,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ItemStatus } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
 
+export interface OrderFilters {
+  status: string[];
+  priority: string[];
+  dueDateFrom: string;
+  dueDateTo: string;
+}
+
 interface OrderFilterSheetProps {
-  onApply: (filters: any) => void;
+  onApply: (filters: OrderFilters) => void;
   columnVisibility: Record<string, boolean>;
 }
 

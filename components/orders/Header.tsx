@@ -142,7 +142,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
             <Button
-              className="h-10 px-4 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-sm shadow-blue-600/20 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-600/30 active:translate-y-0 dark:bg-blue-600 dark:hover:bg-blue-500"
+              className="h-10 px-4 rounded-full bg-blue-500/40 hover:bg-blue-500/55 text-blue-800 dark:text-white text-sm font-semibold ring-1 ring-inset ring-blue-500/50 dark:ring-blue-400/40 backdrop-blur-sm shadow-sm shadow-blue-500/20 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-500/30 active:translate-y-0 dark:bg-blue-500/30 dark:hover:bg-blue-500/45"
               onClick={onNewOrder}
             >
               <Plus className="mr-1.5 h-4 w-4" /> New Order
