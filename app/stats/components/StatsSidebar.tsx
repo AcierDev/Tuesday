@@ -9,6 +9,15 @@ import { GluedTodayBadge } from "./GluedTodayBadge";
 import { HealthBadge } from "./HealthBadge";
 import { SECTIONS } from "./sections";
 
+const GROUP_TONE: Record<string, string> = {
+  Snapshot: "bg-fuchsia-500/15 ring-fuchsia-400/30 text-fuchsia-200",
+  Operations: "bg-amber-500/15 ring-amber-400/30 text-amber-200",
+  Throughput: "bg-emerald-500/15 ring-emerald-400/30 text-emerald-200",
+  Trends: "bg-violet-500/15 ring-violet-400/30 text-violet-200",
+  Catalog: "bg-rose-500/15 ring-rose-400/30 text-rose-200",
+  Shipping: "bg-orange-500/15 ring-orange-400/30 text-orange-200",
+};
+
 export function StatsSidebar() {
   const pathname = usePathname();
 
@@ -18,7 +27,13 @@ export function StatsSidebar() {
       <GluedTodayBadge active={pathname === "/stats/glued"} />
       {SECTIONS.map((group) => (
         <div key={group.group} className="flex flex-col gap-0.5">
-          <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+          <div
+            className={cn(
+              "self-start mb-1.5 px-2 py-0.5 rounded-md ring-1 ring-inset text-[10px] font-bold uppercase tracking-wider",
+              GROUP_TONE[group.group] ??
+                "bg-white/10 ring-white/10 text-white/90"
+            )}
+          >
             {group.group}
           </div>
           {group.items.map((section) => {
@@ -33,7 +48,7 @@ export function StatsSidebar() {
                   "px-3 py-1.5 text-sm font-medium rounded-lg transition",
                   active
                     ? "bg-white/10 text-white"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                    : "text-slate-200 hover:text-white hover:bg-white/5"
                 )}
               >
                 {section.label}
