@@ -475,6 +475,135 @@ const SKEW_VARIANTS: Blade[] = [
   },
 ];
 
+const OPEN_BLADE_PATH =
+  "M61.22,25.20 L49.20,18.28 L55.37,13.19 L41.55,12.18 L44.90,4.91 L32.00,10.00 L31.87,2.00 L22.45,12.18 L18.86,5.03 L14.80,18.28 L8.46,13.40 L10.55,27.10 L2.72,25.45 L10.55,36.90 L2.78,38.80 L14.80,45.72 L8.63,50.81 L22.45,51.82 L19.10,59.09 L32.00,54.00 L32,51 L36,44 L40,51 L43,44 L47,51 L51,44 L54,51 L58,44 L62,51 L62,54 L32,54";
+
+const colorOutline = (stroke: string): ReactNode => (
+  <>
+    <path
+      d={OPEN_BLADE_PATH}
+      fill="none"
+      stroke={stroke}
+      strokeWidth="3.5"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    />
+    <path
+      d="M40,22 L25,22 L25,42 L40,42 M25,32 L36,32"
+      fill="none"
+      stroke={stroke}
+      strokeWidth="3.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </>
+);
+
+const COLOR_BLADES: Blade[] = [
+  {
+    name: "Coral",
+    render: () => colorOutline("#da7756"),
+  },
+  {
+    name: "Burnt Orange",
+    render: () => colorOutline("#ea580c"),
+  },
+  {
+    name: "Amber",
+    render: () => colorOutline("#d97706"),
+  },
+  {
+    name: "Crimson",
+    render: () => colorOutline("#dc2626"),
+  },
+  {
+    name: "Forest",
+    render: () => colorOutline("#15803d"),
+  },
+  {
+    name: "Teal",
+    render: () => colorOutline("#0d9488"),
+  },
+  {
+    name: "Royal Blue",
+    render: () => colorOutline("#2563eb"),
+  },
+  {
+    name: "Indigo",
+    render: () => colorOutline("#4f46e5"),
+  },
+  {
+    name: "Violet",
+    render: () => colorOutline("#7c3aed"),
+  },
+  {
+    name: "Magenta",
+    render: () => colorOutline("#db2777"),
+  },
+  {
+    name: "Rainbow Stroke",
+    render: (id) => (
+      <>
+        <defs>
+          <linearGradient id={`grad-${id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ef4444" />
+            <stop offset="25%" stopColor="#f59e0b" />
+            <stop offset="50%" stopColor="#10b981" />
+            <stop offset="75%" stopColor="#3b82f6" />
+            <stop offset="100%" stopColor="#a855f7" />
+          </linearGradient>
+        </defs>
+        <path
+          d={OPEN_BLADE_PATH}
+          fill="none"
+          stroke={`url(#grad-${id})`}
+          strokeWidth="3.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+        <path
+          d="M40,22 L25,22 L25,42 L40,42 M25,32 L36,32"
+          fill="none"
+          stroke={`url(#grad-${id})`}
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </>
+    ),
+  },
+  {
+    name: "Sunset Stroke",
+    render: (id) => (
+      <>
+        <defs>
+          <linearGradient id={`grad-${id}`} x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stopColor="#7c3aed" />
+            <stop offset="50%" stopColor="#f97316" />
+            <stop offset="100%" stopColor="#fbbf24" />
+          </linearGradient>
+        </defs>
+        <path
+          d={OPEN_BLADE_PATH}
+          fill="none"
+          stroke={`url(#grad-${id})`}
+          strokeWidth="3.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+        <path
+          d="M40,22 L25,22 L25,42 L40,42 M25,32 L36,32"
+          fill="none"
+          stroke={`url(#grad-${id})`}
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </>
+    ),
+  },
+];
+
 const BLADE_STYLE = `
   .blade { stroke: #0f172a; fill: none; stroke-width: 3.5; stroke-linejoin: round; stroke-linecap: round; }
   .blade-fill { fill: #0f172a; stroke: none; }
@@ -543,6 +672,12 @@ export default function IconsPage() {
             Pick one to replace <code className="text-xs">app/icon.svg</code>.
           </p>
         </div>
+
+        <Section
+          title="Colorful candidates"
+          blades={COLOR_BLADES}
+          prefix="color"
+        />
 
         <Section
           title="Variations of #15 — Half Blade (cutting through)"
