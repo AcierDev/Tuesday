@@ -18,6 +18,7 @@ import {
 import { DueBadge } from "@/components/cells/DueBadge";
 import {
   BrandTag,
+  LocalTag,
   parseNameTokens,
   PrintMarkerTag,
   RushedTag,
@@ -117,7 +118,7 @@ export function OrderCard({
     ? createDesignBackground(design, DESIGN_TAG_ALPHA)
     : undefined;
 
-  const { displayName, isRushed, brandPrefix, isPrintMarker } =
+  const { displayName, isRushed, isLocal, brandPrefix, isPrintMarker } =
     parseNameTokens(customerName);
   // Match the orders-board treatment: first two real words render at full
   // weight, the rest dims to ~55% opacity at a slightly smaller size.
@@ -186,6 +187,7 @@ export function OrderCard({
               )}
               {brandPrefix && <BrandTag prefix={brandPrefix} />}
               {isRushed && <RushedTag />}
+              {isLocal && <LocalTag />}
             </span>
           </div>
           <div className="flex items-center gap-[3px] md:gap-1.5 min-w-0">

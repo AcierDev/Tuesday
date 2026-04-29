@@ -26,6 +26,7 @@ import {
 } from "@/hooks/useTodayScheduledIds";
 import {
   BrandTag,
+  LocalTag,
   parseNameTokens,
   PrintMarkerTag,
   RushedTag,
@@ -169,13 +170,14 @@ export const NameCell: React.FC<NameCellProps> = ({
     </span>
   ) : null;
 
-  const { displayName, isRushed, brandPrefix, isPrintMarker } =
+  const { displayName, isRushed, isLocal, brandPrefix, isPrintMarker } =
     parseNameTokens(inputValue);
 
   const [firstTwoWords, restOfName] = splitFirstTwoWords(displayName);
 
   const brandTag = brandPrefix ? <BrandTag prefix={brandPrefix} /> : null;
   const rushedTag = isRushed ? <RushedTag /> : null;
+  const localTag = isLocal ? <LocalTag /> : null;
 
   const verticalIcon = tags?.isVertical && (
     <Tooltip>
@@ -285,6 +287,7 @@ export const NameCell: React.FC<NameCellProps> = ({
                 )}
                 {brandTag}
                 {rushedTag}
+                {localTag}
               </span>
             </div>
             {verticalIcon}

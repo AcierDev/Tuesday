@@ -1,6 +1,6 @@
 "use client";
 
-import { Printer, Zap } from "lucide-react";
+import { MapPin, Printer, Zap } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -9,11 +9,13 @@ import {
 import { cn } from "@/utils/functions";
 
 const RUSHED_TOKEN = /\(rushed\)/i;
+const LOCAL_TOKEN = /\(local\)/i;
 const BRAND_PREFIX = /^\[(EW|WF|SH)\]\s*/;
 
 export type NameTokens = {
   displayName: string;
   isRushed: boolean;
+  isLocal: boolean;
   brandPrefix: "EW" | "WF" | "SH" | null;
   isPrintMarker: boolean;
 };
@@ -24,19 +26,21 @@ export type NameTokens = {
 export function parseNameTokens(rawName: string): NameTokens {
   const trimmed = rawName ?? "";
   const isRushed = RUSHED_TOKEN.test(trimmed);
-  const withoutRushed = trimmed
+  const isLocal = LOCAL_TOKEN.test(trimmed);
+  const stripped = trimmed
     .replace(RUSHED_TOKEN, "")
+    .replace(LOCAL_TOKEN, "")
     .replace(/\s{2,}/g, " ")
     .trim();
-  const brandMatch = withoutRushed.match(BRAND_PREFIX);
+  const brandMatch = stripped.match(BRAND_PREFIX);
   const brandPrefix = brandMatch
     ? (brandMatch[1] as "EW" | "WF" | "SH")
     : null;
   const displayName = brandMatch
-    ? withoutRushed.slice(brandMatch[0].length)
-    : withoutRushed;
+    ? stripped.slice(brandMatch[0].length)
+    : stripped;
   const isPrintMarker = displayName.trim().toLowerCase() === "print";
-  return { displayName, isRushed, brandPrefix, isPrintMarker };
+  return { displayName, isRushed, isLocal, brandPrefix, isPrintMarker };
 }
 
 export function BrandTag({ prefix }: { prefix: "EW" | "WF" | "SH" }) {
@@ -77,6 +81,34 @@ export function RushedTag() {
       </TooltipTrigger>
       <TooltipContent>
         <p>Rushed order</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function LocalTag() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "inline-flex items-center gap-0.5 rounded-md px-1 py-px",
+            "bg-teal-500 text-white ring-1 ring-teal-600",
+            "dark:bg-teal-500/90 dark:ring-teal-400/60",
+            "text-[0.525rem] font-bold uppercase tracking-wide flex-shrink-0",
+            "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_1px_2px_rgba(0,0,0,0.08)]"
+          )}
+        >
+          <MapPin
+            className="h-[0.5625rem] w-[0.5625rem]"
+            strokeWidth={2.75}
+            fill="currentColor"
+          />
+          Local
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Local pickup / delivery</p>
       </TooltipContent>
     </Tooltip>
   );
