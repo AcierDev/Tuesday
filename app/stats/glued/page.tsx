@@ -993,19 +993,19 @@ function ForecastBreakdown({ stats }: { stats: RecencyWeightedStats }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <ForecastSliceTile
+          label={`Prior ${stats.olderWindowDays}d`}
+          weightLabel={`weight ${stats.olderWeight}×`}
+          avgActive={stats.olderAvgActive}
+          total={stats.olderTotal}
+          activeDays={stats.olderActiveDays}
+        />
+        <ForecastSliceTile
           label={`Recent ${stats.recentWindowDays}d`}
           weightLabel={`weight ${stats.recentWeight}×`}
           avgActive={stats.recentAvgActive}
           total={stats.recentTotal}
           activeDays={stats.recentActiveDays}
           highlight
-        />
-        <ForecastSliceTile
-          label={`Prior ${stats.olderWindowDays}d`}
-          weightLabel={`weight ${stats.olderWeight}×`}
-          avgActive={stats.olderAvgActive}
-          total={stats.olderTotal}
-          activeDays={stats.olderActiveDays}
         />
         <div className="rounded-xl bg-emerald-500/5 ring-1 ring-inset ring-emerald-400/20 px-4 py-3 flex flex-col justify-center">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300/80">
