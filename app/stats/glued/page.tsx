@@ -299,9 +299,9 @@ export default function GluedPage() {
           An order counts only if its current status is{" "}
           <span className="text-slate-400">Packaging / At The Door / Done</span>
           . If it bounced back to Wip it stops counting until the next forward
-          move. The day shown is the most recent move from{" "}
-          <span className="text-slate-400">New / On Deck / Wip</span> into a
-          glued status. Only orders with simple{" "}
+          move. The day shown is the planner day the order sits in (locked
+          once past Wip); orders with no planner placement fall back to the
+          status-change day. Only orders with simple{" "}
           <span className="text-slate-400">W × H</span> sizes contribute;
           named/custom sizes are excluded.
         </p>

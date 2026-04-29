@@ -1,4 +1,4 @@
-import { Activity, Item, ItemStatus } from "@/typings/types";
+import { Activity, DayName, Item, ItemStatus, WeeklyScheduleData } from "@/typings/types";
 import { dayDiffKeys, laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -82,15 +82,58 @@ export type GluedEvent = {
   design: string;
 };
 
+// Day-of-week offsets from Sunday (week start). Mirrors the production-
+// planning calendar so a (weekKey, day) pair resolves to the same calendar
+// date the planner shows.
+const DAY_OFFSET_FROM_WEEK_START: Record<DayName, number> = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+};
+
+// Resolve a (weekKey, day) calendar slot to its YYYY-MM-DD date. weekKey is
+// the Sunday of the week (LA-local).
+export function dayKeyFromWeekSlot(weekKey: string, day: DayName): string {
+  return shiftDayKey(weekKey, DAY_OFFSET_FROM_WEEK_START[day]);
+}
+
+// Flatten weekly schedule docs into itemId → calendar dayKey. If an item
+// somehow appears in multiple slots, the latest calendar day wins (POST_WIP
+// items are locked, so this should be rare/never).
+export function buildScheduledDayByItemId(
+  schedules: Pick<WeeklyScheduleData, "weekKey" | "schedule">[]
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const week of schedules) {
+    for (const day of Object.keys(week.schedule) as DayName[]) {
+      const dayKey = dayKeyFromWeekSlot(week.weekKey, day);
+      for (const entry of week.schedule[day] ?? []) {
+        const existing = out.get(entry.id);
+        if (existing === undefined || existing < dayKey) {
+          out.set(entry.id, dayKey);
+        }
+      }
+    }
+  }
+  return out;
+}
+
 // Build per-item glued events. An item only counts if its CURRENT status is
 // in {Packaging, At The Door, Done} — items that bounced back to Wip don't
 // count, even if they were briefly in a post-glued status. The day used is
-// the most recent forward (PRE → POST) crossing, since that represents the
-// gluing that actually stuck. Items whose size isn't a simple W×H are
-// dropped (named/custom sizes can't be tallied as squares).
+// the calendar day the item sits in on the production planner (locked once
+// past Wip); we fall back to the most recent forward (PRE → POST) status
+// crossing only when the item isn't in any calendar slot. Items whose size
+// isn't a simple W×H are dropped (named/custom sizes can't be tallied as
+// squares).
 export function buildGluedEvents(
   activities: Activity[],
-  items: Pick<Item, "id" | "size" | "customerName" | "design" | "status">[]
+  items: Pick<Item, "id" | "size" | "customerName" | "design" | "status">[],
+  scheduledDayByItemId?: Map<string, string>
 ): GluedEvent[] {
   const transitionsByItem = new Map<string, Activity[]>();
   for (const a of activities) {
@@ -123,10 +166,13 @@ export function buildGluedEvents(
     }
     if (glueTimestamp === null) continue;
 
+    const scheduledDay = scheduledDayByItemId?.get(item.id);
+    const dayKey = scheduledDay ?? laDayKey(new Date(glueTimestamp));
+
     out.push({
       itemId: item.id,
       timestamp: glueTimestamp,
-      dayKey: laDayKey(new Date(glueTimestamp)),
+      dayKey,
       width: parsed.width,
       height: parsed.height,
       squares: parsed.squares,

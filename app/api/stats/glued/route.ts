@@ -5,8 +5,9 @@ import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import {
   bucketGluedSquaresByDay,
   buildGluedEvents,
+  buildScheduledDayByItemId,
 } from "@/lib/production-metrics";
-import { Activity, Item, ItemStatus } from "@/typings/types";
+import { Activity, Item, ItemStatus, WeeklyScheduleData } from "@/typings/types";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ ⚙️ CONFIG                                                            ║
@@ -74,9 +75,17 @@ export async function GET(request: Request) {
           .toArray()) as unknown as Activity[])
       : [];
 
+    // Calendar placement is the source of truth for the glue date — past-Wip
+    // items are locked to their planner day, so that's when they were glued.
+    const schedules = (await db
+      .collection<WeeklyScheduleData>(`weeklySchedules-${mode}`)
+      .find({}, { projection: { weekKey: 1, schedule: 1 } })
+      .toArray()) as unknown as WeeklyScheduleData[];
+    const scheduledDayByItemId = buildScheduledDayByItemId(schedules);
+
     const today = laDayKey();
     const start = shiftDayKey(today, -(days - 1));
-    const allEvents = buildGluedEvents(activities, items);
+    const allEvents = buildGluedEvents(activities, items, scheduledDayByItemId);
     const events = allEvents.filter(
       (e) => e.dayKey >= start && e.dayKey <= today
     );

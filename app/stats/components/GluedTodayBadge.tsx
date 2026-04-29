@@ -3,24 +3,30 @@
 import { useMemo } from "react";
 
 import { laDayKey } from "@/lib/debt-metrics";
-import { buildGluedEvents } from "@/lib/production-metrics";
+import {
+  buildGluedEvents,
+  buildScheduledDayByItemId,
+} from "@/lib/production-metrics";
 import { useActivities, useAllItems } from "@/lib/stats-shared";
+import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 
 import { BadgeCard } from "./BadgeCard";
 
 export function GluedTodayBadge({ active }: { active: boolean }) {
   const { items, loading: itemsLoading } = useAllItems();
   const { activities, loading: actLoading } = useActivities();
+  const schedules = useWeeklyScheduleStore((s) => s.schedules);
 
   const todayStats = useMemo(() => {
     if (!items || !activities) return null;
     const today = laDayKey();
-    const events = buildGluedEvents(activities, items).filter(
+    const scheduledDay = buildScheduledDayByItemId(schedules);
+    const events = buildGluedEvents(activities, items, scheduledDay).filter(
       (e) => e.dayKey === today
     );
     const squares = events.reduce((s, e) => s + e.squares, 0);
     return { squares, orders: events.length };
-  }, [items, activities]);
+  }, [items, activities, schedules]);
 
   const loading = itemsLoading || actLoading;
 

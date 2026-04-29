@@ -10,10 +10,12 @@ import { STATUS_COLORS } from "@/typings/constants";
 import { computeTotalDebt, laDayKey } from "@/lib/debt-metrics";
 import {
   buildGluedEvents,
+  buildScheduledDayByItemId,
   computeHealthScore,
   parseSquareSize,
 } from "@/lib/production-metrics";
 import { useActivities, useAllItems } from "@/lib/stats-shared";
+import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { MiniSparkline } from "@/components/orders/MiniSparkline";
 import { cn } from "@/utils/functions";
 
@@ -112,6 +114,7 @@ export function NavMetricsBadges() {
 
   const { items: allItems } = useAllItems();
   const { activities } = useActivities();
+  const schedules = useWeeklyScheduleStore((s) => s.schedules);
 
   const healthScore = useMemo(
     () => (allItems ? computeHealthScore(allItems).total : null),
@@ -121,12 +124,13 @@ export function NavMetricsBadges() {
   const gluedToday = useMemo(() => {
     if (!allItems || !activities) return null;
     const today = laDayKey();
-    const events = buildGluedEvents(activities, allItems).filter(
+    const scheduledDay = buildScheduledDayByItemId(schedules);
+    const events = buildGluedEvents(activities, allItems, scheduledDay).filter(
       (e) => e.dayKey === today
     );
     const squares = events.reduce((s, e) => s + e.squares, 0);
     return { squares, orders: events.length };
-  }, [allItems, activities]);
+  }, [allItems, activities, schedules]);
 
   const backlogSquares = useMemo(() => {
     if (!items) return null;

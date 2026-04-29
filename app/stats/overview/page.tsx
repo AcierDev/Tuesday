@@ -10,6 +10,7 @@ import {
   bucketGluedSquaresByDay,
   bucketOnTimeByWeek,
   buildGluedEvents,
+  buildScheduledDayByItemId,
   computeCurrentlyLate,
   computeHealthScore,
   computeOnTimeStats,
@@ -26,6 +27,7 @@ import {
   useActivities,
   useAllItems,
 } from "@/lib/stats-shared";
+import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -55,6 +57,7 @@ type BacklogSnapshot = { date: string; squares: number; recorded?: boolean };
 export default function OverviewPage() {
   const { items, loading, error } = useAllItems();
   const { activities } = useActivities();
+  const schedules = useWeeklyScheduleStore((s) => s.schedules);
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
   const [debtByRange, setDebtByRange] = useState<
     Partial<Record<RangeKey, DebtSnapshot[]>>
@@ -183,11 +186,13 @@ export default function OverviewPage() {
     const onTimeByDate = new Map(weekly.map((w) => [w.date, w.value]));
     const onTimeValues = dates.map((d) => onTimeByDate.get(d) ?? null);
 
-    // Glued — squares glued per day from activity log. Needs activities;
-    // until they load we still render the other series.
+    // Glued — squares glued per day, attributed to the planner day each item
+    // sits in (locked once past Wip). Needs activities; until they load we
+    // still render the other series.
     let gluedValues: (number | null)[] = dates.map(() => null);
     if (activities) {
-      const events = buildGluedEvents(activities, items).filter(
+      const scheduledDay = buildScheduledDayByItemId(schedules);
+      const events = buildGluedEvents(activities, items, scheduledDay).filter(
         (e) => e.dayKey >= start && e.dayKey <= today
       );
       const gluedBuckets = bucketGluedSquaresByDay(events, start, today);
@@ -237,7 +242,7 @@ export default function OverviewPage() {
         },
       ],
     };
-  }, [items, days, debtSeries, backlogSeries, activities]);
+  }, [items, days, debtSeries, backlogSeries, activities, schedules]);
 
   return (
     <>
