@@ -11,7 +11,9 @@ import {
   bucketOnTimeByWeek,
   buildGluedEvents,
   computeCurrentlyLate,
+  computeHealthScore,
   computeOnTimeStats,
+  parseSquareSize,
   summarizeDayBuckets,
 } from "@/lib/production-metrics";
 import {
@@ -115,6 +117,26 @@ export default function OverviewPage() {
     const throughput = summarizeDayBuckets(buckets);
     const onTime = computeOnTimeStats(items, start, today);
 
+    const sumSquares = (list: typeof items) =>
+      list.reduce(
+        (acc, i) => acc + (parseSquareSize(i.size)?.squares ?? 0),
+        0
+      );
+    const shippedInRange = items.filter((i) => {
+      if (!i.completedAt) return false;
+      const key = laDayKey(new Date(i.completedAt));
+      return key >= start && key <= today;
+    });
+    const shippedSquares = sumSquares(shippedInRange);
+    const wipSquares = sumSquares(active);
+    const health = computeHealthScore(items).total;
+    // Throughput already reflects the 4-day work week (it's measured over the
+    // calendar range), so converting calendar days → calendar weeks gives a
+    // realistic "weeks of work in flight" figure without extra adjustment.
+    const avgSquaresPerWeek = days > 0 ? (shippedSquares / days) * 7 : 0;
+    const weeksToClear =
+      avgSquaresPerWeek > 0 ? wipSquares / avgSquaresPerWeek : null;
+
     return {
       debt: debt.total,
       lateNow: lateNow.length,
@@ -123,6 +145,10 @@ export default function OverviewPage() {
       onTimePct: onTime.onTimePct,
       onTimeTotal: onTime.total,
       wipTotal: active.length,
+      shippedSquares,
+      wipSquares,
+      weeksToClear,
+      health,
     };
   }, [items, days]);
 
@@ -225,6 +251,17 @@ export default function OverviewPage() {
               ? `${summary.throughputTotal} items shipped, ${summary.wipTotal} in flight`
               : "—"}
           </h2>
+          {summary && (
+            <p className="mt-1 heading-page text-slate-400">
+              {summary.shippedSquares.toLocaleString()} sq shipped,{" "}
+              {summary.wipSquares.toLocaleString()} sq in flight
+            </p>
+          )}
+          {summary?.weeksToClear != null && (
+            <p className="mt-1 text-sm text-slate-500">
+              ≈ {summary.weeksToClear.toFixed(1)} weeks at current pace
+            </p>
+          )}
         </div>
         <RangeSelector value={range} onChange={setRange} />
       </header>
@@ -248,6 +285,7 @@ export default function OverviewPage() {
           <StatTile
             label="Late now"
             value={`${summary?.lateNow ?? 0} items`}
+            sublabel="past due"
             tone={(summary?.lateNow ?? 0) > 0 ? "bad" : "good"}
           />
         } />
@@ -282,7 +320,20 @@ export default function OverviewPage() {
           />
         } />
         <KPILink href="/stats/health" tile={
-          <StatTile label="Health" value={summary ? healthLabel(summary) : "—"} sublabel="composite" />
+          <StatTile
+            label="Health"
+            value={summary ? `${summary.health}` : "—"}
+            sublabel="/ 100"
+            tone={
+              summary
+                ? summary.health >= 85
+                  ? "good"
+                  : summary.health < 60
+                    ? "bad"
+                    : "neutral"
+                : "neutral"
+            }
+          />
         } />
       </section>
 
@@ -321,15 +372,6 @@ function KPILink({
       {tile}
     </Link>
   );
-}
-
-function healthLabel(s: { onTimePct: number; debt: number; lateNow: number }) {
-  let score = 100;
-  if (s.onTimePct < 95) score -= (95 - s.onTimePct) * 0.5;
-  if (s.debt > 0) score -= Math.min(30, s.debt);
-  if (s.lateNow > 0) score -= Math.min(20, s.lateNow * 2);
-  score = Math.max(0, Math.round(score));
-  return `${score}`;
 }
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
