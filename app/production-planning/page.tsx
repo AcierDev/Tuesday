@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, startTransition } from "react";
 import {
   addWeeks,
   endOfWeek,
@@ -36,6 +36,11 @@ import { OrderCard } from "@/components/production-planning/OrderCard";
 import { OrderContextMenu } from "@/components/production-planning/OrderContextMenu";
 import { OrderMeta } from "@/components/production-planning/types";
 import { PRE_WIP_STATUSES } from "@/components/production-planning/constants";
+import {
+  AUTO_PLAN_WEIGHT_DEFAULTS,
+  URGENT_PULL_LEVEL_TO_PER_DAY,
+  type AutoPlanWeights,
+} from "@/components/production-planning/AutoPlanSettingsDialog";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
@@ -80,6 +85,15 @@ const DAILY_CAPACITY_SQUARES = 1000;
 // Daily total turns green once it crosses this — the full capacity (1000) is
 // the displayed denominator, but anything past 850 is "good enough" in practice.
 const DAILY_GREEN_THRESHOLD_SQUARES = 850;
+
+// Auto-plan due-date weighting. Each slot's score combines design-family
+// "anchor" squares with a urgency bonus computed from how far the slot is
+// from the entry's due date. Outside the urgent window the bonus is a mild
+// tiebreaker (capped buffer × base weight), so design grouping still
+// dominates. Within the urgent window, the bonus is multiplied so a
+// time-sensitive order can override modest grouping pulls. User-tunable via
+// the auto-plan settings dialog; defaults live in AutoPlanSettingsDialog.tsx.
+const AUTO_PLAN_WEIGHTS_STORAGE_KEY = "production-planning:auto-plan-weights";
 
 const DAYS: DayName[] = [
   "Monday",
@@ -241,6 +255,33 @@ export default function ProductionPlanningPage() {
       }
       return next;
     });
+  }, []);
+
+  // Auto-plan scoring weights — tunable from the settings popover and
+  // persisted to localStorage so the user's tuning sticks across reloads.
+  const [autoPlanWeights, setAutoPlanWeights] = useState<AutoPlanWeights>(
+    AUTO_PLAN_WEIGHT_DEFAULTS
+  );
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(AUTO_PLAN_WEIGHTS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<AutoPlanWeights>;
+      setAutoPlanWeights({ ...AUTO_PLAN_WEIGHT_DEFAULTS, ...parsed });
+    } catch (err) {
+      console.warn("Failed to load auto-plan weights", err);
+    }
+  }, []);
+  const updateAutoPlanWeights = useCallback((next: AutoPlanWeights) => {
+    setAutoPlanWeights(next);
+    try {
+      window.localStorage.setItem(
+        AUTO_PLAN_WEIGHTS_STORAGE_KEY,
+        JSON.stringify(next)
+      );
+    } catch (err) {
+      console.warn("Failed to save auto-plan weights", err);
+    }
   }, []);
 
   useEffect(() => {
@@ -1000,25 +1041,46 @@ export default function ProductionPlanningPage() {
     type Placement = { slotKey: SlotKey; entry: PoolEntry };
     const placements: Placement[] = [];
 
+    // Earliness bonus pulled toward earlier slots — only kicks in once the
+    // due date is within the urgent window. Outside the window, design
+    // grouping rules unchallenged. Buffer is capped at the window so a
+    // deadline 7 days out doesn't drag everything to Monday. Past-due slots
+    // (negative buffer, only reachable via the date-relaxed fallback) are
+    // penalized so the earliest available slot still wins.
+    const MS_PER_DAY = 86400000;
+    const { urgentWindowDays, urgentPullLevel } = autoPlanWeights;
+    const urgentPullPerDay = urgentPullLevel * URGENT_PULL_LEVEL_TO_PER_DAY;
+    const urgencyBonus = (slot: Slot, refDueMs: number): number => {
+      if (!Number.isFinite(refDueMs)) return 0;
+      const daysFromTodayToDue = (refDueMs - todayMs) / MS_PER_DAY;
+      if (daysFromTodayToDue > urgentWindowDays) return 0;
+      const bufferDays = (refDueMs - slot.date.getTime()) / MS_PER_DAY;
+      const effectiveBuffer = Math.min(urgentWindowDays, bufferDays);
+      return effectiveBuffer * urgentPullPerDay;
+    };
+
     // Picks among candidates by:
-    //   1. existing same-family anchor score (higher wins → consolidation)
+    //   1. combined score = same-family anchor squares + due-date urgency bonus
+    //      (higher wins → consolidation, but a near-due item can pull earlier)
     //   2. tiebreak by date (later wins for `preferLate`, earlier otherwise)
     const pickSlot = (
       candidates: Slot[],
       family: string,
-      preferLate: boolean
+      preferLate: boolean,
+      refDueMs: number
     ): Slot | undefined => {
       let chosen: Slot | undefined;
-      let bestAnchor = -1;
+      let bestScore = -Infinity;
       let bestDate = preferLate ? -Infinity : Infinity;
       for (const cand of candidates) {
-        const score = anchorScore.get(anchorKey(cand, family)) ?? 0;
+        const anchor = anchorScore.get(anchorKey(cand, family)) ?? 0;
+        const score = anchor + urgencyBonus(cand, refDueMs);
         const t = cand.date.getTime();
-        if (score > bestAnchor) {
-          bestAnchor = score;
+        if (score > bestScore) {
+          bestScore = score;
           bestDate = t;
           chosen = cand;
-        } else if (score === bestAnchor) {
+        } else if (score === bestScore) {
           const better = preferLate ? t > bestDate : t < bestDate;
           if (better) {
             bestDate = t;
@@ -1061,7 +1123,8 @@ export default function ProductionPlanningPage() {
         const chosen = pickSlot(
           wholeCandidates,
           family,
-          /* preferLate */ items.length > 1
+          /* preferLate */ items.length > 1,
+          familyDeadline
         );
         if (chosen) {
           for (const entry of items) place(chosen, entry);
@@ -1090,7 +1153,12 @@ export default function ProductionPlanningPage() {
         // family already spans days, so spreading the head as early as
         // possible preserves the most slack). Anchor still wins if any slot
         // already holds same-family work.
-        const chosen = pickSlot(eligible, family, /* preferLate */ false);
+        const chosen = pickSlot(
+          eligible,
+          family,
+          /* preferLate */ false,
+          entry.dueMs
+        );
         if (chosen) place(chosen, entry);
       }
     }
@@ -1173,9 +1241,13 @@ export default function ProductionPlanningPage() {
               : 0
           }
           onToggleWeek={() =>
-            setCurrentWeekKey(viewingNextWeek ? thisWeekKey : nextWeekKey)
+            startTransition(() => {
+              setCurrentWeekKey(viewingNextWeek ? thisWeekKey : nextWeekKey);
+            })
           }
           onAutoFill={() => handleAutoFill()}
+          autoPlanWeights={autoPlanWeights}
+          onAutoPlanWeightsChange={updateAutoPlanWeights}
           onClearWeek={() => {
             if (currentSchedule) {
               const clearedSchedule = {

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PageToggle } from "@/components/ui/PageToggle";
 import {
@@ -14,15 +13,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronRight, RotateCcw, Wand2 } from "lucide-react";
+import { ChevronRight, RotateCcw, Settings2, Wand2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import {
+  AutoPlanSettingsPopover,
+  type AutoPlanWeights,
+} from "./AutoPlanSettingsDialog";
 import { HistoricalAverageBadge } from "./HistoricalAverageBadge";
-
-// Lead-in for the chip animation. The actual week swap is heavy (re-renders
-// every card), so we flip the chip's visual state immediately and defer the
-// real swap until after the slide+rotate has had time to start, otherwise
-// the synchronous re-render eats the first ~150ms of the transition.
-const TOGGLE_ANIMATION_MS = 240;
 
 interface ProductionPlanningHeaderProps {
   viewingNextWeek: boolean;
@@ -31,6 +28,8 @@ interface ProductionPlanningHeaderProps {
   onToggleWeek: () => void;
   onClearWeek: () => void;
   onAutoFill: () => void;
+  autoPlanWeights: AutoPlanWeights;
+  onAutoPlanWeightsChange: (weights: AutoPlanWeights) => void;
 }
 
 export function ProductionPlanningHeader({
@@ -40,34 +39,10 @@ export function ProductionPlanningHeader({
   onToggleWeek,
   onClearWeek,
   onAutoFill,
+  autoPlanWeights,
+  onAutoPlanWeightsChange,
 }: ProductionPlanningHeaderProps) {
   const weekLabel = viewingNextWeek ? "next week" : "this week";
-
-  // Local visual state for the chip. We flip it eagerly on click so the
-  // slide/rotate animation starts on the same frame, then schedule the real
-  // onToggleWeek a tick later. Re-syncs to the prop in case the parent
-  // changes the week for other reasons (e.g. external nav).
-  const [visualNextWeek, setVisualNextWeek] = useState(viewingNextWeek);
-  const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    setVisualNextWeek(viewingNextWeek);
-  }, [viewingNextWeek]);
-
-  useEffect(() => {
-    return () => {
-      if (pendingTimer.current) clearTimeout(pendingTimer.current);
-    };
-  }, []);
-
-  const handleToggleWeek = () => {
-    if (pendingTimer.current) return; // ignore mid-animation re-clicks
-    setVisualNextWeek((v) => !v);
-    pendingTimer.current = setTimeout(() => {
-      pendingTimer.current = null;
-      onToggleWeek();
-    }, TOGGLE_ANIMATION_MS);
-  };
   return (
     <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -85,9 +60,9 @@ export function ProductionPlanningHeader({
               <div className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60">
                 <button
                   type="button"
-                  onClick={handleToggleWeek}
+                  onClick={onToggleWeek}
                   aria-label={
-                    visualNextWeek
+                    viewingNextWeek
                       ? "Switch to This Week"
                       : "Switch to Next Week"
                   }
@@ -96,19 +71,19 @@ export function ProductionPlanningHeader({
                   <span className="relative inline-block w-[72px] h-5 overflow-hidden text-left">
                     <AnimatePresence initial={false} mode="popLayout">
                       <motion.span
-                        key={visualNextWeek ? "next" : "this"}
-                        initial={{ y: visualNextWeek ? 16 : -16, opacity: 0 }}
+                        key={viewingNextWeek ? "next" : "this"}
+                        initial={{ y: viewingNextWeek ? 16 : -16, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: visualNextWeek ? -16 : 16, opacity: 0 }}
+                        exit={{ y: viewingNextWeek ? -16 : 16, opacity: 0 }}
                         transition={{ duration: 0.22, ease: "easeOut" }}
                         className="absolute inset-0"
                       >
-                        {visualNextWeek ? "Next Week" : "This Week"}
+                        {viewingNextWeek ? "Next Week" : "This Week"}
                       </motion.span>
                     </AnimatePresence>
                   </span>
                   <motion.span
-                    animate={{ rotate: visualNextWeek ? 180 : 0 }}
+                    animate={{ rotate: viewingNextWeek ? 180 : 0 }}
                     transition={{ duration: 0.22, ease: "easeOut" }}
                     className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-gray-700 shadow-sm"
                   >
@@ -124,9 +99,9 @@ export function ProductionPlanningHeader({
             <div className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60">
               <button
                 type="button"
-                onClick={handleToggleWeek}
+                onClick={onToggleWeek}
                 aria-label={
-                  visualNextWeek
+                  viewingNextWeek
                     ? "Switch to This Week"
                     : "Switch to Next Week"
                 }
@@ -135,19 +110,19 @@ export function ProductionPlanningHeader({
                 <span className="relative inline-block w-[72px] h-5 overflow-hidden text-left">
                   <AnimatePresence initial={false} mode="popLayout">
                     <motion.span
-                      key={visualNextWeek ? "next-mobile" : "this-mobile"}
-                      initial={{ y: visualNextWeek ? 16 : -16, opacity: 0 }}
+                      key={viewingNextWeek ? "next-mobile" : "this-mobile"}
+                      initial={{ y: viewingNextWeek ? 16 : -16, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
-                      exit={{ y: visualNextWeek ? -16 : 16, opacity: 0 }}
+                      exit={{ y: viewingNextWeek ? -16 : 16, opacity: 0 }}
                       transition={{ duration: 0.22, ease: "easeOut" }}
                       className="absolute inset-0"
                     >
-                      {visualNextWeek ? "Next Week" : "This Week"}
+                      {viewingNextWeek ? "Next Week" : "This Week"}
                     </motion.span>
                   </AnimatePresence>
                 </span>
                 <motion.span
-                  animate={{ rotate: visualNextWeek ? 180 : 0 }}
+                  animate={{ rotate: viewingNextWeek ? 180 : 0 }}
                   transition={{ duration: 0.22, ease: "easeOut" }}
                   className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-gray-700 shadow-sm"
                 >
@@ -159,15 +134,33 @@ export function ProductionPlanningHeader({
 
           {/* Right group: action buttons (desktop only) */}
           <div className="hidden lg:flex items-center gap-2 sm:flex-shrink-0">
-            <HistoricalAverageBadge />
-            <Button
-              size="sm"
-              onClick={onAutoFill}
-              className="h-9 rounded-full bg-blue-500/25 hover:bg-blue-500/40 text-blue-800 dark:text-white font-semibold ring-1 ring-inset ring-blue-500/40 dark:ring-blue-400/30 backdrop-blur-sm shadow-sm shadow-blue-500/15 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-500/25 active:translate-y-0 dark:bg-blue-500/20 dark:hover:bg-blue-500/30"
-            >
-              <Wand2 className="h-4 w-4 mr-1.5" />
-              Auto-plan
-            </Button>
+            <div className="inline-flex items-center rounded-full bg-blue-500/25 dark:bg-blue-500/20 ring-1 ring-inset ring-blue-500/40 dark:ring-blue-400/30 shadow-sm shadow-blue-500/15 backdrop-blur-sm">
+              <button
+                type="button"
+                onClick={onAutoFill}
+                className="inline-flex items-center h-9 pl-3 pr-2.5 rounded-l-full text-sm font-semibold text-blue-800 dark:text-white hover:bg-blue-500/15 dark:hover:bg-blue-500/15 transition-colors"
+              >
+                <Wand2 className="h-4 w-4 mr-1.5" />
+                Auto-plan
+              </button>
+              <span
+                aria-hidden
+                className="h-5 w-px bg-blue-500/30 dark:bg-blue-400/30"
+              />
+              <AutoPlanSettingsPopover
+                weights={autoPlanWeights}
+                onChange={onAutoPlanWeightsChange}
+              >
+                <button
+                  type="button"
+                  aria-label="Auto-plan settings"
+                  title="Auto-plan settings"
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-r-full text-blue-800 dark:text-white hover:bg-blue-500/15 dark:hover:bg-blue-500/15 transition-colors"
+                >
+                  <Settings2 className="h-4 w-4" />
+                </button>
+              </AutoPlanSettingsPopover>
+            </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
