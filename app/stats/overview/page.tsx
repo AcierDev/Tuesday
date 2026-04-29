@@ -151,8 +151,9 @@ export default function OverviewPage() {
     const health = computeHealthScore(items).total;
 
     // Pace = recency-weighted squares glued per active (working) day, same
-    // model as the planner's HistoricalAverageBadge. Multiplying by the
-    // shop's 4-day work week converts that into squares per calendar week.
+    // model as the sidebar's Forecast badge (and the planner header's mobile
+    // badge). Multiplying by the shop's 4-day work week converts that into
+    // squares per calendar week.
     let weeksToClear: number | null = null;
     let glueRatePerWorkingDay = 0;
     if (activities) {
@@ -303,7 +304,7 @@ export default function OverviewPage() {
             </p>
           )}
           {summary?.weeksToClear != null && (
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-[21.875px] text-[rgb(110,128,153)]">
               ≈ {summary.weeksToClear.toFixed(1)} weeks to clear at{" "}
               {Math.round(summary.glueRatePerWorkingDay).toLocaleString()} sq /
               working day · {WORKING_DAYS_PER_WEEK}-day week

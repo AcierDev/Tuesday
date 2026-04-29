@@ -22,7 +22,7 @@ const GLUED_RANGE_OPTIONS = [
   ...RANGE_OPTIONS,
 ] as const;
 type GluedRangeKey = (typeof GLUED_RANGE_OPTIONS)[number]["key"];
-const GLUED_DEFAULT_RANGE: GluedRangeKey = "30d";
+const GLUED_DEFAULT_RANGE: GluedRangeKey = "7d";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ ⚙️ CONFIG                                                            ║
