@@ -14,7 +14,7 @@ const GEOJSON_URL = "/data/us-states.geojson";
 // states off-shore with leader lines back to the actual state.
 const US_BOUNDS: L.LatLngBoundsLiteral = [
   [24.4, -125.0], // SW
-  [49.4, -58.0], // NE — extra room east of Maine
+  [49.4, -61.5], // NE — modest buffer east of Maine for the off-map column
 ];
 const MAP_TILE_URL =
   "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png";
@@ -25,15 +25,16 @@ const OUTLINE_STROKE = "#7dd3fc"; // sky-300
 const OUTLINE_FILL = "#0ea5e9"; // sky-500
 const OUTLINE_GLOW = "rgba(56,189,248,0.14)";
 
-// Liquid-glass pill — translucent body, refracts the map underneath.
-const GLASS_TINT_HI = "rgba(255,255,255,0.20)";
-const GLASS_TINT_LO = "rgba(255,255,255,0.06)";
-const GLASS_EDGE_TOP = "rgba(255,255,255,0.62)";
-const GLASS_EDGE_BOTTOM = "rgba(255,255,255,0.18)";
-const GLASS_INNER_DARK = "rgba(0,0,0,0.30)";
-const GLASS_DROP_SHADOW = "rgba(0,0,0,0.45)";
-const GLASS_SPECULAR = "rgba(255,255,255,0.85)";
-const GLASS_TEXT = "#f8fafc";
+// Tinted-glass pill — sky-blue (matches the orders size badge) with a
+// touch of translucency + light backdrop blur so it reads as glass without
+// going full Apple. Halfway between the solid badge and the liquid-glass
+// circle.
+const PILL_TINT_HI = "rgba(14,165,233,0.78)"; // sky-500
+const PILL_TINT_LO = "rgba(2,132,199,0.78)"; // sky-600
+const PILL_EDGE_TOP = "rgba(255,255,255,0.30)";
+const PILL_INNER_DARK = "rgba(0,0,0,0.20)";
+const PILL_DROP_SHADOW = "rgba(0,0,0,0.32)";
+const PILL_TEXT = "#ffffff";
 
 // Leader line connecting an off-map pin to its real state centroid.
 const LEADER_COLOR = "#7dd3fc";
@@ -69,15 +70,15 @@ const STATE_CENTROIDS: Record<string, [number, number]> = {
 // render off-shore in the Atlantic with a leader line back to the centroid.
 // Stacked roughly north→south at lng -62 so they form a tidy column.
 const STATE_PIN_OFFSETS: Record<string, [number, number]> = {
-  VT: [46.0, -62.0],
-  NH: [44.7, -62.0],
-  MA: [43.4, -62.0],
-  RI: [42.1, -62.0],
-  CT: [40.8, -62.0],
-  NJ: [39.5, -62.0],
-  DE: [38.2, -62.0],
-  MD: [36.9, -62.0],
-  DC: [35.6, -62.0],
+  VT: [46.0, -65.0],
+  NH: [44.7, -65.0],
+  MA: [43.4, -65.0],
+  RI: [42.1, -65.0],
+  CT: [40.8, -65.0],
+  NJ: [39.5, -65.0],
+  DE: [38.2, -65.0],
+  MD: [36.9, -65.0],
+  DC: [35.6, -65.0],
 };
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -123,53 +124,28 @@ function pinIcon(count: number, max: number): L.DivIcon {
   );
   const blur = Math.max(8, Math.round(height * 0.5));
 
-  // Liquid-glass treatment: translucent body w/ backdrop blur, hairline
-  // iridescent rim, top specular crescent, soft bottom inner shadow,
-  // outer drop shadow — applied to a pill (10px radius), not a circle.
+  // Tinted glass: solid-ish sky tint + slight backdrop blur, simple top
+  // highlight, soft bottom inner shadow, hairline white border, outer drop
+  // shadow. No iridescent rim, no specular crescent — those read as gimmicky.
   const html = `
-    <div style="position:relative;width:${width}px;height:${height}px;">
-      <!-- glass body -->
-      <div style="
-        position:absolute;inset:0;border-radius:10px;
-        background:linear-gradient(160deg,${GLASS_TINT_HI} 0%,${GLASS_TINT_LO} 55%,${GLASS_TINT_HI} 100%);
-        backdrop-filter:blur(${blur}px) saturate(180%);
-        -webkit-backdrop-filter:blur(${blur}px) saturate(180%);
-        box-shadow:
-          inset 0 1px 0 ${GLASS_EDGE_TOP},
-          inset 0 -1px 0 ${GLASS_EDGE_BOTTOM},
-          inset 0 -3px 5px -3px ${GLASS_INNER_DARK},
-          0 4px 12px -2px ${GLASS_DROP_SHADOW};
-      "></div>
-      <!-- iridescent hairline rim -->
-      <div style="
-        position:absolute;inset:0;border-radius:10px;pointer-events:none;
-        padding:1px;
-        background:conic-gradient(from 220deg,
-          rgba(255,255,255,0.55) 0%,
-          rgba(255,255,255,0.15) 25%,
-          rgba(125,211,252,0.35) 55%,
-          rgba(255,255,255,0.55) 100%);
-        -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-        -webkit-mask-composite:xor;mask-composite:exclude;
-      "></div>
-      <!-- top specular crescent -->
-      <div style="
-        position:absolute;top:8%;left:14%;right:14%;height:32%;
-        border-radius:10px;
-        background:radial-gradient(120% 100% at 50% 0%,
-          ${GLASS_SPECULAR} 0%,
-          rgba(255,255,255,0.18) 45%,
-          rgba(255,255,255,0) 70%);
-        filter:blur(0.5px);pointer-events:none;
-      "></div>
-      <!-- number -->
-      <div style="
-        position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-        color:${GLASS_TEXT};font-weight:600;font-size:${fontSize}px;
-        font-family:-apple-system,system-ui,sans-serif;letter-spacing:-0.01em;
-        text-shadow:0 1px 1px rgba(0,0,0,0.45),0 0 4px rgba(0,0,0,0.25);
-      ">${text}</div>
-    </div>
+    <div style="
+      position:relative;display:inline-flex;align-items:center;justify-content:center;
+      width:${width}px;height:${height}px;padding:0 ${padX}px;
+      border-radius:10px;
+      background:linear-gradient(180deg,${PILL_TINT_HI} 0%,${PILL_TINT_LO} 100%);
+      backdrop-filter:blur(${blur}px) saturate(140%);
+      -webkit-backdrop-filter:blur(${blur}px) saturate(140%);
+      border:1px solid rgba(255,255,255,0.18);
+      box-shadow:
+        inset 0 1px 0 ${PILL_EDGE_TOP},
+        inset 0 -2px 4px -2px ${PILL_INNER_DARK},
+        0 1px 2px rgba(0,0,0,0.10),
+        0 5px 12px -3px ${PILL_DROP_SHADOW};
+      color:${PILL_TEXT};
+      font-family:-apple-system,system-ui,sans-serif;
+      font-weight:600;font-size:${fontSize}px;letter-spacing:-0.01em;
+      text-shadow:0 1px 2px rgba(0,0,0,0.40);
+    ">${text}</div>
   `;
   return L.divIcon({
     html,
@@ -322,7 +298,6 @@ export default function MapClient({ rows }: { rows: StateRow[] }) {
         className: "stats-map-tooltip",
         sticky: false,
       });
-      marker.bindPopup(info);
       marker.addTo(markers);
     }
   }, [rows]);
