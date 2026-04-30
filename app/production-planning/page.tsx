@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback, startTransition } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import {
   addWeeks,
   endOfWeek,
@@ -1261,6 +1261,67 @@ export default function ProductionPlanningPage() {
     );
   }, []);
 
+  // Center today's column once per scroller mount. Tracks the last node we
+  // centered so re-attachments from React state changes don't keep yanking
+  // the user back to today; resets when motion.div remounts on week toggle.
+  const lastCenteredScrollerRef = useRef<HTMLDivElement | null>(null);
+  const [scrollerNode, setScrollerNode] = useState<HTMLDivElement | null>(null);
+  const scrollerRefCallback = useCallback(
+    (node: HTMLDivElement | null) => {
+      setScrollerNode(node);
+      if (!node) {
+        lastCenteredScrollerRef.current = null;
+        return;
+      }
+      if (lastCenteredScrollerRef.current === node) return;
+      if (!todayColumnDay || viewingNextWeek || viewingPastWeek) return;
+      const todayEl = node.querySelector<HTMLElement>(
+        `[data-today-column="true"]`
+      );
+      if (!todayEl) return;
+      lastCenteredScrollerRef.current = node;
+      // Direct scrollLeft (not scrollIntoView) so we only touch this scroller
+      // and don't fight scroll-snap-mandatory on neighboring scrollers. rAF
+      // lets layout settle so offsetLeft/clientWidth read final values.
+      requestAnimationFrame(() => {
+        const target =
+          todayEl.offsetLeft -
+          (node.clientWidth - todayEl.clientWidth) / 2;
+        node.scrollLeft = Math.max(0, target);
+      });
+    },
+    [todayColumnDay, viewingNextWeek, viewingPastWeek]
+  );
+
+  // Tracks which day column is currently snapped into the mobile viewport.
+  // Only the active day allows vertical scroll on mobile — so swiping between
+  // days can't accidentally drag the next day's list down. Threshold of 0.9
+  // means a column has to be ~fully snapped before it becomes scrollable;
+  // mid-swipe both columns stay locked. Desktop ignores this (always scrolls).
+  const ACTIVE_DAY_VISIBILITY_THRESHOLD = 0.9;
+  const [activeDayName, setActiveDayName] = useState<DayName | null>(null);
+  useEffect(() => {
+    if (!scrollerNode) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.intersectionRatio >= ACTIVE_DAY_VISIBILITY_THRESHOLD) {
+            const day = entry.target.getAttribute(
+              "data-day-column"
+            ) as DayName | null;
+            if (day) setActiveDayName(day);
+            break;
+          }
+        }
+      },
+      { root: scrollerNode, threshold: [0, 0.5, 0.9, 1] }
+    );
+    const dayEls =
+      scrollerNode.querySelectorAll<HTMLElement>("[data-day-column]");
+    dayEls.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [scrollerNode, currentWeekKey]);
+
   return (
     <DndContext
       sensors={sensors}
@@ -1285,15 +1346,9 @@ export default function ProductionPlanningPage() {
           currentWeekKey={currentWeekKey}
           thisWeekKey={thisWeekKey}
           onToggleWeek={() =>
-            startTransition(() => {
-              setCurrentWeekKey(viewingNextWeek ? thisWeekKey : nextWeekKey);
-            })
+            setCurrentWeekKey(viewingNextWeek ? thisWeekKey : nextWeekKey)
           }
-          onSelectWeek={(weekKey) =>
-            startTransition(() => {
-              setCurrentWeekKey(weekKey);
-            })
-          }
+          onSelectWeek={(weekKey) => setCurrentWeekKey(weekKey)}
           onAutoFill={() => handleAutoFill()}
           autoPlanWeights={autoPlanWeights}
           onAutoPlanWeightsChange={updateAutoPlanWeights}
@@ -1344,22 +1399,8 @@ export default function ProductionPlanningPage() {
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-                className="flex items-start gap-4 h-full overflow-x-auto overflow-y-auto snap-x snap-mandatory md:snap-none md:min-w-[1000px] pb-20 md:pb-0"
-                ref={(node) => {
-                  if (!node) return;
-                  // Center today's column on mount so the user lands on the
-                  // right day instead of Monday. rAF lets layout settle first.
-                  const todayEl = node.querySelector<HTMLElement>(
-                    `[data-today-column="true"]`
-                  );
-                  if (!todayEl) return;
-                  requestAnimationFrame(() => {
-                    todayEl.scrollIntoView({
-                      block: "nearest",
-                      inline: "center",
-                    });
-                  });
-                }}
+                className="flex gap-4 h-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory md:snap-none md:min-w-[1000px]"
+                ref={scrollerRefCallback}
               >
                 {DAYS.map((day) => {
                   const date = addDays(
@@ -1374,7 +1415,8 @@ export default function ProductionPlanningPage() {
                     <div
                       key={day}
                       data-today-column={isToday ? "true" : undefined}
-                      className="shrink-0 w-[66vw] snap-center md:w-auto md:flex-1 md:snap-align-none min-w-[150px] md:min-w-[200px]"
+                      data-day-column={day}
+                      className="shrink-0 w-[88vw] h-full snap-center md:w-auto md:flex-1 md:snap-align-none min-w-[150px] md:min-w-[200px]"
                     >
                       <DroppableDayColumn
                         day={day}
@@ -1395,6 +1437,7 @@ export default function ProductionPlanningPage() {
                         onContextMenu={handleCardContextMenu}
                         isToday={isToday}
                         isPastDay={isPastDay}
+                        isActiveColumn={activeDayName === day}
                       />
                     </div>
                   );

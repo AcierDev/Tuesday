@@ -1,8 +1,37 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 
 import { cn } from "@/utils/functions";
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🫧 CELL OVERLAY                                                      ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+// Renders the green overlay for a glued cell. Captures the animation class +
+// delay at MOUNT time so subsequent re-renders of the parent (which happen
+// often in the planner — every drag, every order update) can't cancel the
+// in-flight CSS animation by stripping the class.
+const CellOverlay = memo(function CellOverlay({
+  initialAnimClass,
+  initialDelayMs,
+}: {
+  initialAnimClass: string;
+  initialDelayMs: number;
+}) {
+  const frozen = useRef({
+    cls: initialAnimClass,
+    delay: initialDelayMs,
+  });
+  const { cls, delay } = frozen.current;
+  return (
+    <span
+      aria-hidden
+      className={cn("absolute inset-0 bg-emerald-500", cls)}
+      style={delay ? { animationDelay: `${delay}ms` } : undefined}
+    />
+  );
+});
 
 interface CapacityIndicatorProps {
   current: number;
@@ -84,7 +113,7 @@ export function CapacityIndicator({ current, max, glued = 0, gluedOnly = false, 
                   <span className="text-gray-400"> / </span>
                 </>
               )}
-              <span className="font-semibold text-blue-400 dark:text-blue-300">
+              <span className="font-semibold text-blue-600 dark:text-blue-500">
                 {current}
               </span>
               {!isCurrentDay && (
@@ -102,11 +131,11 @@ export function CapacityIndicator({ current, max, glued = 0, gluedOnly = false, 
           const isGreen = i < gluedCells;
           let baseClass: string;
           if (gluedOnly) {
-            baseClass = "bg-gray-100 dark:bg-gray-800";
+            baseClass = "bg-gray-200 dark:bg-gray-700";
           } else if (i < plannedCells) {
             baseClass = "bg-blue-400 dark:bg-blue-500";
           } else {
-            baseClass = "bg-gray-100 dark:bg-gray-800";
+            baseClass = "bg-gray-200 dark:bg-gray-700";
           }
           const showHintSliver = showZeroHint && i === 0;
           const inBatch = animateBatch && i >= prevGlued && i < gluedCells;
@@ -138,14 +167,10 @@ export function CapacityIndicator({ current, max, glued = 0, gluedOnly = false, 
                 />
               )}
               {isGreen && (
-                <span
-                  aria-hidden
-                  className={cn("absolute inset-0 bg-emerald-500", overlayClass)}
-                  style={
-                    overlayDelay
-                      ? { animationDelay: `${overlayDelay}ms` }
-                      : undefined
-                  }
+                <CellOverlay
+                  key={i}
+                  initialAnimClass={overlayClass}
+                  initialDelayMs={overlayDelay}
                 />
               )}
             </div>

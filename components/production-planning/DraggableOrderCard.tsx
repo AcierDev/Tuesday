@@ -7,6 +7,7 @@ import { OrderCard } from "./OrderCard";
 import { OrderMeta } from "./types";
 import { POST_WIP_STATUSES } from "./constants";
 import { DayName } from "@/typings/types";
+import { cn } from "@/utils/functions";
 
 interface DraggableOrderCardProps {
   meta: OrderMeta;
@@ -20,6 +21,9 @@ interface DraggableOrderCardProps {
   justPlaced?: boolean;
   placeIndex?: number;
   onContextMenu?: (e: React.MouseEvent) => void;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: () => void;
 }
 
 export function DraggableOrderCard({
@@ -34,6 +38,9 @@ export function DraggableOrderCard({
   justPlaced,
   placeIndex,
   onContextMenu,
+  selectionMode = false,
+  isSelected = false,
+  onToggleSelection,
 }: DraggableOrderCardProps) {
   // Pinned cards are locked in place — auto-plan won't move them and the user
   // can't drag them either. They have to be unpinned first via the pin toggle.
@@ -42,7 +49,7 @@ export function DraggableOrderCard({
   // or earlier unlocks the card.
   const lockedByStatus =
     !!isScheduled && POST_WIP_STATUSES.has(meta.item.status);
-  const dragDisabled = disabled || !!isPinned || lockedByStatus;
+  const dragDisabled = disabled || !!isPinned || lockedByStatus || selectionMode;
   const {
     attributes,
     listeners,
@@ -73,22 +80,27 @@ export function DraggableOrderCard({
     opacity: isDragging ? (sourceLeftOriginDay ? 0 : 0.4) : 1,
   };
 
+  const dragProps = selectionMode ? {} : { ...attributes, ...listeners };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      onContextMenu={onContextMenu}
-      className={`touch-pan-x touch-pan-y select-none mb-2.5 ${
-        isPinned
+      {...dragProps}
+      onContextMenu={selectionMode ? undefined : onContextMenu}
+      onClick={selectionMode ? () => onToggleSelection?.() : undefined}
+      className={cn(
+        "relative touch-pan-x touch-pan-y select-none mb-2.5",
+        selectionMode
+          ? "cursor-pointer"
+          : isPinned
           ? "cursor-pin"
           : dragDisabled
           ? "cursor-default"
           : isDragging
           ? "cursor-grabbing"
           : "cursor-grab active:cursor-grabbing"
-      }`}
+      )}
     >
       <OrderCard
         meta={meta}
@@ -101,6 +113,9 @@ export function DraggableOrderCard({
         justPlaced={justPlaced}
         placeIndex={placeIndex}
       />
+      {selectionMode && !isSelected && (
+        <div className="pointer-events-none absolute inset-0 rounded-md bg-gray-900/50 dark:bg-gray-950/70 transition-colors" />
+      )}
     </div>
   );
 }

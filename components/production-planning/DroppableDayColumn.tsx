@@ -1,9 +1,9 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { useDndContext, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Palette } from "lucide-react";
+import { Palette, X } from "lucide-react";
 import { DayName, ScheduledOrder } from "@/typings/types";
 import { OrderMeta } from "./types";
 import { DraggableOrderCard } from "./DraggableOrderCard";
@@ -36,6 +36,10 @@ interface DroppableDayColumnProps {
   onContextMenu?: (e: React.MouseEvent, itemId: string) => void;
   isToday?: boolean;
   isPastDay?: boolean;
+  // On mobile, only the snapped-into-view column allows vertical scrolling so
+  // a horizontal swipe between days can't accidentally scroll the next day's
+  // list. Always true on desktop (passed as true from the parent for md+).
+  isActiveColumn?: boolean;
 }
 
 export function DroppableDayColumn({
@@ -55,6 +59,7 @@ export function DroppableDayColumn({
   onContextMenu,
   isToday = false,
   isPastDay = false,
+  isActiveColumn = false,
 }: DroppableDayColumnProps) {
   const { setNodeRef } = useDroppable({
     id: day,
@@ -111,6 +116,37 @@ export function DroppableDayColumn({
     return unpinned.length;
   })();
 
+  // Paint flow is two-step: first click on the Paint button enters selection
+  // mode and pre-checks every order; user can deselect any they want excluded;
+  // second click prints the label using only the still-checked orders.
+  const [paintSelectionMode, setPaintSelectionMode] = useState(false);
+  const [selectedForPaint, setSelectedForPaint] = useState<Set<string>>(
+    new Set()
+  );
+
+  const paintOrders = paintSelectionMode
+    ? orders.filter((o) => selectedForPaint.has(o.itemId))
+    : orders;
+
+  const togglePaintSelection = (itemId: string) => {
+    setSelectedForPaint((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  };
+
+  const enterPaintSelection = () => {
+    setSelectedForPaint(new Set(orders.map((o) => o.itemId)));
+    setPaintSelectionMode(true);
+  };
+
+  const exitPaintSelection = () => {
+    setPaintSelectionMode(false);
+    setSelectedForPaint(new Set());
+  };
+
   // Aggregate items in this column by design and compute squares-per-color.
   // For each design: sum total squares across all items of that design, then
   // divide by the number of colors in the design's palette — that's how many
@@ -118,7 +154,7 @@ export function DroppableDayColumn({
   // design fold into a single line with their squares summed first.
   const designSummary = (() => {
     const byDesign = new Map<string, { items: number; squares: number }>();
-    orders.forEach((order) => {
+    paintOrders.forEach((order) => {
       const meta = ordersById.get(order.itemId);
       const design = meta?.item.design?.trim();
       if (!design || !meta) return;
@@ -169,7 +205,7 @@ export function DroppableDayColumn({
   const coastalColorTotals = (() => {
     const totals = new Map<number, number>();
     const matchedDesigns = new Set<ItemDesigns>();
-    orders.forEach((order) => {
+    paintOrders.forEach((order) => {
       const meta = ordersById.get(order.itemId);
       const design = meta?.item.design as ItemDesigns | undefined;
       if (!meta || !design || !COASTAL_PALETTE_DESIGNS.includes(design)) return;
@@ -439,7 +475,7 @@ export function DroppableDayColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col rounded-xl border transition-colors",
+        "flex flex-col h-full min-h-0 rounded-xl border transition-colors",
         isToday
           ? "bg-blue-500/10 dark:bg-blue-500/15 border-blue-400/50 dark:border-blue-500/40 shadow-sm shadow-blue-500/10"
           : "bg-gray-50/50 dark:bg-gray-900/50 border-transparent hover:border-gray-200 dark:hover:border-gray-800",
@@ -496,12 +532,17 @@ export function DroppableDayColumn({
         />
       </div>
 
-      {/* List — sized to content. Items pile from the top and the auto-plan
-          checkbox is pinned to the column bottom via mt-auto, so the section
-          ends right at the last order. */}
+      {/* List — fills the column body and scrolls independently per day so
+          horizontal day-swiping doesn't drag a neighboring day's list. On
+          mobile the inactive (mid-swipe) column locks vertical scroll so
+          touching the next day during the swipe can't scroll it; desktop
+          always allows scroll. */}
       <div
         className={cn(
-          "p-2 overflow-y-auto min-h-[150px] transition-opacity duration-200",
+          "p-2 flex-1 min-h-0 transition-opacity duration-200",
+          isActiveColumn
+            ? "overflow-y-auto"
+            : "overflow-y-hidden md:overflow-y-auto",
           !autoPlanEnabled && "opacity-50"
         )}
       >
@@ -555,6 +596,11 @@ export function DroppableDayColumn({
                               ? (e) => onContextMenu(e, order.itemId)
                               : undefined
                           }
+                          selectionMode={paintSelectionMode}
+                          isSelected={selectedForPaint.has(order.itemId)}
+                          onToggleSelection={() =>
+                            togglePaintSelection(order.itemId)
+                          }
                         />
                       );
                     })}
@@ -591,6 +637,11 @@ export function DroppableDayColumn({
                           ? (e) => onContextMenu(e, order.itemId)
                           : undefined
                       }
+                      selectionMode={paintSelectionMode}
+                      isSelected={selectedForPaint.has(order.itemId)}
+                      onToggleSelection={() =>
+                        togglePaintSelection(order.itemId)
+                      }
                     />
                   </Fragment>
                 );
@@ -610,18 +661,47 @@ export function DroppableDayColumn({
         </SortableContext>
       </div>
 
-      {/* Paint button: prints the 4×6 paint label directly. */}
-      <div className="flex items-center justify-center px-3 py-2 border-t border-gray-100 dark:border-gray-800 rounded-b-xl">
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={designSummary.length === 0}
-          onClick={printPaintLabel}
-          className="h-7 px-3 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
-        >
-          <Palette className="mr-1.5 h-3.5 w-3.5" />
-          Paint
-        </Button>
+      {/* Paint button: first click puts the column into selection mode (every
+          order is pre-checked); second click prints the 4×6 paint label using
+          only the still-checked orders. Cancel exits without printing. */}
+      <div className="flex items-center justify-center gap-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800 rounded-b-xl">
+        {paintSelectionMode ? (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={exitPaintSelection}
+              className="h-7 px-2 text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <X className="mr-1 h-3.5 w-3.5" />
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              disabled={designSummary.length === 0}
+              onClick={() => {
+                printPaintLabel();
+                exitPaintSelection();
+              }}
+              className="h-7 px-3 text-xs font-semibold"
+            >
+              <Palette className="mr-1.5 h-3.5 w-3.5" />
+              Print ({selectedForPaint.size})
+            </Button>
+          </>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={orders.length === 0}
+            onClick={enterPaintSelection}
+            className="h-7 px-3 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+          >
+            <Palette className="mr-1.5 h-3.5 w-3.5" />
+            Paint
+          </Button>
+        )}
       </div>
     </div>
   );
