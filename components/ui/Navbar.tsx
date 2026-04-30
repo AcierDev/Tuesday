@@ -520,7 +520,9 @@ export function Navbar({
               <motion.div
                 onMouseEnter={openPrintHover}
                 onMouseLeave={closePrintHover}
-                className={`absolute left-full bottom-0 pl-2 z-50 ${
+                className={`fixed bottom-0 ${
+                  sidebarOpen ? "left-64" : "left-16"
+                } pl-2 pb-3 z-50 ${
                   printHovered ? "" : "pointer-events-none"
                 }`}
                 initial={{ opacity: 0, x: -8 }}
@@ -561,7 +563,7 @@ export function Navbar({
                         }}
                         transition={{ duration: 0.12, ease: "easeOut" }}
                         onClick={() => handleQuickPrint(tpl)}
-                        className="sidebar-action-btn justify-start text-left"
+                        className="sidebar-action-btn !bg-gray-900/65 hover:!bg-gray-900/95 justify-start text-left"
                       >
                         <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
                         {tpl.name}
