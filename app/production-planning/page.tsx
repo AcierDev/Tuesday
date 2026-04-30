@@ -24,9 +24,9 @@ import {
   useSensors,
   DragStartEvent,
   DragEndEvent,
-  defaultDropAnimationSideEffects,
   DropAnimation,
 } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
 import { ProductionPlanningHeader } from "@/components/production-planning/ProductionPlanningHeader";
@@ -35,7 +35,10 @@ import { DroppableDayColumn } from "@/components/production-planning/DroppableDa
 import { OrderCard } from "@/components/production-planning/OrderCard";
 import { OrderContextMenu } from "@/components/production-planning/OrderContextMenu";
 import { OrderMeta } from "@/components/production-planning/types";
-import { PRE_WIP_STATUSES } from "@/components/production-planning/constants";
+import {
+  POST_WIP_STATUSES,
+  PRE_WIP_STATUSES,
+} from "@/components/production-planning/constants";
 import {
   AUTO_PLAN_WEIGHT_DEFAULTS,
   URGENT_PULL_LEVEL_TO_PER_DAY,
@@ -167,14 +170,16 @@ const WEEK_SLIDE_VARIANTS = {
   exit: (dir: number) => ({ x: dir * -WEEK_SLIDE_OFFSET, opacity: 0 }),
 };
 
-const dropAnimation: DropAnimation = {
-  sideEffects: defaultDropAnimationSideEffects({
-    styles: {
-      active: {
-        opacity: "0.5",
-      },
-    },
-  }),
+const DROP_ANIMATION: DropAnimation = {
+  duration: 180,
+  easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+  keyframes: ({ transform }) => {
+    const start = CSS.Transform.toString(transform.initial);
+    return [
+      { opacity: 1, transform: start },
+      { opacity: 0, transform: start },
+    ];
+  },
 };
 
 export default function ProductionPlanningPage() {
@@ -539,15 +544,19 @@ export default function ProductionPlanningPage() {
   const dayGroups = useMemo(() => {
     const groups: Record<
       DayName,
-      { orders: ScheduledDisplayOrder[]; totalSquares: number }
+      {
+        orders: ScheduledDisplayOrder[];
+        totalSquares: number;
+        gluedSquares: number;
+      }
     > = {
-      Sunday: { orders: [], totalSquares: 0 },
-      Monday: { orders: [], totalSquares: 0 },
-      Tuesday: { orders: [], totalSquares: 0 },
-      Wednesday: { orders: [], totalSquares: 0 },
-      Thursday: { orders: [], totalSquares: 0 },
-      Friday: { orders: [], totalSquares: 0 },
-      Saturday: { orders: [], totalSquares: 0 },
+      Sunday: { orders: [], totalSquares: 0, gluedSquares: 0 },
+      Monday: { orders: [], totalSquares: 0, gluedSquares: 0 },
+      Tuesday: { orders: [], totalSquares: 0, gluedSquares: 0 },
+      Wednesday: { orders: [], totalSquares: 0, gluedSquares: 0 },
+      Thursday: { orders: [], totalSquares: 0, gluedSquares: 0 },
+      Friday: { orders: [], totalSquares: 0, gluedSquares: 0 },
+      Saturday: { orders: [], totalSquares: 0, gluedSquares: 0 },
     };
 
     if (currentSchedule) {
@@ -568,6 +577,9 @@ export default function ProductionPlanningPage() {
             pinned: !!item.pinned,
           });
           groups[targetDay].totalSquares += meta.squares;
+          if (POST_WIP_STATUSES.has(meta.item.status)) {
+            groups[targetDay].gluedSquares += meta.squares;
+          }
         });
       });
     }
@@ -1319,6 +1331,7 @@ export default function ProductionPlanningPage() {
                   );
                   const isToday =
                     !viewingNextWeek && day === todayColumnDay;
+                  const isPastDay = date.getTime() < today.getTime();
 
                   return (
                     <div
@@ -1332,6 +1345,7 @@ export default function ProductionPlanningPage() {
                         orders={dayGroups[day].orders}
                         ordersById={allOrdersById}
                         totalSquares={dayGroups[day].totalSquares}
+                        gluedSquares={dayGroups[day].gluedSquares}
                         capacity={DAILY_CAPACITY_SQUARES}
                         greenThreshold={DAILY_GREEN_THRESHOLD_SQUARES}
                         onTogglePin={(id, actualDay) =>
@@ -1343,6 +1357,7 @@ export default function ProductionPlanningPage() {
                         recentlyPlacedIds={recentlyPlacedIds}
                         onContextMenu={handleCardContextMenu}
                         isToday={isToday}
+                        isPastDay={isPastDay}
                       />
                     </div>
                   );
@@ -1353,7 +1368,7 @@ export default function ProductionPlanningPage() {
         </div>
       </div>
 
-      <DragOverlay dropAnimation={dropAnimation}>
+      <DragOverlay dropAnimation={DROP_ANIMATION}>
         {activeId && activeMeta ? (
           <div className="cursor-grabbing">
             <OrderCard

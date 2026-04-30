@@ -23,6 +23,7 @@ interface DroppableDayColumnProps {
   orders: DayColumnOrder[];
   ordersById: Map<string, OrderMeta>;
   totalSquares: number;
+  gluedSquares: number;
   capacity: number;
   greenThreshold?: number;
   onTogglePin: (itemId: string, actualDay: DayName) => void;
@@ -34,6 +35,7 @@ interface DroppableDayColumnProps {
   recentlyPlacedIds?: Set<string>;
   onContextMenu?: (e: React.MouseEvent, itemId: string) => void;
   isToday?: boolean;
+  isPastDay?: boolean;
 }
 
 export function DroppableDayColumn({
@@ -42,6 +44,7 @@ export function DroppableDayColumn({
   orders,
   ordersById,
   totalSquares,
+  gluedSquares,
   capacity,
   greenThreshold,
   onTogglePin,
@@ -51,6 +54,7 @@ export function DroppableDayColumn({
   recentlyPlacedIds,
   onContextMenu,
   isToday = false,
+  isPastDay = false,
 }: DroppableDayColumnProps) {
   const { setNodeRef } = useDroppable({
     id: day,
@@ -486,6 +490,8 @@ export function DroppableDayColumn({
           current={totalSquares}
           max={capacity}
           greenThreshold={greenThreshold}
+          glued={gluedSquares}
+          gluedOnly={isPastDay}
         />
       </div>
 
