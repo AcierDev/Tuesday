@@ -5,16 +5,24 @@ import { fileURLToPath } from "url";
 import fs from "fs/promises";
 import os from "os";
 
-// Load environment variables
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.join(__dirname, "../.env") });
+dotenv.config({ path: path.join(__dirname, "../.env.local") });
 
-const uri = process.env.MONGODB_URI!;
+const uri = process.env.MONGODB_URI;
+const DB_NAME = "react-web-app";
+
+if (!uri) {
+  console.error("MONGODB_URI not found in .env.local");
+  process.exit(1);
+}
+
+const sanitizeFilename = (name: string) =>
+  name.replace(/[^a-zA-Z0-9._-]/g, "_");
 
 async function downloadDatabases() {
-  const client = new MongoClient(uri, {
-    serverSelectionTimeoutMS: 10000, // 10 second timeout
+  const client = new MongoClient(uri!, {
+    serverSelectionTimeoutMS: 10000,
     connectTimeoutMS: 10000,
   });
 
@@ -22,19 +30,15 @@ async function downloadDatabases() {
     await client.connect();
     console.log("Connected to MongoDB");
 
-    const db = client.db("react-web-app");
+    const db = client.db(DB_NAME);
 
-    // Collections to download
-    const collections = [
-      { name: "items-development", filename: "items-development.json" },
-      { name: "items-production", filename: "items-production.json" },
-      { name: "development", filename: "development-boards.json" },
-      { name: "production", filename: "production-boards.json" },
-      { name: "trackers-development", filename: "trackers-development.json" },
-      { name: "trackers-production", filename: "trackers-production.json" },
-    ];
+    const allCollections = await db.listCollections({}, { nameOnly: true }).toArray();
+    const collections = allCollections
+      .map((c) => ({ name: c.name, filename: `${sanitizeFilename(c.name)}.json` }))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-    // Get Downloads directory path with Pacific-time timestamp
+    console.log(`Discovered ${collections.length} collections in '${DB_NAME}'`);
+
     const downloadsDir = path.join(os.homedir(), "Downloads");
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/Los_Angeles",
@@ -67,7 +71,8 @@ async function downloadDatabases() {
       console.log(`Output directory already exists: ${outputDir}`);
     }
 
-    // Download each collection
+    const results: Array<{ name: string; filename: string; documentCount: number; bytes: number; ok: boolean; error?: string }> = [];
+
     for (const { name, filename } of collections) {
       try {
         console.log(`\nDownloading collection: ${name}`);
@@ -77,48 +82,78 @@ async function downloadDatabases() {
 
         console.log(`Found ${documents.length} documents in ${name}`);
 
-        // Add metadata to the export
         const exportData = {
           metadata: {
             collection: name,
             exportDate: new Date().toISOString(),
             documentCount: documents.length,
-            database: "react-web-app",
+            database: DB_NAME,
           },
           data: documents,
         };
 
         const outputPath = path.join(outputDir, filename);
         await fs.writeFile(outputPath, JSON.stringify(exportData, null, 2));
+        const bytes = (await fs.stat(outputPath)).size;
 
-        console.log(`✓ Successfully saved ${name} to ${outputPath}`);
-        console.log(`  File size: ${(await fs.stat(outputPath)).size} bytes`);
-      } catch (error) {
+        console.log(`✓ Saved ${name} → ${outputPath} (${bytes} bytes)`);
+        results.push({ name, filename, documentCount: documents.length, bytes, ok: true });
+      } catch (error: any) {
         console.error(`✗ Error downloading collection ${name}:`, error);
+        results.push({ name, filename, documentCount: 0, bytes: 0, ok: false, error: String(error?.message ?? error) });
       }
     }
 
-    // Create a summary file
+    const manifestPath = path.join(outputDir, "manifest.json");
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify(
+        {
+          exportDate: new Date().toISOString(),
+          database: DB_NAME,
+          collectionCount: collections.length,
+          collections: results,
+        },
+        null,
+        2
+      )
+    );
+
     const summaryPath = path.join(outputDir, "backup-summary.txt");
+    const failures = results.filter((r) => !r.ok);
+    const totalDocs = results.reduce((sum, r) => sum + r.documentCount, 0);
+    const totalBytes = results.reduce((sum, r) => sum + r.bytes, 0);
     const summary = `
 Everwood Database Backup Summary
 ================================
 Export Date: ${new Date().toISOString()}
-Database: react-web-app
-Collections Exported: ${collections.length}
+Database: ${DB_NAME}
+Collections Discovered: ${collections.length}
+Collections Succeeded: ${results.length - failures.length}
+Collections Failed: ${failures.length}
+Total Documents: ${totalDocs}
+Total Bytes: ${totalBytes}
 
 Collections:
-${collections.map((c) => `- ${c.name} → ${c.filename}`).join("\n")}
+${results.map((r) => `- ${r.ok ? "✓" : "✗"} ${r.name} (${r.documentCount} docs, ${r.bytes} bytes)${r.error ? ` — ${r.error}` : ""}`).join("\n")}
 
 Location: ${outputDir}
 
-Note: This backup includes both development and production item databases
-along with board configurations. Each JSON file contains metadata about
-the export including timestamp and document count.
+This backup discovers every collection in the database dynamically, so any
+new collection added later is automatically included. Each JSON file is a
+self-describing export with metadata + data, restorable via scripts/restore-data.ts.
     `.trim();
 
     await fs.writeFile(summaryPath, summary);
     console.log(`\n✓ Created backup summary: ${summaryPath}`);
+    console.log(`✓ Created manifest: ${manifestPath}`);
+
+    if (failures.length > 0) {
+      console.error(`\n⚠ Backup completed with ${failures.length} failure(s):`);
+      for (const f of failures) console.error(`  - ${f.name}: ${f.error}`);
+      console.log(`📁 Files saved to: ${outputDir}`);
+      process.exit(1);
+    }
 
     console.log(`\n🎉 Database backup completed successfully!`);
     console.log(`📁 All files saved to: ${outputDir}`);
