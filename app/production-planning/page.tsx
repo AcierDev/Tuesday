@@ -17,6 +17,7 @@ import {
   DndContext,
   DragOverlay,
   closestCorners,
+  defaultDropAnimationSideEffects,
   KeyboardSensor,
   MouseSensor,
   TouchSensor,
@@ -26,7 +27,6 @@ import {
   DragEndEvent,
   DropAnimation,
 } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
 import { ProductionPlanningHeader } from "@/components/production-planning/ProductionPlanningHeader";
@@ -170,15 +170,28 @@ const WEEK_SLIDE_VARIANTS = {
   exit: (dir: number) => ({ x: dir * -WEEK_SLIDE_OFFSET, opacity: 0 }),
 };
 
+// Drop animation: defaults to dnd-kit's keyframes which morph the overlay
+// from its current (cursor) transform to the source-rect transform. Because
+// updateSchedule applies optimistically before setActiveId(null), the source
+// rect is already the destination slot by the time the animation runs — so
+// the card visually flies from cursor → drop slot instead of fading in place.
+// sideEffects fades the underlying card during the flight so we don't see a
+// duplicate at the destination.
 const DROP_ANIMATION: DropAnimation = {
-  duration: 180,
+  duration: 260,
   easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-  keyframes: ({ transform }) => {
-    const start = CSS.Transform.toString(transform.initial);
-    return [
-      { opacity: 1, transform: start },
-      { opacity: 0, transform: start },
-    ];
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: { active: { opacity: "0" } },
+  }),
+};
+
+// Pickup lift: tiny scale-up + shadow so grabbing a card feels like detaching
+// it from its slot rather than a duplicate flashing in over the source.
+const DRAG_OVERLAY_VARIANTS = {
+  initial: { scale: 0.96, boxShadow: "0 0 0 rgba(0,0,0,0)" },
+  animate: {
+    scale: 1.04,
+    boxShadow: "0 16px 30px -10px rgba(0,0,0,0.32)",
   },
 };
 
@@ -1233,6 +1246,7 @@ export default function ProductionPlanningPage() {
     "yyyy-MM-dd"
   );
   const viewingNextWeek = currentWeekKey === nextWeekKey;
+  const viewingPastWeek = currentWeekKey < thisWeekKey;
 
   // Today's column gets centered on mount in the mobile snap-scroller. Sat/Sun
   // fold into Monday's column to match the display rule. Computed in
@@ -1258,6 +1272,7 @@ export default function ProductionPlanningPage() {
         {/* Header — full width across the top, above sidebar + content. */}
         <ProductionPlanningHeader
           viewingNextWeek={viewingNextWeek}
+          viewingPastWeek={viewingPastWeek}
           hasScheduledOrders={!!currentSchedule}
           scheduledItemCount={
             currentSchedule
@@ -1267,9 +1282,16 @@ export default function ProductionPlanningPage() {
                 )
               : 0
           }
+          currentWeekKey={currentWeekKey}
+          thisWeekKey={thisWeekKey}
           onToggleWeek={() =>
             startTransition(() => {
               setCurrentWeekKey(viewingNextWeek ? thisWeekKey : nextWeekKey);
+            })
+          }
+          onSelectWeek={(weekKey) =>
+            startTransition(() => {
+              setCurrentWeekKey(weekKey);
             })
           }
           onAutoFill={() => handleAutoFill()}
@@ -1385,7 +1407,13 @@ export default function ProductionPlanningPage() {
 
       <DragOverlay dropAnimation={DROP_ANIMATION}>
         {activeId && activeMeta ? (
-          <div className="cursor-grabbing">
+          <motion.div
+            variants={DRAG_OVERLAY_VARIANTS}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className="cursor-grabbing rounded-md"
+          >
             <OrderCard
               meta={activeMeta}
               isScheduled={true}
@@ -1393,7 +1421,7 @@ export default function ProductionPlanningPage() {
               isPinned={activeIsPinned}
               onTogglePin={() => {}}
             />
-          </div>
+          </motion.div>
         ) : null}
       </DragOverlay>
 

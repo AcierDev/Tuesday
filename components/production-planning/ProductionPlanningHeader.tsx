@@ -20,12 +20,17 @@ import {
   type AutoPlanWeights,
 } from "./AutoPlanSettingsDialog";
 import { HistoricalAverageBadge } from "./HistoricalAverageBadge";
+import { WeekHistoryPopover } from "./WeekHistoryPopover";
 
 interface ProductionPlanningHeaderProps {
   viewingNextWeek: boolean;
+  viewingPastWeek: boolean;
   hasScheduledOrders: boolean;
   scheduledItemCount?: number;
+  currentWeekKey: string;
+  thisWeekKey: string;
   onToggleWeek: () => void;
+  onSelectWeek: (weekKey: string) => void;
   onClearWeek: () => void;
   onAutoFill: () => void;
   autoPlanWeights: AutoPlanWeights;
@@ -34,9 +39,13 @@ interface ProductionPlanningHeaderProps {
 
 export function ProductionPlanningHeader({
   viewingNextWeek,
+  viewingPastWeek,
   hasScheduledOrders,
   scheduledItemCount,
+  currentWeekKey,
+  thisWeekKey,
   onToggleWeek,
+  onSelectWeek,
   onClearWeek,
   onAutoFill,
   autoPlanWeights,
@@ -66,7 +75,7 @@ export function ProductionPlanningHeader({
                       ? "Switch to This Week"
                       : "Switch to Next Week"
                   }
-                  className="group flex items-center gap-1.5 h-8 pl-3 pr-1 rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white/70 dark:hover:bg-gray-700/50 transition-colors"
+                  className="group flex items-center h-8 pl-3 pr-2 rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white/70 dark:hover:bg-gray-700/50 transition-colors"
                 >
                   <span className="relative inline-block w-[72px] h-5 overflow-hidden text-left">
                     <AnimatePresence initial={false} mode="popLayout">
@@ -82,14 +91,26 @@ export function ProductionPlanningHeader({
                       </motion.span>
                     </AnimatePresence>
                   </span>
-                  <motion.span
-                    animate={{ rotate: viewingNextWeek ? 180 : 0 }}
-                    transition={{ duration: 0.22, ease: "easeOut" }}
-                    className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-gray-700 shadow-sm"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </motion.span>
                 </button>
+                <WeekHistoryPopover
+                  currentWeekKey={currentWeekKey}
+                  thisWeekKey={thisWeekKey}
+                  onSelectWeek={onSelectWeek}
+                >
+                  <button
+                    type="button"
+                    aria-label="Open week history"
+                    className="ml-0.5 inline-flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-gray-700 shadow-sm hover:bg-blue-50 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    <motion.span
+                      animate={{ rotate: viewingNextWeek ? 180 : 0 }}
+                      transition={{ duration: 0.22, ease: "easeOut" }}
+                      className="inline-flex"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </motion.span>
+                  </button>
+                </WeekHistoryPopover>
               </div>
             </div>
           </div>
@@ -105,7 +126,7 @@ export function ProductionPlanningHeader({
                     ? "Switch to This Week"
                     : "Switch to Next Week"
                 }
-                className="group flex items-center gap-1.5 h-8 pl-3 pr-1 rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white/70 dark:hover:bg-gray-700/50 transition-colors"
+                className="group flex items-center h-8 pl-3 pr-2 rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-white/70 dark:hover:bg-gray-700/50 transition-colors"
               >
                 <span className="relative inline-block w-[72px] h-5 overflow-hidden text-left">
                   <AnimatePresence initial={false} mode="popLayout">
@@ -121,24 +142,42 @@ export function ProductionPlanningHeader({
                     </motion.span>
                   </AnimatePresence>
                 </span>
-                <motion.span
-                  animate={{ rotate: viewingNextWeek ? 180 : 0 }}
-                  transition={{ duration: 0.22, ease: "easeOut" }}
-                  className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-gray-700 shadow-sm"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </motion.span>
               </button>
+              <WeekHistoryPopover
+                currentWeekKey={currentWeekKey}
+                thisWeekKey={thisWeekKey}
+                onSelectWeek={onSelectWeek}
+              >
+                <button
+                  type="button"
+                  aria-label="Open week history"
+                  className="ml-0.5 inline-flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-gray-700 shadow-sm hover:bg-blue-50 dark:hover:bg-gray-600 transition-colors"
+                >
+                  <motion.span
+                    animate={{ rotate: viewingNextWeek ? 180 : 0 }}
+                    transition={{ duration: 0.22, ease: "easeOut" }}
+                    className="inline-flex"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </motion.span>
+                </button>
+              </WeekHistoryPopover>
             </div>
           </div>
 
           {/* Right group: action buttons (desktop only) */}
           <div className="hidden lg:flex items-center gap-2 sm:flex-shrink-0">
-            <div className="inline-flex items-center rounded-full bg-blue-500/25 dark:bg-blue-500/20 ring-1 ring-inset ring-blue-500/40 dark:ring-blue-400/30 shadow-sm shadow-blue-500/15 backdrop-blur-sm">
+            <div className="inline-flex items-center rounded-full bg-blue-500/25 dark:bg-blue-500/20 ring-1 ring-inset ring-blue-500/40 dark:ring-blue-400/30 shadow-sm shadow-blue-500/15 backdrop-blur-sm aria-disabled:opacity-50">
               <button
                 type="button"
                 onClick={onAutoFill}
-                className="inline-flex items-center h-9 pl-3 pr-2.5 rounded-l-full text-sm font-semibold text-blue-800 dark:text-white hover:bg-blue-500/15 dark:hover:bg-blue-500/15 transition-colors"
+                disabled={viewingPastWeek}
+                title={
+                  viewingPastWeek
+                    ? "Auto-plan is disabled when viewing a past week"
+                    : undefined
+                }
+                className="inline-flex items-center h-9 pl-3 pr-2.5 rounded-l-full rounded-r-[10px] text-sm font-semibold text-blue-800 dark:text-white hover:bg-blue-500/40 dark:hover:bg-blue-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
               >
                 <Wand2 className="h-4 w-4 mr-1.5" />
                 Auto-plan
@@ -155,7 +194,8 @@ export function ProductionPlanningHeader({
                   type="button"
                   aria-label="Auto-plan settings"
                   title="Auto-plan settings"
-                  className="inline-flex items-center justify-center h-9 w-9 rounded-r-full text-blue-800 dark:text-white hover:bg-blue-500/15 dark:hover:bg-blue-500/15 transition-colors"
+                  disabled={viewingPastWeek}
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-r-full rounded-l-[10px] text-blue-800 dark:text-white hover:bg-blue-500/40 dark:hover:bg-blue-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 >
                   <Settings2 className="h-4 w-4" />
                 </button>
