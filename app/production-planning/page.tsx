@@ -376,7 +376,16 @@ export default function ProductionPlanningPage() {
     []
   );
 
-  const today = useMemo(() => startOfDay(new Date()), []);
+  // Stamped from useEffect so the date is always read from the *browser's*
+  // clock — Vercel's SSR runs in UTC, which after ~5pm PT reads as the next
+  // day and was making "today" jump to the wrong column. Defaults to the
+  // start of the week-key Sunday so the page renders sanely pre-hydration.
+  const [today, setToday] = useState<Date>(() =>
+    startOfDay(parseISO(currentWeekKey))
+  );
+  useEffect(() => {
+    setToday(startOfDay(new Date()));
+  }, []);
 
   // Calculate week boundaries
   const todayWeekStart = useMemo(
@@ -1226,10 +1235,16 @@ export default function ProductionPlanningPage() {
   const viewingNextWeek = currentWeekKey === nextWeekKey;
 
   // Today's column gets centered on mount in the mobile snap-scroller. Sat/Sun
-  // fold into Monday's column to match the display rule.
-  const todayColumnDay = useMemo<DayName>(() => {
+  // fold into Monday's column to match the display rule. Computed in
+  // useEffect (not useMemo) so it always uses the *browser's* local day —
+  // SSR runs on Vercel in UTC, which after ~5pm PT already reads as the next
+  // day, and a hydration mismatch on the highlighted column was sticking.
+  const [todayColumnDay, setTodayColumnDay] = useState<DayName | null>(null);
+  useEffect(() => {
     const dayName = format(new Date(), "EEEE") as DayName;
-    return DAYS_FOLDED_INTO_MONDAY.includes(dayName) ? "Monday" : dayName;
+    setTodayColumnDay(
+      DAYS_FOLDED_INTO_MONDAY.includes(dayName) ? "Monday" : dayName
+    );
   }, []);
 
   return (
