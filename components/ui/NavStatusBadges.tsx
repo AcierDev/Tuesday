@@ -17,7 +17,11 @@ import {
   RECENCY_WEIGHTED_FORECAST,
   summarizeRecencyWeighted,
 } from "@/lib/production-metrics";
-import { useActivities, useAllItems } from "@/lib/stats-shared";
+import {
+  invalidateStatsCaches,
+  useActivities,
+  useAllItems,
+} from "@/lib/stats-shared";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { MiniSparkline } from "@/components/orders/MiniSparkline";
 import { cn } from "@/utils/functions";
@@ -45,6 +49,49 @@ const BACKLOG_STATUSES: ReadonlySet<string> = new Set([
   ItemStatus.Wip,
 ]);
 const BACKLOG_ROUND_TO = 100;
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🔮 FORECAST DAILY LOCK — held stable until 00:05 LA each day          ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+const STABLE_FORECAST_STORAGE_KEY = "nav-forecast-stable-v1";
+const FORECAST_REFRESH_OFFSET_MIN = 5;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// Day key (YYYY-MM-DD, LA-local) that owns the current forecast value. The
+// boundary is 00:05 LA, so between 00:00 and 00:05 we still report yesterday.
+function getForecastDayKey(now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  const today = laDayKey(now);
+  if (hour === 0 && minute < FORECAST_REFRESH_OFFSET_MIN) {
+    return shiftDayKey(today, -1);
+  }
+  return today;
+}
+
+function msUntilNextForecastRefresh(now: Date = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (t: string) =>
+    Number(parts.find((p) => p.type === t)?.value ?? "0");
+  const sinceMidnightMs =
+    (get("hour") * 3600 + get("minute") * 60 + get("second")) * 1000;
+  const offsetMs = FORECAST_REFRESH_OFFSET_MIN * 60_000;
+  if (sinceMidnightMs < offsetMs) return offsetMs - sinceMidnightMs;
+  return MS_PER_DAY - sinceMidnightMs + offsetMs;
+}
 
 function formatSquaresK(squares: number): string {
   if (squares < 1000) return squares.toString();
@@ -150,7 +197,59 @@ export function NavMetricsBadges() {
   }, [allItems, activities, schedules]);
 
   const gluedToday = gluedStats?.today ?? null;
-  const forecastPerDay = gluedStats?.forecastPerDay ?? null;
+  const liveForecastPerDay = gluedStats?.forecastPerDay ?? null;
+
+  // Forecast is locked to a per-day snapshot that rotates at 00:05 LA. We
+  // capture the live value the first time it loads each day, persist it,
+  // and ignore subsequent intra-day changes.
+  const [stableForecast, setStableForecast] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (liveForecastPerDay === null) return;
+    const today = getForecastDayKey();
+    try {
+      const raw = window.localStorage.getItem(STABLE_FORECAST_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { dayKey: string; value: number };
+        if (parsed.dayKey === today && typeof parsed.value === "number") {
+          setStableForecast(parsed.value);
+          return;
+        }
+      }
+    } catch {
+      // ignore corrupted cache
+    }
+    const value = Math.round(liveForecastPerDay);
+    try {
+      window.localStorage.setItem(
+        STABLE_FORECAST_STORAGE_KEY,
+        JSON.stringify({ dayKey: today, value })
+      );
+    } catch {
+      // storage unavailable; fall through with in-memory value
+    }
+    setStableForecast(value);
+  }, [liveForecastPerDay]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    function schedule() {
+      timer = setTimeout(() => {
+        try {
+          window.localStorage.removeItem(STABLE_FORECAST_STORAGE_KEY);
+        } catch {
+          // ignore
+        }
+        setStableForecast(null);
+        invalidateStatsCaches();
+        schedule();
+      }, msUntilNextForecastRefresh());
+    }
+    schedule();
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
 
   const backlogSquares = useMemo(() => {
     if (!items) return null;
@@ -299,23 +398,23 @@ export function NavMetricsBadges() {
         href="/stats/glued"
         className={cn(
           "flex flex-col items-center justify-center w-14 h-14 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
-          forecastPerDay && forecastPerDay > 0
+          stableForecast && stableForecast > 0
             ? "text-violet-500 dark:text-violet-400"
             : "text-slate-400"
         )}
         title={
-          forecastPerDay === null
+          stableForecast === null
             ? "Forecast loading…"
-            : `Recency-weighted glue pace: ${Math.round(forecastPerDay).toLocaleString()} sq / working day (last ${RECENCY_WEIGHTED_FORECAST.lookbackDays}d, recent ${RECENCY_WEIGHTED_FORECAST.recentWindowDays}d weighted ${RECENCY_WEIGHTED_FORECAST.recentWeight}×)`
+            : `Recency-weighted glue pace: ${stableForecast.toLocaleString()} sq / working day (last ${RECENCY_WEIGHTED_FORECAST.lookbackDays}d, recent ${RECENCY_WEIGHTED_FORECAST.recentWindowDays}d weighted ${RECENCY_WEIGHTED_FORECAST.recentWeight}×). Locked daily; refreshes 00:05 LA.`
         }
       >
         <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
           Forecast
         </span>
         <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
-          {forecastPerDay === null || forecastPerDay === 0
+          {stableForecast === null || stableForecast === 0
             ? "—"
-            : Math.round(forecastPerDay).toLocaleString()}
+            : stableForecast.toLocaleString()}
         </span>
         <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
           sq/day
