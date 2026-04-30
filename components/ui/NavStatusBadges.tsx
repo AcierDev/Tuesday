@@ -135,12 +135,12 @@ export function NavSectionCounters() {
             type="button"
             onClick={() => handleStatusClick(status)}
             className={cn(
-              "flex flex-col items-center justify-center w-14 h-[53px] rounded-lg px-1 select-none glass-surface transition-transform duration-200 ease-out hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer",
+              "flex flex-col items-center justify-center w-16 h-14 rounded-lg px-1 select-none glass-surface transition-transform duration-200 ease-out hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer",
               `text-${color} dark:text-${color}`
             )}
             title={`${status}: ${count}`}
           >
-            <span className="text-base font-bold leading-none">{count}</span>
+            <span className="text-lg font-bold leading-none">{count}</span>
             <span className="mt-0.5 w-full truncate text-center text-[8px] font-medium uppercase tracking-wide opacity-80">
               {label}
             </span>
@@ -307,7 +307,7 @@ export function NavMetricsBadges() {
       <Link
         href="/stats/health"
         className={cn(
-          "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
+          "flex flex-col items-center justify-center w-16 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
           healthScore === null
             ? "text-slate-400"
             : healthScore >= HEALTH_GOOD_THRESHOLD
@@ -325,7 +325,7 @@ export function NavMetricsBadges() {
         <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
           Health
         </span>
-        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
+        <span className="mt-0.5 text-lg font-bold leading-none tabular-nums">
           {healthScore ?? "—"}
         </span>
         <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
@@ -333,7 +333,7 @@ export function NavMetricsBadges() {
         </span>
         <MiniSparkline
           data={debtHistory.map((d) => -d)}
-          width={44}
+          width={52}
           height={12}
           className="mt-1 opacity-70"
         />
@@ -341,7 +341,7 @@ export function NavMetricsBadges() {
       <Link
         href="/stats/debt"
         className={cn(
-          "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
+          "flex flex-col items-center justify-center w-16 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
           totalDebt > 0
             ? "text-red-500 dark:text-red-400"
             : "text-emerald-500 dark:text-emerald-400"
@@ -351,7 +351,7 @@ export function NavMetricsBadges() {
         <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
           Time Debt
         </span>
-        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
+        <span className="mt-0.5 text-lg font-bold leading-none tabular-nums">
           {totalDebt > 0 ? `−${totalDebt}` : "0"}
         </span>
         <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
@@ -359,7 +359,7 @@ export function NavMetricsBadges() {
         </span>
         <MiniSparkline
           data={debtHistory}
-          width={44}
+          width={52}
           height={12}
           className="mt-1 opacity-70"
         />
@@ -367,7 +367,7 @@ export function NavMetricsBadges() {
       <Link
         href="/stats/backlog"
         className={cn(
-          "flex flex-col items-center justify-center w-14 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
+          "flex flex-col items-center justify-center w-16 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
           backlogSquares && backlogSquares > 0
             ? "text-sky-500 dark:text-sky-400"
             : "text-slate-400"
@@ -381,7 +381,7 @@ export function NavMetricsBadges() {
         <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
           Backlog
         </span>
-        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
+        <span className="mt-0.5 text-lg font-bold leading-none tabular-nums">
           {backlogSquares === null ? "—" : formatSquaresK(backlogSquares)}
         </span>
         <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
@@ -389,7 +389,7 @@ export function NavMetricsBadges() {
         </span>
         <MiniSparkline
           data={backlogHistory}
-          width={44}
+          width={52}
           height={12}
           className="mt-1 opacity-70"
         />
@@ -397,7 +397,7 @@ export function NavMetricsBadges() {
       <Link
         href="/stats/glued"
         className={cn(
-          "flex flex-col items-center justify-center w-14 h-14 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
+          "flex flex-col items-center justify-center w-16 h-14 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
           stableForecast && stableForecast > 0
             ? "text-violet-500 dark:text-violet-400"
             : "text-slate-400"
@@ -411,7 +411,7 @@ export function NavMetricsBadges() {
         <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
           Forecast
         </span>
-        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
+        <span className="mt-0.5 text-lg font-bold leading-none tabular-nums">
           {stableForecast === null || stableForecast === 0
             ? "—"
             : stableForecast.toLocaleString()}
@@ -423,7 +423,7 @@ export function NavMetricsBadges() {
       <Link
         href="/stats/glued"
         className={cn(
-          "flex flex-col items-center justify-center w-14 h-14 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
+          "flex flex-col items-center justify-center w-16 h-14 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
           gluedToday && gluedToday.squares > 0
             ? "text-emerald-500 dark:text-emerald-400"
             : "text-slate-400"
@@ -437,7 +437,7 @@ export function NavMetricsBadges() {
         <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
           Glued
         </span>
-        <span className="mt-0.5 text-base font-bold leading-none tabular-nums">
+        <span className="mt-0.5 text-lg font-bold leading-none tabular-nums">
           {!gluedToday || gluedToday.squares === 0
             ? "—"
             : gluedToday.squares.toLocaleString()}

@@ -414,15 +414,15 @@ export function Navbar({
                 data-nav-icon
                 src={Icon}
                 alt={label}
-                width={20}
-                height={20}
+                width={isCollapsed ? 24 : 20}
+                height={isCollapsed ? 24 : 20}
                 className={`${isCollapsed ? "mr-0" : "mr-3"}`}
               />
             ) : (
               <Icon
                 data-nav-icon
-                className={`h-5 w-5 flex-shrink-0 ${
-                  isCollapsed ? "mr-0" : "mr-3"
+                className={`flex-shrink-0 ${
+                  isCollapsed ? "h-6 w-6 mr-0" : "h-5 w-5 mr-3"
                 }`}
               />
             )}
@@ -463,7 +463,7 @@ export function Navbar({
       {/* Sidebar — desktop only; mobile uses a floating PageToggle. */}
       <aside
         className={`${
-          sidebarOpen ? "w-64" : "w-16"
+          sidebarOpen ? "w-64" : "w-[4.5rem]"
         } fixed h-screen transition-all duration-300 ease-in-out bg-[hsl(var(--sidebar))] hidden lg:block z-30`}
       >
         <div className="h-screen flex flex-col bg-[hsl(var(--sidebar))]">
@@ -514,14 +514,14 @@ export function Navbar({
               onMouseLeave={closePrintHover}
             >
               <Link href="/print" className="sidebar-action-btn">
-                <Printer className="h-5 w-5 flex-shrink-0" />
+                <Printer className={`${sidebarOpen ? "h-5 w-5" : "h-6 w-6"} flex-shrink-0`} />
                 {sidebarOpen && <span className="ml-2">Print</span>}
               </Link>
               <motion.div
                 onMouseEnter={openPrintHover}
                 onMouseLeave={closePrintHover}
                 className={`fixed bottom-0 ${
-                  sidebarOpen ? "left-64" : "left-16"
+                  sidebarOpen ? "left-64" : "left-[4.5rem]"
                 } pl-2 pb-3 z-50 ${
                   printHovered ? "" : "pointer-events-none"
                 }`}
@@ -576,7 +576,7 @@ export function Navbar({
             <Tooltip delayDuration={300}>
               <TooltipTrigger asChild>
                 <Link href="/quick-label" className="sidebar-action-btn">
-                  <Barcode className="h-5 w-5 flex-shrink-0" />
+                  <Barcode className={`${sidebarOpen ? "h-5 w-5" : "h-6 w-6"} flex-shrink-0`} />
                   {sidebarOpen && <span className="ml-2">Quick Labels</span>}
                 </Link>
               </TooltipTrigger>
@@ -590,7 +590,7 @@ export function Navbar({
             <Tooltip delayDuration={300}>
               <TooltipTrigger asChild>
                 <Link href="/setup-utility" className="sidebar-action-btn">
-                  <PencilRuler className="h-5 w-5 flex-shrink-0" />
+                  <PencilRuler className={`${sidebarOpen ? "h-5 w-5" : "h-6 w-6"} flex-shrink-0`} />
                   {sidebarOpen && <span className="ml-2">Setup Utility</span>}
                 </Link>
               </TooltipTrigger>
@@ -604,7 +604,7 @@ export function Navbar({
             <Tooltip delayDuration={300}>
               <TooltipTrigger asChild>
                 <Link href="/calculator" className="sidebar-action-btn">
-                  <Calculator className="h-5 w-5 flex-shrink-0" />
+                  <Calculator className={`${sidebarOpen ? "h-5 w-5" : "h-6 w-6"} flex-shrink-0`} />
                   {sidebarOpen && <span className="ml-2">Calculator</span>}
                 </Link>
               </TooltipTrigger>
@@ -624,7 +624,7 @@ export function Navbar({
                 type="button"
                 onClick={toggleSettingsMenu}
               >
-                <Settings className="h-5 w-5 flex-shrink-0" />
+                <Settings className={`${sidebarOpen ? "h-5 w-5" : "h-6 w-6"} flex-shrink-0`} />
                 {sidebarOpen && <span className="ml-2">Settings</span>}
               </button>
               <motion.div

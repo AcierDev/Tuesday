@@ -58,7 +58,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       <div className="flex-1 overflow-auto no-scrollbar border-t border-sky-400/40">
         <div
           className={`${
-            sidebarOpen ? "lg:ml-64" : "lg:ml-16"
+            sidebarOpen ? "lg:ml-64" : "lg:ml-[4.5rem]"
           } transition-[margin] duration-300`}
         >
           <main className="w-full">{children}</main>

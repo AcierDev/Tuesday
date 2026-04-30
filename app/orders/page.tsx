@@ -317,7 +317,7 @@ export default function OrderManagementPage() {
         onDragCancel={() => setActiveDragId(null)}
       >
         <div className="flex-grow">
-          <div className="h-full max-w-full mx-auto px-1 sm:pr-2 sm:pl-4 md:pl-6 lg:pl-8 py-2 sm:py-8 pb-[calc(10rem+env(safe-area-inset-bottom))] md:pb-8">
+          <div className="h-full max-w-full mx-auto px-1 sm:px-2 py-2 sm:py-8 pb-[calc(10rem+env(safe-area-inset-bottom))] md:pb-8">
             <div className="flex h-full relative">
               <div
                 className="flex-grow min-w-0"

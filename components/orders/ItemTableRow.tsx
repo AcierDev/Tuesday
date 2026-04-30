@@ -1,8 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GripVertical, Truck } from "lucide-react";
-import { useDraggable } from "@dnd-kit/core";
+import { Truck } from "lucide-react";
 import { motion, useMotionValue, animate, type PanInfo } from "framer-motion";
 import { TableCell } from "@/components/ui/table";
 import { Portal } from "@/components/ui/portal";
@@ -158,30 +157,11 @@ export const ItemTableRow = memo(function ItemTableRow({
   onItemClick,
   isInTransit = false,
 }: ItemTableRowProps) {
-  // Row is draggable — drop on a status section to change status. Listeners
-  // live only on the grip cell so the rest of the row stays interactive.
-  const {
-    attributes,
-    listeners,
-    setNodeRef: setDndRef,
-    isDragging,
-  } = useDraggable({
-    id: item.id,
-    data: { item },
-  });
-
   const recentlyMoved = useRecentlyMovedIds().has(item.id);
   const isTouch = useIsTouchDevice();
 
   //── swipe state ───────────────────────────────────────────────────────
   const rowRef = useRef<HTMLTableRowElement | null>(null);
-  const setRowRefs = useCallback(
-    (node: HTMLTableRowElement | null) => {
-      rowRef.current = node;
-      setDndRef(node);
-    },
-    [setDndRef]
-  );
 
   const x = useMotionValue(0);
   const [openSide, setOpenSide] = useState<"left" | "right" | null>(null);
@@ -295,19 +275,19 @@ export const ItemTableRow = memo(function ItemTableRow({
     [closeSwipe, item.id, onStatusChange]
   );
 
-  // Stop pointerdown on the grip from reaching motion.tr — without this,
-  // touching the grip would start both dnd-kit's drag AND the swipe.
-  const stopPointerDown = useCallback((e: React.PointerEvent) => {
-    e.stopPropagation();
-  }, []);
-
   if (!item.id) {
     console.warn("Item missing id:", item);
     return null;
   }
 
-  const leftClipRight = Math.max(0, SWIPE_PANEL_WIDTH - Math.max(0, xValue));
-  const rightClipLeft = Math.max(
+  // How much of each panel is still hidden, applied to the *outer* edge so
+  // the reveal tracks the screen edge as the row slides — leftmost button
+  // appears first when swiping right, rightmost first when swiping left.
+  const leftPanelHiddenPx = Math.max(
+    0,
+    SWIPE_PANEL_WIDTH - Math.max(0, xValue)
+  );
+  const rightPanelHiddenPx = Math.max(
     0,
     SWIPE_PANEL_WIDTH - Math.max(0, -xValue)
   );
@@ -315,7 +295,7 @@ export const ItemTableRow = memo(function ItemTableRow({
   return (
     <>
       <motion.tr
-        ref={setRowRefs}
+        ref={rowRef}
         drag={canSwipe ? "x" : false}
         dragDirectionLock
         dragConstraints={{
@@ -331,10 +311,17 @@ export const ItemTableRow = memo(function ItemTableRow({
           index % 2 === 0
             ? "bg-white dark:bg-gray-800"
             : "bg-gray-50 dark:bg-gray-800/60",
-          "hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors duration-200",
+          "transition-colors duration-200",
+          // Hover tints only on devices with a real pointer — mobile webkit
+          // leaves ghost-hover state on tapped rows during scroll, which made
+          // random rows look highlighted while flicking through the list.
+          !isTouch &&
+            "hover:bg-gray-100 dark:hover:bg-gray-700/70",
           clickToAddTarget &&
-            "cursor-crosshair hover:bg-blue-50 dark:hover:bg-blue-900/20",
-          isDragging && "opacity-30",
+            cn(
+              "cursor-crosshair",
+              !isTouch && "hover:bg-blue-50 dark:hover:bg-blue-900/20"
+            ),
           openSide && "relative z-10"
         )}
         onClick={(e) => {
@@ -351,31 +338,26 @@ export const ItemTableRow = memo(function ItemTableRow({
           onContextMenu(e, item);
         }}
       >
-        <TableCell
-          onPointerDownCapture={stopPointerDown}
-          className="border-b border-gray-100 dark:border-gray-700/60 p-0 relative w-7 sm:w-[3.125rem]"
-        >
-          <div
-            {...listeners}
-            {...attributes}
-            className="flex items-center justify-center w-full h-full py-2 cursor-grab active:cursor-grabbing touch-none text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-            aria-label="Drag to change status"
-            role="button"
-          >
-            <GripVertical className="h-4 w-4 sm:h-5 sm:w-5" />
+        {/* Slim indicator strip — used to host the drag handle, replaced by
+            the swipe-to-move gesture. Kept as a narrow cell so the recently-
+            moved dot and in-transit truck still have a home, freeing the
+            previous handle width back to the content columns. Always rendered
+            (even when empty) so table-fixed column widths line up across rows. */}
+        <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 relative w-5 sm:w-6">
+          <div className="flex flex-col items-end justify-center gap-0.5 py-1 pr-0.5">
+            {isInTransit && (
+              <Truck
+                aria-label="In transit"
+                className="h-3 w-3 text-blue-500"
+              />
+            )}
+            {recentlyMoved && (
+              <span
+                aria-label="Moved recently"
+                className="block w-1.5 h-1.5 rounded-full bg-blue-500"
+              />
+            )}
           </div>
-          {recentlyMoved && (
-            <span
-              aria-label="Moved recently"
-              className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500"
-            />
-          )}
-          {isInTransit && (
-            <Truck
-              aria-label="In transit"
-              className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 h-3 w-3 text-blue-500"
-            />
-          )}
         </TableCell>
 
         {visibleColumns.includes("Shipping" as ColumnTitles) && (
@@ -452,13 +434,14 @@ export const ItemTableRow = memo(function ItemTableRow({
                 height: restRect.height,
                 left: restRect.left,
                 width: SWIPE_PANEL_WIDTH,
-                // Reveals from the inside out: the rightmost button (the
-                // immediately-prior status) appears first as the row slides.
-                clipPath: `inset(0 0 0 ${leftClipRight}px)`,
+                // Clip from the right so the panel uncovers from the
+                // screen-edge inward: as the row slides right, the leftmost
+                // button surfaces first.
+                clipPath: `inset(0 ${leftPanelHiddenPx}px 0 0)`,
                 zIndex: 40,
                 pointerEvents: openSide === "left" ? "auto" : "none",
               }}
-              className="flex items-stretch overflow-hidden"
+              className="flex items-stretch gap-1 p-1 overflow-hidden"
             >
               {backward.map((status) => (
                 <button
@@ -466,7 +449,7 @@ export const ItemTableRow = memo(function ItemTableRow({
                   type="button"
                   onClick={() => handleSelectStatus(status)}
                   className={cn(
-                    "flex-1 flex items-center justify-center text-xs font-semibold text-white px-1",
+                    "flex-1 flex items-center justify-center text-xs font-semibold text-white px-1 rounded-lg",
                     STATUS_PANEL_BG[status]
                   )}
                 >
@@ -484,13 +467,14 @@ export const ItemTableRow = memo(function ItemTableRow({
                 height: restRect.height,
                 left: restRect.left + restRect.width - SWIPE_PANEL_WIDTH,
                 width: SWIPE_PANEL_WIDTH,
-                // Mirror of the left panel: the leftmost button (the next
-                // status) reveals first.
-                clipPath: `inset(0 ${rightClipLeft}px 0 0)`,
+                // Mirror of the left panel: clip from the left so the row
+                // sliding left exposes the rightmost button first from the
+                // screen edge inward.
+                clipPath: `inset(0 0 0 ${rightPanelHiddenPx}px)`,
                 zIndex: 40,
                 pointerEvents: openSide === "right" ? "auto" : "none",
               }}
-              className="flex items-stretch overflow-hidden"
+              className="flex items-stretch gap-1 p-1 overflow-hidden"
             >
               {forward.map((status) => (
                 <button
@@ -498,7 +482,7 @@ export const ItemTableRow = memo(function ItemTableRow({
                   type="button"
                   onClick={() => handleSelectStatus(status)}
                   className={cn(
-                    "flex-1 flex items-center justify-center text-xs font-semibold text-white px-1",
+                    "flex-1 flex items-center justify-center text-xs font-semibold text-white px-1 rounded-lg",
                     STATUS_PANEL_BG[status]
                   )}
                 >
