@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 import { cn } from "@/utils/functions";
-import { Progress } from "@/components/ui/progress";
 
 interface CapacityIndicatorProps {
   current: number;
@@ -19,20 +20,41 @@ interface CapacityIndicatorProps {
   // day, so the assigned-vs-glued split is meaningless. Renders as
   // "<glued> / <max>" with a green-only bar.
   gluedOnly?: boolean;
+  // Today's column drops the "/ max" denominator since the painter knows the
+  // daily quota — the live numbers are what matters.
+  isCurrentDay?: boolean;
 }
 
-const AMBER_FRACTION = 0.9;
+const CAPACITY_CELL_COUNT = 15;
+const SNAKE_STAGGER_MS = 70;
 
-export function CapacityIndicator({ current, max, greenThreshold, label, glued = 0, gluedOnly = false }: CapacityIndicatorProps) {
-  const percentage = Math.min(100, Math.max(0, (current / max) * 100));
-  const gluedPercentage = Math.min(100, Math.max(0, (glued / max) * 100));
-  const greenAt = greenThreshold ?? max;
-  const isTargetMet = current >= greenAt;
-  const isNearTarget = current >= greenAt * AMBER_FRACTION;
+export function CapacityIndicator({ current, max, glued = 0, gluedOnly = false, isCurrentDay = false, label }: CapacityIndicatorProps) {
+  const gluedCells = Math.min(
+    CAPACITY_CELL_COUNT,
+    Math.round((glued / max) * CAPACITY_CELL_COUNT)
+  );
+  const plannedCells = Math.min(
+    CAPACITY_CELL_COUNT,
+    Math.round((current / max) * CAPACITY_CELL_COUNT)
+  );
+  // Today's column hints the green bar even before anything is glued so the
+  // painter can see where progress will accumulate. Lights the first cell at
+  // low opacity until real glued squares overtake it.
+  const showZeroHint =
+    gluedCells === 0 && isCurrentDay && !gluedOnly;
 
-  let colorClass = "bg-red-500";
-  if (isTargetMet) colorClass = "bg-blue-500";
-  else if (isNearTarget) colorClass = "bg-amber-500";
+  // Track the last gluedCells we rendered so we can animate only the cells
+  // that just flipped green. Single-cell increase plays a bubble pop on that
+  // cell; multi-cell jump plays a staggered slide-right (snake) across the
+  // batch. Past days don't animate — their data is historical.
+  const prevGluedRef = useRef(gluedCells);
+  const prevGlued = prevGluedRef.current;
+  const batchSize = gluedCells - prevGlued;
+  const animateBatch = batchSize > 0 && !gluedOnly;
+  const isMultiBatch = batchSize > 1;
+  useEffect(() => {
+    prevGluedRef.current = gluedCells;
+  }, [gluedCells]);
 
   return (
     <div className="w-full">
@@ -42,17 +64,19 @@ export function CapacityIndicator({ current, max, greenThreshold, label, glued =
             {label}
           </span>
         )}
-        <div className="text-xs tabular-nums">
+        <div className="text-[15.6px] tabular-nums">
           {gluedOnly ? (
             <>
               <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                 {glued}
               </span>
-              <span className="text-gray-400"> / {max}</span>
+              {!isCurrentDay && (
+                <span className="text-gray-400"> / {max}</span>
+              )}
             </>
           ) : (
             <>
-              {glued > 0 && (
+              {(glued > 0 || isCurrentDay) && (
                 <>
                   <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                     {glued}
@@ -60,30 +84,73 @@ export function CapacityIndicator({ current, max, greenThreshold, label, glued =
                   <span className="text-gray-400"> / </span>
                 </>
               )}
-              <span className={cn(
-                "font-semibold",
-                isTargetMet ? "text-blue-600" : isNearTarget ? "text-amber-600" : "text-red-600"
-              )}>
+              <span className="font-semibold text-blue-400 dark:text-blue-300">
                 {current}
               </span>
-              <span className="text-gray-400"> / {max}</span>
+              {!isCurrentDay && (
+                <span className="text-gray-400"> / {max}</span>
+              )}
             </>
           )}
         </div>
       </div>
-      <div className="relative h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-        {!gluedOnly && (
-          <div
-            className={cn("absolute inset-y-0 left-0 transition-all duration-500 ease-in-out", colorClass)}
-            style={{ width: `${current > max ? 100 : percentage}%` }}
-          />
-        )}
-        {(gluedOnly || glued > 0) && (
-          <div
-            className="absolute inset-y-0 left-0 bg-emerald-500 transition-all duration-500 ease-in-out"
-            style={{ width: `${glued > max ? 100 : gluedPercentage}%` }}
-          />
-        )}
+      <div
+        className="relative flex h-1.5 w-full rounded-full gap-[2px]"
+        style={{ overflow: animateBatch && !isMultiBatch ? "visible" : "hidden" }}
+      >
+        {Array.from({ length: CAPACITY_CELL_COUNT }).map((_, i) => {
+          const isGreen = i < gluedCells;
+          let baseClass: string;
+          if (gluedOnly) {
+            baseClass = "bg-gray-100 dark:bg-gray-800";
+          } else if (i < plannedCells) {
+            baseClass = "bg-blue-400 dark:bg-blue-500";
+          } else {
+            baseClass = "bg-gray-100 dark:bg-gray-800";
+          }
+          const showHintSliver = showZeroHint && i === 0;
+          const inBatch = animateBatch && i >= prevGlued && i < gluedCells;
+          let overlayClass = "";
+          let overlayDelay = 0;
+          if (inBatch) {
+            if (isMultiBatch) {
+              overlayClass = "animate-capacity-snake";
+              overlayDelay = (i - prevGlued) * SNAKE_STAGGER_MS;
+            } else {
+              overlayClass = "animate-capacity-bubble";
+            }
+          }
+          return (
+            <div
+              key={i}
+              className={cn(
+                "relative flex-1 transition-colors duration-[600ms] ease-out",
+                baseClass,
+                inBatch && !isMultiBatch ? "overflow-visible" : "overflow-hidden"
+              )}
+              style={{ borderRadius: "2px" }}
+            >
+              {showHintSliver && (
+                <span
+                  aria-hidden
+                  className="absolute inset-y-0 left-0 bg-emerald-500"
+                  style={{ width: 5 }}
+                />
+              )}
+              {isGreen && (
+                <span
+                  aria-hidden
+                  className={cn("absolute inset-0 bg-emerald-500", overlayClass)}
+                  style={
+                    overlayDelay
+                      ? { animationDelay: `${overlayDelay}ms` }
+                      : undefined
+                  }
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

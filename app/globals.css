@@ -343,6 +343,31 @@ html.dark .text-gray-800 { color: rgb(229 231 235); }
   transform-origin: center;
 }
 
+/* Capacity-bar fill-in. Single-cell fill = bubble pop (cell swells then settles).
+   Multi-cell batch = snake (each cell slides in left→right with a stagger so a
+   green wave appears to crawl across the new range). Both run once on mount via
+   `both` fill-mode so the from-frame is applied at first paint. */
+@keyframes capacity-bubble {
+  0%   { transform: scale(0.2);                 opacity: 0.4; border-radius: 50%; }
+  35%  { transform: scaleX(1.21) scaleY(2.53);  opacity: 1;   border-radius: 40%; }
+  65%  { transform: scaleX(1.05) scaleY(1.55);               border-radius: 30%; }
+  85%  { transform: scaleX(1.0)  scaleY(0.92);               border-radius: 8px; }
+  100% { transform: scale(1);                               border-radius: 2px; }
+}
+.animate-capacity-bubble {
+  animation: capacity-bubble 1120ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform-origin: center;
+}
+
+@keyframes capacity-snake {
+  0%   { transform: scaleX(0); opacity: 0.6; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+.animate-capacity-snake {
+  animation: capacity-snake 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: left center;
+}
+
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;

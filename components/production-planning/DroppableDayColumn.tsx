@@ -460,7 +460,7 @@ export function DroppableDayColumn({
           <div className="flex items-baseline gap-1.5">
             <h3
               className={cn(
-                "font-semibold",
+                "text-[21px] font-semibold",
                 isToday
                   ? "text-blue-700 dark:text-blue-200"
                   : "text-gray-900 dark:text-gray-100"
@@ -470,7 +470,7 @@ export function DroppableDayColumn({
             </h3>
             <span
               className={cn(
-                "text-xs font-semibold",
+                "text-[15.6px] font-semibold",
                 isToday
                   ? "text-blue-700/90 dark:text-blue-300"
                   : "text-gray-500 font-medium"
@@ -492,6 +492,7 @@ export function DroppableDayColumn({
           greenThreshold={greenThreshold}
           glued={gluedSquares}
           gluedOnly={isPastDay}
+          isCurrentDay={isToday}
         />
       </div>
 
