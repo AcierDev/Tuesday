@@ -9,6 +9,7 @@ import {
   useTransform,
   type PanInfo,
 } from "framer-motion";
+import { useDraggable } from "@dnd-kit/core";
 import { TableCell } from "@/components/ui/table";
 import { Portal } from "@/components/ui/portal";
 import { MergedShippingCell } from "../cells/MergedShippingCell";
@@ -173,6 +174,25 @@ export const ItemTableRow = memo(function ItemTableRow({
 }: ItemTableRowProps) {
   const recentlyMoved = useRecentlyMovedIds().has(item.id);
   const isTouch = useIsTouchDevice();
+
+  //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+  //║ 🤚 DESKTOP DRAG HANDLE                                               ║
+  //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+  // Desktop drag-between-sections is dnd-kit driven (page-level DndContext
+  // owns the drop targets on each section header). Touch keeps the
+  // framer-motion swipe-to-move gesture so the two systems never compete
+  // for the same pointer.
+  const canDesktopDrag = !isTouch && !!onStatusChange;
+  const {
+    attributes: dragAttributes,
+    listeners: dragListeners,
+    setNodeRef: setDragHandleRef,
+    isDragging,
+  } = useDraggable({
+    id: item.id,
+    data: { itemId: item.id, status: item.status },
+    disabled: !canDesktopDrag,
+  });
 
   //── swipe state ───────────────────────────────────────────────────────
   const rowRef = useRef<HTMLTableRowElement | null>(null);
@@ -351,10 +371,25 @@ export const ItemTableRow = memo(function ItemTableRow({
     return null;
   }
 
+  // Whole-row drag on desktop: pointer-down anywhere on the row starts a
+  // potential drag. The MouseSensor's 6px activation distance lets short
+  // clicks through to badges/buttons without triggering. Interactive cells
+  // (badges, action menus, due-date popover, shipping cell) stop the
+  // pointerdown so the user can interact with them without snagging a drag.
+  const rowDragRef = useCallback(
+    (node: HTMLTableRowElement | null) => {
+      rowRef.current = node;
+      if (canDesktopDrag) setDragHandleRef(node);
+    },
+    [canDesktopDrag, setDragHandleRef]
+  );
+  const rowDragListeners = canDesktopDrag ? dragListeners : undefined;
+  const rowDragAttributes = canDesktopDrag ? dragAttributes : undefined;
+
   return (
     <>
       <motion.tr
-        ref={rowRef}
+        ref={rowDragRef}
         drag={canSwipe ? "x" : false}
         dragDirectionLock
         dragConstraints={{
@@ -365,8 +400,10 @@ export const ItemTableRow = memo(function ItemTableRow({
         style={{ x, clipPath: rowClipPath }}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        {...rowDragAttributes}
+        {...rowDragListeners}
         className={cn(
-          "select-none",
+          "group select-none",
           index % 2 === 0
             ? "bg-white dark:bg-gray-800"
             : "bg-gray-50 dark:bg-gray-800/60",
@@ -381,7 +418,9 @@ export const ItemTableRow = memo(function ItemTableRow({
               "cursor-crosshair",
               !isTouch && "hover:bg-blue-50 dark:hover:bg-blue-900/20"
             ),
-          openSide && "relative z-10"
+          openSide && "relative z-10",
+          canDesktopDrag && !clickToAddTarget && "cursor-grab",
+          isDragging && "opacity-40 cursor-grabbing"
         )}
         onClick={(e) => {
           if (clickToAddTarget) {
@@ -397,11 +436,9 @@ export const ItemTableRow = memo(function ItemTableRow({
           onContextMenu(e, item);
         }}
       >
-        {/* Slim indicator strip — used to host the drag handle, replaced by
-            the swipe-to-move gesture. Kept as a narrow cell so the recently-
-            moved dot and in-transit truck still have a home, freeing the
-            previous handle width back to the content columns. Always rendered
-            (even when empty) so table-fixed column widths line up across rows. */}
+        {/* Slim indicator strip — hosts the recently-moved dot and the
+            in-transit truck. Always rendered (even when empty) so table-fixed
+            column widths line up across rows. */}
         <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 relative w-5 sm:w-6">
           <div className="flex flex-col items-end justify-center gap-0.5 py-1 pr-0.5">
             {isInTransit && (

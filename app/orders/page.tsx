@@ -52,6 +52,44 @@ const VALID_DROP_STATUSES = new Set<string>([
   ItemStatus.Hidden,
 ]);
 
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🚫 NO-DRAG ZONES                                                     ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+// The whole row is the drag source — but pointer-down on an interactive
+// child element (badges that open editors, the action menu trigger, form
+// inputs, links) shouldn't start a drag. Subclassing MouseSensor lets us
+// reject activation cleanly at the source instead of stopPropagation in N
+// cell components. Match descendants only — useDraggable puts
+// role="button" on the row itself, so role-based selectors would
+// self-veto.
+const NO_DRAG_TAGS = new Set([
+  "BUTTON",
+  "A",
+  "INPUT",
+  "TEXTAREA",
+  "SELECT",
+  "LABEL",
+]);
+
+class RowMouseSensor extends MouseSensor {
+  static activators = [
+    {
+      eventName: "onMouseDown" as const,
+      handler: ({ nativeEvent: event }: React.MouseEvent) => {
+        if (event.button !== 0) return false;
+        let node = event.target as HTMLElement | null;
+        const stop = event.currentTarget as HTMLElement;
+        while (node && node !== stop) {
+          if (NO_DRAG_TAGS.has(node.tagName)) return false;
+          if (node.dataset?.noDnd !== undefined) return false;
+          node = node.parentElement;
+        }
+        return true;
+      },
+    },
+  ];
+}
+
 const DROP_ANIMATION: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
     styles: { active: { opacity: "0.5" } },
@@ -258,7 +296,7 @@ export default function OrderManagementPage() {
   //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(RowMouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 150, tolerance: 5 },
     }),
