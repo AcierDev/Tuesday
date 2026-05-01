@@ -2,7 +2,13 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Truck } from "lucide-react";
-import { motion, useMotionValue, animate, type PanInfo } from "framer-motion";
+import {
+  motion,
+  useMotionValue,
+  animate,
+  useTransform,
+  type PanInfo,
+} from "framer-motion";
 import { TableCell } from "@/components/ui/table";
 import { Portal } from "@/components/ui/portal";
 import { MergedShippingCell } from "../cells/MergedShippingCell";
@@ -68,10 +74,18 @@ function useRecentlyMovedIds(): Set<string> {
 // desktop mouse drag is left untouched so text selection still works.
 
 const SWIPE_PANEL_WIDTH = 220;
-const SWIPE_TRIGGER_PX = 60;
-const SWIPE_VELOCITY_PROJECTION_S = 0.05;
+// Distance/velocity-projected position needed to commit an open from rest.
+// Higher than the initial 60px so a small flick doesn't trip the trigger.
+const SWIPE_OPEN_TRIGGER_PX = 90;
+// From an open state, the row must travel at least this far back toward 0
+// before the gesture is interpreted as "close". Hysteresis: closing is a
+// deliberate action, and the gesture never flips past 0 to the opposite
+// side in a single drag.
+const SWIPE_CLOSE_THRESHOLD_PX = SWIPE_PANEL_WIDTH * 0.5;
+const SWIPE_VELOCITY_PROJECTION_S = 0.04;
 const MAX_OPTIONS_PER_SIDE = 3;
 const SWIPE_SPRING = { type: "spring" as const, stiffness: 600, damping: 38 };
+const ROW_OPEN_RADIUS_PX = 10;
 
 const STATUS_CHAIN: readonly ItemStatus[] = [
   ItemStatus.Hidden,
@@ -171,10 +185,35 @@ export const ItemTableRow = memo(function ItemTableRow({
     width: number;
     height: number;
   } | null>(null);
-  // Mirror x into state so clip-path values can re-render. Each row drives
-  // its own subscription, so cost is bounded to the row currently being
-  // swiped — siblings don't re-render.
-  const [xValue, setXValue] = useState(0);
+  // Tracks "is the row visibly off-rest?" but only flips on threshold
+  // crossing — so the row doesn't re-render every motion frame during a
+  // gesture. Per-frame visuals (clip-paths, row radius) are driven by
+  // useTransform and written straight to the DOM by framer-motion.
+  const [hasOffset, setHasOffset] = useState(false);
+
+  const leftPanelClipPath = useTransform(
+    x,
+    (v) =>
+      `inset(0 ${Math.max(
+        0,
+        SWIPE_PANEL_WIDTH - Math.max(0, v)
+      )}px 0 0)`
+  );
+  const rightPanelClipPath = useTransform(
+    x,
+    (v) =>
+      `inset(0 0 0 ${Math.max(
+        0,
+        SWIPE_PANEL_WIDTH - Math.max(0, -v)
+      )}px)`
+  );
+  // Row picks up rounded corners while it's swiped — matches the radius
+  // of the status pills behind it.
+  const rowClipPath = useTransform(x, (v) =>
+    Math.abs(v) > 0.5
+      ? `inset(0 round ${ROW_OPEN_RADIUS_PX}px)`
+      : `inset(0)`
+  );
 
   const { backward, forward } = useMemo(() => {
     const idx = STATUS_CHAIN.indexOf(item.status);
@@ -211,14 +250,21 @@ export const ItemTableRow = memo(function ItemTableRow({
     animate(x, 0, SWIPE_SPRING);
   }, [x]);
 
+  // Subscribe to the motion value but only flip hasOffset when crossing
+  // the 0.5px threshold — so we get one re-render at start of gesture and
+  // one at end, not 60+ during the swipe.
   useEffect(() => {
-    setXValue(x.get());
-    return x.on("change", (v) => setXValue(v));
+    const apply = (v: number) => {
+      const next = Math.abs(v) > 0.5;
+      setHasOffset((prev) => (prev === next ? prev : next));
+    };
+    apply(x.get());
+    return x.on("change", apply);
   }, [x]);
 
   // Refresh rect on scroll/resize whenever the row is "live" (open or being
   // dragged). At rest, listeners stay detached so siblings don't pay for it.
-  const isLive = openSide !== null || Math.abs(xValue) > 0.5;
+  const isLive = openSide !== null || hasOffset;
   useEffect(() => {
     if (!isLive) return;
     updateRestRect();
@@ -252,19 +298,44 @@ export const ItemTableRow = memo(function ItemTableRow({
 
   const handleDragEnd = useCallback(
     (_: unknown, info: PanInfo) => {
-      const projected =
-        info.offset.x + info.velocity.x * SWIPE_VELOCITY_PROJECTION_S;
-      if (projected > SWIPE_TRIGGER_PX && canSwipeRight) {
+      // Project from the *current absolute position* rather than the drag
+      // offset. Using offset breaks closing from an open state: a drag of
+      // -220 to bring the row back to 0 looks like a "swipe-left to open
+      // right" if you only see the offset.
+      const projected = x.get() + info.velocity.x * SWIPE_VELOCITY_PROJECTION_S;
+
+      // From open: only "stay open" or "close" — never flip past 0 to the
+      // opposite side in one gesture, no matter how strong the flick.
+      if (openSide === "left") {
+        if (projected < SWIPE_CLOSE_THRESHOLD_PX) {
+          setOpenSide(null);
+          animate(x, 0, SWIPE_SPRING);
+        } else {
+          animate(x, SWIPE_PANEL_WIDTH, SWIPE_SPRING);
+        }
+        return;
+      }
+      if (openSide === "right") {
+        if (projected > -SWIPE_CLOSE_THRESHOLD_PX) {
+          setOpenSide(null);
+          animate(x, 0, SWIPE_SPRING);
+        } else {
+          animate(x, -SWIPE_PANEL_WIDTH, SWIPE_SPRING);
+        }
+        return;
+      }
+      // From closed: open in either direction once past the trigger.
+      if (projected > SWIPE_OPEN_TRIGGER_PX && canSwipeRight) {
         animate(x, SWIPE_PANEL_WIDTH, SWIPE_SPRING);
         setOpenSide("left");
-      } else if (projected < -SWIPE_TRIGGER_PX && canSwipeLeft) {
+      } else if (projected < -SWIPE_OPEN_TRIGGER_PX && canSwipeLeft) {
         animate(x, -SWIPE_PANEL_WIDTH, SWIPE_SPRING);
         setOpenSide("right");
       } else {
         closeSwipe();
       }
     },
-    [x, canSwipeRight, canSwipeLeft, closeSwipe]
+    [x, openSide, canSwipeRight, canSwipeLeft, closeSwipe]
   );
 
   const handleSelectStatus = useCallback(
@@ -280,18 +351,6 @@ export const ItemTableRow = memo(function ItemTableRow({
     return null;
   }
 
-  // How much of each panel is still hidden, applied to the *outer* edge so
-  // the reveal tracks the screen edge as the row slides — leftmost button
-  // appears first when swiping right, rightmost first when swiping left.
-  const leftPanelHiddenPx = Math.max(
-    0,
-    SWIPE_PANEL_WIDTH - Math.max(0, xValue)
-  );
-  const rightPanelHiddenPx = Math.max(
-    0,
-    SWIPE_PANEL_WIDTH - Math.max(0, -xValue)
-  );
-
   return (
     <>
       <motion.tr
@@ -303,7 +362,7 @@ export const ItemTableRow = memo(function ItemTableRow({
           right: canSwipeRight ? SWIPE_PANEL_WIDTH : 0,
         }}
         dragElastic={0.18}
-        style={{ x }}
+        style={{ x, clipPath: rowClipPath }}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         className={cn(
@@ -382,8 +441,6 @@ export const ItemTableRow = memo(function ItemTableRow({
               [ColumnTitles.Packaging]: "packaging",
               [ColumnTitles.Boxes]: "boxes",
               [ColumnTitles.Notes]: "notes",
-              [ColumnTitles.Rating]: "rating",
-              [ColumnTitles.Shipping]: "shipping",
               [ColumnTitles.Labels]: "labels",
             };
 
@@ -426,7 +483,7 @@ export const ItemTableRow = memo(function ItemTableRow({
       {canSwipe && isLive && restRect && (
         <Portal>
           {backward.length > 0 && (
-            <div
+            <motion.div
               data-swipe-panel="left"
               style={{
                 position: "fixed",
@@ -436,8 +493,9 @@ export const ItemTableRow = memo(function ItemTableRow({
                 width: SWIPE_PANEL_WIDTH,
                 // Clip from the right so the panel uncovers from the
                 // screen-edge inward: as the row slides right, the leftmost
-                // button surfaces first.
-                clipPath: `inset(0 ${leftPanelHiddenPx}px 0 0)`,
+                // button surfaces first. Driven straight off the motion
+                // value — no per-frame React re-render.
+                clipPath: leftPanelClipPath,
                 zIndex: 40,
                 pointerEvents: openSide === "left" ? "auto" : "none",
               }}
@@ -456,10 +514,10 @@ export const ItemTableRow = memo(function ItemTableRow({
                   {STATUS_PANEL_LABEL[status]}
                 </button>
               ))}
-            </div>
+            </motion.div>
           )}
           {forward.length > 0 && (
-            <div
+            <motion.div
               data-swipe-panel="right"
               style={{
                 position: "fixed",
@@ -470,7 +528,7 @@ export const ItemTableRow = memo(function ItemTableRow({
                 // Mirror of the left panel: clip from the left so the row
                 // sliding left exposes the rightmost button first from the
                 // screen edge inward.
-                clipPath: `inset(0 0 0 ${rightPanelHiddenPx}px)`,
+                clipPath: rightPanelClipPath,
                 zIndex: 40,
                 pointerEvents: openSide === "right" ? "auto" : "none",
               }}
@@ -489,7 +547,7 @@ export const ItemTableRow = memo(function ItemTableRow({
                   {STATUS_PANEL_LABEL[status]}
                 </button>
               ))}
-            </div>
+            </motion.div>
           )}
         </Portal>
       )}

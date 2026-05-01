@@ -71,12 +71,6 @@ export const boardConfig: BoardConfig = {
       type: ColumnTypes.Text,
       requiredForNewItem: false,
     },
-    Rating: {
-      title: ColumnTitles.Rating,
-      id: ColumnTitles.Customer_Name,
-      type: ColumnTypes.Number,
-      requiredForNewItem: false,
-    },
     Labels: {
       title: ColumnTitles.Labels,
       id: ColumnTitles.Due,
@@ -113,7 +107,6 @@ export const boardConfig: BoardConfig = {
       ColumnTitles.Due,
       ColumnTitles.Glued,
       ColumnTitles.Notes,
-      ColumnTitles.Rating,
     ],
     Wip: [
       ColumnTitles.Customer_Name,

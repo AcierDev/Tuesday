@@ -74,12 +74,6 @@ export const itemSortFuncs: ItemSortFuncs = {
         ? aNotes.localeCompare(bNotes)
         : bNotes.localeCompare(aNotes);
     }),
-  [ColumnTitles.Rating]: (items, ascending) =>
-    [...items].sort((a, b) => {
-      const aRating = Number(a.rating || "0");
-      const bRating = Number(b.rating || "0");
-      return ascending ? aRating - bRating : bRating - aRating;
-    }),
   [ColumnTitles.Due]: (items, ascending) =>
     [...items].sort((a, b) => {
       const aDateString = a.dueDate || "";

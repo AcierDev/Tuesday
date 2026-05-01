@@ -54,7 +54,6 @@ function BaseDropdownCell({
             [ColumnTitles.Glued]: "glued",
             [ColumnTitles.Packaging]: "packaging",
             [ColumnTitles.Boxes]: "boxes",
-            [ColumnTitles.Shipping]: "shipping",
             [ColumnTitles.Labels]: "labels"
         };
 

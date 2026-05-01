@@ -348,23 +348,30 @@ html.dark .text-gray-800 { color: rgb(229 231 235); }
    green wave appears to crawl across the new range). Both run once on mount via
    `both` fill-mode so the from-frame is applied at first paint. */
 @keyframes capacity-bubble {
-  0%   { transform: scale(0.2);                 opacity: 0.4; border-radius: 50%; }
-  35%  { transform: scaleX(1.21) scaleY(2.53);  opacity: 1;   border-radius: 40%; }
-  65%  { transform: scaleX(1.05) scaleY(1.55);               border-radius: 30%; }
-  85%  { transform: scaleX(1.0)  scaleY(0.92);               border-radius: 8px; }
+  0%   { transform: scale(0.05);                opacity: 0;   border-radius: 50%; }
+  14%  { transform: scaleX(0.4)  scaleY(10.0); opacity: 1;   border-radius: 50%; }
+  32%  { transform: scaleX(1.8)  scaleY(0.3);               border-radius: 45%; }
+  48%  { transform: scaleX(0.75) scaleY(3.5);               border-radius: 35%; }
+  62%  { transform: scaleX(1.35) scaleY(0.6);               border-radius: 20%; }
+  74%  { transform: scaleX(0.9)  scaleY(1.6);               border-radius: 12px; }
+  84%  { transform: scaleX(1.1)  scaleY(0.8);               border-radius: 6px; }
+  93%  { transform: scaleX(0.97) scaleY(1.1);               border-radius: 4px; }
   100% { transform: scale(1);                               border-radius: 2px; }
 }
 .animate-capacity-bubble {
-  animation: capacity-bubble 1120ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: capacity-bubble 2240ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
   transform-origin: center;
 }
 
 @keyframes capacity-snake {
-  0%   { transform: scaleX(0); opacity: 0.6; }
-  100% { transform: scaleX(1); opacity: 1; }
+  0%   { transform: scaleX(0)    scaleY(0.3); opacity: 0.3; }
+  50%  { transform: scaleX(1.08) scaleY(1.5); opacity: 1;   }
+  72%  { transform: scaleX(0.96) scaleY(0.8);               }
+  88%  { transform: scaleX(1.03) scaleY(1.1);               }
+  100% { transform: scale(1);                 opacity: 1;   }
 }
 .animate-capacity-snake {
-  animation: capacity-snake 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: capacity-snake 440ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
   transform-origin: left center;
 }
 

@@ -71,8 +71,6 @@ export const EditItemDialog = ({
           [ColumnTitles.Packaging]: "packaging",
           [ColumnTitles.Boxes]: "boxes",
           [ColumnTitles.Notes]: "notes",
-          [ColumnTitles.Rating]: "rating",
-          [ColumnTitles.Shipping]: "shipping",
           [ColumnTitles.Labels]: "labels"
       };
       return fieldMap[columnName];
@@ -409,33 +407,6 @@ export const EditItemDialog = ({
                           }
                         }}
                         className="data-[state=checked]:bg-blue-600"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <Label
-                        htmlFor="difficult-customer"
-                        className="font-medium"
-                      >
-                        Difficult Customer
-                      </Label>
-                      <Switch
-                        checked={
-                          editingItem?.tags?.isDifficultCustomer || false
-                        }
-                        id="difficult-customer"
-                        onCheckedChange={(checked) => {
-                          if (editingItem) {
-                            setEditingItem({
-                              ...editingItem,
-                              tags: {
-                                ...editingItem.tags,
-                                isDifficultCustomer: checked,
-                              },
-                            });
-                          }
-                        }}
-                        className="data-[state=checked]:bg-red-600"
                       />
                     </div>
 

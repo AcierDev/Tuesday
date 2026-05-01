@@ -107,7 +107,6 @@ export const CustomTableCell = ({
               columnValue={columnValue as any} // Casting as NameCell expects specific shape but Compatible
               tags={{
                 isDuplicate: isDuplicate,
-                isDifficultCustomer: item.tags?.isDifficultCustomer || false,
                 isVertical: item.tags?.isVertical || false,
                 hasCustomerMessage: item.tags?.hasCustomerMessage || false,
               }}

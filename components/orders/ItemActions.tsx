@@ -7,7 +7,7 @@ import {
   Clipboard,
   MoreVertical,
 } from "lucide-react";
-import React from "react";
+import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -95,18 +95,66 @@ export const ItemActions = ({
     return menuContent;
   }
 
+  return <ItemActionsTrigger>{menuContent}</ItemActionsTrigger>;
+};
+
+// Radix's DropdownMenuTrigger opens the menu on pointer-down by default —
+// fast on mouse, but on touch this fires *before* the swipe-to-move gesture
+// can take over, so a horizontal swipe that starts on the kebab accidentally
+// pops the menu. Switching to controlled mode and gating the open behind a
+// click event (which the browser only emits on pointer-up *without*
+// significant movement) lets a swipe stay a swipe.
+function ItemActionsTrigger({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const movedRef = useRef(false);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           className="h-6 w-[1.125rem] p-0 mx-auto text-gray-700 dark:text-gray-300"
           variant="ghost"
+          onPointerDown={(e) => {
+            if (e.pointerType === "touch") {
+              // Block Radix's pointer-down auto-open on touch. Click will
+              // open the menu instead — only fires on a clean tap, so a
+              // horizontal swipe that starts here stays a swipe.
+              e.preventDefault();
+              startRef.current = { x: e.clientX, y: e.clientY };
+              movedRef.current = false;
+            }
+          }}
+          onPointerMove={(e) => {
+            const start = startRef.current;
+            if (!start) return;
+            if (
+              Math.abs(e.clientX - start.x) > 6 ||
+              Math.abs(e.clientY - start.y) > 6
+            ) {
+              movedRef.current = true;
+            }
+          }}
+          onClick={(e) => {
+            // For touch, decide based on whether the gesture moved.
+            // For mouse/pen Radix already handled it via pointer-down, so
+            // a synthetic click here would just toggle it back closed —
+            // skip in that case.
+            if (startRef.current) {
+              startRef.current = null;
+              if (movedRef.current) {
+                e.preventDefault();
+                return;
+              }
+              setOpen((o) => !o);
+            }
+          }}
         >
           <span className="sr-only">Open actions menu</span>
           <MoreVertical className="h-[1.05rem] w-[1.05rem]" />
         </Button>
       </DropdownMenuTrigger>
-      {menuContent}
+      {children}
     </DropdownMenu>
   );
-};
+}

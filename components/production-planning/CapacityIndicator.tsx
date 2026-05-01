@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useRef } from "react";
+import { memo, useRef } from "react";
 
 import { cn } from "@/utils/functions";
 
@@ -81,9 +81,8 @@ export function CapacityIndicator({ current, max, glued = 0, gluedOnly = false, 
   const batchSize = gluedCells - prevGlued;
   const animateBatch = batchSize > 0 && !gluedOnly;
   const isMultiBatch = batchSize > 1;
-  useEffect(() => {
-    prevGluedRef.current = gluedCells;
-  }, [gluedCells]);
+
+  prevGluedRef.current = gluedCells;
 
   return (
     <div className="w-full">

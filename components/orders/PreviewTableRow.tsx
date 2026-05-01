@@ -45,8 +45,6 @@ export function PreviewTableRow({
     [ColumnTitles.Packaging]: "packaging",
     [ColumnTitles.Boxes]: "boxes",
     [ColumnTitles.Notes]: "notes",
-    [ColumnTitles.Rating]: "rating",
-    [ColumnTitles.Shipping]: "shipping",
     [ColumnTitles.Labels]: "labels",
   };
 

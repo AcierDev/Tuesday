@@ -65,6 +65,14 @@ export type ItemsResponse = {
   items: Item[];
 };
 
+// REMOVED 2026-04-30: `rating?: string`, `shipping?: string`, and
+// `tags.isDifficultCustomer?: boolean` used to live on this type. They were
+// dropped because nothing in the live UI relied on them. Older backups may
+// still carry these fields on persisted documents — they pass through the
+// runtime untouched (TypeScript type erasure means the stale fields are simply
+// unread), so loading legacy data does not crash. If you ever need to revive
+// any of these, restore the field here and the corresponding ColumnTitles /
+// fieldMap entries that used to live alongside them.
 export type Item = {
   id: string;
   // Flattened fields
@@ -78,8 +86,6 @@ export type Item = {
   packaging?: string;
   boxes?: string;
   notes?: string;
-  rating?: string;
-  shipping?: string;
   labels?: string;
 
   createdAt: number;
@@ -91,7 +97,6 @@ export type Item = {
   index: number;
   shippingDetails?: ShippingDetails;
   tags?: {
-    isDifficultCustomer?: boolean;
     isVertical?: boolean;
     hasCustomerMessage?: boolean;
   };
@@ -322,6 +327,10 @@ export enum ProgressStatus {
   Didnt_Start = "Didn't Start",
 }
 
+// REMOVED 2026-04-30: `Rating = "Rating"` used to be in this enum, paired with
+// the now-removed `Item.rating` field. `Shipping` is retained — it doubles as
+// the toggle for the tracking-status column (MergedShippingCell), which is
+// independent of the also-removed `Item.shipping` string field.
 export enum ColumnTitles {
   Labels = "Labels",
   Customer_Name = "Customer Name",
@@ -334,7 +343,6 @@ export enum ColumnTitles {
   Packaging = "Packaging",
   Boxes = "Boxes",
   Notes = "Notes",
-  Rating = "Rating",
   Shipping = "Shipping",
 }
 

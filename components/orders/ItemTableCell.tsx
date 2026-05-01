@@ -22,8 +22,6 @@ const getFlatValue = (item: Item, columnName: ColumnTitles): string | undefined 
     [ColumnTitles.Packaging]: "packaging",
     [ColumnTitles.Boxes]: "boxes",
     [ColumnTitles.Notes]: "notes",
-    [ColumnTitles.Rating]: "rating",
-    [ColumnTitles.Shipping]: "shipping",
     [ColumnTitles.Labels]: "labels"
   };
   const key = fieldMap[columnName];

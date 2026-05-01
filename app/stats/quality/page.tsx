@@ -28,25 +28,13 @@ function flowIndex(status: string): number {
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🧩 PAGE                                                              ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+// REMOVED 2026-04-30: this page used to surface average customer rating and a
+// rating distribution chart, sourced from the now-removed `Item.rating` field.
+// Reversal tracking (status moved backwards) is independent and retained.
 
 export default function QualityPage() {
   const { items, loading: il, error: ie } = useAllItemsRich();
   const { activities, loading: al, error: ae } = useActivities();
-
-  const ratingData = useMemo(() => {
-    if (!items) return null;
-    const rated = items
-      .filter((i) => i.rating && i.rating.trim().length > 0)
-      .map((i) => parseFloat(i.rating!) || 0)
-      .filter((v) => v > 0);
-    if (rated.length === 0) return { count: 0, avg: 0, distribution: [] };
-    const avg = rated.reduce((s, v) => s + v, 0) / rated.length;
-    const distribution = [1, 2, 3, 4, 5].map((star) => ({
-      star,
-      count: rated.filter((v) => Math.round(v) === star).length,
-    }));
-    return { count: rated.length, avg, distribution };
-  }, [items]);
 
   const reversals = useMemo(() => {
     if (!activities || !items) return null;
@@ -79,11 +67,7 @@ export default function QualityPage() {
           Quality
         </p>
         <h2 className="mt-1 heading-page">
-          {ratingData
-            ? ratingData.count > 0
-              ? `${ratingData.avg.toFixed(2)} avg rating`
-              : "No ratings yet"
-            : "—"}
+          {reversals ? `${reversals.events.length} reversals` : "—"}
         </h2>
       </header>
 
@@ -94,21 +78,6 @@ export default function QualityPage() {
       )}
 
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <StatTile
-          label="Rated items"
-          value={ratingData?.count ?? 0}
-        />
-        <StatTile
-          label="Avg rating"
-          value={ratingData ? ratingData.avg.toFixed(2) : "—"}
-          tone={
-            ratingData && ratingData.avg >= 4
-              ? "good"
-              : ratingData && ratingData.avg < 3
-                ? "bad"
-                : "neutral"
-          }
-        />
         <StatTile
           label="Reversals"
           value={reversals?.events.length ?? 0}
@@ -124,44 +93,6 @@ export default function QualityPage() {
           }
           sublabel="distinct items"
         />
-      </section>
-
-      <section className="rounded-2xl glass-surface p-5 mb-6">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
-          Rating distribution
-        </h3>
-        {!ratingData || ratingData.distribution.length === 0 ? (
-          <p className="text-sm text-slate-400">No ratings yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {ratingData.distribution.reverse().map((d) => {
-              const pct = ratingData.count
-                ? (d.count / ratingData.count) * 100
-                : 0;
-              return (
-                <div key={d.star}>
-                  <div className="flex items-baseline justify-between mb-1">
-                    <span className="text-sm font-semibold text-white">
-                      {"★".repeat(d.star)}
-                      <span className="text-slate-500">
-                        {"★".repeat(5 - d.star)}
-                      </span>
-                    </span>
-                    <span className="text-xs text-slate-400 tabular-nums">
-                      {d.count} · {pct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-amber-400"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </section>
 
       <section className="rounded-2xl glass-surface p-5">

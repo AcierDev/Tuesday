@@ -1,7 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 
-// Field mapping configuration
+// Field mapping configuration.
+// REMOVED 2026-04-30: "Rating" → "rating" and "Shipping" → "shipping" used to
+// be in this map. Those fields no longer exist on Item, so old Monday.com-
+// shaped backups will simply drop those values when transformed. Pre-flat
+// backups already containing `rating` / `shipping` keys load unchanged — the
+// keys pass through MongoDB and the runtime ignores them.
 const COLUMN_MAPPING: Record<string, string> = {
   "Customer Name": "customerName",
   "Due Date": "dueDate",
@@ -13,8 +18,6 @@ const COLUMN_MAPPING: Record<string, string> = {
   "Packaging": "packaging",
   "Boxes": "boxes",
   "Notes": "notes",
-  "Rating": "rating",
-  "Shipping": "shipping",
   "Labels": "labels"
 };
 

@@ -140,8 +140,8 @@ export function NavSectionCounters() {
             )}
             title={`${status}: ${count}`}
           >
-            <span className="text-lg font-bold leading-none">{count}</span>
-            <span className="mt-0.5 w-full truncate text-center text-[8px] font-medium uppercase tracking-wide opacity-80">
+            <span className="text-[18.4px] font-bold leading-none">{count}</span>
+            <span className="mt-0.5 w-full truncate text-center text-[9.2px] font-medium uppercase tracking-wide opacity-80">
               {label}
             </span>
           </button>

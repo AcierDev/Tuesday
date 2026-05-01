@@ -463,7 +463,7 @@ export function Navbar({
       {/* Sidebar — desktop only; mobile uses a floating PageToggle. */}
       <aside
         className={`${
-          sidebarOpen ? "w-64" : "w-[4.5rem]"
+          sidebarOpen ? "w-64" : "w-[4.25rem]"
         } fixed h-screen transition-all duration-300 ease-in-out bg-[hsl(var(--sidebar))] hidden lg:block z-30`}
       >
         <div className="h-screen flex flex-col bg-[hsl(var(--sidebar))]">
@@ -521,7 +521,7 @@ export function Navbar({
                 onMouseEnter={openPrintHover}
                 onMouseLeave={closePrintHover}
                 className={`fixed bottom-0 ${
-                  sidebarOpen ? "left-64" : "left-[4.5rem]"
+                  sidebarOpen ? "left-64" : "left-[4.25rem]"
                 } pl-2 pb-3 z-50 ${
                   printHovered ? "" : "pointer-events-none"
                 }`}

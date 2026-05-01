@@ -5,7 +5,6 @@ import {
   Trash2,
   Ship,
   CheckCircle2,
-  AlertTriangle,
   ArrowUpRightSquare,
   MessageSquare,
 } from "lucide-react";
@@ -260,8 +259,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
           </Card>
 
           {item.tags &&
-            (item.tags.isDifficultCustomer ||
-              item.tags.isVertical ||
+            (item.tags.isVertical ||
               item.tags.hasCustomerMessage) && (
               <Card>
                 <CardHeader>
@@ -269,15 +267,6 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
-                    {item.tags.isDifficultCustomer && (
-                      <Badge
-                        variant="outline"
-                        className="border-red-400 text-red-600 dark:border-red-600 dark:text-red-400"
-                      >
-                        <AlertTriangle className="h-3 w-3 mr-1" /> Difficult
-                        Customer
-                      </Badge>
-                    )}
                     {item.tags.isVertical && (
                       <Badge
                         variant="outline"

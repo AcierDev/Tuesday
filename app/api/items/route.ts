@@ -45,8 +45,6 @@ const FIELD_TO_COLUMN_TITLE: Record<string, ColumnTitles> = {
   packaging: ColumnTitles.Packaging,
   boxes: ColumnTitles.Boxes,
   notes: ColumnTitles.Notes,
-  rating: ColumnTitles.Rating,
-  shipping: ColumnTitles.Shipping,
   labels: ColumnTitles.Labels,
 };
 

@@ -359,8 +359,6 @@ export const useOrderStore = create<OrderState>()(
           [ColumnTitles.Packaging]: "packaging",
           [ColumnTitles.Boxes]: "boxes",
           [ColumnTitles.Notes]: "notes",
-          [ColumnTitles.Rating]: "rating",
-          [ColumnTitles.Shipping]: "shipping",
           [ColumnTitles.Labels]: "labels",
         };
 
@@ -479,8 +477,6 @@ export const useOrderStore = create<OrderState>()(
           packaging: "",
           boxes: "",
           notes: "",
-          rating: "",
-          shipping: "",
           labels: "",
         };
 
@@ -497,7 +493,6 @@ export const useOrderStore = create<OrderState>()(
           tags: {
             isVertical: newItem.tags?.isVertical,
             hasCustomerMessage: newItem.tags?.hasCustomerMessage,
-            isDifficultCustomer: newItem.tags?.isDifficultCustomer,
           },
         };
 
@@ -845,8 +840,10 @@ export const useOrderStore = create<OrderState>()(
 
           // If searching specific columns
           if (searchColumns.length > 0) {
-            // Map mapped columns to flat keys
-            const fieldMap: Record<ColumnTitles, keyof Item> = {
+            // Map mapped columns to flat keys. Partial because ColumnTitles.Shipping
+            // doubles as the tracking-column toggle and no longer maps to a string
+            // field on Item — searches for that column should fall through.
+            const fieldMap: Partial<Record<ColumnTitles, keyof Item>> = {
               [ColumnTitles.Customer_Name]: "customerName",
               [ColumnTitles.Due]: "dueDate",
               [ColumnTitles.Design]: "design",
@@ -857,13 +854,12 @@ export const useOrderStore = create<OrderState>()(
               [ColumnTitles.Packaging]: "packaging",
               [ColumnTitles.Boxes]: "boxes",
               [ColumnTitles.Notes]: "notes",
-              [ColumnTitles.Rating]: "rating",
-              [ColumnTitles.Shipping]: "shipping",
               [ColumnTitles.Labels]: "labels",
             };
 
             return (searchColumns as ColumnTitles[]).some((colTitle) => {
               const key = fieldMap[colTitle as ColumnTitles];
+              if (!key) return false;
               const val = item[key];
               return (
                 typeof val === "string" &&
@@ -930,8 +926,6 @@ function applyAutomatronRules(
       [ColumnTitles.Packaging]: "packaging",
       [ColumnTitles.Boxes]: "boxes",
       [ColumnTitles.Notes]: "notes",
-      [ColumnTitles.Rating]: "rating",
-      [ColumnTitles.Shipping]: "shipping",
       [ColumnTitles.Labels]: "labels",
     };
 

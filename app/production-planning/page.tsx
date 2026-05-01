@@ -1261,37 +1261,50 @@ export default function ProductionPlanningPage() {
     );
   }, []);
 
-  // Center today's column once per scroller mount. Tracks the last node we
-  // centered so re-attachments from React state changes don't keep yanking
-  // the user back to today; resets when motion.div remounts on week toggle.
-  const lastCenteredScrollerRef = useRef<HTMLDivElement | null>(null);
+  // Scroller node — driven by a ref callback so the IntersectionObserver
+  // effect below + the centering effect can both react to mount/unmount.
   const [scrollerNode, setScrollerNode] = useState<HTMLDivElement | null>(null);
   const scrollerRefCallback = useCallback(
-    (node: HTMLDivElement | null) => {
-      setScrollerNode(node);
-      if (!node) {
-        lastCenteredScrollerRef.current = null;
-        return;
-      }
-      if (lastCenteredScrollerRef.current === node) return;
-      if (!todayColumnDay || viewingNextWeek || viewingPastWeek) return;
-      const todayEl = node.querySelector<HTMLElement>(
+    (node: HTMLDivElement | null) => setScrollerNode(node),
+    []
+  );
+
+  // Center today's column. Runs once per (week, today) tuple so a re-render
+  // (item placed, drag, etc.) doesn't yank the user back. Driven by useEffect
+  // rather than the ref callback because, with AnimatePresence mode="wait",
+  // the new scroller mounts AFTER the old finishes exiting — useEffect picks
+  // that up via scrollerNode + currentWeekKey changing.
+  const centeredKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!scrollerNode) return;
+    if (!todayColumnDay || viewingNextWeek || viewingPastWeek) return;
+    const key = `${currentWeekKey}|${todayColumnDay}`;
+    if (centeredKeyRef.current === key) return;
+    let cancelled = false;
+    // rAF lets the snap-scroller's layout settle before we measure.
+    const rafId = requestAnimationFrame(() => {
+      if (cancelled) return;
+      const todayEl = scrollerNode.querySelector<HTMLElement>(
         `[data-today-column="true"]`
       );
       if (!todayEl) return;
-      lastCenteredScrollerRef.current = node;
-      // Direct scrollLeft (not scrollIntoView) so we only touch this scroller
-      // and don't fight scroll-snap-mandatory on neighboring scrollers. rAF
-      // lets layout settle so offsetLeft/clientWidth read final values.
-      requestAnimationFrame(() => {
-        const target =
-          todayEl.offsetLeft -
-          (node.clientWidth - todayEl.clientWidth) / 2;
-        node.scrollLeft = Math.max(0, target);
-      });
-    },
-    [todayColumnDay, viewingNextWeek, viewingPastWeek]
-  );
+      centeredKeyRef.current = key;
+      const target =
+        todayEl.offsetLeft -
+        (scrollerNode.clientWidth - todayEl.clientWidth) / 2;
+      scrollerNode.scrollLeft = Math.max(0, target);
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
+  }, [
+    scrollerNode,
+    todayColumnDay,
+    viewingNextWeek,
+    viewingPastWeek,
+    currentWeekKey,
+  ]);
 
   // Tracks which day column is currently snapped into the mobile viewport.
   // Only the active day allows vertical scroll on mobile — so swiping between
@@ -1399,7 +1412,7 @@ export default function ProductionPlanningPage() {
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-                className="flex gap-4 h-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory md:snap-none md:min-w-[1000px]"
+                className="flex gap-4 h-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory md:snap-none md:min-w-[1000px] pb-20 md:pb-0"
                 ref={scrollerRefCallback}
               >
                 {DAYS.map((day) => {
@@ -1416,7 +1429,7 @@ export default function ProductionPlanningPage() {
                       key={day}
                       data-today-column={isToday ? "true" : undefined}
                       data-day-column={day}
-                      className="shrink-0 w-[88vw] h-full snap-center md:w-auto md:flex-1 md:snap-align-none min-w-[150px] md:min-w-[200px]"
+                      className="shrink-0 w-[70vw] h-full snap-center md:w-auto md:flex-1 md:snap-align-none min-w-[150px] md:min-w-[200px]"
                     >
                       <DroppableDayColumn
                         day={day}

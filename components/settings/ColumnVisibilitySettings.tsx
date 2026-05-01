@@ -135,7 +135,7 @@ export function ColumnVisibilitySettings({
                                 {/*
                                   FRONTEND-ONLY HIDE: columns listed in
                                   FRONTEND_HIDDEN_COLUMN_TITLES (Painted,
-                                  Backboard, Boxes, Glued, Notes, Rating) are
+                                  Backboard, Boxes, Glued, Notes) are
                                   filtered out so users cannot toggle them
                                   here. The underlying data/types are
                                   unchanged for backwards compatibility.

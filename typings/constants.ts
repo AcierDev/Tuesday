@@ -717,7 +717,6 @@ export const FRONTEND_HIDDEN_COLUMN_TITLES: ReadonlySet<ColumnTitles> = new Set(
   ColumnTitles.Boxes,
   ColumnTitles.Glued,
   ColumnTitles.Notes,
-  ColumnTitles.Rating,
   ColumnTitles.Packaging,
   ColumnTitles.Due,
   ColumnTitles.Labels,
@@ -771,11 +770,6 @@ export const ITEM_DEFAULT_VALUES: Record<ColumnTitles, GenericColumnValue> = {
   },
   [ColumnTitles.Notes]: {
     columnName: ColumnTitles.Notes,
-    type: ColumnTypes.Dropdown,
-    text: "",
-  },
-  [ColumnTitles.Rating]: {
-    columnName: ColumnTitles.Rating,
     type: ColumnTypes.Dropdown,
     text: "",
   },

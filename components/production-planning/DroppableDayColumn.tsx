@@ -664,7 +664,7 @@ export function DroppableDayColumn({
       {/* Paint button: first click puts the column into selection mode (every
           order is pre-checked); second click prints the 4×6 paint label using
           only the still-checked orders. Cancel exits without printing. */}
-      <div className="flex items-center justify-center gap-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800 rounded-b-xl">
+      <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-b-xl">
         {paintSelectionMode ? (
           <>
             <Button

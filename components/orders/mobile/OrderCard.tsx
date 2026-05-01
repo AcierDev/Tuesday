@@ -2,7 +2,6 @@ import React from "react";
 import { motion } from "framer-motion";
 import {
   Calendar,
-  AlertTriangle,
   ArrowUpRightSquare,
   MessageSquare,
 } from "lucide-react";
@@ -37,12 +36,6 @@ export const OrderCard: React.FC<OrderCardProps> = React.memo(
     const isPastDue = daysRemaining < 0;
 
     const tags = [];
-    if (item.tags?.isDifficultCustomer)
-      tags.push({
-        icon: AlertTriangle,
-        text: "Difficult",
-        color: "text-red-500",
-      });
     if (item.tags?.isVertical)
       tags.push({
         icon: ArrowUpRightSquare,

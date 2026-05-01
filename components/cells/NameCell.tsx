@@ -8,7 +8,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  Angry,
   FileWarning,
   MessageCircleWarning,
   MoveVertical,
@@ -62,7 +61,6 @@ interface NameCellProps {
   };
   tags?: {
     isDuplicate: boolean;
-    isDifficultCustomer: boolean;
     isVertical: boolean;
     hasCustomerMessage: boolean;
   };
@@ -205,22 +203,6 @@ export const NameCell: React.FC<NameCellProps> = ({
             </TooltipTrigger>
             <TooltipContent>
               <p>Multiple orders with this customer name</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-        {tags?.isDifficultCustomer && (
-          <Tooltip>
-            <TooltipTrigger>
-              <Angry
-                className="h-4 w-4 text-red-500 animate-[pulse_3s_ease-in-out_infinite]"
-                style={{
-                  animation: "pulse 3s ease-in-out infinite",
-                  transformOrigin: "center",
-                }}
-              />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Difficult customer</p>
             </TooltipContent>
           </Tooltip>
         )}
