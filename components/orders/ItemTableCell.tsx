@@ -101,10 +101,10 @@ export function ItemTableCell({
     <TableCell
       key={`${item.id}-${columnName}`}
       className={cn(
-        "border-b border-gray-100 dark:border-gray-700/60 px-0.5 py-1 sm:p-2 text-[0.6875rem] sm:text-sm relative group",
-        columnName === ColumnTitles.Customer_Name ? "w-auto" : "",
-        columnName === ColumnTitles.Design ? "w-[23.38875%]" : "",
-        columnName === ColumnTitles.Size ? "w-[13.2%]" : "",
+        "border-b border-gray-100 dark:border-gray-700/60 px-0.5 py-1 sm:px-2 sm:py-1.5 text-[0.6875rem] sm:text-sm relative group",
+        columnName === ColumnTitles.Customer_Name ? "w-[38%]" : "",
+        columnName === ColumnTitles.Design ? "w-[32%]" : "",
+        columnName === ColumnTitles.Size ? "w-[22%]" : "",
         columnName === ColumnTitles.Labels ? "w-[2.44734375rem] flex-shrink-0 overflow-hidden p-0" : "",
         getStatusColor(columnValue)
       )}
