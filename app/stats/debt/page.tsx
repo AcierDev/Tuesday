@@ -13,12 +13,14 @@ import {
 import {
   ChartPoint,
   DEFAULT_RANGE,
-  RANGE_OPTIONS,
   RangeKey,
   RangeSelector,
   StatTile,
   TimeSeriesChart,
+  resolveRangeKey,
+  useAllItems,
 } from "@/lib/stats-shared";
+import { computeHealthScore } from "@/lib/production-metrics";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -178,10 +180,12 @@ export default function DebtPage() {
     if (seriesByRange[range]) return;
     let cancelled = false;
     setLoading(true);
-    const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
+    const { start, end } = resolveRangeKey(range);
     (async () => {
       try {
-        const res = await fetch(`/api/debt-snapshots?days=${days}`);
+        const res = await fetch(
+          `/api/debt-snapshots?start=${start}&end=${end}`
+        );
         if (!res.ok) return;
         const json = (await res.json()) as { series: SeriesPoint[] };
         if (cancelled) return;
@@ -211,7 +215,7 @@ export default function DebtPage() {
     [items]
   );
 
-  const { total: totalDebt, byStatus } = useMemo(
+  const { total: totalDebt } = useMemo(
     () => computeDebtBreakdown(activeItems),
     [activeItems]
   );
@@ -230,8 +234,58 @@ export default function DebtPage() {
     return rows;
   }, [activeItems]);
 
+  // Health-score what-if. We need all items (including Done/Hidden) so the
+  // on-time rate component reflects historical shipments.
+  const { items: allItems } = useAllItems();
+  const healthCurrent = useMemo(
+    () => (allItems ? computeHealthScore(allItems) : null),
+    [allItems]
+  );
+  const healthIfDebtCleared = useMemo(
+    () =>
+      allItems
+        ? computeHealthScore(allItems, { simulateDebtCleared: true })
+        : null,
+    [allItems]
+  );
+  const healthIf1Week = useMemo(
+    () =>
+      allItems
+        ? computeHealthScore(allItems, { sustainedDebtFreeDays: 7 })
+        : null,
+    [allItems]
+  );
+  const healthIf2Weeks = useMemo(
+    () =>
+      allItems
+        ? computeHealthScore(allItems, { sustainedDebtFreeDays: 14 })
+        : null,
+    [allItems]
+  );
+  const healthDelta =
+    healthCurrent && healthIfDebtCleared
+      ? healthIfDebtCleared.total - healthCurrent.total
+      : 0;
+  const healthChangedRows = useMemo(() => {
+    if (!healthCurrent || !healthIfDebtCleared) return [];
+    return healthCurrent.breakdown
+      .map((row, i) => {
+        const projected = healthIfDebtCleared.breakdown[i];
+        if (!projected) return null;
+        const diff = projected.earned - row.earned;
+        if (Math.abs(diff) < 0.05) return null;
+        return {
+          label: row.label,
+          before: row.earned,
+          after: projected.earned,
+          diff,
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+  }, [healthCurrent, healthIfDebtCleared]);
+
   const stats = useMemo(() => summarizeSeries(series), [series]);
-  const rangeLabel = RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+  const { days, label: rangeLabel } = resolveRangeKey(range);
   const debtFreePct = stats.recordedDays
     ? Math.round((stats.daysDebtFree / stats.recordedDays) * 100)
     : 0;
@@ -273,6 +327,115 @@ export default function DebtPage() {
         <RangeSelector value={range} onChange={setRange} />
       </header>
 
+      {healthCurrent &&
+        healthIfDebtCleared &&
+        healthIf1Week &&
+        healthIf2Weeks &&
+        totalDebt > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <section className="rounded-2xl glass-surface p-5">
+              <div className="flex flex-wrap items-end justify-between gap-6">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+                    Health if debt cleared
+                  </p>
+                  <div className="mt-1 text-5xl font-bold tabular-nums leading-none text-emerald-500 dark:text-emerald-400">
+                    {healthIfDebtCleared.total}
+                    <span className="text-xl font-medium ml-2 text-slate-400">
+                      / 100
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Currently {healthCurrent.total}
+                    {healthDelta > 0 && (
+                      <>
+                        {" · "}
+                        <span className="text-emerald-500 dark:text-emerald-400 font-semibold">
+                          +{healthDelta} pts
+                        </span>{" "}
+                        from clearing debt
+                      </>
+                    )}
+                  </p>
+                </div>
+                {healthChangedRows.length > 0 && (
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {healthChangedRows.map((row) => (
+                      <div
+                        key={row.label}
+                        className="rounded-lg bg-white/5 border border-white/10 px-3 py-2"
+                      >
+                        <div className="text-[10px] uppercase tracking-wide text-slate-400">
+                          {row.label}
+                        </div>
+                        <div className="mt-0.5 tabular-nums">
+                          <span className="text-slate-400">
+                            {row.before.toFixed(1)}
+                          </span>
+                          <span className="mx-1 text-slate-500">→</span>
+                          <span className="font-semibold text-emerald-500 dark:text-emerald-400">
+                            {row.after.toFixed(1)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="rounded-2xl glass-surface p-5">
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+                If sustained debt-free
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-4xl font-bold tabular-nums leading-none text-emerald-500 dark:text-emerald-400">
+                    {healthIf1Week.total}
+                    <span className="text-base font-medium ml-1.5 text-slate-400">
+                      / 100
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">
+                    after 1 week
+                    {healthIf1Week.total - healthCurrent.total > 0 && (
+                      <>
+                        {" · "}
+                        <span className="text-emerald-500 dark:text-emerald-400 font-semibold">
+                          +{healthIf1Week.total - healthCurrent.total} pts
+                        </span>
+                      </>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <div className="text-4xl font-bold tabular-nums leading-none text-emerald-500 dark:text-emerald-400">
+                    {healthIf2Weeks.total}
+                    <span className="text-base font-medium ml-1.5 text-slate-400">
+                      / 100
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">
+                    after 2 weeks
+                    {healthIf2Weeks.total - healthCurrent.total > 0 && (
+                      <>
+                        {" · "}
+                        <span className="text-emerald-500 dark:text-emerald-400 font-semibold">
+                          +{healthIf2Weeks.total - healthCurrent.total} pts
+                        </span>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 text-[11px] text-slate-500">
+                Recent shipments retroactively count as on-time (couldn't have
+                shipped late without the item being briefly overdue).
+              </p>
+            </section>
+          </div>
+        )}
+
       <section className="rounded-2xl glass-surface p-5 mb-6">
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
@@ -288,7 +451,7 @@ export default function DebtPage() {
           gradientId="debt-area"
           formatValue={(v) => `${v} d`}
           emptyLabel="No time debt history yet — check back tomorrow."
-          showWeekBoundaries={range === "30d" || range === "90d"}
+          showWeekBoundaries={days <= 90}
         />
       </section>
 
@@ -338,59 +501,6 @@ export default function DebtPage() {
           value={`+${stats.biggestJump} / −${Math.abs(stats.biggestDrop)} d`}
           sublabel="day-over-day"
         />
-      </section>
-
-      <section className="rounded-2xl glass-surface p-5 mb-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
-          By status (today)
-        </h2>
-        {totalDebt === 0 ? (
-          <p className="text-sm text-slate-400">
-            No overdue items. Nice work.
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {Object.entries(byStatus)
-              .sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))
-              .map(([status, days]) => {
-                const s = status as ItemStatus;
-                const color = STATUS_COLORS[s];
-                const share = totalDebt
-                  ? Math.round(((days ?? 0) / totalDebt) * 100)
-                  : 0;
-                return (
-                  <div
-                    key={status}
-                    className="rounded-xl px-3 py-3 bg-white/5 border border-white/10 flex flex-col items-start"
-                  >
-                    <span
-                      className={cn(
-                        "text-[10px] font-semibold uppercase tracking-wide",
-                        `text-${color}`
-                      )}
-                    >
-                      {STATUS_LABELS[s]}
-                    </span>
-                    <span className="mt-1 text-stat-value">
-                      −{days}
-                      <span className="ml-1 text-xs font-medium text-slate-400">
-                        d
-                      </span>
-                    </span>
-                    <span className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">
-                      {share}%
-                    </span>
-                    <div className="mt-2 w-full h-1 rounded-full bg-white/5 overflow-hidden">
-                      <div
-                        className={cn("h-full rounded-full", `bg-${color}`)}
-                        style={{ width: `${share}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        )}
       </section>
 
       <section className="rounded-2xl glass-surface p-5">

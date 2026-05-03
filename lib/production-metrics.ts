@@ -941,15 +941,39 @@ export type HealthBreakdownRow = {
   hint: string;
 };
 
-export function computeHealthScore(items: Item[]): {
+export function computeHealthScore(
+  items: Item[],
+  options: {
+    simulateDebtCleared?: boolean;
+    // If set, additionally simulate debt having been zero for the past N
+    // days. Implies simulateDebtCleared. In that window, any late shipment
+    // is reclassified as on-time (you can't have completed late without
+    // being briefly overdue).
+    sustainedDebtFreeDays?: number;
+  } = {}
+): {
   total: number;
   breakdown: HealthBreakdownRow[];
 } {
   const today = laDayKey();
   const start = shiftDayKey(today, -(HEALTH_RANGE_DAYS - 1));
-  const active = items.filter(
+  const sustainedDays = options.sustainedDebtFreeDays ?? 0;
+  const debtClearedNow = options.simulateDebtCleared || sustainedDays > 0;
+  const sustainedCutoff =
+    sustainedDays > 0 ? shiftDayKey(today, -(sustainedDays - 1)) : null;
+  const activeAll = items.filter(
     (i) => i.status !== ItemStatus.Done && i.status !== ItemStatus.Hidden
   );
+  // Counterfactual: pretend all currently-overdue items are gone. They drop
+  // out of the debt, late-now, and forecast computations — but historical
+  // on-time rate and velocity (which look at completedAt) are untouched.
+  const active = debtClearedNow
+    ? activeAll.filter((i) => {
+        const due = i.dueDate?.slice(0, 10);
+        if (!due || due.length !== 10) return true;
+        return dayDiffKeys(due, today) <= 0;
+      })
+    : activeAll;
   let debt = 0;
   for (const item of active) {
     const due = item.dueDate?.slice(0, 10);
@@ -977,7 +1001,9 @@ export function computeHealthScore(items: Item[]): {
       completedKey >= onTimeRecentCutoff ? 1 : HEALTH_ON_TIME_OLD_WEIGHT;
     weightedTotal += weight;
     const diff = dayDiffKeys(due, completedKey);
-    if (diff <= 0) weightedOnTime += weight;
+    const inSustainedWindow =
+      sustainedCutoff !== null && completedKey >= sustainedCutoff;
+    if (diff <= 0 || inSustainedWindow) weightedOnTime += weight;
   }
   const weightedOnTimePct =
     weightedTotal === 0 ? 0 : (weightedOnTime / weightedTotal) * 100;
