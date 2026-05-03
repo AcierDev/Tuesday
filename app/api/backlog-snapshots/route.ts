@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import clientPromise from "../db/connect";
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
+import { dayDiffKeys, laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import {
   recordTodayBacklogSnapshot,
   BACKLOG_DB_NAME,
@@ -40,21 +40,36 @@ export async function POST() {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const requested = parseInt(
-      searchParams.get("days") || `${DEFAULT_HISTORY_DAYS}`,
-      10
-    );
-    const days = Math.min(Math.max(requested, 1), MAX_HISTORY_DAYS);
+    const startParam = searchParams.get("start");
+    const endParam = searchParams.get("end");
+    const todayKey = laDayKey();
+
+    let earliestKey: string;
+    let latestKey: string;
+    let days: number;
+    if (startParam && endParam) {
+      // Explicit calendar window. Clamp span to MAX_HISTORY_DAYS but
+      // preserve absolute start/end.
+      latestKey = endParam;
+      const requestedDays = dayDiffKeys(startParam, endParam) + 1;
+      days = Math.min(Math.max(requestedDays, 1), MAX_HISTORY_DAYS);
+      earliestKey = shiftDayKey(latestKey, -(days - 1));
+    } else {
+      const requested = parseInt(
+        searchParams.get("days") || `${DEFAULT_HISTORY_DAYS}`,
+        10
+      );
+      days = Math.min(Math.max(requested, 1), MAX_HISTORY_DAYS);
+      latestKey = todayKey;
+      earliestKey = shiftDayKey(latestKey, -(days - 1));
+    }
 
     const client = await clientPromise;
     const db = client.db(BACKLOG_DB_NAME);
 
-    const todayKey = laDayKey();
-    const earliestKey = shiftDayKey(todayKey, -(days - 1));
-
     const rowsDesc = await db
       .collection<BacklogSnapshot>(BACKLOG_SNAPSHOTS_COLLECTION)
-      .find({ date: { $lte: todayKey } })
+      .find({ date: { $lte: latestKey } })
       .sort({ date: -1 })
       .limit(days + 1)
       .toArray();

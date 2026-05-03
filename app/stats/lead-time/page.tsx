@@ -2,14 +2,13 @@
 
 import { useMemo, useState } from "react";
 
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import { computeLeadTimeStats, LeadTimeRow } from "@/lib/production-metrics";
 import {
   DEFAULT_RANGE,
-  RANGE_OPTIONS,
   RangeKey,
   RangeSelector,
   StatTile,
+  resolveRangeKey,
   useAllItems,
 } from "@/lib/stats-shared";
 
@@ -27,20 +26,19 @@ export default function LeadTimePage() {
   const { items, loading, error } = useAllItems();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
-  const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
-  const rangeLabel = RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+  const { start, end, label: rangeLabel } = resolveRangeKey(range);
 
   const stats = useMemo(() => {
     if (!items) return null;
-    const today = laDayKey();
-    const start = shiftDayKey(today, -(days - 1));
     const startMs = new Date(`${start}T00:00:00`).getTime();
+    const endMs = new Date(`${end}T23:59:59.999`).getTime();
     // Filter by completion date in range
     const filtered = items.filter(
-      (i) => i.completedAt && i.completedAt >= startMs
+      (i) =>
+        i.completedAt && i.completedAt >= startMs && i.completedAt <= endMs
     );
     return computeLeadTimeStats(filtered);
-  }, [items, days]);
+  }, [items, start, end]);
 
   return (
     <>

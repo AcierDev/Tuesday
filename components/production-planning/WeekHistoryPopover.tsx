@@ -52,7 +52,9 @@ export function WeekHistoryPopover({
   children,
 }: WeekHistoryPopoverProps) {
   const [open, setOpen] = useState(false);
-  const { data, loading, error } = useGluedStats(GLUED_LOOKBACK_DAYS);
+  const today = laDayKey();
+  const start = shiftDayKey(today, -(GLUED_LOOKBACK_DAYS - 1));
+  const { data, loading, error } = useGluedStats({ start, end: today });
 
   const months = useMemo<MonthGroup[]>(() => {
     if (!data) return [];

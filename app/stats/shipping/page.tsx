@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
+import { laDayKey } from "@/lib/debt-metrics";
 import {
   bucketShippingSpendByDay,
   summarizeShippingSpend,
@@ -10,11 +10,11 @@ import {
 import {
   ChartPoint,
   DEFAULT_RANGE,
-  RANGE_OPTIONS,
   RangeKey,
   RangeSelector,
   StatTile,
   TimeSeriesChart,
+  resolveRangeKey,
   useAllItemsRich,
 } from "@/lib/stats-shared";
 
@@ -33,14 +33,11 @@ export default function ShippingPage() {
   const { items, loading, error } = useAllItemsRich();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
-  const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
-  const rangeLabel = RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+  const { start, end, days, label: rangeLabel } = resolveRangeKey(range);
 
   const data = useMemo(() => {
     if (!items) return null;
-    const today = laDayKey();
-    const start = shiftDayKey(today, -(days - 1));
-    const buckets = bucketShippingSpendByDay(items, start, today);
+    const buckets = bucketShippingSpendByDay(items, start, end);
     const summary = summarizeShippingSpend(buckets);
 
     // Service-type breakdown
@@ -49,7 +46,7 @@ export default function ShippingPage() {
       const ship = item.purchasedShipment;
       if (!ship?.purchasedAt) continue;
       const key = laDayKey(new Date(ship.purchasedAt));
-      if (key < start || key > today) continue;
+      if (key < start || key > end) continue;
       const svc = ship.serviceName || ship.serviceType || "Unknown";
       const cur = byService.get(svc) ?? { count: 0, cost: 0 };
       cur.count += 1;
@@ -62,7 +59,7 @@ export default function ShippingPage() {
       .slice(0, TOP_SERVICE_LIMIT);
 
     return { buckets, summary, serviceRows };
-  }, [items, days]);
+  }, [items, start, end]);
 
   const chartSeries = useMemo<ChartPoint[]>(
     () =>
@@ -104,7 +101,7 @@ export default function ShippingPage() {
           color={SHIPPING_COLOR}
           gradientId="shipping-area"
           formatValue={(v) => `$${Math.round(v)}`}
-          showWeekBoundaries={range === "30d" || range === "90d"}
+          showWeekBoundaries={days <= 90}
         />
       </section>
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import clientPromise from "../../db/connect";
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
+import { dayDiffKeys, laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import {
   bucketGluedSquaresByDay,
   buildGluedEvents,
@@ -39,11 +39,27 @@ const ITEM_PROJECTION = {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const requested = parseInt(
-      searchParams.get("days") || `${DEFAULT_DAYS}`,
-      10
-    );
-    const days = Math.min(Math.max(requested, 1), MAX_DAYS);
+    const startParam = searchParams.get("start");
+    const endParam = searchParams.get("end");
+    const today = laDayKey();
+
+    let start: string;
+    let end: string;
+    let days: number;
+    if (startParam && endParam) {
+      end = endParam;
+      const requestedDays = dayDiffKeys(startParam, endParam) + 1;
+      days = Math.min(Math.max(requestedDays, 1), MAX_DAYS);
+      start = shiftDayKey(end, -(days - 1));
+    } else {
+      const requested = parseInt(
+        searchParams.get("days") || `${DEFAULT_DAYS}`,
+        10
+      );
+      days = Math.min(Math.max(requested, 1), MAX_DAYS);
+      end = today;
+      start = shiftDayKey(end, -(days - 1));
+    }
 
     const client = await clientPromise;
     const db = client.db("react-web-app");
@@ -83,16 +99,14 @@ export async function GET(request: Request) {
       .toArray()) as unknown as WeeklyScheduleData[];
     const scheduledDayByItemId = buildScheduledDayByItemId(schedules);
 
-    const today = laDayKey();
-    const start = shiftDayKey(today, -(days - 1));
     const allEvents = buildGluedEvents(activities, items, scheduledDayByItemId);
     const events = allEvents.filter(
-      (e) => e.dayKey >= start && e.dayKey <= today
+      (e) => e.dayKey >= start && e.dayKey <= end
     );
-    const buckets = bucketGluedSquaresByDay(events, start, today);
+    const buckets = bucketGluedSquaresByDay(events, start, end);
 
     return NextResponse.json(
-      { events, buckets, range: { start, end: today, days } },
+      { events, buckets, range: { start, end, days } },
       { headers: { "Cache-Control": CACHE_CONTROL } }
     );
   } catch (error) {

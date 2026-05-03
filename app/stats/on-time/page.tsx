@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 
 import { ItemStatus } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import {
   bucketOnTimeByWeek,
   computeCurrentlyLate,
@@ -13,11 +12,11 @@ import {
 import {
   ChartPoint,
   DEFAULT_RANGE,
-  RANGE_OPTIONS,
   RangeKey,
   RangeSelector,
   StatTile,
   TimeSeriesChart,
+  resolveRangeKey,
   useAllItems,
 } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
@@ -46,21 +45,17 @@ export default function OnTimePage() {
   const { items, loading, error } = useAllItems();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
-  const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
-  const rangeLabel = RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
-
-  const today = laDayKey();
-  const start = shiftDayKey(today, -(days - 1));
+  const { start, end, label: rangeLabel } = resolveRangeKey(range);
 
   const stats = useMemo(() => {
     if (!items) return null;
-    return computeOnTimeStats(items, start, today);
-  }, [items, start, today]);
+    return computeOnTimeStats(items, start, end);
+  }, [items, start, end]);
 
   const weekly = useMemo(() => {
     if (!items) return [];
-    return bucketOnTimeByWeek(items, start, today);
-  }, [items, start, today]);
+    return bucketOnTimeByWeek(items, start, end);
+  }, [items, start, end]);
 
   const chartSeries = useMemo<ChartPoint[]>(
     () => weekly.map((b) => ({ date: b.date, value: b.value })),

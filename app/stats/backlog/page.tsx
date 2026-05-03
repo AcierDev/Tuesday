@@ -9,11 +9,11 @@ import { parseSquareSize } from "@/lib/production-metrics";
 import {
   ChartPoint,
   DEFAULT_RANGE,
-  RANGE_OPTIONS,
   RangeKey,
   RangeSelector,
   StatTile,
   TimeSeriesChart,
+  resolveRangeKey,
 } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
@@ -163,10 +163,12 @@ export default function BacklogPage() {
     if (seriesByRange[range]) return;
     let cancelled = false;
     setLoading(true);
-    const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
+    const { start, end } = resolveRangeKey(range);
     (async () => {
       try {
-        const res = await fetch(`/api/backlog-snapshots?days=${days}`);
+        const res = await fetch(
+          `/api/backlog-snapshots?start=${start}&end=${end}`
+        );
         if (!res.ok) return;
         const json = (await res.json()) as { series: SeriesPoint[] };
         if (cancelled) return;
@@ -221,7 +223,7 @@ export default function BacklogPage() {
   }, [backlogItems]);
 
   const stats = useMemo(() => summarizeSeries(series), [series]);
-  const rangeLabel = RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+  const { days, label: rangeLabel } = resolveRangeKey(range);
   const velocityDelta = stats.recentAverage - stats.priorAverage;
   // For backlog: shrinking is good, growing is bad.
   const velocityTone: "good" | "bad" | "neutral" =
@@ -270,7 +272,7 @@ export default function BacklogPage() {
           gradientId="backlog-area"
           formatValue={(v) => `${formatSquares(Math.round(v))} sq`}
           emptyLabel="No backlog history yet — check back tomorrow."
-          showWeekBoundaries={range === "30d" || range === "90d"}
+          showWeekBoundaries={days <= 90}
         />
       </section>
 

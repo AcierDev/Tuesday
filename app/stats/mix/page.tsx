@@ -4,14 +4,13 @@ import { useMemo, useState } from "react";
 
 import { ItemDesigns } from "@/typings/types";
 import { DESIGN_COLORS } from "@/typings/constants";
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import { computeMix, MixRow } from "@/lib/production-metrics";
 import {
   DEFAULT_RANGE,
-  RANGE_OPTIONS,
   RangeKey,
   RangeSelector,
   StatTile,
+  resolveRangeKey,
   useAllItems,
 } from "@/lib/stats-shared";
 
@@ -23,15 +22,12 @@ export default function MixPage() {
   const { items, loading, error } = useAllItems();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
-  const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
-  const rangeLabel = RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+  const { start, end, label: rangeLabel } = resolveRangeKey(range);
 
   const mix = useMemo(() => {
     if (!items) return null;
-    const today = laDayKey();
-    const start = shiftDayKey(today, -(days - 1));
-    return computeMix(items, start, today);
-  }, [items, days]);
+    return computeMix(items, start, end);
+  }, [items, start, end]);
 
   const topDesign = mix?.designs[0];
   const topSize = mix?.sizes[0];

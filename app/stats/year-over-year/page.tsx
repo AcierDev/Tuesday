@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
+import { shiftDayKey } from "@/lib/debt-metrics";
 import { bucketCompletionsByDay, summarizeDayBuckets } from "@/lib/production-metrics";
 import {
   ChartPoint,
+  RangeSelector,
   StatTile,
   TimeSeriesChart,
+  resolveRangeKey,
   useAllItems,
 } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
@@ -16,12 +18,22 @@ import { cn } from "@/utils/functions";
 //║ ⚙️ CONFIG                                                            ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
-const RANGE_OPTIONS = [
-  { key: "30d", label: "30 days", days: 30 },
-  { key: "90d", label: "Quarter", days: 90 },
-  { key: "180d", label: "Half year", days: 180 },
+// YoY page restricts to rolling windows + month/quarter/year calendar
+// presets — "Last year" doesn't make sense as the recent half of a YoY
+// comparison, so it's omitted.
+const YOY_RANGE_OPTIONS = [
+  { key: "30d", label: "30 days", group: "rolling", days: 30 },
+  { key: "90d", label: "90 days", group: "rolling", days: 90 },
+  { key: "180d", label: "180 days", group: "rolling", days: 180 },
+  { key: "mtd", label: "Month to date", group: "calendar", resolve: (today: string) => ({ start: `${today.slice(0, 7)}-01`, end: today }) },
+  { key: "qtd", label: "Quarter to date", group: "calendar", resolve: (today: string) => {
+    const [y, m] = today.split("-").map(Number);
+    const qStart = Math.floor(((m ?? 1) - 1) / 3) * 3 + 1;
+    return { start: `${y}-${String(qStart).padStart(2, "0")}-01`, end: today };
+  }},
+  { key: "ytd", label: "Year to date", group: "calendar", resolve: (today: string) => ({ start: `${today.slice(0, 4)}-01-01`, end: today }) },
 ] as const;
-type YoYRange = (typeof RANGE_OPTIONS)[number]["key"];
+type YoYRange = (typeof YOY_RANGE_OPTIONS)[number]["key"];
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🧩 PAGE                                                              ║
@@ -31,21 +43,21 @@ export default function YearOverYearPage() {
   const { items, loading, error } = useAllItems();
   const [range, setRange] = useState<YoYRange>("30d");
 
-  const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
-  const rangeLabel = RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+  const { start, end, label: rangeLabel } = resolveRangeKey(
+    range,
+    YOY_RANGE_OPTIONS
+  );
 
   const data = useMemo(() => {
     if (!items) return null;
-    const today = laDayKey();
-    const start = shiftDayKey(today, -(days - 1));
     const lastYearStart = shiftDayKey(start, -365);
-    const lastYearEnd = shiftDayKey(today, -365);
-    const recent = bucketCompletionsByDay(items, start, today);
+    const lastYearEnd = shiftDayKey(end, -365);
+    const recent = bucketCompletionsByDay(items, start, end);
     const prior = bucketCompletionsByDay(items, lastYearStart, lastYearEnd);
     const recentSummary = summarizeDayBuckets(recent);
     const priorSummary = summarizeDayBuckets(prior);
     return { recent, prior, recentSummary, priorSummary };
-  }, [items, days]);
+  }, [items, start, end]);
 
   // Overlay both series in chart by indexing prior bucket dates as recent ones.
   const recentSeries = useMemo<ChartPoint[]>(
@@ -92,26 +104,11 @@ export default function YearOverYearPage() {
             {data?.recentSummary.total ?? 0} items this period · {data?.priorSummary.total ?? 0} items same period last year ({deltaPct > 0 ? "+" : ""}{deltaPct.toFixed(0)}%)
           </p>
         </div>
-        <div className="inline-flex rounded-xl glass-surface p-1 gap-1">
-          {RANGE_OPTIONS.map((opt) => {
-            const isActive = opt.key === range;
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => setRange(opt.key)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap",
-                  isActive
-                    ? "bg-white/15 text-white shadow-sm"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                )}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
+        <RangeSelector
+          value={range}
+          onChange={setRange}
+          options={YOY_RANGE_OPTIONS}
+        />
       </header>
 
       {(loading || error) && (

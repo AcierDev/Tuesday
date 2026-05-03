@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ItemStatus } from "@/typings/types";
-import { computeDebtBreakdown, laDayKey, shiftDayKey } from "@/lib/debt-metrics";
+import {
+  computeDebtBreakdown,
+  dayDiffKeys,
+  laDayKey,
+  shiftDayKey,
+} from "@/lib/debt-metrics";
 import {
   bucketCompletionsByDay,
   bucketGluedSquaresByDay,
@@ -21,11 +26,11 @@ import {
 } from "@/lib/production-metrics";
 import {
   DEFAULT_RANGE,
-  RANGE_OPTIONS,
   RangeKey,
   RangeSelector,
   smoothPath,
   StatTile,
+  resolveRangeKey,
   useActivities,
   useAllItems,
 } from "@/lib/stats-shared";
@@ -80,9 +85,7 @@ export default function OverviewPage() {
     Partial<Record<RangeKey, BacklogSnapshot[]>>
   >({});
 
-  const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
-  const rangeLabel =
-    RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+  const { start, end, label: rangeLabel } = resolveRangeKey(range);
 
   const debtSeries = debtByRange[range];
   const backlogSeries = backlogByRange[range];
@@ -93,7 +96,9 @@ export default function OverviewPage() {
     if (!debtSeries) {
       (async () => {
         try {
-          const res = await fetch(`/api/debt-snapshots?days=${days}`);
+          const res = await fetch(
+            `/api/debt-snapshots?start=${start}&end=${end}`
+          );
           if (!res.ok) return;
           const json = (await res.json()) as { series: DebtSnapshot[] };
           if (!cancelled)
@@ -106,7 +111,9 @@ export default function OverviewPage() {
     if (!backlogSeries) {
       (async () => {
         try {
-          const res = await fetch(`/api/backlog-snapshots?days=${days}`);
+          const res = await fetch(
+            `/api/backlog-snapshots?start=${start}&end=${end}`
+          );
           if (!res.ok) return;
           const json = (await res.json()) as { series: BacklogSnapshot[] };
           if (!cancelled)
@@ -119,21 +126,20 @@ export default function OverviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [days, range, debtSeries, backlogSeries]);
+  }, [start, end, range, debtSeries, backlogSeries]);
 
   const summary = useMemo(() => {
     if (!items) return null;
     const today = laDayKey();
-    const start = shiftDayKey(today, -(days - 1));
     const active = items.filter(
       (i) => i.status !== ItemStatus.Done && i.status !== ItemStatus.Hidden
     );
     const backlogItems = active.filter((i) => BACKLOG_STATUSES.has(i.status));
     const debt = computeDebtBreakdown(active);
     const lateNow = computeCurrentlyLate(active);
-    const buckets = bucketCompletionsByDay(items, start, today);
+    const buckets = bucketCompletionsByDay(items, start, end);
     const throughput = summarizeDayBuckets(buckets);
-    const onTime = computeOnTimeStats(items, start, today);
+    const onTime = computeOnTimeStats(items, start, end);
 
     const sumSquares = (list: typeof items) =>
       list.reduce(
@@ -143,7 +149,7 @@ export default function OverviewPage() {
     const shippedInRange = items.filter((i) => {
       if (!i.completedAt) return false;
       const key = laDayKey(new Date(i.completedAt));
-      return key >= start && key <= today;
+      return key >= start && key <= end;
     });
     const shippedSquares = sumSquares(shippedInRange);
     const wipSquares = sumSquares(active);
@@ -194,13 +200,12 @@ export default function OverviewPage() {
       glueRatePerWorkingDay,
       health,
     };
-  }, [items, days, activities, schedules]);
+  }, [items, start, end, activities, schedules]);
 
   const combinedChart = useMemo(() => {
     if (!items) return null;
-    const today = laDayKey();
-    const start = shiftDayKey(today, -(days - 1));
-    const dates = Array.from({ length: days }, (_, i) =>
+    const totalDays = dayDiffKeys(start, end) + 1;
+    const dates = Array.from({ length: totalDays }, (_, i) =>
       shiftDayKey(start, i)
     );
 
@@ -217,13 +222,13 @@ export default function OverviewPage() {
     const backlogValues = dates.map((d) => backlogByDate.get(d) ?? null);
 
     // Shipped — completions per day from items.
-    const shipBuckets = bucketCompletionsByDay(items, start, today);
+    const shipBuckets = bucketCompletionsByDay(items, start, end);
     const shipByDate = new Map(shipBuckets.map((b) => [b.date, b.value]));
     const shippedValues = dates.map((d) => shipByDate.get(d) ?? 0);
 
     // On-time % — weekly. Anchor each week's value at the last day of that
     // week so the line steps along with the data.
-    const weekly = bucketOnTimeByWeek(items, start, today);
+    const weekly = bucketOnTimeByWeek(items, start, end);
     const onTimeByDate = new Map(weekly.map((w) => [w.date, w.value]));
     const onTimeValues = dates.map((d) => onTimeByDate.get(d) ?? null);
 
@@ -234,9 +239,9 @@ export default function OverviewPage() {
     if (activities) {
       const scheduledDay = buildScheduledDayByItemId(schedules);
       const events = buildGluedEvents(activities, items, scheduledDay).filter(
-        (e) => e.dayKey >= start && e.dayKey <= today
+        (e) => e.dayKey >= start && e.dayKey <= end
       );
-      const gluedBuckets = bucketGluedSquaresByDay(events, start, today);
+      const gluedBuckets = bucketGluedSquaresByDay(events, start, end);
       const gluedByDate = new Map(
         gluedBuckets.map((b) => [b.date, b.value])
       );
@@ -283,7 +288,7 @@ export default function OverviewPage() {
         },
       ],
     };
-  }, [items, days, debtSeries, backlogSeries, activities, schedules]);
+  }, [items, start, end, debtSeries, backlogSeries, activities, schedules]);
 
   return (
     <>

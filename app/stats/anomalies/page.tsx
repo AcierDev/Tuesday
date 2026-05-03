@@ -2,14 +2,13 @@
 
 import { useMemo, useState } from "react";
 
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import { bucketCompletionsByDay } from "@/lib/production-metrics";
 import {
   DEFAULT_RANGE,
-  RANGE_OPTIONS,
   RangeKey,
   RangeSelector,
   StatTile,
+  resolveRangeKey,
   useAllItems,
 } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
@@ -28,13 +27,11 @@ export default function AnomaliesPage() {
   const { items, loading, error } = useAllItems();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
-  const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
+  const { start, end } = resolveRangeKey(range);
 
   const data = useMemo(() => {
     if (!items) return null;
-    const today = laDayKey();
-    const start = shiftDayKey(today, -(days - 1));
-    const buckets = bucketCompletionsByDay(items, start, today);
+    const buckets = bucketCompletionsByDay(items, start, end);
     if (buckets.length === 0)
       return { buckets, mean: 0, stddev: 0, anomalies: [] };
     const values = buckets.map((b) => b.value);
@@ -47,7 +44,7 @@ export default function AnomaliesPage() {
       .filter((b) => Math.abs(b.z) >= SIGMA_THRESHOLD)
       .sort((a, b) => Math.abs(b.z) - Math.abs(a.z));
     return { buckets, mean, stddev, anomalies };
-  }, [items, days]);
+  }, [items, start, end]);
 
   return (
     <>

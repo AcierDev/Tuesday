@@ -13,12 +13,13 @@ import {
   RANGE_OPTIONS,
   RangeSelector,
   StatTile,
+  resolveRangeKey,
   smoothPath,
   useGluedStats,
 } from "@/lib/stats-shared";
 
 const GLUED_RANGE_OPTIONS = [
-  { key: "7d", label: "7 days", days: 7 },
+  { key: "7d", label: "7 days", group: "rolling", days: 7 },
   ...RANGE_OPTIONS,
 ] as const;
 type GluedRangeKey = (typeof GLUED_RANGE_OPTIONS)[number]["key"];
@@ -108,11 +109,12 @@ export default function GluedPage() {
   const [range, setRange] = useState<GluedRangeKey>(GLUED_DEFAULT_RANGE);
   const [showAllDays, setShowAllDays] = useState(false);
 
-  const days = GLUED_RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
-  const rangeLabel =
-    GLUED_RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+  const { start, end, label: rangeLabel } = resolveRangeKey(
+    range,
+    GLUED_RANGE_OPTIONS
+  );
 
-  const { data, loading, error } = useGluedStats(days);
+  const { data, loading, error } = useGluedStats({ start, end });
 
   const stats = useMemo(
     () => (data ? summarizeWorkingDays(data.buckets) : null),

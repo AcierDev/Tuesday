@@ -2,14 +2,13 @@
 
 import { useMemo, useState } from "react";
 
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import { bucketByDayOfWeek } from "@/lib/production-metrics";
 import {
   DEFAULT_RANGE,
-  RANGE_OPTIONS,
   RangeKey,
   RangeSelector,
   StatTile,
+  resolveRangeKey,
   useAllItems,
 } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
@@ -22,15 +21,12 @@ export default function DayPatternsPage() {
   const { items, loading, error } = useAllItems();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
-  const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 90;
-  const rangeLabel = RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+  const { start, end, label: rangeLabel } = resolveRangeKey(range);
 
   const rows = useMemo(() => {
     if (!items) return null;
-    const today = laDayKey();
-    const start = shiftDayKey(today, -(days - 1));
-    return bucketByDayOfWeek(items, start, today);
-  }, [items, days]);
+    return bucketByDayOfWeek(items, start, end);
+  }, [items, start, end]);
 
   const maxAvg = useMemo(
     () => (rows ? Math.max(0, ...rows.map((r) => r.avg)) : 0),

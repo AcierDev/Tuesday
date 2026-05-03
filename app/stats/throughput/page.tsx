@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import {
   bucketCompletionsByDay,
   summarizeDayBuckets,
@@ -10,11 +9,11 @@ import {
 import {
   ChartPoint,
   DEFAULT_RANGE,
-  RANGE_OPTIONS,
   RangeKey,
   RangeSelector,
   StatTile,
   TimeSeriesChart,
+  resolveRangeKey,
   useAllItems,
 } from "@/lib/stats-shared";
 
@@ -33,15 +32,12 @@ export default function ThroughputPage() {
   const { items, loading, error } = useAllItems();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
-  const days = RANGE_OPTIONS.find((r) => r.key === range)?.days ?? 30;
-  const rangeLabel = RANGE_OPTIONS.find((r) => r.key === range)?.label ?? "";
+  const { start, end, days, label: rangeLabel } = resolveRangeKey(range);
 
   const buckets = useMemo(() => {
     if (!items) return [];
-    const today = laDayKey();
-    const start = shiftDayKey(today, -(days - 1));
-    return bucketCompletionsByDay(items, start, today);
-  }, [items, days]);
+    return bucketCompletionsByDay(items, start, end);
+  }, [items, start, end]);
 
   const stats = useMemo(() => summarizeDayBuckets(buckets), [buckets]);
   const chartSeries = useMemo<ChartPoint[]>(
@@ -101,7 +97,7 @@ export default function ThroughputPage() {
           gradientId="throughput-area"
           formatValue={(v) => `${Math.round(v)} items`}
           emptyLabel="No completion history yet."
-          showWeekBoundaries={range === "30d" || range === "90d"}
+          showWeekBoundaries={days <= 90}
         />
       </section>
 

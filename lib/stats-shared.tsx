@@ -3,23 +3,104 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Activity, Item, OrderTrackingInfo } from "@/typings/types";
+import { dayDiffKeys, laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import { DayBucket, GluedEvent } from "@/lib/production-metrics";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ ⚙️ CONFIG                                                            ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
+// Calendar-period resolvers: each takes today's LA-local YYYY-MM-DD and
+// returns an absolute [start, end] window. These are NOT rolling — "Last
+// month" on May 31 and "Last month" on May 1 both resolve to the full
+// prior month. `dayDiffKeys` gives the day count for chart bucketing.
+
+function firstOfMonth(yyyy_mm_dd: string): string {
+  return `${yyyy_mm_dd.slice(0, 7)}-01`;
+}
+
+function quarterStartKey(yyyy_mm_dd: string): string {
+  const [y, m] = yyyy_mm_dd.split("-").map(Number);
+  const qStartMonth = Math.floor(((m ?? 1) - 1) / 3) * 3 + 1;
+  return `${y}-${String(qStartMonth).padStart(2, "0")}-01`;
+}
+
+function resolveMonthToDate(today: string) {
+  return { start: firstOfMonth(today), end: today };
+}
+function resolveLastMonth(today: string) {
+  const lastMonthEnd = shiftDayKey(firstOfMonth(today), -1);
+  return { start: firstOfMonth(lastMonthEnd), end: lastMonthEnd };
+}
+function resolveQuarterToDate(today: string) {
+  return { start: quarterStartKey(today), end: today };
+}
+function resolveLastQuarter(today: string) {
+  const lastQEnd = shiftDayKey(quarterStartKey(today), -1);
+  return { start: quarterStartKey(lastQEnd), end: lastQEnd };
+}
+function resolveYearToDate(today: string) {
+  return { start: `${today.slice(0, 4)}-01-01`, end: today };
+}
+function resolveLastYear(today: string) {
+  const prevYear = Number(today.slice(0, 4)) - 1;
+  return { start: `${prevYear}-01-01`, end: `${prevYear}-12-31` };
+}
+
 export const RANGE_OPTIONS = [
-  { key: "30d", label: "30 days", days: 30 },
-  { key: "90d", label: "Quarter", days: 90 },
-  { key: "180d", label: "Half year", days: 180 },
-  { key: "365d", label: "Year", days: 365 },
-  { key: "max", label: "Max", days: 730 },
+  { key: "30d", label: "30 days", group: "rolling", days: 30 },
+  { key: "90d", label: "90 days", group: "rolling", days: 90 },
+  { key: "180d", label: "180 days", group: "rolling", days: 180 },
+  { key: "365d", label: "365 days", group: "rolling", days: 365 },
+  { key: "max", label: "Max (2 years)", group: "rolling", days: 730 },
+  { key: "mtd", label: "Month to date", group: "calendar", resolve: resolveMonthToDate },
+  { key: "lastMonth", label: "Last month", group: "calendar", resolve: resolveLastMonth },
+  { key: "qtd", label: "Quarter to date", group: "calendar", resolve: resolveQuarterToDate },
+  { key: "lastQuarter", label: "Last quarter", group: "calendar", resolve: resolveLastQuarter },
+  { key: "ytd", label: "Year to date", group: "calendar", resolve: resolveYearToDate },
+  { key: "lastYear", label: "Last year", group: "calendar", resolve: resolveLastYear },
 ] as const;
 
 export type RangeKey = (typeof RANGE_OPTIONS)[number]["key"];
 export const DEFAULT_RANGE: RangeKey = "30d";
+
+// Resolves a range option to an absolute LA-local window. Rolling options
+// (those with a `days` count) end at today; calendar options use their
+// resolver. `days` is the inclusive day count of the window — used by
+// API calls and chart bucketing.
+export function resolveRange(
+  opt: RangeOption,
+  today: string = laDayKey()
+): { start: string; end: string; days: number } {
+  if (opt.resolve) {
+    const win = opt.resolve(today);
+    return { ...win, days: dayDiffKeys(win.start, win.end) + 1 };
+  }
+  const days = opt.days ?? 30;
+  return { start: shiftDayKey(today, -(days - 1)), end: today, days };
+}
+
+// Convenience: look up an option by key (or fall back to the first option)
+// and resolve it. Centralizes the lookup pattern that every stats page
+// previously inlined.
+export function resolveRangeKey(
+  key: string,
+  options: ReadonlyArray<RangeOption> = RANGE_OPTIONS,
+  today: string = laDayKey()
+): { start: string; end: string; days: number; label: string } {
+  const opt = options.find((o) => o.key === key) ?? options[0]!;
+  return { ...resolveRange(opt, today), label: opt.label };
+}
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🔄 REVALIDATION — call invalidateStatsCaches() to flush + refetch    ║
@@ -64,41 +145,83 @@ const HOVER_TOOLTIP_HEIGHT_OFFSET = 56;
 export interface RangeOption {
   key: string;
   label: string;
-  days: number;
+  // "rolling" → window ends today, length = `days`. "calendar" → explicit
+  // start/end via `resolve`. Used to bucket the dropdown into two groups.
+  group?: "rolling" | "calendar";
+  days?: number;
+  resolve?: (today: string) => { start: string; end: string };
 }
 
-interface RangeSelectorProps {
-  value: string;
-  onChange: (next: string) => void;
+interface RangeSelectorProps<K extends string = string> {
+  value: K;
+  // Generic so a consumer typed as `Dispatch<SetStateAction<RangeKey>>`
+  // can be passed directly without an `as` cast.
+  onChange: (next: K) => void;
   options?: ReadonlyArray<RangeOption>;
 }
 
-export function RangeSelector({
+export function RangeSelector<K extends string = string>({
   value,
   onChange,
   options = RANGE_OPTIONS,
-}: RangeSelectorProps) {
+}: RangeSelectorProps<K>) {
+  const rolling = options.filter(
+    (o) => o.group === "rolling" || (!o.group && !o.resolve)
+  );
+  const calendar = options.filter((o) => o.group === "calendar" || o.resolve);
+
   return (
-    <div className="inline-flex rounded-xl glass-surface p-1 gap-1">
-      {options.map((opt) => {
-        const isActive = opt.key === value;
-        return (
-          <button
-            key={opt.key}
-            type="button"
-            onClick={() => onChange(opt.key)}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap",
-              isActive
-                ? "bg-white/15 text-white shadow-sm"
-                : "text-slate-400 hover:text-white hover:bg-white/5"
-            )}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-    </div>
+    <Select value={value} onValueChange={(v) => onChange(v as K)}>
+      <SelectTrigger
+        className={cn(
+          "h-9 px-3 gap-2 rounded-xl glass-surface border-0 ring-0 shadow-none",
+          "text-xs font-semibold text-white whitespace-nowrap min-w-[160px] w-auto",
+          "focus:ring-0 focus:outline-none focus-visible:ring-0 focus:ring-offset-0",
+          "data-[state=open]:bg-white/10 hover:bg-white/5"
+        )}
+      >
+        <SelectValue placeholder="Range" />
+      </SelectTrigger>
+      <SelectContent
+        className={cn(
+          "rounded-xl border-0 glass-surface text-white shadow-xl",
+          "min-w-[var(--radix-select-trigger-width)]"
+        )}
+      >
+        {rolling.length > 0 && (
+          <SelectGroup>
+            <SelectLabel className="pl-3 pr-2 py-1 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+              Rolling
+            </SelectLabel>
+            {rolling.map((opt) => (
+              <SelectItem
+                key={opt.key}
+                value={opt.key}
+                className="text-xs font-semibold text-white focus:bg-white/15 focus:text-white"
+              >
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        )}
+        {calendar.length > 0 && (
+          <SelectGroup>
+            <SelectLabel className="pl-3 pr-2 py-1 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+              Calendar
+            </SelectLabel>
+            {calendar.map((opt) => (
+              <SelectItem
+                key={opt.key}
+                value={opt.key}
+                className="text-xs font-semibold text-white focus:bg-white/15 focus:text-white"
+              >
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        )}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -784,42 +907,48 @@ type GluedStatsState = {
   error: string | null;
 };
 
+// Cache key: explicit window so calendar-bounded ranges (e.g. "Last month")
+// don't collide with rolling windows of the same length.
 const gluedStatsCache = new Map<
-  number,
+  string,
   { data: GluedStatsPayload; ts: number }
 >();
-const gluedStatsInflight = new Map<number, Promise<GluedStatsPayload>>();
+const gluedStatsInflight = new Map<string, Promise<GluedStatsPayload>>();
 
 async function fetchGluedStats(
-  days: number,
+  start: string,
+  end: string,
   bypassCache = false
 ): Promise<GluedStatsPayload> {
-  const existing = gluedStatsInflight.get(days);
+  const cacheKey = `${start}|${end}`;
+  const existing = gluedStatsInflight.get(cacheKey);
   if (existing && !bypassCache) return existing;
   const promise = (async () => {
     try {
-      // Cache-bust query param + no-store header forces a fresh server
-      // computation, bypassing both Vercel's CDN cache and any HTTP cache.
-      const url = bypassCache
-        ? `/api/stats/glued?days=${days}&_=${Date.now()}`
-        : `/api/stats/glued?days=${days}`;
+      const base = `/api/stats/glued?start=${start}&end=${end}`;
+      const url = bypassCache ? `${base}&_=${Date.now()}` : base;
       const res = await fetch(url, bypassCache ? { cache: "no-store" } : {});
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as GluedStatsPayload;
-      gluedStatsCache.set(days, { data, ts: Date.now() });
+      gluedStatsCache.set(cacheKey, { data, ts: Date.now() });
       return data;
     } finally {
-      gluedStatsInflight.delete(days);
+      gluedStatsInflight.delete(cacheKey);
     }
   })();
-  gluedStatsInflight.set(days, promise);
+  gluedStatsInflight.set(cacheKey, promise);
   return promise;
 }
 
-export function useGluedStats(days: number): GluedStatsState {
+export function useGluedStats(window: {
+  start: string;
+  end: string;
+}): GluedStatsState {
+  const { start, end } = window;
+  const cacheKey = `${start}|${end}`;
   const version = useStatsRevalidationVersion();
   const [state, setState] = useState<GluedStatsState>(() => {
-    const cached = gluedStatsCache.get(days);
+    const cached = gluedStatsCache.get(cacheKey);
     if (cached && Date.now() - cached.ts < GLUED_STATS_CACHE_TTL_MS) {
       return { data: cached.data, loading: false, error: null };
     }
@@ -827,15 +956,15 @@ export function useGluedStats(days: number): GluedStatsState {
   });
 
   useEffect(() => {
-    const cached = gluedStatsCache.get(days);
+    const cached = gluedStatsCache.get(cacheKey);
     if (cached && Date.now() - cached.ts < GLUED_STATS_CACHE_TTL_MS) {
       setState({ data: cached.data, loading: false, error: null });
       return;
     }
-    gluedStatsCache.delete(days);
+    gluedStatsCache.delete(cacheKey);
     setState((s) => ({ ...s, loading: true, error: null }));
     let cancelled = false;
-    fetchGluedStats(days, version > 0)
+    fetchGluedStats(start, end, version > 0)
       .then((data) => {
         if (cancelled) return;
         setState({ data, loading: false, error: null });
@@ -852,7 +981,7 @@ export function useGluedStats(days: number): GluedStatsState {
     return () => {
       cancelled = true;
     };
-  }, [days, version]);
+  }, [start, end, cacheKey, version]);
 
   return state;
 }
