@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Truck } from "lucide-react";
 import {
   motion,
   useMotionValue,
@@ -151,7 +150,6 @@ interface ItemTableRowProps {
   onStatusChange?: (itemId: string, newStatus: ItemStatus) => Promise<void>;
   clickToAddTarget?: { day: DayName; weekKey: string } | null;
   onItemClick?: (item: Item) => Promise<void>;
-  isInTransit?: boolean;
 }
 
 export const ItemTableRow = memo(function ItemTableRow({
@@ -170,7 +168,6 @@ export const ItemTableRow = memo(function ItemTableRow({
   onStatusChange,
   clickToAddTarget,
   onItemClick,
-  isInTransit = false,
 }: ItemTableRowProps) {
   const recentlyMoved = useRecentlyMovedIds().has(item.id);
   const isTouch = useIsTouchDevice();
@@ -436,17 +433,10 @@ export const ItemTableRow = memo(function ItemTableRow({
           onContextMenu(e, item);
         }}
       >
-        {/* Slim indicator strip — hosts the recently-moved dot and the
-            in-transit truck. Always rendered (even when empty) so table-fixed
-            column widths line up across rows. */}
+        {/* Slim indicator strip — hosts the recently-moved dot. Always rendered
+            (even when empty) so table-fixed column widths line up across rows. */}
         <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 relative w-5 sm:w-6">
           <div className="flex flex-col items-end justify-center gap-0.5 py-1 pr-0.5">
-            {isInTransit && (
-              <Truck
-                aria-label="In transit"
-                className="h-3 w-3 text-blue-500"
-              />
-            )}
             {recentlyMoved && (
               <span
                 aria-label="Moved recently"

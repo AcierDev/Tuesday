@@ -561,10 +561,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                             onStatusChange={onStatusChange}
                             clickToAddTarget={clickToAddTarget}
                             onItemClick={onItemClick}
-                            isInTransit={
-                              group.title === ItemStatus.Done &&
-                              inTransitOrderIds.has(item.id)
-                            }
                           />
                         ))}
                   </TableBody>
