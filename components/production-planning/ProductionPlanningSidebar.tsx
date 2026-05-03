@@ -43,25 +43,23 @@ export function ProductionPlanningSidebar({
   const showGhost =
     isTargetingSidebar && !!activeMeta && !activeAlreadyHere;
 
-  // Sort by due-date urgency (least urgent at top, overdue at bottom), then
-  // push pinned-to-sidebar items to the bottom so the auto-plan candidates
-  // dominate the visible top of the list.
+  // Sort by due-date urgency: most-urgent (earliest due / overdue) first, no-due
+  // items at the bottom. Pinned items render in their own section above the
+  // unpinned list (handled by the layout below), but they're sorted by the same
+  // urgency rules within that section.
   const sortedOrders = useMemo(() => {
     return [...orders].sort((a, b) => {
-      const aPinned = excludedItemIds.has(a.id);
-      const bPinned = excludedItemIds.has(b.id);
-      if (aPinned !== bPinned) return aPinned ? 1 : -1;
-
       if (!a.dueDate && b.dueDate) return 1;
       if (a.dueDate && !b.dueDate) return -1;
-      if (a.dueDate && b.dueDate) return b.dueDate.getTime() - a.dueDate.getTime();
+      if (a.dueDate && b.dueDate) return a.dueDate.getTime() - b.dueDate.getTime();
       return b.squares - a.squares;
     });
-  }, [orders, excludedItemIds]);
+  }, [orders]);
 
   const unpinnedOrders = sortedOrders.filter((o) => !excludedItemIds.has(o.id));
   const pinnedOrders = sortedOrders.filter((o) => excludedItemIds.has(o.id));
-  const orderIds = sortedOrders.map((o) => o.id);
+  // SortableContext order: pinned first (rendered on top), then unpinned.
+  const orderIds = [...pinnedOrders, ...unpinnedOrders].map((o) => o.id);
 
   return (
     <div
@@ -104,22 +102,13 @@ export function ProductionPlanningSidebar({
                   <OrderCard meta={activeMeta} isScheduled={false} />
                 </div>
               )}
-              {unpinnedOrders.map((meta) => (
-                <DraggableOrderCard
-                  key={meta.id}
-                  id={meta.id}
-                  meta={meta}
-                  isPinned={false}
-                  onTogglePin={() => onToggleExcluded(meta.id, true)}
-                  onContextMenu={
-                    onContextMenu
-                      ? (e) => onContextMenu(e, meta.id)
-                      : undefined
-                  }
-                />
-              ))}
               {pinnedOrders.length > 0 && (
-                <div className="pt-3 mt-1 border-t border-dashed border-amber-300/60 dark:border-amber-700/40">
+                <div
+                  className={cn(
+                    unpinnedOrders.length > 0 &&
+                      "pb-3 mb-1 border-b border-dashed border-amber-300/60 dark:border-amber-700/40"
+                  )}
+                >
                   <div className="text-[0.625rem] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400 px-1 pb-2 flex items-center gap-1">
                     <span className="inline-block w-1 h-1 rounded-full bg-amber-500" />
                     Pinned (skipped by auto-plan)
@@ -140,6 +129,20 @@ export function ProductionPlanningSidebar({
                   ))}
                 </div>
               )}
+              {unpinnedOrders.map((meta) => (
+                <DraggableOrderCard
+                  key={meta.id}
+                  id={meta.id}
+                  meta={meta}
+                  isPinned={false}
+                  onTogglePin={() => onToggleExcluded(meta.id, true)}
+                  onContextMenu={
+                    onContextMenu
+                      ? (e) => onContextMenu(e, meta.id)
+                      : undefined
+                  }
+                />
+              ))}
             </>
           )}
         </SortableContext>

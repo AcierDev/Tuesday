@@ -13,12 +13,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronRight, RotateCcw, Settings2, Wand2 } from "lucide-react";
+import { ChevronRight, RotateCcw, Wand2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  AutoPlanSettingsPopover,
-  type AutoPlanWeights,
-} from "./AutoPlanSettingsDialog";
 import { HistoricalAverageBadge } from "./HistoricalAverageBadge";
 import { WeekHistoryPopover } from "./WeekHistoryPopover";
 
@@ -33,8 +29,6 @@ interface ProductionPlanningHeaderProps {
   onSelectWeek: (weekKey: string) => void;
   onClearWeek: () => void;
   onAutoFill: () => void;
-  autoPlanWeights: AutoPlanWeights;
-  onAutoPlanWeightsChange: (weights: AutoPlanWeights) => void;
 }
 
 export function ProductionPlanningHeader({
@@ -48,8 +42,6 @@ export function ProductionPlanningHeader({
   onSelectWeek,
   onClearWeek,
   onAutoFill,
-  autoPlanWeights,
-  onAutoPlanWeightsChange,
 }: ProductionPlanningHeaderProps) {
   const weekLabel = viewingNextWeek ? "next week" : "this week";
   return (
@@ -167,40 +159,20 @@ export function ProductionPlanningHeader({
 
           {/* Right group: action buttons (desktop only) */}
           <div className="hidden lg:flex items-center gap-2 sm:flex-shrink-0">
-            <div className="inline-flex items-center rounded-full bg-blue-500/25 dark:bg-blue-500/20 ring-1 ring-inset ring-blue-500/40 dark:ring-blue-400/30 shadow-sm shadow-blue-500/15 backdrop-blur-sm aria-disabled:opacity-50">
-              <button
-                type="button"
-                onClick={onAutoFill}
-                disabled={viewingPastWeek}
-                title={
-                  viewingPastWeek
-                    ? "Auto-plan is disabled when viewing a past week"
-                    : undefined
-                }
-                className="inline-flex items-center h-9 pl-3 pr-2.5 rounded-l-full rounded-r-[10px] text-sm font-semibold text-blue-800 dark:text-white hover:bg-blue-500/40 dark:hover:bg-blue-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-              >
-                <Wand2 className="h-4 w-4 mr-1.5" />
-                Auto-plan
-              </button>
-              <span
-                aria-hidden
-                className="h-5 w-px bg-blue-500/30 dark:bg-blue-400/30"
-              />
-              <AutoPlanSettingsPopover
-                weights={autoPlanWeights}
-                onChange={onAutoPlanWeightsChange}
-              >
-                <button
-                  type="button"
-                  aria-label="Auto-plan settings"
-                  title="Auto-plan settings"
-                  disabled={viewingPastWeek}
-                  className="inline-flex items-center justify-center h-9 w-9 rounded-r-full rounded-l-[10px] text-blue-800 dark:text-white hover:bg-blue-500/40 dark:hover:bg-blue-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                >
-                  <Settings2 className="h-4 w-4" />
-                </button>
-              </AutoPlanSettingsPopover>
-            </div>
+            <button
+              type="button"
+              onClick={onAutoFill}
+              disabled={viewingPastWeek}
+              title={
+                viewingPastWeek
+                  ? "Auto-plan is disabled when viewing a past week"
+                  : undefined
+              }
+              className="inline-flex items-center h-9 px-3 rounded-full bg-blue-500/25 dark:bg-blue-500/20 ring-1 ring-inset ring-blue-500/40 dark:ring-blue-400/30 shadow-sm shadow-blue-500/15 backdrop-blur-sm text-sm font-semibold text-blue-800 dark:text-white hover:bg-blue-500/40 dark:hover:bg-blue-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Wand2 className="h-4 w-4 mr-1.5" />
+              Auto-plan
+            </button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button

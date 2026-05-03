@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import {
   addWeeks,
-  endOfWeek,
+  endOfDay,
   format,
   isBefore,
   isWithinInterval,
@@ -39,11 +39,6 @@ import {
   POST_WIP_STATUSES,
   PRE_WIP_STATUSES,
 } from "@/components/production-planning/constants";
-import {
-  AUTO_PLAN_WEIGHT_DEFAULTS,
-  URGENT_PULL_LEVEL_TO_PER_DAY,
-  type AutoPlanWeights,
-} from "@/components/production-planning/AutoPlanSettingsDialog";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
@@ -54,8 +49,13 @@ import {
   WeeklyScheduleData,
   ScheduledOrder,
 } from "@/typings/types";
-import { parseSquareSize } from "@/lib/production-metrics";
+import {
+  parseSquareSize,
+  RECENCY_WEIGHTED_FORECAST,
+  summarizeRecencyWeighted,
+} from "@/lib/production-metrics";
 import { getDesignFamily } from "@/components/production-planning/design-family";
+import { parseNameTokens } from "@/components/orders/name-tokens";
 
 function calculateSquares(item: { size?: string }): number {
   const sizeStr = item.size || "";
@@ -84,19 +84,56 @@ function calculateSquares(item: { size?: string }): number {
 //║ ⚙️ CONFIG                                                            ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
-const DAILY_CAPACITY_SQUARES = 1000;
-// Daily total turns green once it crosses this — the full capacity (1000) is
-// the displayed denominator, but anything past 850 is "good enough" in practice.
-const DAILY_GREEN_THRESHOLD_SQUARES = 850;
+// Fallback used while the forecast endpoint is loading (or returns no data).
+// Live capacity is the recency-weighted gluing forecast rounded UP to the
+// nearest CAPACITY_ROUND_STEP, so the planner targets what the shop has
+// actually been producing instead of a static 1000.
+const DAILY_CAPACITY_FALLBACK_SQUARES = 1000;
+const CAPACITY_ROUND_STEP = 50;
+// Day total turns green once it crosses this fraction of the day's capacity.
+// 0.85 matches the previous static 850/1000 ratio.
+const DAILY_GREEN_THRESHOLD_RATIO = 0.85;
+const FORECAST_ENDPOINT = `/api/stats/glued?days=${RECENCY_WEIGHTED_FORECAST.lookbackDays}`;
 
-// Auto-plan due-date weighting. Each slot's score combines design-family
-// "anchor" squares with a urgency bonus computed from how far the slot is
-// from the entry's due date. Outside the urgent window the bonus is a mild
-// tiebreaker (capped buffer × base weight), so design grouping still
-// dominates. Within the urgent window, the bonus is multiplied so a
-// time-sensitive order can override modest grouping pulls. User-tunable via
-// the auto-plan settings dialog; defaults live in AutoPlanSettingsDialog.tsx.
-const AUTO_PLAN_WEIGHTS_STORAGE_KEY = "production-planning:auto-plan-weights";
+// Auto-plan lateness penalty. Each day a slot sits past an item's due date
+// adds this many "negative squares" to its score, so anchor-grouping can
+// never pull an item beyond its deadline. On-time slots are scored purely
+// by anchor + earliness tiebreak — items are pulled forward to fill each
+// day's capacity before spilling into the next.
+const AUTO_PLAN_LATE_PENALTY_PER_DAY = 375;
+
+// Nightly auto-plan: re-runs handleAutoFill at 8pm America/Los_Angeles every
+// day so anything not glued today gets pulled forward and any over-production
+// rebalances the rest of the week. Client-side only — fires only when a
+// planner tab happens to be open at the trigger time.
+const NIGHTLY_AUTO_PLAN_TIMEZONE = "America/Los_Angeles";
+const NIGHTLY_AUTO_PLAN_HOUR = 20; // 8pm local
+const NIGHTLY_AUTO_PLAN_BUFFER_MS = 500;
+
+// Returns ms until the next occurrence of `hour:00:00` in the given IANA tz.
+// Reads wall-clock time in the target zone via Intl rather than the browser's
+// local time so the trigger lands at 8pm PT regardless of where the user is.
+function msUntilNextZonedHour(hour: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    fractionalSecondDigits: 3,
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value ?? 0);
+  let h = get("hour");
+  if (h === 24) h = 0;
+  const msIntoDay =
+    ((h * 60 + get("minute")) * 60 + get("second")) * 1000 +
+    get("fractionalSecond");
+  const targetMs = hour * 60 * 60 * 1000;
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const delta = targetMs - msIntoDay;
+  return (delta > 0 ? delta : delta + msPerDay) + NIGHTLY_AUTO_PLAN_BUFFER_MS;
+}
 
 const DAYS: DayName[] = [
   "Monday",
@@ -119,6 +156,17 @@ const DAY_OFFSET_FROM_WEEK_START: Record<DayName, number> = {
 
 // Sat/Sun work folds into Monday's column for display.
 const DAYS_FOLDED_INTO_MONDAY: DayName[] = ["Saturday", "Sunday"];
+
+// Week boundary: a new planning week starts Saturday morning. We still key
+// schedules by the Sunday inside the week (DB-backwards compat with all
+// pre-existing weekKey docs), so the helper just nudges the input one day
+// forward and falls through to the standard Sunday-led startOfWeek.
+//   today = Fri 5/1 → Sun 4/26 (current week)
+//   today = Sat 5/2 → Sun 5/3  (rolled over to next week)
+//   today = Sun 5/3 → Sun 5/3
+function planWeekStart(date: Date): Date {
+  return startOfWeek(addDays(date, 1), { weekStartsOn: 0 });
+}
 
 // Per-day opt-in for the auto-plan run. Stored in localStorage so the user's
 // pick sticks across reloads. Defaults match the original Mon–Thu target set.
@@ -209,7 +257,7 @@ export default function ProductionPlanningPage() {
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [currentWeekKey, setCurrentWeekKey] = useState(() =>
-    format(startOfWeek(new Date(), { weekStartsOn: 0 }), "yyyy-MM-dd")
+    format(planWeekStart(new Date()), "yyyy-MM-dd")
   );
 
   // Right-click context menu for changing an order's status from the planner.
@@ -273,33 +321,6 @@ export default function ProductionPlanningPage() {
       }
       return next;
     });
-  }, []);
-
-  // Auto-plan scoring weights — tunable from the settings popover and
-  // persisted to localStorage so the user's tuning sticks across reloads.
-  const [autoPlanWeights, setAutoPlanWeights] = useState<AutoPlanWeights>(
-    AUTO_PLAN_WEIGHT_DEFAULTS
-  );
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(AUTO_PLAN_WEIGHTS_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<AutoPlanWeights>;
-      setAutoPlanWeights({ ...AUTO_PLAN_WEIGHT_DEFAULTS, ...parsed });
-    } catch (err) {
-      console.warn("Failed to load auto-plan weights", err);
-    }
-  }, []);
-  const updateAutoPlanWeights = useCallback((next: AutoPlanWeights) => {
-    setAutoPlanWeights(next);
-    try {
-      window.localStorage.setItem(
-        AUTO_PLAN_WEIGHTS_STORAGE_KEY,
-        JSON.stringify(next)
-      );
-    } catch (err) {
-      console.warn("Failed to save auto-plan weights", err);
-    }
   }, []);
 
   useEffect(() => {
@@ -400,22 +421,52 @@ export default function ProductionPlanningPage() {
     setToday(startOfDay(new Date()));
   }, []);
 
-  // Calculate week boundaries
-  const todayWeekStart = useMemo(
-    () => startOfWeek(today, { weekStartsOn: 0 }),
-    [today]
+  // Live daily capacity = recency-weighted gluing forecast rounded UP to the
+  // nearest CAPACITY_ROUND_STEP. Falls back to DAILY_CAPACITY_FALLBACK_SQUARES
+  // until the forecast endpoint resolves.
+  const [forecastPerDay, setForecastPerDay] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(FORECAST_ENDPOINT)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { buckets?: { date: string; value: number }[] } | null) => {
+        if (cancelled || !data?.buckets) return;
+        const stats = summarizeRecencyWeighted(
+          data.buckets,
+          RECENCY_WEIGHTED_FORECAST
+        );
+        setForecastPerDay(stats.weightedAvgActive);
+      })
+      .catch((err) => console.warn("Failed to load gluing forecast", err));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const dailyCapacitySquares = useMemo(() => {
+    if (!forecastPerDay || forecastPerDay <= 0) {
+      return DAILY_CAPACITY_FALLBACK_SQUARES;
+    }
+    return Math.ceil(forecastPerDay / CAPACITY_ROUND_STEP) * CAPACITY_ROUND_STEP;
+  }, [forecastPerDay]);
+  const dailyGreenThresholdSquares = Math.round(
+    dailyCapacitySquares * DAILY_GREEN_THRESHOLD_RATIO
   );
+
+  // Calculate week boundaries. The planning week runs Sat→Fri (a new week
+  // starts Saturday morning), but is keyed by the Sunday inside that span
+  // for DB-backwards compat. So a week with key Sun X covers Sat X-1 → Fri X+5.
+  const todayWeekStart = useMemo(() => planWeekStart(today), [today]);
   const todayWeekEnd = useMemo(
-    () => endOfWeek(todayWeekStart, { weekStartsOn: 0 }),
+    () => endOfDay(addDays(todayWeekStart, 5)), // Friday end-of-day
     [todayWeekStart]
   );
   const todayNextWeekStart = useMemo(
-    () => addWeeks(todayWeekStart, 1),
+    () => addDays(todayWeekStart, 6), // Saturday — start of next planning week
     [todayWeekStart]
   );
   const todayNextWeekEnd = useMemo(
-    () => endOfWeek(todayNextWeekStart, { weekStartsOn: 0 }),
-    [todayNextWeekStart]
+    () => endOfDay(addDays(todayWeekStart, 12)), // following Friday
+    [todayWeekStart]
   );
 
   const currentWeekStart = useMemo(
@@ -425,7 +476,7 @@ export default function ProductionPlanningPage() {
 
   // Filter orders: must be unscheduled-ready (New / OnDeck), not deleted, and
   // have a parseable W×H size. Custom/named sizes don't count toward the
-  // 1000-squares-per-day target since they aren't square units.
+  // daily-square capacity target since they aren't square units.
   const availableOrders = useMemo(
     () =>
       items.filter(
@@ -492,17 +543,34 @@ export default function ProductionPlanningPage() {
     enabled: !!currentSchedule,
   });
 
-  // Fetch done orders from DB if they're not in the store
+  // Pre-fetch items referenced by both this-week and next-week so toggling
+  // between them doesn't block on a fetch (the store dedups by ID, so this is
+  // cheap when most items are already loaded). Also covers any past week the
+  // user navigates to via the history popover.
   useEffect(() => {
-    if (!currentSchedule) return;
-    const allScheduledIds = Object.values(currentSchedule.schedule)
-      .flat()
-      .map((i) => i.id);
-
-    if (allScheduledIds.length > 0) {
-      fetchItemsByIds(allScheduledIds);
+    if (schedules.length === 0) return;
+    const thisWk = format(
+      startOfWeek(new Date(), { weekStartsOn: 0 }),
+      "yyyy-MM-dd"
+    );
+    const nextWk = format(
+      addWeeks(startOfWeek(new Date(), { weekStartsOn: 0 }), 1),
+      "yyyy-MM-dd"
+    );
+    const ids = new Set<string>();
+    for (const s of schedules) {
+      if (
+        s.weekKey === thisWk ||
+        s.weekKey === nextWk ||
+        s.weekKey === currentWeekKey
+      ) {
+        Object.values(s.schedule)
+          .flat()
+          .forEach((i) => ids.add(i.id));
+      }
     }
-  }, [currentSchedule, fetchItemsByIds]);
+    if (ids.size > 0) fetchItemsByIds(Array.from(ids));
+  }, [schedules, currentWeekKey, fetchItemsByIds]);
 
   // Combine all known items for looking up scheduled items (which might be done)
   const allKnownItems = useMemo(() => {
@@ -945,7 +1013,7 @@ export default function ProductionPlanningPage() {
           day,
           date,
           key: `${plan.weekKey}|${day}`,
-          remaining: Math.max(0, DAILY_CAPACITY_SQUARES - lockedSquares),
+          remaining: Math.max(0, dailyCapacitySquares - lockedSquares),
         };
         slots.push(slot);
         slotByKey.set(slot.key, slot);
@@ -1010,6 +1078,7 @@ export default function ProductionPlanningPage() {
       squares: number;
       dueMs: number; // Infinity when no due date
       family: string;
+      rushed: boolean;
     };
     const parseDueMs = (raw: string | undefined): number => {
       if (!raw) return Infinity;
@@ -1034,92 +1103,48 @@ export default function ProductionPlanningPage() {
         squares: calculateSquares(item),
         dueMs: parseDueMs(item.dueDate),
         family: getDesignFamily(item.design, item.id),
+        rushed: parseNameTokens(item.customerName ?? "").isRushed,
       }))
       .filter((entry) => entry.squares > 0);
 
     //╔═══╗ ═══════════════════════════════════════════════════════════════ ╔═══╗
-    //║ 👨‍👩‍👧 GROUP BY FAMILY, ORDER FAMILIES BY URGENCY                       ║
-    //╚═══╝ ═══════════════════════════════════════════════════════════════ ╚═══╝
-    const families = new Map<string, PoolEntry[]>();
-    for (const entry of pool) {
-      const arr = families.get(entry.family);
-      if (arr) arr.push(entry);
-      else families.set(entry.family, [entry]);
-    }
-    // Within a family: most-urgent first, then largest squares first (puts
-    // hardest-to-fit items at the head when we have to split the family).
-    for (const arr of families.values()) {
-      arr.sort((a, b) => {
-        if (a.dueMs !== b.dueMs) return a.dueMs - b.dueMs;
-        if (a.squares !== b.squares) return b.squares - a.squares;
-        return a.id.localeCompare(b.id);
-      });
-    }
-    // Across families: most-urgent earliest-due first; tiebreak by total
-    // squares desc so big families claim a clean slot before fragments.
-    const familyOrder = Array.from(families.keys()).sort((a, b) => {
-      const aItems = families.get(a)!;
-      const bItems = families.get(b)!;
-      const aMin = aItems.reduce((m, e) => Math.min(m, e.dueMs), Infinity);
-      const bMin = bItems.reduce((m, e) => Math.min(m, e.dueMs), Infinity);
-      if (aMin !== bMin) return aMin - bMin;
-      const aSq = aItems.reduce((s, e) => s + e.squares, 0);
-      const bSq = bItems.reduce((s, e) => s + e.squares, 0);
-      if (aSq !== bSq) return bSq - aSq;
-      return a.localeCompare(b);
-    });
-
-    //╔═══╗ ═══════════════════════════════════════════════════════════════ ╔═══╗
-    //║ 🎯 PLACE EACH FAMILY                                                 ║
+    //║ 🎯 PLACE EACH ITEM (DUE-DATE FIRST, ANCHOR AS TIEBREAKER)            ║
     //╚═══╝ ═══════════════════════════════════════════════════════════════ ╚═══╝
     type Placement = { slotKey: SlotKey; entry: PoolEntry };
     const placements: Placement[] = [];
 
-    // Earliness bonus pulled toward earlier slots — only kicks in once the
-    // due date is within the urgent window. Outside the window, design
-    // grouping rules unchallenged. Buffer is capped at the window so a
-    // deadline 7 days out doesn't drag everything to Monday. Past-due slots
-    // (negative buffer, only reachable via the date-relaxed fallback) are
-    // penalized so the earliest available slot still wins.
+    // Score a slot for a given item:
+    //   1. Past-due slots get a heavy per-day penalty so anchor-grouping
+    //      can never pull an item beyond its deadline.
+    //   2. On-time slots score 0 from due-date alone — anchor + earliest-
+    //      tiebreak decides, which packs items forward into the earliest
+    //      slot with capacity (and same-family pull when present).
     const MS_PER_DAY = 86400000;
-    const { urgentWindowDays, urgentPullLevel } = autoPlanWeights;
-    const urgentPullPerDay = urgentPullLevel * URGENT_PULL_LEVEL_TO_PER_DAY;
-    const urgencyBonus = (slot: Slot, refDueMs: number): number => {
+    const dueDateScore = (slot: Slot, refDueMs: number): number => {
       if (!Number.isFinite(refDueMs)) return 0;
-      const daysFromTodayToDue = (refDueMs - todayMs) / MS_PER_DAY;
-      if (daysFromTodayToDue > urgentWindowDays) return 0;
       const bufferDays = (refDueMs - slot.date.getTime()) / MS_PER_DAY;
-      const effectiveBuffer = Math.min(urgentWindowDays, bufferDays);
-      return effectiveBuffer * urgentPullPerDay;
+      if (bufferDays < 0) return bufferDays * AUTO_PLAN_LATE_PENALTY_PER_DAY;
+      return 0;
     };
 
-    // Picks among candidates by:
-    //   1. combined score = same-family anchor squares + due-date urgency bonus
-    //      (higher wins → consolidation, but a near-due item can pull earlier)
-    //   2. tiebreak by date (later wins for `preferLate`, earlier otherwise)
     const pickSlot = (
       candidates: Slot[],
       family: string,
-      preferLate: boolean,
       refDueMs: number
     ): Slot | undefined => {
       let chosen: Slot | undefined;
       let bestScore = -Infinity;
-      let bestDate = preferLate ? -Infinity : Infinity;
+      let bestDate = Infinity;
       for (const cand of candidates) {
         const anchor = anchorScore.get(anchorKey(cand, family)) ?? 0;
-        const score = anchor + urgencyBonus(cand, refDueMs);
+        const score = anchor + dueDateScore(cand, refDueMs);
         const t = cand.date.getTime();
-        if (score > bestScore) {
+        // Higher score wins; tiebreak by earlier date so overdue work
+        // bubbles to the front and ties resolve consistently.
+        if (score > bestScore || (score === bestScore && t < bestDate)) {
           bestScore = score;
           bestDate = t;
           chosen = cand;
-        } else if (score === bestScore) {
-          const better = preferLate ? t > bestDate : t < bestDate;
-          if (better) {
-            bestDate = t;
-            chosen = cand;
-          }
         }
       }
       return chosen;
@@ -1131,70 +1156,34 @@ export default function ProductionPlanningPage() {
       placements.push({ slotKey: slot.key, entry });
     };
 
-    for (const family of familyOrder) {
-      const items = families.get(family)!;
-      const totalSquares = items.reduce((s, e) => s + e.squares, 0);
-      const familyDeadline = items.reduce(
-        (m, e) => Math.min(m, e.dueMs),
-        Infinity
+    // Process items globally by due date. Iterating per-family caused the
+    // largest family (e.g. ocean palette) to monopolize early-week capacity
+    // before urgent singletons in other families got a chance — pushing
+    // their orders past their own due dates "to make room for grouping."
+    // Global iteration interleaves families naturally; same-family anchor
+    // still pulls related items together when capacity allows.
+    const sortedPool = [...pool].sort((a, b) => {
+      if (a.dueMs !== b.dueMs) return a.dueMs - b.dueMs;
+      if (a.squares !== b.squares) return b.squares - a.squares;
+      return a.id.localeCompare(b.id);
+    });
+
+    for (const entry of sortedPool) {
+      let eligible = slots.filter(
+        (s) =>
+          s.date.getTime() <= entry.dueMs && s.remaining >= entry.squares
       );
-
-      // ── Try whole-family fit on a single slot ──────────────────────────
-      // Date-eligible: only slots before the family's earliest due. If that
-      // window has no slot with the capacity, fall back to any slot with the
-      // capacity so an overdue family still lands together somewhere.
-      let wholeCandidates = slots.filter(
-        (s) => s.date.getTime() <= familyDeadline && s.remaining >= totalSquares
-      );
-      if (wholeCandidates.length === 0) {
-        wholeCandidates = slots.filter((s) => s.remaining >= totalSquares);
+      if (eligible.length === 0 && !entry.rushed) {
+        // Overdue items (or items whose date-eligible window is full)
+        // fall back to any slot with capacity. Rushed items skip this
+        // fallback — leaving them unscheduled is better than placing
+        // them past their due date.
+        eligible = slots.filter((s) => s.remaining >= entry.squares);
       }
-      if (wholeCandidates.length > 0) {
-        // Multi-item families: prefer LATEST valid slot (group + preserve
-        // slack for incoming work). Singletons: keep current earliest-valid
-        // load-balancing — anchor score still wins if a same-family
-        // locked item exists somewhere.
-        const chosen = pickSlot(
-          wholeCandidates,
-          family,
-          /* preferLate */ items.length > 1,
-          familyDeadline
-        );
-        if (chosen) {
-          for (const entry of items) place(chosen, entry);
-          continue;
-        }
-      }
+      if (eligible.length === 0) continue; // too big or rushed-overflow
 
-      // ── Split: place items one at a time ───────────────────────────────
-      // Each item respects its OWN due date (looser than familyDeadline for
-      // some items). The anchor that grows as we place will pull subsequent
-      // items toward the same day when capacity allows.
-      for (const entry of items) {
-        let eligible = slots.filter(
-          (s) => s.date.getTime() <= entry.dueMs && s.remaining >= entry.squares
-        );
-        // Overdue items (or items whose entire date-eligible window is full)
-        // would otherwise be silently dropped — fall back to any slot with
-        // capacity so they still get scheduled. pickSlot below picks the
-        // earliest slot among them, so overdue work bubbles to the front.
-        if (eligible.length === 0) {
-          eligible = slots.filter((s) => s.remaining >= entry.squares);
-        }
-        if (eligible.length === 0) continue; // truly too big for any day
-
-        // For splits we want earliest-valid as the cold-start fallback (the
-        // family already spans days, so spreading the head as early as
-        // possible preserves the most slack). Anchor still wins if any slot
-        // already holds same-family work.
-        const chosen = pickSlot(
-          eligible,
-          family,
-          /* preferLate */ false,
-          entry.dueMs
-        );
-        if (chosen) place(chosen, entry);
-      }
+      const chosen = pickSlot(eligible, entry.family, entry.dueMs);
+      if (chosen) place(chosen, entry);
     }
 
     //╔═══╗ ═══════════════════════════════════════════════════════════════ ╔═══╗
@@ -1237,12 +1226,44 @@ export default function ProductionPlanningPage() {
     setTimeout(() => setRecentlyPlacedIds(new Set()), 1600);
   };
 
-  const thisWeekKey = format(
-    startOfWeek(new Date(), { weekStartsOn: 0 }),
-    "yyyy-MM-dd"
-  );
+  // Latest handleAutoFill in a ref so the nightly scheduler can call the
+  // freshest closure (with up-to-date stores) without resetting its timeout
+  // every render.
+  const handleAutoFillRef = useRef(handleAutoFill);
+  useEffect(() => {
+    handleAutoFillRef.current = handleAutoFill;
+  });
+
+  // Nightly auto-plan tick at 8pm PT. Recursive setTimeout so each fire
+  // recomputes the next interval (and absorbs DST shifts cleanly).
+  useEffect(() => {
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => {
+      timeoutId = setTimeout(
+        () => {
+          if (cancelled) return;
+          Promise.resolve(handleAutoFillRef.current()).catch((err) =>
+            console.warn("Nightly auto-plan failed", err)
+          );
+          schedule();
+        },
+        msUntilNextZonedHour(
+          NIGHTLY_AUTO_PLAN_HOUR,
+          NIGHTLY_AUTO_PLAN_TIMEZONE
+        )
+      );
+    };
+    schedule();
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, []);
+
+  const thisWeekKey = format(planWeekStart(new Date()), "yyyy-MM-dd");
   const nextWeekKey = format(
-    addWeeks(startOfWeek(new Date(), { weekStartsOn: 0 }), 1),
+    addWeeks(planWeekStart(new Date()), 1),
     "yyyy-MM-dd"
   );
   const viewingNextWeek = currentWeekKey === nextWeekKey;
@@ -1276,7 +1297,14 @@ export default function ProductionPlanningPage() {
   // that up via scrollerNode + currentWeekKey changing.
   const centeredKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!scrollerNode) return;
+    if (!scrollerNode) {
+      // AnimatePresence mode="wait" unmounts the scroller on week toggle.
+      // Reset so the next (fresh) node re-centers — without this, toggling
+      // away and back leaves the new node stuck at scrollLeft=0 (Sunday on
+      // mobile snap-x), which looks like the week failed to load.
+      centeredKeyRef.current = null;
+      return;
+    }
     if (!todayColumnDay || viewingNextWeek || viewingPastWeek) return;
     const key = `${currentWeekKey}|${todayColumnDay}`;
     if (centeredKeyRef.current === key) return;
@@ -1363,8 +1391,6 @@ export default function ProductionPlanningPage() {
           }
           onSelectWeek={(weekKey) => setCurrentWeekKey(weekKey)}
           onAutoFill={() => handleAutoFill()}
-          autoPlanWeights={autoPlanWeights}
-          onAutoPlanWeightsChange={updateAutoPlanWeights}
           onClearWeek={() => {
             if (currentSchedule) {
               const clearedSchedule = {
@@ -1438,8 +1464,8 @@ export default function ProductionPlanningPage() {
                         ordersById={allOrdersById}
                         totalSquares={dayGroups[day].totalSquares}
                         gluedSquares={dayGroups[day].gluedSquares}
-                        capacity={DAILY_CAPACITY_SQUARES}
-                        greenThreshold={DAILY_GREEN_THRESHOLD_SQUARES}
+                        capacity={dailyCapacitySquares}
+                        greenThreshold={dailyGreenThresholdSquares}
                         onTogglePin={(id, actualDay) =>
                           toggleItemPinned(currentWeekKey, actualDay, id)
                         }
