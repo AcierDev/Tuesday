@@ -1402,7 +1402,10 @@ export default function ProductionPlanningPage() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden select-none">
+      {/* h-dvh (dynamic viewport) instead of h-screen so the bottom of the
+          sidebar/day columns isn't hidden behind the browser's bottom toolbar
+          on iPad/iOS Safari and on tab bars that overlay the viewport. */}
+      <div className="flex flex-col h-dvh bg-gray-50 dark:bg-gray-950 overflow-hidden select-none">
         {/* Header — full width across the top, above sidebar + content. */}
         <ProductionPlanningHeader
           viewingNextWeek={viewingNextWeek}
