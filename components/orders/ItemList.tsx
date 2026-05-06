@@ -81,7 +81,6 @@ export const ItemList = memo(function ItemList({
   const rightGroups = RIGHT_LANE_ORDER.map((status) =>
     groups.find((g) => g.title === status)
   ).filter((g): g is Group => Boolean(g));
-  const hiddenGroup = groups.find((g) => g.title === ItemStatus.Hidden);
 
   const renderGroup = (
     group: Group,
@@ -127,7 +126,6 @@ export const ItemList = memo(function ItemList({
           {rightGroups.map((g) => renderGroup(g, false))}
         </div>
       </div>
-      {hiddenGroup && renderGroup(hiddenGroup, true)}
       <div key="done-section" className="min-h-[50px]">
         <ItemGroupSection
           group={doneGroup}

@@ -117,9 +117,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   const loadDoneItems = useOrderStore((state) => state.loadDoneItems);
   const removeDoneItems = useOrderStore((state) => state.removeDoneItems);
   const doneItemsLoaded = useOrderStore((state) => state.doneItemsLoaded);
-  const loadHiddenItems = useOrderStore((state) => state.loadHiddenItems);
-  const removeHiddenItems = useOrderStore((state) => state.removeHiddenItems);
-  const hiddenItemsLoaded = useOrderStore((state) => state.hiddenItemsLoaded);
   const updateItem = useOrderStore((state) => state.updateItem);
   const hasMoreDoneItems = useOrderStore((state) => state.hasMoreDoneItems);
   const isDoneLoading = useOrderStore((state) => state.isDoneLoading);
@@ -356,12 +353,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       } else {
         removeDoneItems();
       }
-    } else if (group.title === "Hidden") {
-      if (isCollapsed) {
-        loadHiddenItems();
-      } else {
-        removeHiddenItems();
-      }
     }
   }, [
     isCollapsible,
@@ -369,13 +360,10 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     group.title,
     loadDoneItems,
     removeDoneItems,
-    loadHiddenItems,
-    removeHiddenItems,
   ]);
 
   const shouldShowSkeleton =
-    (group.title === ItemStatus.Done && !doneItemsLoaded) ||
-    (group.title === "Hidden" && !hiddenItemsLoaded);
+    group.title === ItemStatus.Done && !doneItemsLoaded;
 
   const renderSkeletonRows = useCallback(() => {
     return Array(3)

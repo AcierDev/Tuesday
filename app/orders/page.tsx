@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
+import { isAnyModalDialogOpen } from "@/utils/dnd-modal-guard";
 import {
   Item,
   ItemStatus,
@@ -49,7 +50,6 @@ const VALID_DROP_STATUSES = new Set<string>([
   ItemStatus.Packaging,
   ItemStatus.At_The_Door,
   ItemStatus.Done,
-  ItemStatus.Hidden,
 ]);
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -77,6 +77,7 @@ class RowMouseSensor extends MouseSensor {
       eventName: "onMouseDown" as const,
       handler: ({ nativeEvent: event }: React.MouseEvent) => {
         if (event.button !== 0) return false;
+        if (isAnyModalDialogOpen()) return false;
         let node = event.target as HTMLElement | null;
         const stop = event.currentTarget as HTMLElement;
         while (node && node !== stop) {
@@ -84,6 +85,19 @@ class RowMouseSensor extends MouseSensor {
           if (node.dataset?.noDnd !== undefined) return false;
           node = node.parentElement;
         }
+        return true;
+      },
+    },
+  ];
+}
+
+class GuardedTouchSensor extends TouchSensor {
+  static activators = [
+    {
+      eventName: "onTouchStart" as const,
+      handler: ({ nativeEvent: event }: React.TouchEvent) => {
+        if (isAnyModalDialogOpen()) return false;
+        if (event.touches.length > 1) return false;
         return true;
       },
     },
@@ -297,7 +311,7 @@ export default function OrderManagementPage() {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(RowMouseSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, {
+    useSensor(GuardedTouchSensor, {
       activationConstraint: { delay: 150, tolerance: 5 },
     }),
     useSensor(KeyboardSensor, {

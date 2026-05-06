@@ -31,7 +31,6 @@ interface OrderState {
   isDoneLoading: boolean;
   eventSource: EventSource | null;
   doneItemsLoaded: boolean;
-  hiddenItemsLoaded: boolean;
   items: Item[];
   doneItems: Item[];
   scheduledItems: Item[];
@@ -63,8 +62,6 @@ interface OrderState {
   loadDoneItems: (reset?: boolean) => Promise<void>;
   searchDoneItems: (query: string) => Promise<void>;
   removeDoneItems: () => void;
-  loadHiddenItems: () => Promise<void>;
-  removeHiddenItems: () => void;
   fetchItemsByIds: (ids: string[]) => Promise<void>;
   markCompleted: (item: Item) => Promise<void>;
   updateIsScheduled: () => void;
@@ -135,7 +132,6 @@ export const useOrderStore = create<OrderState>()(
       settings: null,
       eventSource: null,
       doneItemsLoaded: false,
-      hiddenItemsLoaded: false,
       searchQuery: "",
       searchResults: [],
 
@@ -164,7 +160,6 @@ export const useOrderStore = create<OrderState>()(
             lastFetched: Date.now(),
             isLoading: false,
             doneItemsLoaded: false,
-            hiddenItemsLoaded: false,
           });
 
           // Start watching for changes after initial load
@@ -697,22 +692,6 @@ export const useOrderStore = create<OrderState>()(
 
       removeDoneItems: () => {
         set({ doneItems: [], doneItemsLoaded: false });
-      },
-
-      loadHiddenItems: () => {
-        const { allItems, items } = get();
-        const hiddenItems = allItems.filter(
-          (item) => item.status === ItemStatus.Hidden
-        );
-        set({ items: [...items, ...hiddenItems], hiddenItemsLoaded: true });
-      },
-
-      removeHiddenItems: () => {
-        const { allItems } = get();
-        const activeItems = allItems.filter(
-          (item) => item.status !== ItemStatus.Hidden
-        );
-        set({ items: activeItems, hiddenItemsLoaded: false });
       },
 
       fetchItemsByIds: async (ids: string[]) => {

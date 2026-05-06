@@ -87,8 +87,10 @@ const MAX_OPTIONS_PER_SIDE = 3;
 const SWIPE_SPRING = { type: "spring" as const, stiffness: 600, damping: 38 };
 const ROW_OPEN_RADIUS_PX = 10;
 
+// Hidden is intentionally NOT in the swipe chain — it's too easy to flick a
+// row into Hidden by accident on mobile and lose track of the order. Hiding
+// stays available on desktop via the right-click menu / drag-to-section.
 const STATUS_CHAIN: readonly ItemStatus[] = [
-  ItemStatus.Hidden,
   ItemStatus.New,
   ItemStatus.OnDeck,
   ItemStatus.Wip,
