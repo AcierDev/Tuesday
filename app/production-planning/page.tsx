@@ -28,6 +28,7 @@ import {
   DropAnimation,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { isAnyModalDialogOpen } from "@/utils/dnd-modal-guard";
 
 import { ProductionPlanningHeader } from "@/components/production-planning/ProductionPlanningHeader";
 import { ProductionPlanningSidebar } from "@/components/production-planning/ProductionPlanningSidebar";
@@ -56,6 +57,37 @@ import {
 } from "@/lib/production-metrics";
 import { getDesignFamily } from "@/components/production-planning/design-family";
 import { parseNameTokens } from "@/components/orders/name-tokens";
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🚫 NO-DRAG WHILE MODAL OPEN                                          ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+// Block sensor activation when a Radix dialog is open so background cards
+// can't be dragged through the overlay.
+class GuardedMouseSensor extends MouseSensor {
+  static activators = [
+    {
+      eventName: "onMouseDown" as const,
+      handler: ({ nativeEvent: event }: React.MouseEvent) => {
+        if (event.button !== 0) return false;
+        if (isAnyModalDialogOpen()) return false;
+        return true;
+      },
+    },
+  ];
+}
+
+class GuardedTouchSensor extends TouchSensor {
+  static activators = [
+    {
+      eventName: "onTouchStart" as const,
+      handler: ({ nativeEvent: event }: React.TouchEvent) => {
+        if (isAnyModalDialogOpen()) return false;
+        if (event.touches.length > 1) return false;
+        return true;
+      },
+    },
+  ];
+}
 
 function calculateSquares(item: { size?: string }): number {
   const sizeStr = item.size || "";
@@ -680,10 +712,10 @@ export default function ProductionPlanningPage() {
   // DnD Sensors. Mouse activates on a small drag distance; touch waits a beat
   // so vertical scrolling on the card lists doesn't get hijacked into drags.
   const sensors = useSensors(
-    useSensor(MouseSensor, {
+    useSensor(GuardedMouseSensor, {
       activationConstraint: { distance: 6 },
     }),
-    useSensor(TouchSensor, {
+    useSensor(GuardedTouchSensor, {
       activationConstraint: { delay: 150, tolerance: 5 },
     }),
     useSensor(KeyboardSensor, {
