@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { parseMinecraftColors } from "@/parseMinecraftColors";
 import {
   Tooltip,
   TooltipContent,
@@ -9,7 +8,7 @@ import {
 } from "@/components/ui/tooltip";
 import { FileWarning, MessageCircleWarning } from "lucide-react";
 import { parseISO, isValid } from "date-fns";
-import { cn, splitFirstTwoWords } from "@/utils/functions";
+import { cn } from "@/utils/functions";
 import React from "react";
 import { Item, ColumnTitles, ItemStatus } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
@@ -19,14 +18,7 @@ import {
   useTodayScheduledIds,
   useTomorrowScheduledIds,
 } from "@/hooks/useTodayScheduledIds";
-import {
-  BrandTag,
-  LocalTag,
-  parseNameTokens,
-  PrintMarkerTag,
-  RushedTag,
-  VerticalTag,
-} from "@/components/orders/name-tokens";
+import { OrderNameDisplay } from "@/components/orders/name-tokens";
 
 // // Add this style block right after imports
 // const pulseKeyframes = `
@@ -165,22 +157,6 @@ export const NameCell: React.FC<NameCellProps> = ({
     </span>
   ) : null;
 
-  const {
-    displayName,
-    isRushed,
-    isLocal,
-    isVertical,
-    brandPrefix,
-    isPrintMarker,
-  } = parseNameTokens(inputValue);
-
-  const [firstTwoWords, restOfName] = splitFirstTwoWords(displayName);
-
-  const brandTag = brandPrefix ? <BrandTag prefix={brandPrefix} /> : null;
-  const rushedTag = isRushed ? <RushedTag /> : null;
-  const localTag = isLocal ? <LocalTag /> : null;
-  const verticalTag = isVertical ? <VerticalTag /> : null;
-
   return (
     <div className="flex items-center w-full h-full relative group -translate-x-[13px]">
       <div className="flex items-center space-x-2 w-full">
@@ -244,20 +220,7 @@ export const NameCell: React.FC<NameCellProps> = ({
             <div className="flex flex-col items-start gap-0.5">
               {scheduleBadge}
               <span className="inline-flex items-center gap-2">
-                {isPrintMarker ? (
-                  <PrintMarkerTag />
-                ) : (
-                  <span>
-                    {parseMinecraftColors(firstTwoWords)}
-                    <span className="opacity-55 text-[0.92em]">
-                      {parseMinecraftColors(restOfName)}
-                    </span>
-                  </span>
-                )}
-                {brandTag}
-                {rushedTag}
-                {localTag}
-                {verticalTag}
+                <OrderNameDisplay rawName={inputValue} />
               </span>
             </div>
           </div>

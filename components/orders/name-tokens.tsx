@@ -6,7 +6,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/utils/functions";
+import { cn, splitFirstTwoWords } from "@/utils/functions";
+import { parseMinecraftColors } from "@/parseMinecraftColors";
 
 const RUSHED_TOKEN = /\(rushed\)/i;
 const LOCAL_TOKEN = /\(local\)/i;
@@ -149,6 +150,40 @@ export function VerticalTag() {
         <p>Vertical order</p>
       </TooltipContent>
     </Tooltip>
+  );
+}
+
+// Single source of truth for rendering an order's customer name plus all
+// token-derived badges inline. Both the orders board (NameCell) and the
+// planner (OrderCard) call this, so any badge added here automatically
+// appears on every surface.
+export function OrderNameDisplay({ rawName }: { rawName: string }) {
+  const {
+    displayName,
+    isRushed,
+    isLocal,
+    isVertical,
+    brandPrefix,
+    isPrintMarker,
+  } = parseNameTokens(rawName);
+  const [firstTwoWords, restOfName] = splitFirstTwoWords(displayName);
+  return (
+    <>
+      {isPrintMarker ? (
+        <PrintMarkerTag />
+      ) : (
+        <span>
+          {parseMinecraftColors(firstTwoWords)}
+          <span className="opacity-55 text-[0.92em]">
+            {parseMinecraftColors(restOfName)}
+          </span>
+        </span>
+      )}
+      {brandPrefix && <BrandTag prefix={brandPrefix} />}
+      {isRushed && <RushedTag />}
+      {isLocal && <LocalTag />}
+      {isVertical && <VerticalTag />}
+    </>
   );
 }
 

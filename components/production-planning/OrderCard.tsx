@@ -5,9 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ColumnTitles, DayName, ItemStatus } from "@/typings/types";
 import { OrderMeta } from "./types";
-import { cn, splitFirstTwoWords } from "@/utils/functions";
+import { cn } from "@/utils/functions";
 import { Pin } from "lucide-react";
-import { parseMinecraftColors } from "@/parseMinecraftColors";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import {
   DESIGN_PILL_TRIGGER,
@@ -16,13 +15,7 @@ import {
   createDesignBackground,
 } from "@/components/ui/order-pills";
 import { DueBadge } from "@/components/cells/DueBadge";
-import {
-  BrandTag,
-  LocalTag,
-  parseNameTokens,
-  PrintMarkerTag,
-  RushedTag,
-} from "@/components/orders/name-tokens";
+import { OrderNameDisplay } from "@/components/orders/name-tokens";
 
 // Card tint mirrors the canonical STATUS_COLORS palette so a card's color
 // matches the same status anywhere else in the app (orders board, badges,
@@ -118,13 +111,6 @@ export function OrderCard({
     ? createDesignBackground(design, DESIGN_TAG_ALPHA)
     : undefined;
 
-  const { displayName, isRushed, isLocal, brandPrefix, isPrintMarker } =
-    parseNameTokens(customerName);
-  // Match the orders-board treatment: first two real words render at full
-  // weight, the rest dims to ~55% opacity at a slightly smaller size.
-  const [firstTwoWords, restOfName] = splitFirstTwoWords(displayName);
-
-
   // Auto-plan placement animation: a quick scale+drop-in with an amber glow
   // pulse, staggered per card. We key the motion.div on justPlaced so React
   // remounts it fresh each run — no need to coordinate "have we already
@@ -175,19 +161,7 @@ export function OrderCard({
         <div className="flex-1 min-w-0 space-y-[3px] md:space-y-1.5">
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 break-words">
             <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-              {isPrintMarker ? (
-                <PrintMarkerTag />
-              ) : (
-                <span>
-                  {parseMinecraftColors(firstTwoWords)}
-                  <span className="opacity-55 text-[0.92em]">
-                    {parseMinecraftColors(restOfName)}
-                  </span>
-                </span>
-              )}
-              {brandPrefix && <BrandTag prefix={brandPrefix} />}
-              {isRushed && <RushedTag />}
-              {isLocal && <LocalTag />}
+              <OrderNameDisplay rawName={customerName} />
             </span>
           </div>
           <div className="flex items-center gap-[3px] md:gap-1.5 min-w-0">
