@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Printer, Zap } from "lucide-react";
+import { MapPin, MoveVertical, Printer, Zap } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -10,12 +10,14 @@ import { cn } from "@/utils/functions";
 
 const RUSHED_TOKEN = /\(rushed\)/i;
 const LOCAL_TOKEN = /\(local\)/i;
+const VERTICAL_TOKEN = /\(vertical\)/i;
 const BRAND_PREFIX = /^\[(EW|WF|SH)\]\s*/;
 
 export type NameTokens = {
   displayName: string;
   isRushed: boolean;
   isLocal: boolean;
+  isVertical: boolean;
   brandPrefix: "EW" | "WF" | "SH" | null;
   isPrintMarker: boolean;
 };
@@ -27,9 +29,11 @@ export function parseNameTokens(rawName: string): NameTokens {
   const trimmed = rawName ?? "";
   const isRushed = RUSHED_TOKEN.test(trimmed);
   const isLocal = LOCAL_TOKEN.test(trimmed);
+  const isVertical = VERTICAL_TOKEN.test(trimmed);
   const stripped = trimmed
     .replace(RUSHED_TOKEN, "")
     .replace(LOCAL_TOKEN, "")
+    .replace(VERTICAL_TOKEN, "")
     .replace(/\s{2,}/g, " ")
     .trim();
   const brandMatch = stripped.match(BRAND_PREFIX);
@@ -40,7 +44,14 @@ export function parseNameTokens(rawName: string): NameTokens {
     ? stripped.slice(brandMatch[0].length)
     : stripped;
   const isPrintMarker = displayName.trim().toLowerCase() === "print";
-  return { displayName, isRushed, isLocal, brandPrefix, isPrintMarker };
+  return {
+    displayName,
+    isRushed,
+    isLocal,
+    isVertical,
+    brandPrefix,
+    isPrintMarker,
+  };
 }
 
 export function BrandTag({ prefix }: { prefix: "EW" | "WF" | "SH" }) {
@@ -109,6 +120,33 @@ export function LocalTag() {
       </TooltipTrigger>
       <TooltipContent>
         <p>Local pickup / delivery</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function VerticalTag() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "inline-flex items-center gap-0.5 rounded-md px-1 py-px",
+            "bg-blue-500 text-white ring-1 ring-blue-600",
+            "dark:bg-blue-500/90 dark:ring-blue-400/60",
+            "text-[0.525rem] font-bold uppercase tracking-wide flex-shrink-0",
+            "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_1px_2px_rgba(0,0,0,0.08)]"
+          )}
+        >
+          <MoveVertical
+            className="h-[0.5625rem] w-[0.5625rem]"
+            strokeWidth={2.75}
+          />
+          Vertical
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Vertical order</p>
       </TooltipContent>
     </Tooltip>
   );

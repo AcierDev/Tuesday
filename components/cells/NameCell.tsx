@@ -7,11 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  FileWarning,
-  MessageCircleWarning,
-  MoveVertical,
-} from "lucide-react";
+import { FileWarning, MessageCircleWarning } from "lucide-react";
 import { parseISO, isValid } from "date-fns";
 import { cn, splitFirstTwoWords } from "@/utils/functions";
 import React from "react";
@@ -29,6 +25,7 @@ import {
   parseNameTokens,
   PrintMarkerTag,
   RushedTag,
+  VerticalTag,
 } from "@/components/orders/name-tokens";
 
 // // Add this style block right after imports
@@ -168,30 +165,21 @@ export const NameCell: React.FC<NameCellProps> = ({
     </span>
   ) : null;
 
-  const { displayName, isRushed, isLocal, brandPrefix, isPrintMarker } =
-    parseNameTokens(inputValue);
+  const {
+    displayName,
+    isRushed,
+    isLocal,
+    isVertical,
+    brandPrefix,
+    isPrintMarker,
+  } = parseNameTokens(inputValue);
 
   const [firstTwoWords, restOfName] = splitFirstTwoWords(displayName);
 
   const brandTag = brandPrefix ? <BrandTag prefix={brandPrefix} /> : null;
   const rushedTag = isRushed ? <RushedTag /> : null;
   const localTag = isLocal ? <LocalTag /> : null;
-
-  const verticalIcon = tags?.isVertical && (
-    <Tooltip>
-      <TooltipTrigger>
-        <span className="inline-flex items-center justify-center rounded-md bg-blue-500 p-0.5">
-          <MoveVertical
-            className="h-4 w-4 text-black"
-            strokeWidth={2.42}
-          />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>Vertical Order</p>
-      </TooltipContent>
-    </Tooltip>
-  );
+  const verticalTag = isVertical ? <VerticalTag /> : null;
 
   return (
     <div className="flex items-center w-full h-full relative group -translate-x-[13px]">
@@ -238,7 +226,6 @@ export const NameCell: React.FC<NameCellProps> = ({
                 autoFocus
               />
             </div>
-            {verticalIcon}
           </div>
         ) : (
           <div
@@ -270,9 +257,9 @@ export const NameCell: React.FC<NameCellProps> = ({
                 {brandTag}
                 {rushedTag}
                 {localTag}
+                {verticalTag}
               </span>
             </div>
-            {verticalIcon}
           </div>
         )}
       </div>
