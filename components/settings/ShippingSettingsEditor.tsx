@@ -515,47 +515,75 @@ export function ShippingSettingsEditor() {
                             </AlertDialog>
                           </div>
                           <div className="space-y-3">
+                            {presets.length > 1 ? (
+                              <div className="space-y-2">
+                                <Label className="text-foreground/90">Label</Label>
+                                <Input
+                                  className={settingsInputClassName}
+                                  value={preset.label || ""}
+                                  onChange={(event) =>
+                                    updatePreset(size, preset.id, "label", event.target.value)
+                                  }
+                                />
+                              </div>
+                            ) : null}
                             <div className="space-y-2">
-                              <Label className="text-foreground/90">Label</Label>
-                              <Input
-                                className={settingsInputClassName}
-                                value={preset.label || ""}
-                                onChange={(event) =>
-                                  updatePreset(size, preset.id, "label", event.target.value)
-                                }
-                                placeholder="e.g. Main carton, hardware box"
-                              />
+                              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                                Dimensions (in)
+                              </Label>
+                              <div className="grid grid-cols-3 gap-3">
+                                {[
+                                  ["length", "Length"],
+                                  ["width", "Width"],
+                                  ["height", "Height"],
+                                ].map(([field, label]) => (
+                                  <div key={field} className="min-w-0 space-y-2">
+                                    <Label className="text-foreground/90">{label}</Label>
+                                    <Input
+                                      className={settingsInputClassName}
+                                      type="number"
+                                      min="0"
+                                      step="0.1"
+                                      value={formatBoxNumberForInput(
+                                        preset[
+                                          field as keyof ShippingBoxPreset
+                                        ] as number
+                                      )}
+                                      onChange={(event) =>
+                                        updatePreset(
+                                          size,
+                                          preset.id,
+                                          field as keyof ShippingBoxPreset,
+                                          event.target.value
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                              {[
-                                ["length", "Length"],
-                                ["width", "Width"],
-                                ["height", "Height"],
-                                ["weight", "Weight"],
-                              ].map(([field, label]) => (
-                                <div key={field} className="min-w-0 space-y-2">
-                                  <Label className="text-foreground/90">{label}</Label>
-                                  <Input
-                                    className={settingsInputClassName}
-                                    type="number"
-                                    min="0"
-                                    step="0.1"
-                                    value={formatBoxNumberForInput(
-                                      preset[
-                                        field as keyof ShippingBoxPreset
-                                      ] as number
-                                    )}
-                                    onChange={(event) =>
-                                      updatePreset(
-                                        size,
-                                        preset.id,
-                                        field as keyof ShippingBoxPreset,
-                                        event.target.value
-                                      )
-                                    }
-                                  />
-                                </div>
-                              ))}
+                            <div className="space-y-2">
+                              <Label className="text-foreground/90">Weight</Label>
+                              <div className="relative w-32">
+                                <Input
+                                  className={`${settingsInputClassName} pr-10`}
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  value={formatBoxNumberForInput(preset.weight)}
+                                  onChange={(event) =>
+                                    updatePreset(
+                                      size,
+                                      preset.id,
+                                      "weight",
+                                      event.target.value
+                                    )
+                                  }
+                                />
+                                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-muted-foreground">
+                                  lbs
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>

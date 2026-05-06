@@ -214,6 +214,51 @@ function formatAddressSummary(address: ShippingAddressInput): string {
   return "";
 }
 
+/** Multi-line postal-style preview for at-a-glance address review */
+function AddressCard({ address }: { address: ShippingAddressInput }) {
+  const name = address.name?.trim();
+  const company = address.company?.trim();
+  const line1 = address.line1?.trim();
+  const line2 = address.line2?.trim();
+  const city = address.city?.trim();
+  const state = address.state?.trim();
+  const postalCode = address.postalCode?.trim();
+  const country = address.country?.trim();
+  const phone = address.phone?.trim();
+  const email = address.email?.trim();
+
+  const cityLine = [
+    [city, state].filter(Boolean).join(", "),
+    postalCode,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <div className="mt-1 space-y-0.5 font-mono text-sm leading-snug text-gray-800 dark:text-gray-200">
+      {name ? (
+        <div className="font-semibold text-gray-900 dark:text-gray-100">
+          {name}
+        </div>
+      ) : null}
+      {company ? <div>{company}</div> : null}
+      {line1 ? <div>{line1}</div> : null}
+      {line2 ? <div>{line2}</div> : null}
+      {cityLine ? <div>{cityLine}</div> : null}
+      {country && country.toUpperCase() !== "US" ? (
+        <div>{country}</div>
+      ) : null}
+      {phone || email ? (
+        <div className="pt-1 font-sans text-xs text-gray-600 dark:text-gray-400">
+          {phone}
+          {phone && email ? " · " : null}
+          {email}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function FedExBuyLabelDialog({ item }: { item: Item }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<ShipmentDraft | null>(null);
@@ -233,6 +278,8 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
     (state) => state.isLoading
   );
   const fetchAllLabels = useShippingStore((state) => state.fetchAllLabels);
+  const pausePolling = useShippingStore((state) => state.pausePolling);
+  const resumePolling = useShippingStore((state) => state.resumePolling);
   const fetchTrackingInfo = useTrackingStore((state) => state.fetchTrackingInfo);
   const loadItems = useOrderStore((state) => state.loadItems);
 
@@ -263,6 +310,18 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
       fetchShippingSettings(true).catch(() => undefined);
     }
   }, [open, fetchShippingSettings]);
+
+  // Pause label polling while the dialog is open. Otherwise the 60s
+  // fetchAllLabels tick ripples through subscribers (isLoading flip,
+  // labels object swap) and ends up wiping inputs / re-expanding the
+  // collapsed address sections mid-edit.
+  useEffect(() => {
+    if (!open) return;
+    pausePolling();
+    return () => {
+      resumePolling();
+    };
+  }, [open, pausePolling, resumePolling]);
 
   useEffect(() => {
     if (!open) {
@@ -405,7 +464,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
 
   const handleGetRates = async () => {
     if (!draft || !isValidDraft(draft)) {
-      setError("Complete the recipient and package details before requesting rates.");
+      setError("Complete the recipient and box details before requesting rates.");
       return;
     }
 
@@ -489,11 +548,11 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
       <DialogTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
-          className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-600/15 to-orange-500/15 text-violet-700 hover:bg-violet-100 dark:text-violet-300 dark:hover:bg-violet-950"
+          size="sm"
+          className="h-8 gap-2 rounded-full bg-gradient-to-br from-violet-600/15 to-orange-500/15 px-3 text-sm font-medium text-violet-700 hover:bg-violet-100 dark:text-violet-300 dark:hover:bg-violet-950"
         >
           <Truck className="h-4 w-4" />
-          <span className="sr-only">Buy FedEx label</span>
+          Purchase Label
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -572,9 +631,6 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                           Ship From
                         </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Defaults come from Shipping settings and can be overridden here.
-                        </p>
                         {!addressSectionsOpen &&
                           isShipFromSectionComplete(draft.shipFrom) &&
                           formatAddressSummary(draft.shipFrom) ? (
@@ -640,11 +696,8 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                           Prefilled from the item and fully editable before rate lookup.
                         </p>
                         {!addressSectionsOpen &&
-                          isRecipientSectionComplete(draft.shipTo) &&
-                          formatAddressSummary(draft.shipTo) ? (
-                          <p className="truncate text-sm text-gray-600 dark:text-gray-400">
-                            {formatAddressSummary(draft.shipTo)}
-                          </p>
+                        isRecipientSectionComplete(draft.shipTo) ? (
+                          <AddressCard address={draft.shipTo} />
                         ) : null}
                       </div>
                       <ChevronDown
@@ -689,9 +742,9 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                 <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">Packages</h3>
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">Boxes</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Package rows are seeded from the size preset map and can be overridden.
+                        Box rows are seeded from the size preset map and can be overridden.
                       </p>
                     </div>
                     <Button
@@ -701,7 +754,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                       onClick={addPackage}
                     >
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Package
+                      Add Box
                     </Button>
                   </div>
                   <div className="space-y-4">
@@ -711,7 +764,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                         className="rounded-lg border border-gray-200 bg-gray-100 p-4 dark:border-gray-600 dark:bg-gray-700"
                       >
                         <div className="mb-4 flex items-center justify-between">
-                          <div className="font-medium">Package {index + 1}</div>
+                          <div className="font-medium">Box {index + 1}</div>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -721,17 +774,18 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                           </Button>
                         </div>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-                          <div className="space-y-2 md:col-span-5">
-                            <Label>Label</Label>
-                            <Input
-                              className={ordersInputClassName}
-                              value={pkg.label || ""}
-                              placeholder="Main carton, hardware box..."
-                              onChange={(event) =>
-                                updatePackage(pkg.id, "label", event.target.value)
-                              }
-                            />
-                          </div>
+                          {draft.packages.length > 1 ? (
+                            <div className="space-y-2 md:col-span-5">
+                              <Label>Label</Label>
+                              <Input
+                                className={ordersInputClassName}
+                                value={pkg.label || ""}
+                                onChange={(event) =>
+                                  updatePackage(pkg.id, "label", event.target.value)
+                                }
+                              />
+                            </div>
+                          ) : null}
                           {[
                             ["length", "Length"],
                             ["width", "Width"],

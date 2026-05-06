@@ -694,7 +694,7 @@ export function ViewLabel({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mr-12">
           <PillToggle
             active={activeTab}
             onChange={setActiveTab}

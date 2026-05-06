@@ -10,12 +10,20 @@ interface ShippingStore {
   removeLabel: (orderId: string, filename: string) => void;
   startPolling: () => void;
   stopPolling: () => void;
+  pausePolling: () => void;
+  resumePolling: () => void;
   hasLabel: (orderId: string) => boolean;
   getLabelUrl: (filename: string) => string;
 }
 
+const POLL_INTERVAL_MS = 60_000;
+
 export const useShippingStore = create<ShippingStore>((set, get) => {
   let pollInterval: any = null;
+  // Counter so multiple consumers can pause concurrently without trampling
+  // each other (e.g. two dialogs open at once). Polling only resumes when
+  // the count returns to zero.
+  let pauseCount = 0;
 
   return {
     s3Config: null,
@@ -62,9 +70,9 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
       // Fetch immediately
       get().fetchAllLabels();
 
-      // Start polling if not already started
-      if (!pollInterval) {
-        pollInterval = setInterval(get().fetchAllLabels, 60000); // every minute
+      // Start polling if not already started AND not currently paused
+      if (!pollInterval && pauseCount === 0) {
+        pollInterval = setInterval(get().fetchAllLabels, POLL_INTERVAL_MS);
       }
     },
 
@@ -72,6 +80,22 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
       if (pollInterval) {
         clearInterval(pollInterval);
         pollInterval = null;
+      }
+    },
+
+    pausePolling: () => {
+      pauseCount += 1;
+      if (pauseCount === 1 && pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    },
+
+    resumePolling: () => {
+      if (pauseCount === 0) return;
+      pauseCount -= 1;
+      if (pauseCount === 0 && !pollInterval) {
+        pollInterval = setInterval(get().fetchAllLabels, POLL_INTERVAL_MS);
       }
     },
 
