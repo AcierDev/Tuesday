@@ -11,8 +11,9 @@ import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import {
   DESIGN_PILL_TRIGGER,
   DESIGN_TAG_ALPHA,
-  SIZE_PILL_TRIGGER,
+  SizePillContent,
   createDesignBackground,
+  sizePillTriggerClass,
 } from "@/components/ui/order-pills";
 import { DueBadge } from "@/components/cells/DueBadge";
 import { OrderNameDisplay } from "@/components/orders/name-tokens";
@@ -164,13 +165,20 @@ export function OrderCard({
               <OrderNameDisplay rawName={customerName} />
             </span>
           </div>
-          <div className="flex items-center gap-[3px] md:gap-1.5 min-w-0">
-            <div className={cn("shrink-0", SIZE_PILL_TRIGGER)}>
-              {size}
+          <div className="flex flex-wrap items-start gap-[3px] gap-y-1 md:gap-1.5 min-w-0">
+            <div className={cn("shrink-0", sizePillTriggerClass(size))}>
+              <SizePillContent size={size} />
             </div>
             {design && (
               <div
-                className={cn("min-w-0", DESIGN_PILL_TRIGGER)}
+                className={cn(
+                  "min-w-0",
+                  DESIGN_PILL_TRIGGER,
+                  // Override the shared pill's single-line truncation so
+                  // multi-word names ("Striped Oceanic Harmony") wrap to a
+                  // second line instead of getting ellipsis-cut.
+                  "!whitespace-normal !overflow-visible !h-auto !min-h-[1.25rem] sm:!min-h-[1.5rem] py-0.5 leading-tight text-center"
+                )}
                 style={{ background: designBackground }}
               >
                 {design}

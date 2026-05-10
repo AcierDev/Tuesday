@@ -99,6 +99,29 @@ const STATUS_CHAIN: readonly ItemStatus[] = [
   ItemStatus.Done,
 ];
 
+// Snap an item's size to one of the four known height tiers so external
+// stylesheets (e.g. /orders-redesign-preview) can color rows by size with a
+// stable selector. Always returns a value — sizes that don't parse get
+// "unknown" so the preview can still target the row by attribute. Inert on
+// the live page — no CSS targets this attribute.
+const ROW_HEIGHT_TIERS = [7, 10, 12, 16] as const;
+function rowHeightTier(size: string | undefined | null): string {
+  const m = size?.trim().match(/^(\d+)\s*[x×X]\s*(\d+)$/);
+  if (!m) return "unknown";
+  const h = parseInt(m[2] ?? "", 10);
+  if (!h) return "unknown";
+  let best: number = ROW_HEIGHT_TIERS[0];
+  let bestDist = Infinity;
+  for (const t of ROW_HEIGHT_TIERS) {
+    const d = Math.abs(h - t);
+    if (d < bestDist) {
+      bestDist = d;
+      best = t;
+    }
+  }
+  return String(best);
+}
+
 const STATUS_PANEL_BG: Record<ItemStatus, string> = {
   [ItemStatus.Hidden]: "bg-gray-500 dark:bg-gray-600",
   [ItemStatus.New]: "bg-gray-500 dark:bg-gray-400",
@@ -389,6 +412,7 @@ export const ItemTableRow = memo(function ItemTableRow({
     <>
       <motion.tr
         ref={rowDragRef}
+        data-h-tier={rowHeightTier(item.size)}
         drag={canSwipe ? "x" : false}
         dragDirectionLock
         dragConstraints={{

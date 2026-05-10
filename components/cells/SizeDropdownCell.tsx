@@ -14,11 +14,12 @@ import {
   PILL_INTERACTIVE,
   PILL_SELECTED_RING,
   SIZE_PILL_FULL,
-  SIZE_PILL_TRIGGER,
+  SizePillContent,
+  sizePillFullClass,
+  sizePillTriggerClass,
 } from "@/components/ui/order-pills";
 
-const PILL_BASE_CLASSES = `${SIZE_PILL_FULL} ${PILL_INTERACTIVE}`;
-const PILL_TRIGGER_CLASSES = `${SIZE_PILL_TRIGGER} ${PILL_INTERACTIVE}`;
+const CUSTOM_PILL_CLASSES = `${SIZE_PILL_FULL} ${PILL_INTERACTIVE}`;
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <div className="text-[0.625rem] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 px-0.5">
@@ -47,11 +48,11 @@ const Section = ({
             key={option}
             type="button"
             onClick={() => onPick(option)}
-            className={`${PILL_BASE_CLASSES} ${
+            className={`${sizePillFullClass(option)} ${PILL_INTERACTIVE} ${
               isSelected ? PILL_SELECTED_RING : ""
             }`}
           >
-            {option}
+            <SizePillContent size={option} />
           </button>
         );
       })}
@@ -143,9 +144,9 @@ export const SizeDropdownCell = ({
       <PopoverTrigger asChild>
         <Button
           disabled={disabled}
-          className={PILL_TRIGGER_CLASSES}
+          className={`${sizePillTriggerClass(columnValue.text)} ${PILL_INTERACTIVE}`}
         >
-          {columnValue.text || "Select Size"}
+          <SizePillContent size={columnValue.text} />
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -196,7 +197,7 @@ export const SizeDropdownCell = ({
               <button
                 type="button"
                 onClick={handleSubmitCustom}
-                className={PILL_BASE_CLASSES}
+                className={CUSTOM_PILL_CLASSES}
               >
                 Use &ldquo;{trimmed}&rdquo;
               </button>
