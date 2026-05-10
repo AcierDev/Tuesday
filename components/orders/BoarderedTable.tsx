@@ -14,7 +14,7 @@ export const BorderedTable = React.forwardRef<
   const textClass = borderColor.replace("bg-", "text-");
 
   return (
-    <div className="relative rounded-2xl border border-border dark:border-border">
+    <div className="relative rounded-2xl">
       {/* Top Cap */}
       <svg
         className={cn(

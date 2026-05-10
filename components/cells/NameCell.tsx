@@ -102,8 +102,20 @@ export const NameCell: React.FC<NameCellProps> = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Keep keys dnd-kit's KeyboardSensor uses (Space, Enter, arrows) from
+      // bubbling to the draggable row and triggering a drag activation.
+      if (
+        e.key === " " ||
+        e.key === "ArrowLeft" ||
+        e.key === "ArrowRight" ||
+        e.key === "ArrowUp" ||
+        e.key === "ArrowDown"
+      ) {
+        e.stopPropagation();
+      }
       if (e.key === "Enter") {
         e.preventDefault();
+        e.stopPropagation();
         setIsEditing(false);
         handleUpdate();
       }

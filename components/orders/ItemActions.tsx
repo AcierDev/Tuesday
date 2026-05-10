@@ -113,7 +113,7 @@ function ItemActionsTrigger({ children }: { children: React.ReactNode }) {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
-          className="h-6 w-[1.125rem] p-0 mx-auto text-gray-700 dark:text-gray-300"
+          className="h-6 w-[1.125rem] p-0 mx-auto text-gray-700 dark:text-gray-300 focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
           variant="ghost"
           onPointerDown={(e) => {
             if (e.pointerType === "touch") {
