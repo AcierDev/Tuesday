@@ -28,6 +28,7 @@ interface ItemListProps {
 const NEW_AUTO_EXPAND_TYPES: ReadonlySet<string> = new Set([
   "striped",
   "mini",
+  "shepit",
   "custom",
 ]);
 

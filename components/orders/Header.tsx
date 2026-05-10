@@ -54,7 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
     setIsSearchActive(false)
   }
 
-  const TYPES = ["all", "geometric", "striped", "mini", "custom"];
+  const TYPES = ["all", "geometric", "striped", "mini", "shepit", "custom"];
 
   return (
     <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">

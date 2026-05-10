@@ -46,6 +46,10 @@ export function useOrderFiltering({
         const size = item.size || "";
 
         const isMini = size === ItemSizes.Fourteen_By_Seven;
+        // Shepit orders are sized in inches (e.g. `18" x 24"`, `10" x 18"`),
+        // not in 3"-square counts. Detected by the literal quote character
+        // in the size string.
+        const isShepit = size.includes('"');
 
         const shouldInclude = (() => {
           switch (currentType) {
@@ -61,9 +65,12 @@ export function useOrderFiltering({
               );
             case "mini":
               return isMini;
+            case "shepit":
+              return isShepit;
             case "custom":
               return (
                 !isMini &&
+                !isShepit &&
                 (!Object.values(ItemDesigns).includes(design as ItemDesigns) ||
                   parseSquareSize(size) === null)
               );

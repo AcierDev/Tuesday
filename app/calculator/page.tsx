@@ -46,12 +46,23 @@ const CALCULATOR_SIZES: string[] = [
   "40 x 16",
 ];
 
+// Shepit sizes are labeled directly in inches (e.g. `18" x 24"`) rather than
+// in 3"-square counts like the standard sizes. The size-select handler treats
+// any string with a quote as raw inches and skips the × SQUARE_SIZE step.
+const SHEPIT_SIZES: string[] = [
+  '10" x 18"',
+  '18" x 24"',
+  '24" x 36"',
+];
+
+const isInchSize = (size: string) => size.includes('"');
+
 export default function CustomArtRequest() {
   const [formData, setFormData] = useState({
     height: "36",
     width: "60",
     unit: "inches" as "inches" | "feet",
-    selectedSize: "custom" as ItemSizes | "custom",
+    selectedSize: "custom" as string,
   });
   const [costBreakdown, setCostBreakdown] = useState<CostBreakdown>({
     basePrice: 0,
@@ -175,14 +186,18 @@ export default function CustomArtRequest() {
 
   const handleSizeSelect = (size: string) => {
     if (size !== "custom") {
+      // Shepit sizes are already in inches ("10\" x 18\""); standard sizes
+      // are in 3"-square counts ("14 x 7" → 42" x 21"). parseInt strips the
+      // quote so both shapes parse the same.
+      const inchSize = isInchSize(size);
       const [width = "0", height = "0"] = size
-        .split(" x ")
-        .map((s) => parseInt(s) * SQUARE_SIZE);
+        .split(/\s*x\s*/)
+        .map((s) => parseInt(s) * (inchSize ? 1 : SQUARE_SIZE));
       const newWidth = width.toString();
       const newHeight = height.toString();
       setFormData((prev) => ({
         ...prev,
-        selectedSize: size as ItemSizes | "custom",
+        selectedSize: size,
         width: newWidth,
         height: newHeight,
         unit: "inches",
@@ -316,6 +331,29 @@ export default function CustomArtRequest() {
                         Custom
                       </button>
                       {CALCULATOR_SIZES.map((size) => {
+                        const isActive = formData.selectedSize === size;
+                        return (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => handleSizeSelect(size)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium ring-1 ring-inset transition-colors ${
+                              isActive
+                                ? "bg-blue-600 text-white ring-blue-600 shadow-sm shadow-blue-600/30"
+                                : "bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 ring-gray-200/60 dark:ring-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700/60"
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Shepit</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {SHEPIT_SIZES.map((size) => {
                         const isActive = formData.selectedSize === size;
                         return (
                           <button
