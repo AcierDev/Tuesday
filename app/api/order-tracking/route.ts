@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import clientPromise from "../db/connect";
-import { OrderTrackingInfo } from "@/typings/types";
+import { OrderTrackingInfo, type Item } from "@/typings/types";
 
 export async function GET() {
   try {
@@ -34,6 +34,40 @@ export async function POST(request: Request) {
       { $set: trackingInfo },
       { upsert: true }
     );
+
+    // Also stamp the carrier + add-time on the order itself so the FedEx
+    // pickup badge (and any other "when was a label added" check) can see
+    // uploaded labels — not just labels purchased via the FedEx API.
+    // EasyPost returns sub-typed carrier names like "FedExDefault" /
+    // "FedExSmartPost" / "UPSDAP" / "DHLExpress"; normalize to the canonical
+    // form the rest of the app uses ("FedEx", "UPS", etc.).
+    const tracker = trackingInfo.trackers?.[0];
+    const rawCarrier: string = tracker?.carrier ?? "";
+    const lowerCarrier = rawCarrier.toLowerCase();
+    const normalizedCarrier =
+      lowerCarrier.includes("fedex")
+        ? "FedEx"
+        : lowerCarrier.includes("usps")
+          ? "USPS"
+          : lowerCarrier.includes("ups")
+            ? "UPS"
+            : lowerCarrier.includes("dhl")
+              ? "DHL"
+              : rawCarrier;
+    if (normalizedCarrier && trackingInfo.orderId) {
+      const itemsCollection = db.collection<Item>(
+        `items-${process.env.NEXT_PUBLIC_MODE}`
+      );
+      await itemsCollection.updateOne(
+        { id: trackingInfo.orderId },
+        {
+          $set: {
+            "purchasedShipment.carrier": normalizedCarrier,
+            "purchasedShipment.purchasedAt": Date.now(),
+          },
+        }
+      );
+    }
 
     return NextResponse.json(result);
   } catch (error) {

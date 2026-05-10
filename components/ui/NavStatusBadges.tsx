@@ -3,11 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Truck } from "lucide-react";
 
 import { useOrderStore } from "@/stores/useOrderStore";
 import { ItemStatus } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
 import { computeTotalDebt, laDayKey, shiftDayKey } from "@/lib/debt-metrics";
+import {
+  computeFedExPickupStatus,
+  type FedExPickupStatus,
+} from "@/lib/fedex-pickup";
 import {
   bucketGluedSquaresByDay,
   buildGluedEvents,
@@ -42,6 +47,8 @@ const SECTION_COUNTER_ORDER: ItemStatus[] = [
 const HEALTH_GOOD_THRESHOLD = 85;
 const HEALTH_BAD_THRESHOLD = 60;
 const DEBT_HISTORY_DAYS = 30;
+const DEBT_GREEN_MAX = 5;
+const DEBT_YELLOW_MAX = 15;
 
 const BACKLOG_STATUSES: ReadonlySet<string> = new Set([
   ItemStatus.New,
@@ -96,6 +103,102 @@ function msUntilNextForecastRefresh(now: Date = new Date()): number {
 function formatSquaresK(squares: number): string {
   if (squares < 1000) return squares.toString();
   return (squares / 1000).toFixed(1) + "k";
+}
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🚚 FEDEX PICKUP BADGE                                                 ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+const FEDEX_PICKUP_POLL_MS = 60_000;
+
+function formatPickupTime(purchasedAt: number): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(purchasedAt));
+}
+
+function describePickupStatus(status: FedExPickupStatus): string {
+  if (status.kind === "none") {
+    return "No FedEx label currently awaiting pickup.";
+  }
+  const stamped = formatPickupTime(status.purchasedAt);
+  if (status.kind === "today") {
+    return `FedEx pickup TODAY (earliest pending label purchased ${stamped} PT).`;
+  }
+  return `FedEx pickup ${status.pickupWeekday.toUpperCase()} (earliest pending label purchased ${stamped} PT).`;
+}
+
+export function FedExPickupBadge() {
+  const [purchasedAts, setPurchasedAts] = useState<number[]>([]);
+  const [now, setNow] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch("/api/shipping/fedex-pickup-status", {
+          cache: "no-store",
+        });
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { purchasedAts?: number[] };
+        if (!cancelled) {
+          setPurchasedAts(data.purchasedAts ?? []);
+          setNow(new Date());
+        }
+      } catch (err) {
+        console.error("Failed to load FedEx pickup status", err);
+      }
+    }
+    load();
+    const interval = setInterval(load, FEDEX_PICKUP_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const status = useMemo(
+    () => computeFedExPickupStatus(purchasedAts, now),
+    [purchasedAts, now]
+  );
+
+  const colorClass =
+    status.kind === "today" || status.kind === "later"
+      ? "text-emerald-500 dark:text-emerald-400"
+      : "text-slate-400";
+
+  const valueLabel =
+    status.kind === "today"
+      ? "TODAY"
+      : status.kind === "later"
+        ? status.pickupWeekday.toUpperCase()
+        : "—";
+
+  return (
+    <div className="px-1 pt-2 flex flex-col items-center">
+      <div
+        className={cn(
+          "flex flex-col items-center justify-center w-16 h-16 rounded-xl px-1 py-1 select-none glass-surface",
+          colorClass
+        )}
+        title={describePickupStatus(status)}
+      >
+        <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
+          FedEx
+        </span>
+        <Truck className="mt-0.5 h-4 w-4" strokeWidth={2.5} />
+        <span className="mt-0.5 text-[11px] font-bold leading-none tabular-nums">
+          {valueLabel}
+        </span>
+        <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
+          pickup
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function NavSectionCounters() {
@@ -342,9 +445,11 @@ export function NavMetricsBadges() {
         href="/stats/debt"
         className={cn(
           "flex flex-col items-center justify-center w-16 h-20 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
-          totalDebt > 0
-            ? "text-red-500 dark:text-red-400"
-            : "text-emerald-500 dark:text-emerald-400"
+          totalDebt <= DEBT_GREEN_MAX
+            ? "text-emerald-500 dark:text-emerald-400"
+            : totalDebt <= DEBT_YELLOW_MAX
+              ? "text-amber-500 dark:text-amber-400"
+              : "text-red-500 dark:text-red-400"
         )}
         title={`Total overdue debt: ${totalDebt} day${totalDebt === 1 ? "" : "s"} — click for details`}
       >

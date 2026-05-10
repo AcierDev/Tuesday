@@ -79,6 +79,7 @@ import {
 } from "@/components/ui/tooltip";
 import { motion } from "framer-motion";
 import {
+  FedExPickupBadge,
   NavSectionCounters,
   NavMetricsBadges,
 } from "@/components/ui/NavStatusBadges";
@@ -486,6 +487,7 @@ export function Navbar({
         } fixed h-screen transition-all duration-300 ease-in-out bg-[hsl(var(--sidebar))] hidden lg:block z-30`}
       >
         <div className="h-screen flex flex-col bg-[hsl(var(--sidebar))]">
+          <FedExPickupBadge />
           <NavMetricsBadges />
           {/* Soft gradient divider below the metric badges. */}
           <div
