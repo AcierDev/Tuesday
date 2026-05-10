@@ -97,7 +97,7 @@ export const getCellClassName = (columnValue: ColumnValue): string => {
 //║ 📅 DUE-DATE DELTA FORMAT                                             ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 // Format a signed day delta for the due-date badge.
-//   • delta < 14 → signed days: "+5", "-3", "0"
+//   • delta < 14 → days, only a minus sign: "5", "-3", "0"
 //   • delta ≥ 14 → whole weeks with stacked label: "2 Weeks", "3 Weeks"
 export function formatDueDelta(delta: number): {
   primary: string;
@@ -110,7 +110,7 @@ export function formatDueDelta(delta: number): {
     };
   }
   return {
-    primary: delta === 0 ? "0" : delta > 0 ? `+${delta}` : `${delta}`,
+    primary: `${delta}`,
   };
 }
 

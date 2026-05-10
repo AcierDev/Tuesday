@@ -53,6 +53,7 @@ export const DueBadge = ({
 
   const { primary, suffix } = formatDueDelta(delta);
   const isWeekMode = suffix !== undefined;
+  const isSingleDigit = !isWeekMode && primary.length === 1;
 
   let toneClasses: string;
   if (delta < 0) {
@@ -74,7 +75,10 @@ export const DueBadge = ({
   }
 
   const badgeClasses = cn(
-    "tabular-nums text-[0.625rem] sm:text-[0.80625rem] px-1.5 sm:px-2 py-0.5 min-w-[1.875rem] sm:min-w-[2.475rem] justify-center rounded-md sm:rounded-[10px] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
+    "tabular-nums text-[0.625rem] sm:text-[0.80625rem] py-0.5 justify-center rounded-md sm:rounded-[10px] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
+    isSingleDigit
+      ? "px-1 sm:px-1.5 min-w-[1.25rem] sm:min-w-[1.65rem]"
+      : "px-1.5 sm:px-2 min-w-[1.875rem] sm:min-w-[2.475rem]",
     interactive &&
       "cursor-pointer transition-transform hover:scale-105 outline-none focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
     toneClasses
@@ -93,11 +97,16 @@ export const DueBadge = ({
     primary
   );
 
+  const slotClasses =
+    "inline-flex justify-center flex-shrink-0 min-w-[1.875rem] sm:min-w-[2.475rem]";
+
   if (!interactive) {
     return (
-      <Badge className={badgeClasses}>
-        {content}
-      </Badge>
+      <div className={slotClasses}>
+        <Badge className={badgeClasses}>
+          {content}
+        </Badge>
+      </div>
     );
   }
 
@@ -115,14 +124,16 @@ export const DueBadge = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Badge
-          role="button"
-          tabIndex={0}
-          onClick={(e) => e.stopPropagation()}
-          className={badgeClasses}
-        >
-          {content}
-        </Badge>
+        <div className={slotClasses}>
+          <Badge
+            role="button"
+            tabIndex={0}
+            onClick={(e) => e.stopPropagation()}
+            className={badgeClasses}
+          >
+            {content}
+          </Badge>
+        </div>
       </PopoverTrigger>
       <PopoverContent
         align="start"
