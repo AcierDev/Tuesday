@@ -84,7 +84,19 @@ const SWIPE_OPEN_TRIGGER_PX = 90;
 const SWIPE_CLOSE_THRESHOLD_PX = SWIPE_PANEL_WIDTH * 0.5;
 const SWIPE_VELOCITY_PROJECTION_S = 0.04;
 const MAX_OPTIONS_PER_SIDE = 3;
-const SWIPE_SPRING = { type: "spring" as const, stiffness: 600, damping: 38 };
+// Mild bounce on the open/close release — damping ratio ~0.69 gives a
+// subtle overshoot that "pops" into place without feeling jelly.
+const SWIPE_SPRING = {
+  type: "spring" as const,
+  stiffness: 500,
+  damping: 26,
+  mass: 0.7,
+};
+const SWIPE_BUTTON_SPRING = {
+  type: "spring" as const,
+  stiffness: 500,
+  damping: 22,
+};
 const ROW_OPEN_RADIUS_PX = 10;
 
 // Hidden is intentionally NOT in the swipe chain — it's too easy to flick a
@@ -233,22 +245,12 @@ export const ItemTableRow = memo(function ItemTableRow({
   // useTransform and written straight to the DOM by framer-motion.
   const [hasOffset, setHasOffset] = useState(false);
 
-  const leftPanelClipPath = useTransform(
-    x,
-    (v) =>
-      `inset(0 ${Math.max(
-        0,
-        SWIPE_PANEL_WIDTH - Math.max(0, v)
-      )}px 0 0)`
-  );
-  const rightPanelClipPath = useTransform(
-    x,
-    (v) =>
-      `inset(0 0 0 ${Math.max(
-        0,
-        SWIPE_PANEL_WIDTH - Math.max(0, -v)
-      )}px)`
-  );
+  // Panels slide 1:1 with the row instead of being clip-path-revealed.
+  // clipPath repaints every frame on mobile and visibly trails the finger;
+  // translate stays on the compositor, so the panels track the gesture
+  // exactly. Each panel's edge stays glued to the matching row edge.
+  const leftPanelX = useTransform(x, (v) => Math.max(0, v));
+  const rightPanelX = useTransform(x, (v) => Math.min(0, v));
   // Row picks up rounded corners while it's swiped — matches the radius
   // of the status pills behind it.
   const rowClipPath = useTransform(x, (v) =>
@@ -336,6 +338,10 @@ export const ItemTableRow = memo(function ItemTableRow({
 
   const handleDragStart = useCallback(() => {
     updateRestRect();
+    // Mount the panels synchronously — without this, hasOffset only flips
+    // after x crosses 0.5px on the next frame, leaving the row visibly
+    // moving before its panels are in the DOM.
+    setHasOffset(true);
   }, [updateRestRect]);
 
   const handleDragEnd = useCallback(
@@ -542,30 +548,33 @@ export const ItemTableRow = memo(function ItemTableRow({
                 position: "fixed",
                 top: restRect.top,
                 height: restRect.height,
-                left: restRect.left,
+                // Parked one panel-width left of the row at rest, then
+                // slides right in lockstep with `x` — the panel's right
+                // edge stays glued to the row's left edge throughout the
+                // swipe, so the immediately-prior status button (rightmost
+                // in the panel) leads in from the row edge.
+                left: restRect.left - SWIPE_PANEL_WIDTH,
                 width: SWIPE_PANEL_WIDTH,
-                // Clip from the right so the panel uncovers from the
-                // screen-edge inward: as the row slides right, the leftmost
-                // button surfaces first. Driven straight off the motion
-                // value — no per-frame React re-render.
-                clipPath: leftPanelClipPath,
+                x: leftPanelX,
                 zIndex: 40,
                 pointerEvents: openSide === "left" ? "auto" : "none",
               }}
-              className="flex items-stretch gap-1 p-1 overflow-hidden"
+              className="flex items-stretch gap-1 p-1"
             >
               {backward.map((status) => (
-                <button
+                <motion.button
                   key={status}
                   type="button"
                   onClick={() => handleSelectStatus(status)}
+                  whileTap={{ scale: 0.92 }}
+                  transition={SWIPE_BUTTON_SPRING}
                   className={cn(
                     "flex-1 flex items-center justify-center text-xs font-semibold text-white px-1 rounded-lg",
                     STATUS_PANEL_BG[status]
                   )}
                 >
                   {STATUS_PANEL_LABEL[status]}
-                </button>
+                </motion.button>
               ))}
             </motion.div>
           )}
@@ -576,29 +585,30 @@ export const ItemTableRow = memo(function ItemTableRow({
                 position: "fixed",
                 top: restRect.top,
                 height: restRect.height,
-                left: restRect.left + restRect.width - SWIPE_PANEL_WIDTH,
+                // Mirror of the left panel: parked one panel-width right
+                // of the row at rest, then slides left with the row.
+                left: restRect.left + restRect.width,
                 width: SWIPE_PANEL_WIDTH,
-                // Mirror of the left panel: clip from the left so the row
-                // sliding left exposes the rightmost button first from the
-                // screen edge inward.
-                clipPath: rightPanelClipPath,
+                x: rightPanelX,
                 zIndex: 40,
                 pointerEvents: openSide === "right" ? "auto" : "none",
               }}
-              className="flex items-stretch gap-1 p-1 overflow-hidden"
+              className="flex items-stretch gap-1 p-1"
             >
               {forward.map((status) => (
-                <button
+                <motion.button
                   key={status}
                   type="button"
                   onClick={() => handleSelectStatus(status)}
+                  whileTap={{ scale: 0.92 }}
+                  transition={SWIPE_BUTTON_SPRING}
                   className={cn(
                     "flex-1 flex items-center justify-center text-xs font-semibold text-white px-1 rounded-lg",
                     STATUS_PANEL_BG[status]
                   )}
                 >
                   {STATUS_PANEL_LABEL[status]}
-                </button>
+                </motion.button>
               ))}
             </motion.div>
           )}
