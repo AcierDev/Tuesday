@@ -437,7 +437,7 @@ export function NavMetricsBadges() {
         <MiniSparkline
           data={debtHistory.map((d) => -d)}
           width={52}
-          height={12}
+          height={13}
           className="mt-1 opacity-70"
         />
       </Link>
@@ -465,7 +465,7 @@ export function NavMetricsBadges() {
         <MiniSparkline
           data={debtHistory}
           width={52}
-          height={12}
+          height={13}
           className="mt-1 opacity-70"
         />
       </Link>
@@ -495,14 +495,14 @@ export function NavMetricsBadges() {
         <MiniSparkline
           data={backlogHistory}
           width={52}
-          height={12}
+          height={13}
           className="mt-1 opacity-70"
         />
       </Link>
       <Link
         href="/stats/glued"
         className={cn(
-          "flex flex-col items-center justify-center w-16 h-14 rounded-xl px-1 py-1 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
+          "flex flex-col items-center justify-center w-16 h-14 rounded-xl px-1 py-1.5 select-none glass-surface cursor-pointer transition hover:scale-[1.04] hover:border-white/30",
           stableForecast && stableForecast > 0
             ? "text-violet-500 dark:text-violet-400"
             : "text-slate-400"
