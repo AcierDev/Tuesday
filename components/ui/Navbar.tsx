@@ -484,9 +484,9 @@ export function Navbar({
       <aside
         className={`${
           sidebarOpen ? "w-64" : "w-[4.25rem]"
-        } fixed h-screen transition-all duration-300 ease-in-out bg-[hsl(var(--sidebar))] hidden lg:block z-30`}
+        } fixed inset-y-0 left-0 transition-[width] duration-300 ease-in-out bg-[hsl(var(--sidebar))] hidden lg:block z-30 overflow-y-auto no-scrollbar`}
       >
-        <div className="h-screen flex flex-col bg-[hsl(var(--sidebar))]">
+        <div className="min-h-screen flex flex-col bg-[hsl(var(--sidebar))]">
           <FedExPickupBadge />
           <NavMetricsBadges />
           {/* Soft gradient divider below the metric badges. */}
