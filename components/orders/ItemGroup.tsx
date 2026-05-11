@@ -71,7 +71,6 @@ interface ItemGroupProps {
   group: Group;
   onDelete: (itemId: string) => Promise<void>;
   onShip: (itemId: string) => Promise<void>;
-  onMarkCompleted: (itemId: string) => Promise<void>;
   onGetLabel: (item: Item) => void;
   onStatusChange?: (itemId: string, newStatus: ItemStatus) => Promise<void>;
   isPreview?: boolean;
@@ -88,7 +87,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   group,
   onDelete,
   onShip,
-  onMarkCompleted,
   onGetLabel,
   onStatusChange,
   isPreview = false,
@@ -205,12 +203,17 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   // FRONTEND-ONLY HIDE: columns in FRONTEND_HIDDEN_COLUMN_TITLES (Painted,
   // Backboard, Boxes, Glued, Notes, Rating) are force-hidden regardless of
   // any persisted columnVisibility settings. Backend/data is untouched.
+  // Also drop unknown column names — stale localStorage from removed enum
+  // values (e.g. "Rating" pre-7089ec2) would otherwise leak through and
+  // render a blank TextCell input next to the kebab.
+  const KNOWN_COLUMN_TITLES = new Set<string>(Object.values(ColumnTitles));
   const visibleColumns = Object.entries(
     settings.columnVisibility[group.title as ItemStatus] ||
       DEFAULT_COLUMN_VISIBILITY
   )
     .filter(([_, isVisible]) => isVisible)
     .map(([columnName]) => columnName as ColumnTitles)
+    .filter((columnName) => KNOWN_COLUMN_TITLES.has(columnName))
     .filter((columnName) => !FRONTEND_HIDDEN_COLUMN_TITLES.has(columnName));
 
   const trackingInfo = useTrackingStore((state) => state.trackingInfo);
@@ -544,7 +547,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                             onDelete={handleDelete}
                             onEdit={handleEdit}
                             onGetLabel={onGetLabel}
-                            onMarkCompleted={onMarkCompleted}
                             onShip={onShip}
                             onStatusChange={onStatusChange}
                             clickToAddTarget={clickToAddTarget}
@@ -662,7 +664,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                 onDelete={handleDelete}
                 onEdit={handleEdit}
                 onGetLabel={onGetLabel}
-                onMarkCompleted={onMarkCompleted}
                 onShip={onShip}
               />
             </DropdownMenuContent>
