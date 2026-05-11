@@ -56,12 +56,15 @@ export function parseNameTokens(rawName: string): NameTokens {
 }
 
 export function BrandTag({ prefix }: { prefix: "EW" | "WF" | "SH" }) {
+  const tone =
+    prefix === "SH"
+      ? "bg-[#5c3a1e] text-amber-50 ring-1 ring-[#3d2414] dark:bg-[#4a2e18] dark:text-amber-100 dark:ring-[#2a1809]"
+      : "bg-slate-200 text-slate-700 ring-1 ring-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:ring-slate-600";
   return (
     <span
       className={cn(
         "inline-flex items-center rounded-md px-1.5",
-        "bg-slate-200 text-slate-700 ring-1 ring-slate-300",
-        "dark:bg-slate-700 dark:text-slate-200 dark:ring-slate-600",
+        tone,
         "text-[0.7rem] font-bold uppercase tracking-wide flex-shrink-0"
       )}
     >

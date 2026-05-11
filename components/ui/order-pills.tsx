@@ -63,6 +63,11 @@ const SIZE_BG_BY_HEIGHT: Record<number, string> = {
 
 const SIZE_BG_DEFAULT = "bg-sky-500/80 dark:bg-sky-600/80";
 
+// Shipping-listed sizes are written with inch marks (e.g. 10" x 18"). They
+// aren't part of the standard production size tiers, so they get a dark-oak
+// brown fill to visually flag them as ship-only.
+const SIZE_BG_INCH = "bg-[#5c3a24] dark:bg-[#4a2e1b]";
+
 const SIZE_TONE = `${SIZE_TONE_BASE} ${SIZE_BG_DEFAULT}`;
 
 const KNOWN_SIZES = new Set<string>(Object.values(ItemSizes));
@@ -101,6 +106,9 @@ function nearestKnownHeight(h: number): number {
 //   2. Parseable custom WxH               → nearest known height's bg
 //   3. Anything else (e.g. "Custom" text) → standard sky background
 export function sizeToneClass(size: string | undefined | null): string {
+  if (size?.includes('"')) {
+    return `${SIZE_TONE_BASE} ${SIZE_BG_INCH}`;
+  }
   const parsed = parseSizeWh(size);
   if (parsed) {
     const h = KNOWN_SIZES.has(size!)
@@ -147,16 +155,18 @@ export function SizeTilePrefix({
     );
   }
   return (
-    <span
-      className="inline-grid flex-shrink-0"
-      style={{
-        gridTemplateColumns: `repeat(${cols}, 2px)`,
-        gridAutoRows: "2px",
-        gap: "1px",
-      }}
-      aria-hidden
-    >
-      {dots}
+    <span className="inline-flex items-center self-stretch flex-shrink-0">
+      <span
+        className="inline-grid"
+        style={{
+          gridTemplateColumns: `repeat(${cols}, 2px)`,
+          gridAutoRows: "2px",
+          gap: "1px",
+        }}
+        aria-hidden
+      >
+        {dots}
+      </span>
     </span>
   );
 }
@@ -171,7 +181,7 @@ export function SizePillContent({
   return (
     <>
       <SizeTilePrefix size={size} />
-      <span className="truncate">{size || "Select Size"}</span>
+      <span className="truncate leading-none">{size || "Select Size"}</span>
     </>
   );
 }
@@ -188,17 +198,25 @@ export const PILL_GEOM_FULL =
 export const PILL_GEOM_TRIGGER =
   "inline-flex items-center justify-center gap-1.5 px-1.5 sm:px-3 h-5 sm:h-6 min-h-0 max-w-full truncate text-[0.625rem] sm:text-xs font-medium text-white rounded-lg sm:rounded-[10px] border-transparent";
 
+// Size pills get 10% less horizontal padding than the shared geometry, to
+// tighten the gap between the badge edge and the text/dot-grid inside.
+const SIZE_PILL_GEOM_FULL =
+  "inline-flex items-center justify-center gap-1.5 px-[0.675rem] h-6 min-h-0 text-xs font-medium text-white rounded-[10px] border-transparent";
+
+const SIZE_PILL_GEOM_TRIGGER =
+  "inline-flex items-center justify-center gap-1.5 px-[0.3375rem] sm:px-[0.675rem] h-5 sm:h-6 min-h-0 max-w-full truncate text-[0.625rem] sm:text-xs font-medium text-white rounded-lg sm:rounded-[10px] border-transparent";
+
 // Compose the geometry + per-height tone for a given size. The dropdown
 // trigger and the planner card both call this so the active value's color
 // matches the option list.
 export function sizePillTriggerClass(
   size: string | undefined | null
 ): string {
-  return `${PILL_GEOM_TRIGGER} ${sizeToneClass(size)}`;
+  return `${SIZE_PILL_GEOM_TRIGGER} ${sizeToneClass(size)}`;
 }
 
 export function sizePillFullClass(size: string | undefined | null): string {
-  return `${PILL_GEOM_FULL} ${sizeToneClass(size)}`;
+  return `${SIZE_PILL_GEOM_FULL} ${sizeToneClass(size)}`;
 }
 
 // Interactive bits — append when rendering the pill as a button. Keep
