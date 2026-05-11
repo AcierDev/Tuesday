@@ -1,7 +1,7 @@
 "use client"
 
 import { Plus, Search } from "lucide-react"
-import { type ChangeEvent, useEffect, useRef, useState } from "react"
+import { type ChangeEvent, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -56,9 +56,20 @@ export const Header: React.FC<HeaderProps> = ({
 
   const TYPES = ["all", "geometric", "striped", "mini", "shepit", "custom"];
 
+  const typeItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [pillRect, setPillRect] = useState<{ left: number; width: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const idx = TYPES.indexOf(currentType);
+    const node = typeItemRefs.current[idx];
+    if (node) {
+      setPillRect({ left: node.offsetLeft, width: node.offsetWidth });
+    }
+  }, [currentType]);
+
   return (
     <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
-      <div className="max-w-full mx-auto px-1 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto px-0.5 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-2 lg:gap-4 py-2 lg:py-3">
           <div className="flex items-center justify-between lg:justify-start gap-4 w-full lg:w-auto lg:flex-shrink-0">
             <div className="flex items-center gap-3 sm:min-w-[220px]">
@@ -73,8 +84,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Type toggle — center of the same row. Active pill slides
-              between options via framer-motion's shared layoutId. */}
+          {/* Pill is a sibling of items (rendered first) so it always paints behind the
+              label text — avoids the destination-text occlusion when sliding forward. */}
           <div className="flex justify-center lg:flex-1 lg:min-w-0">
             <ToggleGroup
               type="single"
@@ -82,37 +93,37 @@ export const Header: React.FC<HeaderProps> = ({
               onValueChange={(value) => {
                 if (value) onTypeChange(value);
               }}
-              className="inline-flex flex-nowrap justify-center gap-0.5 sm:gap-1 rounded-full bg-gray-100 dark:bg-gray-800/60 p-0.5 sm:p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60"
+              className="relative inline-flex flex-nowrap items-center justify-center gap-0.5 sm:gap-1 rounded-full bg-gray-100 dark:bg-gray-800/60 p-0.5 sm:p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60"
             >
-              {TYPES.map((type) => {
-                const isActive = currentType === type;
-                return (
-                  <ToggleGroupItem
-                    key={type}
-                    value={type}
-                    aria-label={`Toggle ${type} type`}
-                    className="relative h-7 px-2 text-[11px] sm:h-8 sm:px-3.5 sm:text-sm rounded-full font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-200 hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:shadow-none data-[state=on]:text-gray-900 dark:data-[state=on]:text-white"
-                  >
-                    {isActive && (
-                      <motion.span
-                        layoutId="type-toggle-pill"
-                        className="absolute inset-0 pointer-events-none"
-                        transition={{ type: "spring", stiffness: 480, damping: 36 }}
-                      >
-                        <span className="absolute inset-0 bg-white dark:bg-gray-700 rounded-full shadow-sm animate-pill-squish" />
-                      </motion.span>
-                    )}
-                    <span className="relative z-10">
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
+              {pillRect && (
+                <motion.span
+                  className="absolute top-0.5 sm:top-1 bottom-0.5 sm:bottom-1 pointer-events-none"
+                  initial={false}
+                  animate={{ left: pillRect.left, width: pillRect.width }}
+                  transition={{ type: "spring", stiffness: 480, damping: 36 }}
+                >
+                  <span
+                    key={currentType}
+                    className="block w-full h-full bg-white dark:bg-gray-700 rounded-full shadow-sm animate-pill-squish"
+                  />
+                </motion.span>
+              )}
+              {TYPES.map((type, idx) => (
+                <ToggleGroupItem
+                  key={type}
+                  ref={(el: HTMLButtonElement | null) => { typeItemRefs.current[idx] = el; }}
+                  value={type}
+                  aria-label={`Toggle ${type} type`}
+                  className="relative h-7 px-2.5 text-xs sm:h-8 sm:px-3.5 sm:text-sm rounded-full font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-200 hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:shadow-none data-[state=on]:text-gray-900 dark:data-[state=on]:text-white"
+                >
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                  {(dueCounts[type] ?? 0) > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[0.53rem] sm:text-[0.644rem] font-bold rounded-full h-3.5 sm:h-[1.03rem] min-w-[14px] sm:min-w-[1.03rem] px-[3px] sm:px-1 flex items-center justify-center ring-2 ring-white dark:ring-gray-950 z-20">
+                      {dueCounts[type]}
                     </span>
-                    {(dueCounts[type] ?? 0) > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[0.625rem] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center ring-2 ring-white dark:ring-gray-950 z-20">
-                        {dueCounts[type]}
-                      </span>
-                    )}
-                  </ToggleGroupItem>
-                );
-              })}
+                  )}
+                </ToggleGroupItem>
+              ))}
             </ToggleGroup>
           </div>
 
