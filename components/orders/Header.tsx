@@ -58,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <div className="select-none bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-50">
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto px-1 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-2 lg:gap-4 py-2 lg:py-3">
           <div className="flex items-center justify-between lg:justify-start gap-4 w-full lg:w-auto lg:flex-shrink-0">
             <div className="flex items-center gap-3 sm:min-w-[220px]">
@@ -82,7 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
               onValueChange={(value) => {
                 if (value) onTypeChange(value);
               }}
-              className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800/60 p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60"
+              className="inline-flex flex-nowrap justify-center gap-0.5 sm:gap-1 rounded-full bg-gray-100 dark:bg-gray-800/60 p-0.5 sm:p-1 ring-1 ring-inset ring-gray-200/60 dark:ring-gray-700/60"
             >
               {TYPES.map((type) => {
                 const isActive = currentType === type;
@@ -91,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
                     key={type}
                     value={type}
                     aria-label={`Toggle ${type} type`}
-                    className="relative h-8 px-3.5 rounded-full text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-200 hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:shadow-none data-[state=on]:text-gray-900 dark:data-[state=on]:text-white"
+                    className="relative h-7 px-2 text-[11px] sm:h-8 sm:px-3.5 sm:text-sm rounded-full font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-200 hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:shadow-none data-[state=on]:text-gray-900 dark:data-[state=on]:text-white"
                   >
                     {isActive && (
                       <motion.span
