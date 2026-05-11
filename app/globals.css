@@ -93,6 +93,7 @@
     @apply flex w-full items-center justify-center px-3 py-2 bg-gray-900/50 backdrop-blur-md backdrop-saturate-150 border border-white/15 rounded-lg shadow-lg text-sm font-medium text-foreground hover:bg-gray-900/80 hover:border-white/30 hover:text-primary transition;
   }
 
+
   /* Typography scale — semantic page-level text classes.
      Use these instead of ad-hoc text-{size} font-{weight} combinations
      so the same role looks the same everywhere. */

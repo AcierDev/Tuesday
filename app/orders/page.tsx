@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
@@ -20,7 +21,6 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Header } from "@/components/orders/Header";
 import { NewItemModal } from "@/components/orders/NewItemModal";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
@@ -111,6 +111,7 @@ const DROP_ANIMATION: DropAnimation = {
 };
 
 const SKELETON_ROW_COUNT = 4;
+const DELETED_TOAST_MS = 4_000;
 
 function InitialOrdersSkeleton() {
   return (
@@ -140,8 +141,10 @@ export default function OrderManagementPage() {
   const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false);
   const [isShippingDashboardOpen, setIsShippingDashboardOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
-  const [itemToComplete, setItemToComplete] = useState<string | null>(null);
+  const [deletedToast, setDeletedToast] = useState<string | null>(null);
+  const deletedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   const orderSettingsContext = useOrderSettings();
   const settings = orderSettingsContext.settings || {};
@@ -226,36 +229,6 @@ export default function OrderManagementPage() {
 
   const shipItem = useCallback(async (_itemId: string) => {}, []);
 
-  const markItemCompleted = useCallback(async (itemId: string) => {
-    setItemToComplete(itemId);
-    setIsConfirmationOpen(true);
-  }, []);
-
-  const handleConfirmComplete = useCallback(async () => {
-    if (!itemToComplete) return;
-
-    try {
-      const itemToUpdate = items.find((item) => item.id === itemToComplete);
-      if (!itemToUpdate) {
-        throw new Error("Item not found");
-      }
-
-      const updatedItem = {
-        ...itemToUpdate,
-        previousStatus: itemToUpdate.status,
-        status: ItemStatus.Done,
-        completedAt: Date.now(),
-      };
-
-      await updateItem(updatedItem);
-    } catch (error) {
-      console.error("Failed to mark item as completed:", error);
-    } finally {
-      setIsConfirmationOpen(false);
-      setItemToComplete(null);
-    }
-  }, [items, updateItem, itemToComplete]);
-
   const onGetLabel = useCallback((item: Item) => {
     setSelectedItem(item);
     setIsShippingDashboardOpen(true);
@@ -288,14 +261,34 @@ export default function OrderManagementPage() {
 
   const handleDeleteItem = useCallback(
     async (itemId: string) => {
+      const name =
+        items.find((i) => i.id === itemId)?.customerName ||
+        doneItems.find((i) => i.id === itemId)?.customerName ||
+        "Order";
       try {
         await deleteItem(itemId);
+        if (deletedToastTimerRef.current) {
+          clearTimeout(deletedToastTimerRef.current);
+        }
+        setDeletedToast(name);
+        deletedToastTimerRef.current = setTimeout(() => {
+          setDeletedToast(null);
+          deletedToastTimerRef.current = null;
+        }, DELETED_TOAST_MS);
       } catch (error) {
         console.error("Failed to delete item:", error);
       }
     },
-    [deleteItem]
+    [deleteItem, items, doneItems]
   );
+
+  useEffect(() => {
+    return () => {
+      if (deletedToastTimerRef.current) {
+        clearTimeout(deletedToastTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleAddNewItem = async (newItem: Partial<Item>) => {
     try {
@@ -383,7 +376,6 @@ export default function OrderManagementPage() {
                     onDelete={handleDeleteItem}
                     onStatusChange={handleStatusChange}
                     onGetLabel={onGetLabel}
-                    onMarkCompleted={markItemCompleted}
                     onShip={shipItem}
                     doneItems={doneItems}
                     loadDoneItems={loadDoneItems}
@@ -444,26 +436,23 @@ export default function OrderManagementPage() {
           )}
         </DialogContent>
       </Dialog>
-      <Dialog open={isConfirmationOpen} onOpenChange={setIsConfirmationOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <div className="grid gap-4 py-4">
-            <h2 className="text-lg font-semibold">Confirm Completion</h2>
-            <p>Are you sure you'd like to mark this item as done?</p>
-            <div className="flex justify-end gap-3">
-              <Button onClick={handleConfirmComplete}>Yes</Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsConfirmationOpen(false);
-                  setItemToComplete(null);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {deletedToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2 text-sm shadow-lg animate-in fade-in slide-in-from-bottom-2"
+        >
+          <span className="truncate max-w-[14rem]">
+            "{deletedToast}" moved to deleted
+          </span>
+          <Link
+            href="/deleted"
+            className="font-semibold underline-offset-2 hover:underline"
+          >
+            View
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

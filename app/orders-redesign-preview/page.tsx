@@ -242,7 +242,6 @@ export default function OrdersRedesignPreviewPage() {
                     onDelete={NOOP_ASYNC}
                     onStatusChange={NOOP_ASYNC}
                     onGetLabel={NOOP}
-                    onMarkCompleted={NOOP_ASYNC}
                     onShip={NOOP_ASYNC}
                     doneItems={[]}
                     loadDoneItems={NOOP_ASYNC}

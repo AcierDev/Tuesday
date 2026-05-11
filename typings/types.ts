@@ -90,6 +90,7 @@ export type Item = {
 
   createdAt: number;
   completedAt?: number;
+  deletedAt?: number | null;
   status: ItemStatus;
   prevStatus?: ItemStatus | null;
   visible: boolean;

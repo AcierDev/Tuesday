@@ -1,5 +1,4 @@
 import {
-  CheckCircle,
   Edit,
   Ship,
   Trash2,
@@ -19,6 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/utils/functions";
 
 import {
   type Item,
@@ -33,7 +33,6 @@ interface ItemActionsProps {
   onEdit: (item: Item) => void;
   onDelete: (item: Item) => void;
   onShip: (itemId: string) => void;
-  onMarkCompleted: (itemId: string) => void;
   onGetLabel: (item: Item) => void;
   showTrigger?: boolean;
 }
@@ -43,7 +42,6 @@ export const ItemActions = ({
   onEdit,
   onDelete,
   onShip,
-  onMarkCompleted,
   onGetLabel,
   showTrigger = true,
 }: ItemActionsProps) => {
@@ -67,24 +65,31 @@ export const ItemActions = ({
   const menuContent = (
     <DropdownMenuContent
       align="end"
-      className="dark:bg-gray-800 dark:border-gray-600"
+      sideOffset={6}
+      className="glass-surface rounded-xl p-1 min-w-[10rem] shadow-xl"
     >
-      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-      <DropdownMenuItem onClick={() => onEdit(item)}>
+      <DropdownMenuLabel className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        Actions
+      </DropdownMenuLabel>
+      <DropdownMenuItem
+        className="cursor-pointer rounded-lg px-2 py-1.5 text-sm text-slate-700 dark:text-slate-200 focus:bg-white/40 dark:focus:bg-white/10 focus:text-slate-900 dark:focus:text-white"
+        onClick={() => onEdit(item)}
+      >
         <Edit className="mr-2 h-4 w-4" />
         Edit
       </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => onDelete(item)}>
+      <DropdownMenuItem
+        className="cursor-pointer rounded-lg px-2 py-1.5 text-sm text-slate-700 dark:text-slate-200 focus:bg-red-500/15 focus:text-red-600 dark:focus:text-red-300"
+        onClick={() => onDelete(item)}
+      >
         <Trash2 className="mr-2 h-4 w-4" />
         Delete
       </DropdownMenuItem>
-      <DropdownMenuSeparator className="dark:bg-gray-600" />
-      <DropdownMenuItem onClick={() => onMarkCompleted(item.id)}>
-        <CheckCircle className="mr-2 h-4 w-4" />
-        Mark as Completed
-      </DropdownMenuItem>
-      <DropdownMenuSeparator className="dark:bg-gray-600" />
-      <DropdownMenuItem onClick={handleSetupUtility}>
+      <DropdownMenuSeparator className="my-1 bg-white/30 dark:bg-white/10" />
+      <DropdownMenuItem
+        className="cursor-pointer rounded-lg px-2 py-1.5 text-sm text-slate-700 dark:text-slate-200 focus:bg-white/40 dark:focus:bg-white/10 focus:text-slate-900 dark:focus:text-white"
+        onClick={handleSetupUtility}
+      >
         <Clipboard className="mr-2 h-4 w-4" />
         Setup Utility
       </DropdownMenuItem>
@@ -113,7 +118,16 @@ function ItemActionsTrigger({ children }: { children: React.ReactNode }) {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
-          className="h-6 w-[1.125rem] p-0 mx-auto text-gray-700 dark:text-gray-300 focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className={cn(
+            "h-7 w-[1.2775rem] p-0 mx-auto rounded-lg border border-transparent",
+            "text-slate-500 dark:text-slate-400",
+            "hover:bg-white/40 hover:border-white/30 hover:text-slate-900",
+            "dark:hover:bg-white/10 dark:hover:border-white/15 dark:hover:text-white",
+            "data-[state=open]:bg-white/50 data-[state=open]:border-white/30 data-[state=open]:text-slate-900",
+            "dark:data-[state=open]:bg-white/15 dark:data-[state=open]:border-white/20 dark:data-[state=open]:text-white",
+            "transition-colors active:scale-95",
+            "focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          )}
           variant="ghost"
           onPointerDown={(e) => {
             if (e.pointerType === "touch") {

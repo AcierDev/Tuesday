@@ -4,7 +4,6 @@ import {
   Edit,
   Trash2,
   Ship,
-  CheckCircle2,
   ArrowUpRightSquare,
   MessageSquare,
 } from "lucide-react";
@@ -37,7 +36,6 @@ interface OrderDetailViewProps {
   onEdit: (item: Item) => void;
   onDelete: (item: Item) => void;
   onShip: (itemId: string) => void;
-  onMarkCompleted: (itemId: string) => void;
   onGetLabel: (item: Item) => void;
 }
 
@@ -47,7 +45,6 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   onEdit,
   onDelete,
   onShip,
-  onMarkCompleted,
 }) => {
   const { items } = useOrderStore();
   const item = items.find((o) => o.id === orderId);
@@ -309,7 +306,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
             Delete
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2">
           <Button
             variant="outline"
             onClick={() => onShip(item.id)}
@@ -317,10 +314,6 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
           >
             <Ship className="mr-2 h-4 w-4" />
             Mark Shipped
-          </Button>
-          <Button onClick={() => onMarkCompleted(item.id)}>
-            <CheckCircle2 className="mr-2 h-4 w-4" />
-            Mark Completed
           </Button>
         </div>
       </div>

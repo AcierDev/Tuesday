@@ -7,7 +7,6 @@ interface ResponsiveOrdersViewProps {
   onStatusChange: (itemId: string, newStatus: ItemStatus) => Promise<void>;
   onDelete: (itemId: string) => Promise<void>;
   onGetLabel: (item: Item) => void;
-  onMarkCompleted: (itemId: string) => Promise<void>;
   onShip: (itemId: string) => Promise<void>;
   doneItems: Item[];
   loadDoneItems: (reset?: boolean) => Promise<void>;
@@ -26,7 +25,6 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
   onStatusChange,
   onDelete,
   onGetLabel,
-  onMarkCompleted,
   onShip,
   doneItems,
   loadDoneItems,
@@ -50,7 +48,6 @@ export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
         onStatusChange={onStatusChange}
         onDelete={onDelete}
         onGetLabel={onGetLabel}
-        onMarkCompleted={onMarkCompleted}
         onShip={onShip}
         clickToAddTarget={clickToAddTarget}
         onItemClick={onItemClick}

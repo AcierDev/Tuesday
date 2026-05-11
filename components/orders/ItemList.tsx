@@ -8,7 +8,6 @@ interface ItemListProps {
   onStatusChange: (itemId: string, newStatus: ItemStatus) => Promise<void>;
   onDelete: (itemId: string) => Promise<void>;
   onGetLabel: (item: Item) => void;
-  onMarkCompleted: (itemId: string) => Promise<void>;
   onShip: (itemId: string) => Promise<void>;
   doneItems: Item[];
   loadDoneItems: (reset?: boolean) => Promise<void>;
@@ -56,7 +55,6 @@ export const ItemList = memo(function ItemList({
   onStatusChange,
   onDelete,
   onGetLabel,
-  onMarkCompleted,
   onShip,
   doneItems,
   clickToAddTarget,
@@ -98,7 +96,6 @@ export const ItemList = memo(function ItemList({
         onStatusChange={onStatusChange}
         onDelete={onDelete}
         onGetLabel={onGetLabel}
-        onMarkCompleted={onMarkCompleted}
         onShip={onShip}
         isCollapsible={true}
         defaultCollapsed={defaultCollapsed}
@@ -133,7 +130,6 @@ export const ItemList = memo(function ItemList({
           onStatusChange={onStatusChange}
           onDelete={onDelete}
           onGetLabel={onGetLabel}
-          onMarkCompleted={onMarkCompleted}
           onShip={onShip}
           isCollapsible={true}
           defaultCollapsed={true}

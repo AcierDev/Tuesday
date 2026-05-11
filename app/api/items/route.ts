@@ -53,6 +53,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const includeDone = searchParams.get("includeDone") === "true" || false;
     const includeHidden = searchParams.get("includeHidden") === "true" || false;
+    const deletedOnly = searchParams.get("deletedOnly") === "true";
     const status = searchParams.get("status") || "";
     const limit = parseInt(searchParams.get("limit") || "0", 10);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
@@ -66,7 +67,9 @@ export async function GET(request: Request) {
       `items-${process.env.NEXT_PUBLIC_MODE}`
     );
 
-    const filter: any = { visible: true, deleted: false };
+    const filter: any = deletedOnly
+      ? { deleted: true }
+      : { visible: true, deleted: false };
 
     if (ids) {
       // If IDs are provided, fetch specific items regardless of other filters
@@ -75,6 +78,8 @@ export async function GET(request: Request) {
       if (idList.length > 0) {
         filter.id = { $in: idList };
       }
+    } else if (deletedOnly) {
+      // Deleted view: show every deleted item regardless of status.
     } else {
       // Standard filtering logic
       if (search) {
@@ -154,6 +159,14 @@ export async function PATCH(request: Request) {
 
     const { id, updates } = await request.json();
     const { _id, ...updatesWithoutId } = updates;
+
+    // Stamp deletedAt when soft-deleting so the /deleted view can bucket by
+    // age. Clear it on restore.
+    if (updatesWithoutId.deleted === true && !updatesWithoutId.deletedAt) {
+      updatesWithoutId.deletedAt = Date.now();
+    } else if (updatesWithoutId.deleted === false) {
+      updatesWithoutId.deletedAt = null;
+    }
 
     // Fetch + update in a single round trip; `before` lets us diff against prior state.
     const currentItem = await collection.findOneAndUpdate(

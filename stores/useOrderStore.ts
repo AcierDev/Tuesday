@@ -63,7 +63,6 @@ interface OrderState {
   searchDoneItems: (query: string) => Promise<void>;
   removeDoneItems: () => void;
   fetchItemsByIds: (ids: string[]) => Promise<void>;
-  markCompleted: (item: Item) => Promise<void>;
   updateIsScheduled: () => void;
   setSearchQuery: (
     query: string,
@@ -528,12 +527,15 @@ export const useOrderStore = create<OrderState>()(
 
           invalidateStatsCaches();
 
-          // Update local state
-          const updatedItems = items.map((item) =>
-            item.id === itemId ? { ...item, deleted: true } : item
-          );
-
-          set({ items: updatedItems });
+          // Deleted items live on the /deleted page — drop from every
+          // in-memory list so the active UI updates immediately.
+          set((state) => ({
+            items: state.items.filter((item) => item.id !== itemId),
+            doneItems: state.doneItems.filter((item) => item.id !== itemId),
+            scheduledItems: state.scheduledItems.filter(
+              (item) => item.id !== itemId
+            ),
+          }));
         } catch (err) {
           console.error("Failed to mark item as deleted", err);
         }
@@ -721,37 +723,6 @@ export const useOrderStore = create<OrderState>()(
         } catch (err) {
           console.error("Failed to fetch items by IDs", err);
         }
-      },
-
-      markCompleted: async (item: Item) => {
-        // Implementation of markCompleted using updateItem logic internally or separately
-        // Actually, in the UI page.tsx, markItemCompleted calls updateItem manually.
-        // But if we want it in store, we should implement it here.
-        // However, the page.tsx implementation was:
-        /*
-          const updatedItem = {
-            ...itemToUpdate,
-            previousStatus: itemToUpdate.status,
-            status: ItemStatus.Done,
-            completedAt: Date.now(),
-          };
-          await updateItem(updatedItem);
-        */
-        // I'll add user param to the interface but maybe not implement full logic here if it's done in page.
-        // Wait, I should look at where markCompleted is used.
-        // It's used in page.tsx: `onMarkCompleted={markItemCompleted}` where markItemCompleted is a local function.
-        // And there is `markCompleted` in OrderState but it wasn't implemented in the store creation I read?
-        // Ah, I missed it in my read? No, I see `markCompleted: (item: Item) => Promise<void>;` in interface.
-        // But I don't see it in the returned object in `create<OrderState>()`.
-        // Let's add it to be safe, or just ignore if it's not used.
-        // The implementation in page.tsx calls `updateItem`.
-        
-        // I will add a simple implementation that calls updateItem.
-        return get().updateItem({
-             ...item,
-             status: ItemStatus.Done,
-             completedAt: Date.now()
-        }).then(() => {});
       },
 
       updateItemScheduleStatus: async (

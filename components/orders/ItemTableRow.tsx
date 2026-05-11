@@ -134,15 +134,23 @@ function rowHeightTier(size: string | undefined | null): string {
   return String(best);
 }
 
+// Translucent /70 tones to match the page's DueBadge recipe — paired
+// with an inset highlight + text-shadow on the button itself for the
+// same lifted, glassy look used elsewhere on the orders page.
 const STATUS_PANEL_BG: Record<ItemStatus, string> = {
-  [ItemStatus.Hidden]: "bg-gray-500 dark:bg-gray-600",
-  [ItemStatus.New]: "bg-gray-500 dark:bg-gray-400",
-  [ItemStatus.OnDeck]: "bg-yellow-600 dark:bg-yellow-500",
-  [ItemStatus.Wip]: "bg-orange-600 dark:bg-orange-500",
-  [ItemStatus.Packaging]: "bg-red-500 dark:bg-red-500",
-  [ItemStatus.At_The_Door]: "bg-lime-600 dark:bg-lime-500",
-  [ItemStatus.Done]: "bg-green-600 dark:bg-green-500",
+  [ItemStatus.Hidden]: "bg-gray-500/70",
+  [ItemStatus.New]: "bg-gray-500/70",
+  [ItemStatus.OnDeck]: "bg-yellow-500/70",
+  [ItemStatus.Wip]: "bg-orange-500/70",
+  [ItemStatus.Packaging]: "bg-red-500/70",
+  [ItemStatus.At_The_Door]: "bg-lime-500/70",
+  [ItemStatus.Done]: "bg-green-500/70",
 };
+
+// Shared "polish" classes — pulled from DueBadge so the swipe pills sit
+// in the same visual family as the rest of the page's badges.
+const SWIPE_BUTTON_POLISH =
+  "border border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]";
 
 const STATUS_PANEL_LABEL: Record<ItemStatus, string> = {
   [ItemStatus.Hidden]: "Hide",
@@ -182,7 +190,6 @@ interface ItemTableRowProps {
   onDelete: (item: Item) => void;
   onEdit: (item: Item) => void;
   onGetLabel: (item: Item) => void;
-  onMarkCompleted: (itemId: string) => Promise<void>;
   onShip: (itemId: string) => Promise<void>;
   onStatusChange?: (itemId: string, newStatus: ItemStatus) => Promise<void>;
   clickToAddTarget?: { day: DayName; weekKey: string } | null;
@@ -200,7 +207,6 @@ export const ItemTableRow = memo(function ItemTableRow({
   onDelete,
   onEdit,
   onGetLabel,
-  onMarkCompleted,
   onShip,
   onStatusChange,
   clickToAddTarget,
@@ -533,7 +539,6 @@ export const ItemTableRow = memo(function ItemTableRow({
             onDelete={onDelete}
             onEdit={onEdit}
             onGetLabel={onGetLabel}
-            onMarkCompleted={onMarkCompleted}
             onShip={onShip}
           />
         </TableCell>
@@ -569,7 +574,8 @@ export const ItemTableRow = memo(function ItemTableRow({
                   whileTap={{ scale: 0.92 }}
                   transition={SWIPE_BUTTON_SPRING}
                   className={cn(
-                    "flex-1 flex items-center justify-center text-xs font-semibold text-white px-1 rounded-lg",
+                    "flex-1 flex items-center justify-center text-xs font-semibold text-white px-2 rounded-[10px]",
+                    SWIPE_BUTTON_POLISH,
                     STATUS_PANEL_BG[status]
                   )}
                 >
@@ -603,7 +609,8 @@ export const ItemTableRow = memo(function ItemTableRow({
                   whileTap={{ scale: 0.92 }}
                   transition={SWIPE_BUTTON_SPRING}
                   className={cn(
-                    "flex-1 flex items-center justify-center text-xs font-semibold text-white px-1 rounded-lg",
+                    "flex-1 flex items-center justify-center text-xs font-semibold text-white px-2 rounded-[10px]",
+                    SWIPE_BUTTON_POLISH,
                     STATUS_PANEL_BG[status]
                   )}
                 >

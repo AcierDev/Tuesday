@@ -36,7 +36,6 @@ export const MobileOrderView = ({
   isDoneLoading,
   onDelete: externalHandleDelete,
   onGetLabel: externalHandleGetLabel,
-  onMarkCompleted: externalHandleMarkCompleted,
   onShip: externalHandleShip,
   clickToAddTarget,
   onItemClick,
@@ -48,7 +47,6 @@ export const MobileOrderView = ({
   isDoneLoading?: boolean;
   onDelete?: (itemId: string) => Promise<void>;
   onGetLabel?: (item: Item) => void;
-  onMarkCompleted?: (itemId: string) => Promise<void>;
   onShip?: (itemId: string) => Promise<void>;
   clickToAddTarget?: { day: DayName; weekKey: string } | null;
   onItemClick?: (item: Item) => Promise<void>;
@@ -251,16 +249,6 @@ export const MobileOrderView = ({
     [externalHandleShip]
   );
 
-  // Handle marking item as completed
-  const handleMarkCompleted = useCallback(
-    async (itemId: string) => {
-      if (externalHandleMarkCompleted) {
-        await externalHandleMarkCompleted(itemId);
-      }
-    },
-    [externalHandleMarkCompleted]
-  );
-
   // Handle getting shipping label
   const handleGetLabel = useCallback(
     (item: Item) => {
@@ -299,7 +287,6 @@ export const MobileOrderView = ({
           onEdit={handleEdit}
           onDelete={handleDelete}
           onShip={handleShip}
-          onMarkCompleted={handleMarkCompleted}
           onGetLabel={handleGetLabel}
         />
       )
@@ -309,7 +296,6 @@ export const MobileOrderView = ({
     handleEdit,
     handleDelete,
     handleShip,
-    handleMarkCompleted,
     handleGetLabel,
   ]);
 
