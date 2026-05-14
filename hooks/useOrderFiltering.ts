@@ -61,7 +61,8 @@ export function useOrderFiltering({
               return (
                 Object.values(ItemDesigns).includes(design as ItemDesigns) &&
                 !design.startsWith("Striped") &&
-                !isMini
+                !isMini &&
+                !isShepit
               );
             case "mini":
               return isMini;
