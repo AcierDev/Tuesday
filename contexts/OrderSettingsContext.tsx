@@ -49,7 +49,8 @@ const defaultSettings: OrderSettings = {
 };
 
 const SHARED_SETTINGS_PATCH_DEBOUNCE_MS = 300;
-const SHARED_SETTINGS_POLL_MS = 3000;
+const SHARED_SETTINGS_SSE_RECONNECT_BASE_MS = 2000;
+const SHARED_SETTINGS_SSE_RECONNECT_MAX_MS = 60_000;
 
 function orderSettingsReducer(
   state: OrderSettings,
@@ -205,13 +206,18 @@ export function OrderSettingsProvider({
   }, [settings.dueBadgeDays, settings.onDeckMinCount, isInitialized]);
 
   //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-  //║ 🔄 POLL: pick up shared-settings changes from other browsers          ║
+  //║ 🛰️ SSE: pick up shared-settings changes from other browsers           ║
   //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-  // Without this, two open browsers fight: one user changes onDeckMinCount,
-  // but other browsers keep their stale value and their auto-promote hook
-  // re-promotes the same items the first browser just demoted. Skip overlay
-  // while a local edit is still pending the debounced PATCH so the user's
-  // own slider drag doesn't get clobbered mid-gesture.
+  // Items sync via SSE in ~100ms but settings used to sync via a 3s poll.
+  // During that window other browsers would run useAutoPromoteByDueDate
+  // against a stale onDeckMinCount and demote items the originating browser
+  // had just promoted — visible thrashing. SSE puts settings on the same
+  // timescale as items so both browsers see the new minCount before the
+  // auto-promote effect on the other side gets a chance to fight it.
+  //
+  // Skip the overlay if a local edit is still pending the debounced PATCH
+  // so the user's own slider drag isn't clobbered mid-gesture by the echo
+  // of their own change coming back through the stream.
   const settingsRef = useRef(settings);
   useEffect(() => {
     settingsRef.current = settings;
@@ -219,45 +225,79 @@ export function OrderSettingsProvider({
 
   useEffect(() => {
     if (!isInitialized) return;
+    if (typeof window === "undefined" || typeof EventSource === "undefined") return;
 
-    const handle = setInterval(async () => {
-      if (!serverSyncedRef.current) return;
+    let eventSource: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let reconnectAttempts = 0;
+    let cancelled = false;
 
-      try {
-        const res = await fetch("/api/settings");
-        if (!res.ok) return;
-        const data = await res.json();
+    const applyRemote = (data: { dueBadgeDays?: unknown; onDeckMinCount?: unknown }) => {
+      const overlay: Partial<OrderSettings> = {};
+      const current = settingsRef.current;
+      const last = lastPatchedSharedRef.current;
 
-        const overlay: Partial<OrderSettings> = {};
-        const current = settingsRef.current;
-        const last = lastPatchedSharedRef.current;
-
-        if (
-          typeof data.dueBadgeDays === "number" &&
-          data.dueBadgeDays !== last.dueBadgeDays &&
-          current.dueBadgeDays === last.dueBadgeDays
-        ) {
-          last.dueBadgeDays = data.dueBadgeDays;
-          overlay.dueBadgeDays = data.dueBadgeDays;
-        }
-        if (
-          typeof data.onDeckMinCount === "number" &&
-          data.onDeckMinCount !== last.onDeckMinCount &&
-          current.onDeckMinCount === last.onDeckMinCount
-        ) {
-          last.onDeckMinCount = data.onDeckMinCount;
-          overlay.onDeckMinCount = data.onDeckMinCount;
-        }
-
-        if (Object.keys(overlay).length > 0) {
-          dispatch({ type: "UPDATE_SETTINGS", payload: overlay });
-        }
-      } catch {
-        // ignore transient fetch errors
+      if (
+        typeof data.dueBadgeDays === "number" &&
+        data.dueBadgeDays !== last.dueBadgeDays &&
+        current.dueBadgeDays === last.dueBadgeDays
+      ) {
+        last.dueBadgeDays = data.dueBadgeDays;
+        overlay.dueBadgeDays = data.dueBadgeDays;
       }
-    }, SHARED_SETTINGS_POLL_MS);
+      if (
+        typeof data.onDeckMinCount === "number" &&
+        data.onDeckMinCount !== last.onDeckMinCount &&
+        current.onDeckMinCount === last.onDeckMinCount
+      ) {
+        last.onDeckMinCount = data.onDeckMinCount;
+        overlay.onDeckMinCount = data.onDeckMinCount;
+      }
 
-    return () => clearInterval(handle);
+      if (Object.keys(overlay).length > 0) {
+        dispatch({ type: "UPDATE_SETTINGS", payload: overlay });
+      }
+    };
+
+    const connect = () => {
+      if (cancelled) return;
+      eventSource = new EventSource("/api/settings/changes");
+
+      eventSource.onmessage = (event) => {
+        try {
+          applyRemote(JSON.parse(event.data));
+        } catch (err) {
+          console.error("Failed to parse settings SSE message:", err);
+        }
+      };
+
+      eventSource.onopen = () => {
+        reconnectAttempts = 0;
+      };
+
+      eventSource.onerror = () => {
+        if (eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
+        if (cancelled) return;
+        const delay = Math.min(
+          SHARED_SETTINGS_SSE_RECONNECT_BASE_MS * 2 ** reconnectAttempts,
+          SHARED_SETTINGS_SSE_RECONNECT_MAX_MS
+        );
+        reconnectAttempts += 1;
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(connect, delay);
+      };
+    };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (eventSource) eventSource.close();
+    };
   }, [isInitialized]);
 
   const updateSettings = (newSettings: Partial<OrderSettings>) => {
