@@ -667,8 +667,14 @@ export function Navbar({
                 <Settings className={`${sidebarOpen ? "h-5 w-5" : "h-6 w-6"} flex-shrink-0`} />
                 {sidebarOpen && <span className="ml-2">Settings</span>}
               </button>
+              {/* Fixed (not absolute) so the popout escapes the sidebar's
+                  overflow-y-auto clip box — the print hover above uses the
+                  same pattern. Anchored to the sidebar's right edge via
+                  left-64 / left-[4.25rem] depending on sidebarOpen. */}
               <motion.div
-                className={`absolute left-full bottom-0 pl-2 z-50 ${
+                className={`fixed ${
+                  sidebarOpen ? "left-64" : "left-[4.25rem]"
+                } bottom-3 pl-2 z-50 ${
                   settingsHovered ? "" : "pointer-events-none"
                 }`}
                 initial={{ opacity: 0, x: -8 }}
