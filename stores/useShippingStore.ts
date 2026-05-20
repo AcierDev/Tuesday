@@ -3,6 +3,10 @@ import { create } from "zustand";
 interface ShippingStore {
   s3Config: { bucket: string; region: string } | null;
   labels: Record<string, string[]>;
+  // Cache-busting token per filename. S3 filenames are reused (e.g. a deleted
+  // `orderId.pdf` gets re-created with new content under the same name), so the
+  // URL alone is not enough to defeat the browser cache — we version it.
+  labelVersions: Record<string, number>;
   isLoading: boolean;
   error: string | null;
   fetchAllLabels: () => Promise<void>;
@@ -18,6 +22,11 @@ interface ShippingStore {
 
 const POLL_INTERVAL_MS = 60_000;
 
+// Monotonic counter so a delete + immediate re-add always produces a fresh
+// cache-busting token, even within the same millisecond.
+let versionCounter = Date.now();
+const nextVersion = () => ++versionCounter;
+
 export const useShippingStore = create<ShippingStore>((set, get) => {
   let pollInterval: any = null;
   // Counter so multiple consumers can pause concurrently without trampling
@@ -28,6 +37,7 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
   return {
     s3Config: null,
     labels: {},
+    labelVersions: {},
     isLoading: false,
     error: null,
 
@@ -57,7 +67,15 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
           }
         });
 
-        set({ labels: labelsByOrder, s3Config, isLoading: false });
+        // Preserve existing versions; only mint a token for filenames we
+        // haven't seen yet so the URL stays stable across polls.
+        const prevVersions = get().labelVersions;
+        const labelVersions: Record<string, number> = {};
+        filenames.forEach((filename) => {
+          labelVersions[filename] = prevVersions[filename] ?? nextVersion();
+        });
+
+        set({ labels: labelsByOrder, labelVersions, s3Config, isLoading: false });
       } catch (error) {
         set({
           error: error instanceof Error ? error.message : "Unknown error",
@@ -105,6 +123,9 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
           ...state.labels,
           [orderId]: [...(state.labels[orderId] || []), filename],
         },
+        // Always bump: a re-added label reuses the old filename but has new
+        // content, so the cached copy must be invalidated.
+        labelVersions: { ...state.labelVersions, [filename]: nextVersion() },
       }));
     },
 
@@ -121,7 +142,11 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
           newLabels[orderId] = updatedLabels;
         }
 
-        return { labels: newLabels };
+        // Drop the stale token so a future re-add gets a fresh one.
+        const newVersions = { ...state.labelVersions };
+        delete newVersions[filename];
+
+        return { labels: newLabels, labelVersions: newVersions };
       });
     },
 
@@ -132,12 +157,14 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
     getLabelUrl: (filename: string) => {
       // Returns the API URL for fetching the label (which redirects to S3)
       // Returns the direct S3 URL using the stored config
-      const { s3Config } = get();
+      const { s3Config, labelVersions } = get();
+      const v = labelVersions[filename];
+      const cacheBust = v ? `?v=${v}` : "";
       if (!s3Config) {
         console.warn("S3 config not loaded, falling back to proxy");
-        return `/api/shipping/pdf/${filename}`;
+        return `/api/shipping/pdf/${filename}${cacheBust}`;
       }
-      return `https://${s3Config.bucket}.s3.${s3Config.region}.amazonaws.com/${filename}`;
+      return `https://${s3Config.bucket}.s3.${s3Config.region}.amazonaws.com/${filename}${cacheBust}`;
     },
   };
 });
