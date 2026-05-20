@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Truck } from "lucide-react";
+import { Check, RotateCcw, Truck, X } from "lucide-react";
 
 import { useOrderStore } from "@/stores/useOrderStore";
 import { ItemStatus } from "@/typings/types";
@@ -11,8 +11,14 @@ import { STATUS_COLORS } from "@/typings/constants";
 import { computeTotalDebt, laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import {
   computeFedExPickupStatus,
+  getLADateKey,
   type FedExPickupStatus,
 } from "@/lib/fedex-pickup";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   bucketGluedSquaresByDay,
   buildGluedEvents,
@@ -110,6 +116,13 @@ function formatSquaresK(squares: number): string {
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 const FEDEX_PICKUP_POLL_MS = 60_000;
+const FEDEX_PICKUP_OVERRIDE_STORAGE_KEY = "fedex-pickup-override-v1";
+
+type FedExPickupOverrideAction = "yes" | "reset";
+type FedExPickupOverride = {
+  dayKey: string;
+  action: FedExPickupOverrideAction;
+};
 
 function formatPickupTime(purchasedAt: number): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -120,20 +133,80 @@ function formatPickupTime(purchasedAt: number): string {
   }).format(new Date(purchasedAt));
 }
 
-function describePickupStatus(status: FedExPickupStatus): string {
+function describePickupStatus(
+  status: FedExPickupStatus,
+  override: FedExPickupOverride | null
+): string {
+  const suffix =
+    override?.action === "yes"
+      ? " (manual override)"
+      : override?.action === "reset"
+        ? " (today cleared manually)"
+        : "";
   if (status.kind === "none") {
-    return "No FedEx label currently awaiting pickup.";
+    return `No FedEx label currently awaiting pickup.${suffix}`;
+  }
+  if (status.kind === "today" && status.purchasedAt === 0) {
+    return `FedEx pickup TODAY${suffix}`;
   }
   const stamped = formatPickupTime(status.purchasedAt);
   if (status.kind === "today") {
-    return `FedEx pickup TODAY (earliest pending label purchased ${stamped} PT).`;
+    return `FedEx pickup TODAY (earliest pending label purchased ${stamped} PT).${suffix}`;
   }
-  return `FedEx pickup ${status.pickupWeekday.toUpperCase()} (earliest pending label purchased ${stamped} PT).`;
+  return `FedEx pickup ${status.pickupWeekday.toUpperCase()} (earliest pending label purchased ${stamped} PT).${suffix}`;
+}
+
+function loadFedExPickupOverride(now: Date): FedExPickupOverride | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(FEDEX_PICKUP_OVERRIDE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<FedExPickupOverride>;
+    const todayKey = getLADateKey(now.getTime());
+    if (
+      parsed.dayKey !== todayKey ||
+      (parsed.action !== "yes" && parsed.action !== "reset")
+    ) {
+      window.localStorage.removeItem(FEDEX_PICKUP_OVERRIDE_STORAGE_KEY);
+      return null;
+    }
+    return { dayKey: parsed.dayKey, action: parsed.action };
+  } catch {
+    return null;
+  }
+}
+
+function applyFedExPickupOverride(
+  purchasedAts: readonly number[],
+  override: FedExPickupOverride | null,
+  now: Date
+): FedExPickupStatus {
+  if (override?.action === "yes") {
+    return {
+      kind: "today",
+      purchasedAt: 0,
+      pickupDateKey: getLADateKey(now.getTime()),
+    };
+  }
+  if (override?.action === "reset") {
+    const filtered = purchasedAts.filter((ts) => {
+      const single = computeFedExPickupStatus([ts], now);
+      return single.kind !== "today";
+    });
+    return computeFedExPickupStatus(filtered, now);
+  }
+  return computeFedExPickupStatus(purchasedAts, now);
 }
 
 export function FedExPickupBadge() {
   const [purchasedAts, setPurchasedAts] = useState<number[]>([]);
   const [now, setNow] = useState<Date>(() => new Date());
+  const [override, setOverride] = useState<FedExPickupOverride | null>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
+  useEffect(() => {
+    setOverride(loadFedExPickupOverride(new Date()));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -146,7 +219,9 @@ export function FedExPickupBadge() {
         const data = (await res.json()) as { purchasedAts?: number[] };
         if (!cancelled) {
           setPurchasedAts(data.purchasedAts ?? []);
-          setNow(new Date());
+          const fresh = new Date();
+          setNow(fresh);
+          setOverride(loadFedExPickupOverride(fresh));
         }
       } catch (err) {
         console.error("Failed to load FedEx pickup status", err);
@@ -161,9 +236,42 @@ export function FedExPickupBadge() {
   }, []);
 
   const status = useMemo(
-    () => computeFedExPickupStatus(purchasedAts, now),
-    [purchasedAts, now]
+    () => applyFedExPickupOverride(purchasedAts, override, now),
+    [purchasedAts, override, now]
   );
+
+  const persistOverride = useCallback(
+    (action: FedExPickupOverrideAction) => {
+      const fresh = new Date();
+      const next: FedExPickupOverride = {
+        dayKey: getLADateKey(fresh.getTime()),
+        action,
+      };
+      try {
+        window.localStorage.setItem(
+          FEDEX_PICKUP_OVERRIDE_STORAGE_KEY,
+          JSON.stringify(next)
+        );
+      } catch {
+        // storage unavailable; keep in-memory state
+      }
+      setOverride(next);
+      setNow(fresh);
+      setPopoverOpen(false);
+    },
+    []
+  );
+
+  const clearOverride = useCallback(() => {
+    try {
+      window.localStorage.removeItem(FEDEX_PICKUP_OVERRIDE_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+    setOverride(null);
+    setNow(new Date());
+    setPopoverOpen(false);
+  }, []);
 
   const colorClass =
     status.kind === "today" || status.kind === "later"
@@ -179,24 +287,82 @@ export function FedExPickupBadge() {
 
   return (
     <div className="px-1 pt-2 flex flex-col items-center">
-      <div
-        className={cn(
-          "flex flex-col items-center justify-center w-16 h-16 rounded-xl px-1 py-1 select-none glass-surface",
-          colorClass
-        )}
-        title={describePickupStatus(status)}
-      >
-        <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
-          FedEx
-        </span>
-        <Truck className="mt-0.5 h-4 w-4" strokeWidth={2.5} />
-        <span className="mt-0.5 text-[11px] font-bold leading-none tabular-nums">
-          {valueLabel}
-        </span>
-        <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
-          pickup
-        </span>
-      </div>
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            title={describePickupStatus(status, override)}
+            className={cn(
+              "relative flex flex-col items-center justify-center w-16 h-16 rounded-xl px-1 py-1 select-none glass-surface transition-transform duration-200 ease-out hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer",
+              colorClass
+            )}
+          >
+            {override && (
+              <span
+                aria-hidden
+                className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-amber-400"
+              />
+            )}
+            <span className="text-[8px] font-medium uppercase tracking-wide opacity-80">
+              FedEx
+            </span>
+            <Truck className="mt-0.5 h-4 w-4" strokeWidth={2.5} />
+            <span className="mt-0.5 text-[11px] font-bold leading-none tabular-nums">
+              {valueLabel}
+            </span>
+            <span className="text-[7px] font-medium uppercase tracking-wide opacity-60">
+              pickup
+            </span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="right"
+          align="start"
+          className="w-60 p-2 space-y-1"
+        >
+          <div className="px-2 py-1 text-[11px] font-medium uppercase tracking-wide opacity-70">
+            FedEx pickup today
+          </div>
+          <button
+            type="button"
+            onClick={() => persistOverride("yes")}
+            className={cn(
+              "w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+              override?.action === "yes" &&
+                "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+            )}
+          >
+            <Check className="h-4 w-4" strokeWidth={2.5} />
+            <span>Yes, pickup today</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => persistOverride("reset")}
+            className={cn(
+              "w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+              override?.action === "reset" &&
+                "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+            )}
+          >
+            <RotateCcw className="h-4 w-4" strokeWidth={2.5} />
+            <span>Reset for today</span>
+          </button>
+          {override && (
+            <button
+              type="button"
+              onClick={clearOverride}
+              className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 opacity-80"
+            >
+              <X className="h-4 w-4" strokeWidth={2.5} />
+              <span>Clear manual override</span>
+            </button>
+          )}
+          <div className="px-2 pt-1 text-[10px] leading-snug opacity-60">
+            Use “Yes” when you bought a FedEx label outside the app. Override
+            auto-clears at LA midnight.
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
