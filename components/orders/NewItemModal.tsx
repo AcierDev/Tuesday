@@ -31,7 +31,17 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/utils/functions";
 import { boardConfig } from "@/config/boardconfig";
-import { DesignBlends } from "@/typings/constants";
+import {
+  createDesignBackground,
+  CUSTOM_DESIGN_GRADIENT,
+  DESIGN_PILL_FULL,
+  DESIGN_TAG_ALPHA,
+  PILL_INTERACTIVE,
+  PILL_SELECTED_RING,
+  SizePillContent,
+  sizePillFullClass,
+  sizeToneClass,
+} from "@/components/ui/order-pills";
 
 import {
   ColumnTitles,
@@ -48,27 +58,16 @@ interface NewItemModalProps {
 const COMPANIES = ["Everwood", "Woodform", "Sheppit"] as const;
 type Company = (typeof COMPANIES)[number];
 
-const DESIGN_TAG_ALPHA = 0.8;
-
-const SIZE_PILL_CLASSES =
-  "inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 transition-[transform,opacity,box-shadow] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(0,0,0,0.10)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_48%)] bg-sky-500/80 dark:bg-sky-600/80 hover:opacity-95 hover:-translate-y-px active:translate-y-0";
-
-const DESIGN_PILL_CLASSES =
-  "inline-flex items-center justify-center px-3 h-6 min-h-0 text-xs font-medium text-white rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 transition-[transform,opacity,box-shadow] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.05)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_24%)] hover:opacity-95 hover:-translate-y-px active:translate-y-0";
-
-const SELECTED_RING_CLASSES =
-  "ring-2 ring-blue-400 ring-offset-2 ring-offset-white dark:ring-offset-gray-900";
-
 const TRIGGER_BASE_CLASSES =
-  "relative overflow-hidden h-10 px-4 inline-flex items-center justify-start text-left text-sm font-normal border transition-colors duration-300";
+  "relative h-10 px-4 inline-flex items-center justify-start text-left text-sm font-normal border transition-colors duration-300";
 
 const TRIGGER_EMPTY_CLASSES =
   "w-full rounded-lg border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/70 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700";
 
-const SIZE_FILLED_CLASSES =
-  "h-[34px] px-3.5 text-[13px] w-fit rounded-full justify-center text-center border-transparent text-white bg-sky-500/80 dark:bg-sky-600/80 hover:bg-sky-500/80 dark:hover:bg-sky-600/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_2px_rgba(0,0,0,0.10)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_48%)]";
+const SIZE_FILLED_TRIGGER_GEOM =
+  "h-[34px] px-3.5 gap-1.5 text-[13px] w-fit rounded-full justify-center text-center border-transparent";
 
-const DESIGN_FILLED_CLASSES =
+const DESIGN_FILLED_TRIGGER_CLASSES =
   "h-[34px] px-3.5 text-[13px] w-fit rounded-full justify-center text-center border-transparent text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.05)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_24%)]";
 
 const WOODFORM_DESIGNS = new Set(["Mint", "Brisket", "Nevada"]);
@@ -110,31 +109,6 @@ const splitByCompany = (opts: string[]) => {
   return { woodform, everwood, striped };
 };
 
-const hexToRgba = (hex: string, alpha: number) => {
-  const normalized = hex.replace("#", "");
-  const full =
-    normalized.length === 3
-      ? normalized
-          .split("")
-          .map((c) => c + c)
-          .join("")
-      : normalized;
-  const r = parseInt(full.slice(0, 2), 16);
-  const g = parseInt(full.slice(2, 4), 16);
-  const b = parseInt(full.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
-const createDesignBackground = (option: string, alpha = 1) => {
-  const colors = DesignBlends[option as keyof typeof DesignBlends];
-  if (colors && colors.length > 0) {
-    const stops =
-      alpha < 1 ? colors.map((c) => hexToRgba(c, alpha)) : colors;
-    return `linear-gradient(to right, ${stops.join(", ")})`;
-  }
-  return null;
-};
-
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <div className="text-[0.625rem] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 px-0.5">
     {children}
@@ -160,11 +134,11 @@ const SizeSection = ({
           key={option}
           type="button"
           onClick={() => onPick(option)}
-          className={`${SIZE_PILL_CLASSES} ${
-            option === selected ? SELECTED_RING_CLASSES : ""
+          className={`${sizePillFullClass(option)} ${PILL_INTERACTIVE} ${
+            option === selected ? PILL_SELECTED_RING : ""
           }`}
         >
-          {option}
+          <SizePillContent size={option} />
         </button>
       ))}
     </div>
@@ -190,13 +164,11 @@ const DesignSection = ({
           key={option}
           type="button"
           onClick={() => onPick(option)}
-          className={`${DESIGN_PILL_CLASSES} ${
-            option === selected ? SELECTED_RING_CLASSES : ""
+          className={`${DESIGN_PILL_FULL} ${PILL_INTERACTIVE} ${
+            option === selected ? PILL_SELECTED_RING : ""
           }`}
           style={{
-            background:
-              createDesignBackground(option) ??
-              "linear-gradient(to right, #4b5563, #1f2937)",
+            background: createDesignBackground(option),
           }}
         >
           {option}
@@ -477,20 +449,21 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
             <Field icon={<Columns3 className="h-3.5 w-3.5" />} label="Size">
               <Popover open={sizeOpen} onOpenChange={setSizeOpen}>
                 <PopoverTrigger asChild>
-                  <motion.button
+                  <button
                     type="button"
-                    layout
-                    style={{ transformOrigin: "left center" }}
-                    transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
                     className={cn(
                       TRIGGER_BASE_CLASSES,
-                      size ? SIZE_FILLED_CLASSES : TRIGGER_EMPTY_CLASSES
+                      size
+                        ? `${SIZE_FILLED_TRIGGER_GEOM} ${sizeToneClass(size)}`
+                        : TRIGGER_EMPTY_CLASSES
                     )}
                   >
-                    <span className="relative z-10">
-                      {size || "Select size"}
-                    </span>
-                  </motion.button>
+                    {size ? (
+                      <SizePillContent size={size} />
+                    ) : (
+                      <span>Select size</span>
+                    )}
+                  </button>
                 </PopoverTrigger>
                 <PopoverContent
                   align="start"
@@ -539,9 +512,9 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handlePickSize(sizeTrimmed)}
-                          className={SIZE_PILL_CLASSES}
+                          className={`${sizePillFullClass(sizeTrimmed)} ${PILL_INTERACTIVE}`}
                         >
-                          Use &ldquo;{sizeTrimmed}&rdquo;
+                          <SizePillContent size={sizeTrimmed} />
                         </button>
                       </div>
                     )}
@@ -558,38 +531,27 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
             <Field icon={<Palette className="h-3.5 w-3.5" />} label="Design">
               <Popover open={designOpen} onOpenChange={setDesignOpen}>
                 <PopoverTrigger asChild>
-                  <motion.button
+                  <button
                     type="button"
-                    layout
-                    style={{ transformOrigin: "left center" }}
-                    transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
                     className={cn(
                       TRIGGER_BASE_CLASSES,
-                      design ? DESIGN_FILLED_CLASSES : TRIGGER_EMPTY_CLASSES
+                      design
+                        ? DESIGN_FILLED_TRIGGER_CLASSES
+                        : TRIGGER_EMPTY_CLASSES
                     )}
-                  >
-                    <AnimatePresence>
-                      {design && (
-                        <motion.span
-                          key={design}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="absolute inset-0 pointer-events-none"
-                          style={{
+                    style={
+                      design
+                        ? {
                             background: createDesignBackground(
                               design,
                               DESIGN_TAG_ALPHA
-                            ) ?? undefined,
-                          }}
-                        />
-                      )}
-                    </AnimatePresence>
-                    <span className="relative z-10">
-                      {design || "Select design"}
-                    </span>
-                  </motion.button>
+                            ),
+                          }
+                        : undefined
+                    }
+                  >
+                    <span>{design || "Select design"}</span>
+                  </button>
                 </PopoverTrigger>
                 <PopoverContent
                   align="start"
@@ -645,11 +607,8 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handlePickDesign(designTrimmed)}
-                          className={DESIGN_PILL_CLASSES}
-                          style={{
-                            background:
-                              "linear-gradient(to right, #4b5563, #1f2937)",
-                          }}
+                          className={`${DESIGN_PILL_FULL} ${PILL_INTERACTIVE}`}
+                          style={{ background: CUSTOM_DESIGN_GRADIENT }}
                         >
                           Use &ldquo;{designTrimmed}&rdquo;
                         </button>
