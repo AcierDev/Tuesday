@@ -124,11 +124,16 @@ export const DueBadge = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className={slotClasses}>
+        <div
+          className={slotClasses}
+          // Stop propagation here (not on the Badge inside) so PopoverTrigger's
+          // own click handler — attached to this div via asChild — still fires
+          // while the click doesn't bubble to NameCell's row-edit handler.
+          onClick={(e) => e.stopPropagation()}
+        >
           <Badge
             role="button"
             tabIndex={0}
-            onClick={(e) => e.stopPropagation()}
             className={badgeClasses}
           >
             {content}
