@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, ClipboardCopy } from "lucide-react";
+import { parseISO, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -207,29 +209,59 @@ export const EditItemDialog = ({
                           };
                       })
                       .filter((field) => field.value)
-                      .map((field) => (
-                        <motion.div
-                          key={field.columnName}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className="grid grid-cols-4 items-center gap-4"
-                        >
-                          <Label
-                            className="text-right font-medium"
-                            htmlFor={field.columnName}
+                      .map((field) => {
+                        const isDueDate = field.columnName === ColumnTitles.Due;
+                        const parsedDue = isDueDate
+                          ? parseISO(String(field.value))
+                          : null;
+                        const selectedDue =
+                          parsedDue && isValid(parsedDue) ? parsedDue : undefined;
+                        return (
+                          <motion.div
+                            key={field.columnName}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className={cn(
+                              "grid grid-cols-4 gap-4",
+                              isDueDate ? "items-start" : "items-center"
+                            )}
                           >
-                            {field.columnName}
-                          </Label>
-                          <Input
-                            className="col-span-3 dark:bg-gray-700 dark:border-none transition-colors"
-                            id={field.columnName}
-                            value={String(field.value)}
-                            onChange={(e) =>
-                              updateItemValue(field.columnName, e.target.value)
-                            }
-                          />
-                        </motion.div>
-                      ))}
+                            <Label
+                              className="text-right font-medium pt-2"
+                              htmlFor={field.columnName}
+                            >
+                              {field.columnName}
+                            </Label>
+                            {isDueDate ? (
+                              <div className="col-span-3 rounded-md border border-gray-200 dark:border-none bg-white dark:bg-gray-700 transition-colors">
+                                <Calendar
+                                  mode="single"
+                                  selected={selectedDue}
+                                  onSelect={(newDate) =>
+                                    updateItemValue(
+                                      field.columnName,
+                                      newDate ? newDate.toISOString() : ""
+                                    )
+                                  }
+                                  className="text-gray-900 dark:text-gray-100"
+                                />
+                              </div>
+                            ) : (
+                              <Input
+                                className="col-span-3 dark:bg-gray-700 dark:border-none transition-colors"
+                                id={field.columnName}
+                                value={String(field.value)}
+                                onChange={(e) =>
+                                  updateItemValue(
+                                    field.columnName,
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            )}
+                          </motion.div>
+                        );
+                      })}
                   </motion.div>
                 </CardContent>
               </Card>
