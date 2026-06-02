@@ -10,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -36,8 +35,6 @@ interface CostBreakdown {
 }
 
 const SQUARE_SIZE = 3; // Square size in inches
-const DEFAULT_CARD_WIDTH = 480; // Default card width in pixels (increased from 400)
-const DIAGRAM_PADDING = 40; // Padding around the diagram
 
 const FIXED_PRICE_PER_SQUARE = 4.2;
 

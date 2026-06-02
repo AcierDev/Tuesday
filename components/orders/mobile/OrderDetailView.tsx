@@ -15,7 +15,6 @@ import { Item, ColumnTitles, ColumnTypes } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
 import { boardConfig } from "@/config/boardconfig";
 import {
-  OrderItem,
   getDaysRemaining,
   formatDate,
   processItem,

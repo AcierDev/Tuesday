@@ -1,10 +1,8 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import debounce from "lodash/debounce";
-import { Item, ColumnTitles, ItemStatus, Settings } from "@/typings/types";
-import { useOrderSettings } from "@/contexts/OrderSettingsContext";
+import { Item, ColumnTitles, ItemStatus } from "@/typings/types";
 import { useWeeklyScheduleStore } from "./useWeeklyScheduleStore";
-import { ITEM_DEFAULT_VALUES } from "@/typings/constants";
 import { ItemUtil } from "@/utils/ItemUtil";
 import { invalidateStatsCaches } from "@/lib/stats-shared";
 
@@ -75,8 +73,6 @@ interface OrderState {
     searchAllItems?: boolean
   ) => void;
 }
-
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Helper function to get the customer name from an item's values
 function getCustomerName(item: Item): string | undefined {
@@ -330,17 +326,6 @@ export const useOrderStore = create<OrderState>()(
         const { items } = get();
         if (!items) return;
 
-        const currentTimestamp = Date.now();
-
-        const completeValues = Object.values(ColumnTitles).map(
-          (columnTitle) => {
-            // This logic needs adjustment for flat structure if we still use this flow
-            // But `updatedItem` is now a flat item.
-            // The `changedField` parameter is likely used for timestamp tracking.
-            return {}; // Placeholder or removed logic if values are gone
-          }
-        );
-
         // Map changedField to property name
         const fieldMap: Record<string, keyof Item> = {
           [ColumnTitles.Customer_Name]: "customerName",
@@ -355,8 +340,6 @@ export const useOrderStore = create<OrderState>()(
           [ColumnTitles.Notes]: "notes",
           [ColumnTitles.Labels]: "labels",
         };
-
-        const fieldKey = changedField ? fieldMap[changedField] : undefined;
 
         // Construct item to update with flat fields
         let itemToUpdate = { ...updatedItem };
@@ -848,72 +831,4 @@ if (typeof window !== "undefined") {
     .catch((error) => {
       console.error("Failed to initialize order store", error);
     });
-}
-
-// Helper function for automatron rules
-function applyAutomatronRules(
-  item: Item,
-  settings: Settings,
-  changedField?: ColumnTitles
-): Item {
-  const updatedItem = { ...item };
-  let statusChanged = false;
-
-  const relevantRules =
-    settings.automatronRules?.filter((rule) => rule.field === changedField) ||
-    [];
-
-  for (const rule of relevantRules) {
-    // Map rule.field (ColumnTitle) to item key
-    const fieldMap: Record<string, keyof Item> = {
-      [ColumnTitles.Customer_Name]: "customerName",
-      [ColumnTitles.Due]: "dueDate",
-      [ColumnTitles.Design]: "design",
-      [ColumnTitles.Size]: "size",
-      [ColumnTitles.Painted]: "painted",
-      [ColumnTitles.Backboard]: "backboard",
-      [ColumnTitles.Glued]: "glued",
-      [ColumnTitles.Packaging]: "packaging",
-      [ColumnTitles.Boxes]: "boxes",
-      [ColumnTitles.Notes]: "notes",
-      [ColumnTitles.Labels]: "labels",
-    };
-
-    const key = fieldMap[rule.field];
-    const value = key ? item[key] : undefined;
-
-    if (value === rule.value && item.status !== rule.newStatus) {
-      updatedItem.status = rule.newStatus as ItemStatus;
-      statusChanged = true;
-      break;
-    }
-  }
-
-  if (statusChanged) {
-    console.log(
-      `Automatron applied: Item ${item.id} status updated to ${updatedItem.status}`
-    );
-  }
-
-  return updatedItem;
-}
-
-function getColumnType(columnName: string): string {
-  // Map column names to their types
-  const columnTypes: Record<string, string> = {
-    "Customer Name": "text",
-    "Due Date": "date",
-    Design: "dropdown",
-    Size: "dropdown",
-    Painted: "dropdown",
-    Backboard: "dropdown",
-    Glued: "dropdown",
-    Packaging: "dropdown",
-    Boxes: "dropdown",
-    Notes: "text",
-    Rating: "number",
-    // Add other columns as needed
-  };
-
-  return columnTypes[columnName] || "text"; // Default to "text" if type is unknown
 }

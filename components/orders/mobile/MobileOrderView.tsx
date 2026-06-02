@@ -8,7 +8,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { Item, ItemStatus, ColumnTitles, DayName } from "@/typings/types";
+import { Item, ItemStatus, DayName } from "@/typings/types";
 import { DeleteConfirmationDialog } from "@/components/ui/DeleteConfirmationDialog";
 import { EditItemDialog } from "../EditItemDialog";
 import { cn } from "@/utils/functions";

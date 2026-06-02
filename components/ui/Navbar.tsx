@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   PaintbrushVertical,
@@ -28,11 +34,42 @@ import {
   Columns3,
   Columns4,
 } from "lucide-react";
+import { motion } from "framer-motion";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+
+import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  FedExPickupBadge,
+  NavSectionCounters,
+  NavMetricsBadges,
+} from "@/components/ui/NavStatusBadges";
+import { SliderSettingPopover } from "@/components/settings/SliderSettingPopover";
+import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🔌 ESP32 DASHBOARD                                                   ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 const ESP32_DASHBOARD_URL = "http://192.168.1.248";
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 📐 FIT-TO-HEIGHT SCALING                                             ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+// On short screens the rail's content is taller than the viewport, which used
+// to force vertical scrolling. Instead we measure the natural (unscaled) height
+// and uniformly scale the whole column down so it always fits — no scrollbar.
+const NAV_MIN_SCALE = 0.4; // never shrink the rail below this factor
+
+// useLayoutEffect on the client (measure before paint → no overflow flash),
+// falling back to useEffect during SSR to avoid React's hydration warning.
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 const SawBladeIcon = ({ className }: { className?: string }) => (
   <svg
@@ -68,23 +105,6 @@ const Columns5 = ({ className }: { className?: string }) => (
     <path d="M17.4 3v18" />
   </svg>
 );
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
-import { Separator } from "@/components/ui/separator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { motion } from "framer-motion";
-import {
-  FedExPickupBadge,
-  NavSectionCounters,
-  NavMetricsBadges,
-} from "@/components/ui/NavStatusBadges";
-import { SliderSettingPopover } from "@/components/settings/SliderSettingPopover";
-import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 
 type NavItemBase = {
   hotkey?: string;
@@ -164,10 +184,16 @@ const printTemplates: PrintTemplate[] = [
   { name: "5 Panels", src: "/pdf/5-panels.pdf", type: "pdf", icon: Columns5 },
 ];
 
+// Off-screen iframe used purely as a print surface. Shared by printPdf/printImage.
+const HIDDEN_IFRAME_CSS =
+  "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+// How long to leave the print iframe in the DOM before removing it, giving the
+// print dialog time to read its contents.
+const PRINT_IFRAME_CLEANUP_MS = 60000;
+
 const printPdf = (src: string) => {
   const iframe = document.createElement("iframe");
-  iframe.style.cssText =
-    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  iframe.style.cssText = HIDDEN_IFRAME_CSS;
   iframe.src = src;
   iframe.onload = () => {
     try {
@@ -176,7 +202,7 @@ const printPdf = (src: string) => {
     } catch {
       // iframe contents may not allow direct print access
     }
-    window.setTimeout(() => iframe.remove(), 60000);
+    window.setTimeout(() => iframe.remove(), PRINT_IFRAME_CLEANUP_MS);
   };
   document.body.appendChild(iframe);
 };
@@ -216,8 +242,7 @@ const printImage = (src: string, orientation: "landscape" | "portrait") => {
   `;
 
   const iframe = document.createElement("iframe");
-  iframe.style.cssText =
-    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  iframe.style.cssText = HIDDEN_IFRAME_CSS;
   iframe.srcdoc = html;
   iframe.onload = () => {
     const win = iframe.contentWindow;
@@ -230,7 +255,7 @@ const printImage = (src: string, orientation: "landscape" | "portrait") => {
       } catch {
         // noop
       }
-      window.setTimeout(() => iframe.remove(), 60000);
+      window.setTimeout(() => iframe.remove(), PRINT_IFRAME_CLEANUP_MS);
     };
     if (img && !img.complete) {
       img.addEventListener("load", triggerPrint, { once: true });
@@ -247,6 +272,16 @@ interface NavLinkProps {
   icon: React.ComponentType<{ className?: string }> | string;
   label: string;
 }
+
+const isInputElement = (element: Element | null): boolean => {
+  if (!element) return false;
+  const tagName = element.tagName.toLowerCase();
+  return (
+    tagName === "input" ||
+    tagName === "textarea" ||
+    element.getAttribute("contenteditable") === "true"
+  );
+};
 
 export function Navbar({
   onOpenSettings,
@@ -273,6 +308,32 @@ export function Navbar({
   const { settings, updateSettings } = useOrderSettings();
   const [printHovered, setPrintHovered] = useState(false);
   const printLeaveTimerRef = useRef<number | null>(null);
+
+  // Uniformly scale the rail so its full content fits the viewport height.
+  // offsetHeight is the *unscaled* layout height (CSS transforms don't affect
+  // layout), so measuring it while a scale is already applied is stable and
+  // can't feedback-loop.
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const [railScale, setRailScale] = useState(1);
+
+  useIsomorphicLayoutEffect(() => {
+    const el = railRef.current;
+    if (!el) return;
+    const recompute = () => {
+      const natural = el.offsetHeight;
+      if (!natural) return;
+      const next = Math.min(1, window.innerHeight / natural);
+      setRailScale(Math.max(NAV_MIN_SCALE, next));
+    };
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    window.addEventListener("resize", recompute);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", recompute);
+    };
+  }, []);
 
   const openPrintHover = useCallback(() => {
     if (printLeaveTimerRef.current !== null) {
@@ -333,16 +394,6 @@ export function Navbar({
   useEffect(() => {
     setActiveTab(pathname);
   }, [pathname]);
-
-  const isInputElement = (element: Element | null): boolean => {
-    if (!element) return false;
-    const tagName = element.tagName.toLowerCase();
-    return (
-      tagName === "input" ||
-      tagName === "textarea" ||
-      element.getAttribute("contenteditable") === "true"
-    );
-  };
 
   const handleHotkey = useCallback(
     (key: string) => {
@@ -479,14 +530,20 @@ export function Navbar({
   };
 
   return (
-    <>
-      {/* Sidebar — desktop only; mobile uses a floating PageToggle. */}
-      <aside
+    /* Sidebar — desktop only; mobile uses a floating PageToggle. */
+    <aside
         className={`${
           sidebarOpen ? "w-64" : "w-[4.25rem]"
-        } fixed inset-y-0 left-0 transition-[width] duration-300 ease-in-out bg-[hsl(var(--sidebar))] hidden lg:block z-30 overflow-y-auto no-scrollbar`}
+        } fixed inset-y-0 left-0 transition-[width] duration-300 ease-in-out bg-[hsl(var(--sidebar))] hidden lg:block z-30 overflow-visible`}
       >
-        <div className="min-h-screen flex flex-col bg-[hsl(var(--sidebar))]">
+        <div
+          ref={railRef}
+          className="min-h-screen flex flex-col bg-[hsl(var(--sidebar))]"
+          style={{
+            transform: railScale < 1 ? `scale(${railScale})` : undefined,
+            transformOrigin: "top center",
+          }}
+        >
           <FedExPickupBadge />
           <NavMetricsBadges />
           {/* Soft gradient divider below the metric badges. */}
@@ -780,7 +837,5 @@ export function Navbar({
           </div>
         </div>
       </aside>
-
-    </>
   );
 }

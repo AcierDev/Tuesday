@@ -39,11 +39,6 @@ const NEW_AUTO_EXPAND_TYPES: ReadonlySet<string> = new Set([
 const LEFT_LANE_STATUSES: ReadonlySet<string> = new Set<string>([
   ItemStatus.OnDeck,
 ]);
-const RIGHT_LANE_STATUSES: ReadonlySet<string> = new Set<string>([
-  ItemStatus.Wip,
-  ItemStatus.Packaging,
-  ItemStatus.At_The_Door,
-]);
 const RIGHT_LANE_ORDER: ItemStatus[] = [
   ItemStatus.Wip,
   ItemStatus.Packaging,

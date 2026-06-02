@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { uploadLabel, getPublicUrl } from "@/lib/s3-client";
+import { uploadLabel } from "@/lib/s3-client";
 
 export async function POST(request: Request) {
   const searchParams = new URL(request.url).searchParams;

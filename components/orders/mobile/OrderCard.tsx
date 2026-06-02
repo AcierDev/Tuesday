@@ -1,7 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
 import {
-  Calendar,
   ArrowUpRightSquare,
   MessageSquare,
 } from "lucide-react";

@@ -26,9 +26,6 @@ export function WeekSelector({
     return startOfWeek(currentDate, { weekStartsOn });
   }, [weekStartsOn]);
 
-  const isCurrentWeek =
-    currentWeekStart.getTime() === currentWeekStartDate.getTime();
-
   return (
     <div className="flex items-stretch w-full sm:w-auto">
       <Button

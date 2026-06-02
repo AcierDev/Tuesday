@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +27,7 @@ import { Item, Tracker } from "@/typings/types";
 import { useTrackingStore } from "@/stores/useTrackingStore";
 import { useUploadProgressStore } from "@/stores/useUploadProgressStore";
 import { useShippingStore } from "@/stores/useShippingStore";
-import { UploadStep, TrackingInfo, FileProgress } from "@/types/shipping";
+import { TrackingInfo, FileProgress } from "@/types/shipping";
 import { cn } from "@/utils/functions";
 import { FedExBuyLabelDialog } from "./FedExBuyLabelDialog";
 
@@ -150,8 +150,6 @@ export function ViewLabel({
   };
 
   const handleManualTrackingSubmit = async () => {
-    const fileIndex = manualTracking.fileIndex;
-
     console.log("Submitting manual tracking:", {
       trackingNumber: manualTrackingNumber,
       carrier: manualCarrier,

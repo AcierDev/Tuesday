@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { Item, ColumnTitles, ItemDesigns, ItemSizes } from "@/typings/types";
+import { Item, ItemDesigns, ItemSizes } from "@/typings/types";
 import {
   DESIGN_COLOR_NAMES,
   DESIGN_COLORS,

@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 
-import { ItemStatus } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
 import { computeWipAging } from "@/lib/production-metrics";
 import { StatTile, useActivities, useAllItems } from "@/lib/stats-shared";

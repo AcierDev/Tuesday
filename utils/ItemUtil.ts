@@ -2,7 +2,6 @@ import {
   Item,
   ItemDesigns,
   ItemSizes,
-  ColumnTitles,
   Group,
 } from "@/typings/types";
 import { DESIGN_COLOR_NAMES, SIZE_MULTIPLIERS } from "@/typings/constants";

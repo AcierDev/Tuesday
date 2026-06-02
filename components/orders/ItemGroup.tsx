@@ -60,8 +60,6 @@ const IN_TRANSIT_TRACKER_STATUSES = new Set([
   "out_for_delivery",
 ]);
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
-
 const GROUP_COLORS = {
   ...STATUS_COLORS,
   Hidden: "gray-500",

@@ -8,7 +8,6 @@ import {
   Tracker,
   TrackerStatus,
 } from "@/typings/types";
-import { AlertManager } from "@/backend/src/AlertManager";
 
 // Change the controller type to use string
 type ReadableStreamController = ReadableStreamDefaultController<string>;

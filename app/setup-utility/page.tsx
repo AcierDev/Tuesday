@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { ReadonlyURLSearchParams, useSearchParams } from "next/navigation";
 import { DESIGN_COLORS, ItemDesignImages } from "@/typings/constants";
-import { ColumnTitles, Item, ItemDesigns, ItemSizes } from "@/typings/types";
+import { Item, ItemDesigns, ItemSizes } from "@/typings/types";
 import { Design, ColorDistribution } from "./types";
 import { DesignSelector } from "./components/DesignSelector";
 import { DesignDetails } from "./components/DesignDetails";

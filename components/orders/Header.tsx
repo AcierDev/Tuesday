@@ -18,6 +18,8 @@ interface HeaderProps {
   dueCounts: Record<string, number>
 }
 
+const TYPES = ["all", "geometric", "striped", "mini", "shepit", "custom"];
+
 export const Header: React.FC<HeaderProps> = ({
   searchTerm,
   onSearchChange,
@@ -53,8 +55,6 @@ export const Header: React.FC<HeaderProps> = ({
   const handleSearchBlur = () => {
     setIsSearchActive(false)
   }
-
-  const TYPES = ["all", "geometric", "striped", "mini", "shepit", "custom"];
 
   const typeItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [pillRect, setPillRect] = useState<{ left: number; width: number } | null>(null);
@@ -97,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               {pillRect && (
                 <motion.span
-                  className="absolute top-0.5 sm:top-1 bottom-0.5 sm:bottom-1 pointer-events-none"
+                  className="absolute top-0.5 sm:top-1 bottom-0.5 sm:bottom-1 z-0 pointer-events-none"
                   initial={false}
                   animate={{ left: pillRect.left, width: pillRect.width }}
                   transition={{ type: "spring", stiffness: 480, damping: 36 }}
@@ -114,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ref={(el: HTMLButtonElement | null) => { typeItemRefs.current[idx] = el; }}
                   value={type}
                   aria-label={`Toggle ${type} type`}
-                  className="relative h-7 px-2.5 text-xs sm:h-8 sm:px-3.5 sm:text-sm rounded-full font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-200 hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:shadow-none data-[state=on]:text-gray-900 dark:data-[state=on]:text-white"
+                  className="relative z-10 h-7 px-2.5 text-xs sm:h-8 sm:px-3.5 sm:text-sm rounded-full font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-200 hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:shadow-none data-[state=on]:text-gray-900 dark:data-[state=on]:text-white"
                 >
                   {type.charAt(0).toUpperCase() + type.slice(1)}
                   {(dueCounts[type] ?? 0) > 0 && (

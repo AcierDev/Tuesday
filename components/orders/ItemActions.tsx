@@ -1,8 +1,6 @@
 import {
   Edit,
-  Ship,
   Trash2,
-  Truck,
   Clipboard,
   MoreVertical,
 } from "lucide-react";
@@ -24,8 +22,6 @@ import {
   type Item,
   ItemDesigns,
   ItemSizes,
-  ColumnTitles,
-  ColumnTypes,
 } from "../../typings/types";
 
 interface ItemActionsProps {

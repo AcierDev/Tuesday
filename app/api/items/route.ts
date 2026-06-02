@@ -188,7 +188,6 @@ export async function PATCH(request: Request) {
     // Determine changes and log activity
     const changes: ActivityChange[] = [];
     let activityType: ActivityType = "update";
-    let isRestore = false;
 
     // Check for status change
     if (
@@ -223,7 +222,6 @@ export async function PATCH(request: Request) {
         });
       } else {
         activityType = "restore";
-        isRestore = true;
         changes.push({
           field: "deleted",
           oldValue: "true",

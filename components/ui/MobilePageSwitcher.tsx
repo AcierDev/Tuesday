@@ -6,12 +6,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
 
 import { PageToggle } from "@/components/ui/PageToggle";
+import { MobileGluedTodayBadge } from "@/components/ui/MobileGluedTodayBadge";
 import { useOrderStore } from "@/stores/useOrderStore";
 
 const SWITCHER_ROUTES = new Set(["/orders", "/production-planning"]);
 
 const SEARCH_BUTTON_SIZE = 40;
 const TOGGLE_SEARCH_GAP_PX = 8;
+const TOGGLE_BADGE_GAP_PX = 8;
 const TOGGLE_LIFT_PX = 52;
 const SEARCH_SIDE_MARGIN_PX = 16;
 const SEARCH_KEYBOARD_GAP_PX = 12;
@@ -95,6 +97,32 @@ export function MobilePageSwitcher() {
         transition: "transform 0.25s ease-out",
       }}
     >
+      {/* Glued-today badge: anchored to screen center then shifted fully left
+          of the toggle (its own width via -100%, plus half the toggle + gap).
+          Fades up and out alongside the toggle when searching. The outer div
+          holds the CSS transform so framer-motion's animated transform on the
+          inner motion.div doesn't clobber it. */}
+      <div
+        className="absolute left-1/2 bottom-0"
+        style={{
+          transform: `translateX(calc(-100% - ${
+            toggleWidth / 2 + TOGGLE_BADGE_GAP_PX
+          }px))`,
+        }}
+      >
+        <motion.div
+          animate={{
+            y: searching ? -TOGGLE_LIFT_PX : 0,
+            opacity: searching ? 0 : 1,
+            scale: searching ? 0.96 : 1,
+          }}
+          transition={SPRING}
+          style={{ pointerEvents: searching ? "none" : "auto" }}
+        >
+          <MobileGluedTodayBadge />
+        </motion.div>
+      </div>
+
       {/* Toggle: anchored to screen center. Fades up and out when searching.
           Wrapper holds the -translate-x-1/2 so framer-motion's animated
           transform on the inner motion.div doesn't clobber it. */}

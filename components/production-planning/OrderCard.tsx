@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ColumnTitles, DayName, ItemStatus } from "@/typings/types";
+import { DayName, ItemStatus } from "@/typings/types";
 import { OrderMeta } from "./types";
 import { cn } from "@/utils/functions";
 import { Pin } from "lucide-react";

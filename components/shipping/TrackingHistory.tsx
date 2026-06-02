@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import {
   Package,
   Truck,
-  CheckCircle2,
   MapPin,
   Calendar,
   Clock,

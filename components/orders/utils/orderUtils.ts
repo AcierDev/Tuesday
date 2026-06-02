@@ -60,7 +60,7 @@ export const createBackground = (option: string | undefined) => {
 };
 
 import { DesignBlends } from "@/typings/constants";
-import { Item, ColumnTitles } from "@/typings/types";
+import { Item } from "@/typings/types";
 
 // Modified OrderItem type to match Item structure
 export interface OrderItem extends Item {}

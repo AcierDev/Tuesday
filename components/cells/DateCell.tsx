@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarIcon } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
 import { cn } from "../../utils/functions";
-import { ColumnTitles, ColumnValue, Item } from "@/typings/types";
+import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 
 interface DateCellProps {

@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dialog";
 import { TrackingHistory } from "../shipping/TrackingHistory";
 import { Item } from "@/typings/types";
-import Image from "next/image";
 import { useShippingStore } from "@/stores/useShippingStore";
 import { FedExBuyLabelDialog } from "../shipping/FedExBuyLabelDialog";
 
@@ -24,7 +23,7 @@ export function ShippingCell({ item }: ShippingCellProps) {
   const hasLabel = useShippingStore((state) => state.hasLabel(item.id));
 
   // Memoize the tracking lookup
-  const { orderTracking, carrier } = useMemo(() => {
+  const { orderTracking } = useMemo(() => {
     const tracking = trackingInfo.find((t) => t.orderId === item.id);
     return {
       orderTracking: tracking,

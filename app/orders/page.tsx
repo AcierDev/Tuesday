@@ -28,8 +28,6 @@ import { isAnyModalDialogOpen } from "@/utils/dnd-modal-guard";
 import {
   Item,
   ItemStatus,
-  ItemSizes,
-  ItemDesigns,
   ColumnTitles,
 } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";

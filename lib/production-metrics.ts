@@ -983,7 +983,6 @@ export function computeHealthScore(
   }
   const lateNow = computeCurrentlyLate(active).length;
   const buckets = bucketCompletionsByDay(items, start, today);
-  const throughput = summarizeDayBuckets(buckets);
   const onTime = computeOnTimeStats(items, start, today);
 
   // Recency-weighted on-time pct: shipments older than N days count
