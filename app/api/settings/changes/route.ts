@@ -4,9 +4,9 @@ import { getDb } from "../../db/connect";
 //║ 🛰️ SSE: PUSH SHARED-SETTINGS CHANGES TO ALL BROWSERS                  ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 // Settings used to propagate via a 3-second poll. Item changes propagate via
-// SSE in ~100ms. When a user changed onDeckMinCount, the slow-settings vs
+// SSE in ~100ms. When a user changed dueBadgeDays, the slow-settings vs
 // fast-items mismatch let other browsers run useAutoPromoteByDueDate against
-// a stale minCount, demoting items the originating browser had just promoted
+// a stale value, demoting items the originating browser had just promoted
 // — items would visibly thrash for the full polling window. This stream
 // closes that gap by pushing shared settings on the same timescale as items.
 
@@ -17,7 +17,6 @@ const HEARTBEAT_INTERVAL_MS = 25_000;
 type SharedSettings = {
   _id: string;
   dueBadgeDays?: number;
-  onDeckMinCount?: number;
 };
 
 export const dynamic = "force-dynamic";
@@ -95,9 +94,6 @@ export async function GET(request: Request) {
               const payload: Record<string, unknown> = {};
               if (typeof doc.dueBadgeDays === "number") {
                 payload.dueBadgeDays = doc.dueBadgeDays;
-              }
-              if (typeof doc.onDeckMinCount === "number") {
-                payload.onDeckMinCount = doc.onDeckMinCount;
               }
               if (Object.keys(payload).length === 0) continue;
 

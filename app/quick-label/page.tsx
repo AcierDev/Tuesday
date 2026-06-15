@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,8 @@ import {
   FileIcon,
   ImageIcon,
   Loader2,
+  Minus,
+  Plus,
   Printer,
   RotateCw,
   Trash2,
@@ -15,9 +17,20 @@ import {
   X,
 } from "lucide-react";
 
-const FONT_SIZE_PT = 64;
 const LABEL_WIDTH_IN = 4;
 const LABEL_HEIGHT_IN = 6;
+const LABEL_PADDING_IN = 0.25; // printable margin inside each label
+const CSS_PX_PER_IN = 96; // CSS reference pixels per inch (resolution-independent)
+const LABEL_LINE_HEIGHT = 1.1;
+const LABEL_FONT_FAMILY = `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+const MIN_FONT_PX = 6; // floor when text cannot fit even at the smallest size
+const MAX_FONT_PX = 1000; // ceiling so a few characters can grow very large
+const FIT_TOLERANCE_PX = 0.5; // rounding slack when testing overflow
+const MIN_PAGES = 1;
+const MAX_PAGES = 4;
+const PREVIEW_PAGE_GAP_PX = 10; // gap drawn between page thumbnails in the preview
+const PREVIEW_MAX_WIDTH_PX = 420; // preview is scaled to fit within these bounds
+const PREVIEW_MAX_HEIGHT_PX = 300;
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MB ceiling for label uploads
 const PRINT_WINDOW_CLOSE_FALLBACK_MS = 30_000;
 
@@ -101,10 +114,190 @@ function printAndCloseWindow(printWindow: Window): void {
   }
 }
 
+// Binary-search the largest font size (in CSS px) at which `text` still fits
+// inside `pages` label pages of the given content box. Multi-page labels flow
+// the text across pages, so the usable height grows with the page count minus a
+// one-line allowance per page break (a line can't straddle a page boundary).
+function fitFontPx({
+  text,
+  contentWidthPx,
+  contentHeightPx,
+  pages,
+}: {
+  text: string;
+  contentWidthPx: number;
+  contentHeightPx: number;
+  pages: number;
+}): number {
+  if (typeof document === "undefined" || !text.trim()) return 0;
+
+  const measurer = document.createElement("div");
+  measurer.style.cssText = [
+    "position: absolute",
+    "left: -99999px",
+    "top: 0",
+    "visibility: hidden",
+    `width: ${contentWidthPx}px`,
+    "font-weight: 700",
+    `line-height: ${LABEL_LINE_HEIGHT}`,
+    "white-space: pre-wrap",
+    "word-break: break-word",
+    "overflow-wrap: anywhere",
+    "text-align: center",
+    `font-family: ${LABEL_FONT_FAMILY}`,
+  ].join(";");
+  measurer.textContent = text;
+  document.body.appendChild(measurer);
+
+  const fits = (size: number): boolean => {
+    measurer.style.fontSize = `${size}px`;
+    const usableHeight =
+      pages * contentHeightPx - (pages - 1) * size * LABEL_LINE_HEIGHT;
+    return (
+      measurer.scrollWidth <= contentWidthPx + FIT_TOLERANCE_PX &&
+      measurer.scrollHeight <= usableHeight + FIT_TOLERANCE_PX
+    );
+  };
+
+  let lo = MIN_FONT_PX;
+  let hi = MAX_FONT_PX;
+  let best = MIN_FONT_PX;
+  while (hi - lo > 0.5) {
+    const mid = (lo + hi) / 2;
+    if (fits(mid)) {
+      best = mid;
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+
+  document.body.removeChild(measurer);
+  return Math.floor(best);
+}
+
+// True-to-print preview: draws each label page to scale and flows the text
+// across them with CSS multi-column (column-fill: auto matches page-by-page
+// filling), then scales the whole thing down to fit inside the card.
+function LabelPreview({
+  pages,
+  pageWidthIn,
+  pageHeightIn,
+  fontPx,
+  text,
+}: {
+  pages: number;
+  pageWidthIn: number;
+  pageHeightIn: number;
+  fontPx: number;
+  text: string;
+}) {
+  const pageWpx = pageWidthIn * CSS_PX_PER_IN;
+  const pageHpx = pageHeightIn * CSS_PX_PER_IN;
+  const padPx = LABEL_PADDING_IN * CSS_PX_PER_IN;
+  const contentWpx = pageWpx - 2 * padPx;
+  const contentHpx = pageHpx - 2 * padPx;
+
+  const stageWpx = pages * pageWpx + (pages - 1) * PREVIEW_PAGE_GAP_PX;
+  const stageHpx = pageHpx;
+  const scale = Math.min(
+    PREVIEW_MAX_WIDTH_PX / stageWpx,
+    PREVIEW_MAX_HEIGHT_PX / stageHpx,
+    1
+  );
+
+  const textStyle: CSSProperties = {
+    fontSize: `${fontPx}px`,
+    fontWeight: 700,
+    lineHeight: LABEL_LINE_HEIGHT,
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+    overflowWrap: "anywhere",
+    textAlign: "center",
+    fontFamily: LABEL_FONT_FAMILY,
+    color: "#000",
+  };
+
+  return (
+    <div
+      style={{
+        width: stageWpx * scale,
+        height: stageHpx * scale,
+        position: "relative",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: stageWpx,
+          height: stageHpx,
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+        }}
+      >
+        {Array.from({ length: pages }).map((_, i) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: i * (pageWpx + PREVIEW_PAGE_GAP_PX),
+              width: pageWpx,
+              height: pageHpx,
+              background: "#fff",
+              border: "1px solid #d1d5db",
+              borderRadius: 6,
+              boxSizing: "border-box",
+            }}
+          />
+        ))}
+
+        {pages === 1 ? (
+          <div
+            style={{
+              position: "absolute",
+              top: padPx,
+              left: padPx,
+              width: contentWpx,
+              height: contentHpx,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div style={{ ...textStyle, width: "100%" }}>{text}</div>
+          </div>
+        ) : (
+          <div
+            style={{
+              position: "absolute",
+              top: padPx,
+              left: padPx,
+              width: stageWpx - 2 * padPx,
+              height: contentHpx,
+              columnWidth: `${contentWpx}px`,
+              columnGap: `${pageWpx - contentWpx + PREVIEW_PAGE_GAP_PX}px`,
+              columnFill: "auto",
+              overflow: "hidden",
+              ...textStyle,
+            }}
+          >
+            {text}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function QuickLabelPage() {
   const [text, setText] = useState("");
   const [textOrientation, setTextOrientation] =
     useState<Orientation>("portrait");
+  const [pages, setPages] = useState(1);
+  const [previewFontPx, setPreviewFontPx] = useState(0);
   const [upload, setUpload] = useState<UploadedFile | null>(null);
   const [uploading, setUploading] = useState(false);
   const [savedLabels, setSavedLabels] = useState<SavedLabel[]>([]);
@@ -112,11 +305,25 @@ export default function QuickLabelPage() {
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isLandscape = textOrientation === "landscape";
+  const pageWidthIn = isLandscape ? LABEL_HEIGHT_IN : LABEL_WIDTH_IN;
+  const pageHeightIn = isLandscape ? LABEL_WIDTH_IN : LABEL_HEIGHT_IN;
+  const contentWidthPx = (pageWidthIn - 2 * LABEL_PADDING_IN) * CSS_PX_PER_IN;
+  const contentHeightPx = (pageHeightIn - 2 * LABEL_PADDING_IN) * CSS_PX_PER_IN;
+
   useEffect(() => {
     return () => {
       if (upload) URL.revokeObjectURL(upload.url);
     };
   }, [upload]);
+
+  // Recompute the auto-fit size whenever the text, orientation, or page count
+  // changes so the preview always shows the size that will actually print.
+  useEffect(() => {
+    setPreviewFontPx(
+      fitFontPx({ text, contentWidthPx, contentHeightPx, pages })
+    );
+  }, [text, contentWidthPx, contentHeightPx, pages]);
 
   const refreshSavedLabels = async () => {
     try {
@@ -229,14 +436,78 @@ export default function QuickLabelPage() {
       return;
     }
 
-    const isLandscape = textOrientation === "landscape";
-    const pageW = isLandscape ? LABEL_HEIGHT_IN : LABEL_WIDTH_IN;
-    const pageH = isLandscape ? LABEL_WIDTH_IN : LABEL_HEIGHT_IN;
+    const fontPx = fitFontPx({
+      text,
+      contentWidthPx,
+      contentHeightPx,
+      pages,
+    });
 
     const escaped = text
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
+
+    const textCss = `
+      font-size: ${fontPx}px;
+      font-weight: 700;
+      line-height: ${LABEL_LINE_HEIGHT};
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      text-align: center;
+    `;
+
+    // One page: a flex-centered label. Multiple pages: a single block that the
+    // browser flows across pages (per-page margins via @page), so the text
+    // continues onto the next label and the fitted size fills them all.
+    const style =
+      pages > 1
+        ? `
+          @page { size: ${pageWidthIn}in ${pageHeightIn}in; margin: ${LABEL_PADDING_IN}in; }
+          html, body { margin: 0; padding: 0; font-family: ${LABEL_FONT_FAMILY}; }
+          .flow { ${textCss} }
+          @media print {
+            html, body {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+          }
+        `
+        : `
+          @page { size: ${pageWidthIn}in ${pageHeightIn}in; margin: 0; }
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: ${pageWidthIn}in;
+            height: ${pageHeightIn}in;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: ${LABEL_FONT_FAMILY};
+          }
+          .label {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: ${LABEL_PADDING_IN}in;
+            box-sizing: border-box;
+            ${textCss}
+          }
+          @media print {
+            html, body {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+          }
+        `;
+
+    const content =
+      pages > 1
+        ? `<div class="flow">${escaped}</div>`
+        : `<div class="label">${escaped}</div>`;
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -244,41 +515,9 @@ export default function QuickLabelPage() {
         <head>
           <meta charset="UTF-8">
           <title>Quick Label</title>
-          <style>
-            @page {
-              size: ${pageW}in ${pageH}in;
-              margin: 0;
-            }
-            html, body {
-              margin: 0;
-              padding: 0;
-              width: ${pageW}in;
-              height: ${pageH}in;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            }
-            .label {
-              width: 100%;
-              height: 100%;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              text-align: center;
-              padding: 0.25in;
-              box-sizing: border-box;
-              font-size: ${FONT_SIZE_PT}pt;
-              font-weight: 700;
-              line-height: 1.1;
-              white-space: pre-wrap;
-              word-break: break-word;
-            }
-          </style>
+          <style>${style}</style>
         </head>
-        <body>
-          <div class="label">${escaped}</div>
-        </body>
+        <body>${content}</body>
       </html>
     `);
 
@@ -407,25 +646,58 @@ export default function QuickLabelPage() {
                 </div>
               </div>
 
-              <div className="flex-1 flex items-center justify-center">
-                <div
-                  className={`border border-gray-200 dark:border-gray-700 rounded-md bg-white text-black flex items-center justify-center text-center p-4 overflow-hidden ${
-                    textOrientation === "landscape"
-                      ? "w-[300px] h-[200px]"
-                      : "w-[200px] h-[300px]"
-                  }`}
-                >
-                  <div
-                    className="w-full h-full flex items-center justify-center font-bold leading-tight whitespace-pre-wrap break-words"
-                    style={{ fontSize: "24px" }}
+              <div className="flex items-center gap-2 h-9">
+                <Label className="text-sm">Pages</Label>
+                <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-md p-1 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPages((p) => Math.max(MIN_PAGES, p - 1))}
+                    disabled={pages <= MIN_PAGES}
+                    aria-label="Remove page"
+                    className="px-2 py-1.5 rounded bg-white dark:bg-gray-800 shadow-sm text-gray-900 dark:text-gray-100 flex items-center justify-center disabled:opacity-40 disabled:shadow-none disabled:bg-transparent"
                   >
-                    {text || (
-                      <span className="text-gray-400 font-normal text-sm">
-                        Preview
-                      </span>
-                    )}
-                  </div>
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="px-1 text-sm tabular-nums w-4 text-center">
+                    {pages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPages((p) => Math.min(MAX_PAGES, p + 1))}
+                    disabled={pages >= MAX_PAGES}
+                    aria-label="Add page"
+                    className="px-2 py-1.5 rounded bg-white dark:bg-gray-800 shadow-sm text-gray-900 dark:text-gray-100 flex items-center justify-center disabled:opacity-40 disabled:shadow-none disabled:bg-transparent"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
                 </div>
+                {pages > 1 && (
+                  <span className="text-xs text-gray-500">
+                    text fills all {pages} pages
+                  </span>
+                )}
+              </div>
+
+              <div className="flex-1 flex items-center justify-center">
+                {text.trim() ? (
+                  <LabelPreview
+                    pages={pages}
+                    pageWidthIn={pageWidthIn}
+                    pageHeightIn={pageHeightIn}
+                    fontPx={previewFontPx}
+                    text={text}
+                  />
+                ) : (
+                  <div
+                    className={`border border-gray-200 dark:border-gray-700 rounded-md bg-white flex items-center justify-center ${
+                      isLandscape ? "w-[300px] h-[200px]" : "w-[200px] h-[300px]"
+                    }`}
+                  >
+                    <span className="text-gray-400 font-normal text-sm">
+                      Preview
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2">
@@ -444,7 +716,7 @@ export default function QuickLabelPage() {
                   className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
                 >
                   <Printer className="mr-2 h-5 w-5" />
-                  Print Label
+                  {pages > 1 ? `Print ${pages} Pages` : "Print Label"}
                 </Button>
               </div>
             </CardContent>
@@ -505,7 +777,8 @@ export default function QuickLabelPage() {
                 )}
               </div>
 
-              {/* Spacer matching the left card's Orientation row height so previews align */}
+              {/* Spacers matching the left card's Orientation + Pages rows so previews align */}
+              <div className="h-9" aria-hidden />
               <div className="h-9" aria-hidden />
 
               <div className="flex-1 flex items-center justify-center">

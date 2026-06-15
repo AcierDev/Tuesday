@@ -302,8 +302,8 @@ export const NewItemModal: React.FC<NewItemModalProps> = ({
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
-    if (!customerName || !size || !design) {
-      alert("Please fill in all required fields");
+    if (!customerName || !size || !design || !dueDate) {
+      alert("Please fill in all required fields, including a due date");
       return;
     }
 

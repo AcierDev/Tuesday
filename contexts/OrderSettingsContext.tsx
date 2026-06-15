@@ -37,7 +37,6 @@ const defaultSettings: OrderSettings = {
   isAutomatronActive: true,
   columnVisibility: defaultColumnVisibility,
   dueBadgeDays: 3,
-  onDeckMinCount: 12,
   statusColors: {
     Done: "bg-green-100",
     Stuck: "bg-red-100",
@@ -107,8 +106,7 @@ export function OrderSettingsProvider({
   const serverSyncedRef = useRef(false);
   const lastPatchedSharedRef = useRef<{
     dueBadgeDays: number | null;
-    onDeckMinCount: number | null;
-  }>({ dueBadgeDays: null, onDeckMinCount: null });
+  }>({ dueBadgeDays: null });
 
   //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
   //║ 📦 LOAD: localStorage first, then overlay server-synced fields       ║
@@ -146,10 +144,6 @@ export function OrderSettingsProvider({
           lastPatchedSharedRef.current.dueBadgeDays = data.dueBadgeDays;
           overlay.dueBadgeDays = data.dueBadgeDays;
         }
-        if (typeof data.onDeckMinCount === "number") {
-          lastPatchedSharedRef.current.onDeckMinCount = data.onDeckMinCount;
-          overlay.onDeckMinCount = data.onDeckMinCount;
-        }
         if (Object.keys(overlay).length > 0) {
           dispatch({ type: "UPDATE_SETTINGS", payload: overlay });
         }
@@ -177,21 +171,15 @@ export function OrderSettingsProvider({
   useEffect(() => {
     if (!isInitialized || !serverSyncedRef.current) return;
 
-    const changed: Partial<Pick<OrderSettings, "dueBadgeDays" | "onDeckMinCount">> = {};
+    const changed: Partial<Pick<OrderSettings, "dueBadgeDays">> = {};
     if (settings.dueBadgeDays !== lastPatchedSharedRef.current.dueBadgeDays) {
       changed.dueBadgeDays = settings.dueBadgeDays;
-    }
-    if (settings.onDeckMinCount !== lastPatchedSharedRef.current.onDeckMinCount) {
-      changed.onDeckMinCount = settings.onDeckMinCount;
     }
     if (Object.keys(changed).length === 0) return;
 
     const handle = setTimeout(() => {
       if (changed.dueBadgeDays !== undefined) {
         lastPatchedSharedRef.current.dueBadgeDays = changed.dueBadgeDays;
-      }
-      if (changed.onDeckMinCount !== undefined) {
-        lastPatchedSharedRef.current.onDeckMinCount = changed.onDeckMinCount;
       }
       fetch("/api/settings", {
         method: "PATCH",
@@ -203,16 +191,16 @@ export function OrderSettingsProvider({
     }, SHARED_SETTINGS_PATCH_DEBOUNCE_MS);
 
     return () => clearTimeout(handle);
-  }, [settings.dueBadgeDays, settings.onDeckMinCount, isInitialized]);
+  }, [settings.dueBadgeDays, isInitialized]);
 
   //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
   //║ 🛰️ SSE: pick up shared-settings changes from other browsers           ║
   //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
   // Items sync via SSE in ~100ms but settings used to sync via a 3s poll.
   // During that window other browsers would run useAutoPromoteByDueDate
-  // against a stale onDeckMinCount and demote items the originating browser
+  // against a stale dueBadgeDays and demote items the originating browser
   // had just promoted — visible thrashing. SSE puts settings on the same
-  // timescale as items so both browsers see the new minCount before the
+  // timescale as items so both browsers see the new value before the
   // auto-promote effect on the other side gets a chance to fight it.
   //
   // Skip the overlay if a local edit is still pending the debounced PATCH
@@ -232,7 +220,7 @@ export function OrderSettingsProvider({
     let reconnectAttempts = 0;
     let cancelled = false;
 
-    const applyRemote = (data: { dueBadgeDays?: unknown; onDeckMinCount?: unknown }) => {
+    const applyRemote = (data: { dueBadgeDays?: unknown }) => {
       const overlay: Partial<OrderSettings> = {};
       const current = settingsRef.current;
       const last = lastPatchedSharedRef.current;
@@ -244,14 +232,6 @@ export function OrderSettingsProvider({
       ) {
         last.dueBadgeDays = data.dueBadgeDays;
         overlay.dueBadgeDays = data.dueBadgeDays;
-      }
-      if (
-        typeof data.onDeckMinCount === "number" &&
-        data.onDeckMinCount !== last.onDeckMinCount &&
-        current.onDeckMinCount === last.onDeckMinCount
-      ) {
-        last.onDeckMinCount = data.onDeckMinCount;
-        overlay.onDeckMinCount = data.onDeckMinCount;
       }
 
       if (Object.keys(overlay).length > 0) {

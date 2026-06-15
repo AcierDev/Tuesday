@@ -4,14 +4,10 @@ import clientPromise from "../db/connect";
 const SETTINGS_COLLECTION = "settings";
 const GLOBAL_SETTINGS_ID = "global";
 const DEFAULT_DUE_BADGE_DAYS = 3;
-const DEFAULT_ON_DECK_MIN_COUNT = 12;
-const ON_DECK_MIN_COUNT_FLOOR = 0;
-const ON_DECK_MIN_COUNT_CEILING = 100;
 
 type SharedSettings = {
   _id: string;
   dueBadgeDays: number;
-  onDeckMinCount: number;
 };
 
 async function getCollection() {
@@ -28,7 +24,6 @@ export async function GET() {
       const seed: SharedSettings = {
         _id: GLOBAL_SETTINGS_ID,
         dueBadgeDays: DEFAULT_DUE_BADGE_DAYS,
-        onDeckMinCount: DEFAULT_ON_DECK_MIN_COUNT,
       };
       await collection.insertOne(seed);
       doc = seed;
@@ -36,7 +31,6 @@ export async function GET() {
 
     return NextResponse.json({
       dueBadgeDays: doc.dueBadgeDays ?? DEFAULT_DUE_BADGE_DAYS,
-      onDeckMinCount: doc.onDeckMinCount ?? DEFAULT_ON_DECK_MIN_COUNT,
     });
   } catch (error) {
     console.error("GET /api/settings failed:", error);
@@ -50,17 +44,10 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const updates: Partial<Pick<SharedSettings, "dueBadgeDays" | "onDeckMinCount">> = {};
+    const updates: Partial<Pick<SharedSettings, "dueBadgeDays">> = {};
 
     if (typeof body.dueBadgeDays === "number" && Number.isFinite(body.dueBadgeDays)) {
       updates.dueBadgeDays = Math.max(1, Math.min(365, Math.round(body.dueBadgeDays)));
-    }
-
-    if (typeof body.onDeckMinCount === "number" && Number.isFinite(body.onDeckMinCount)) {
-      updates.onDeckMinCount = Math.max(
-        ON_DECK_MIN_COUNT_FLOOR,
-        Math.min(ON_DECK_MIN_COUNT_CEILING, Math.round(body.onDeckMinCount))
-      );
     }
 
     if (Object.keys(updates).length === 0) {
@@ -80,7 +67,6 @@ export async function PATCH(request: Request) {
     const doc = await collection.findOne({ _id: GLOBAL_SETTINGS_ID });
     return NextResponse.json({
       dueBadgeDays: doc?.dueBadgeDays ?? DEFAULT_DUE_BADGE_DAYS,
-      onDeckMinCount: doc?.onDeckMinCount ?? DEFAULT_ON_DECK_MIN_COUNT,
     });
   } catch (error) {
     console.error("PATCH /api/settings failed:", error);

@@ -448,7 +448,6 @@ export type OrderSettings = {
   isAutomatronActive: boolean;
   columnVisibility: ColumnVisibilitySettings;
   dueBadgeDays: number;
-  onDeckMinCount: number;
   statusColors: StatusColors;
   showSortingIcons: boolean;
   recentEditHours?: number;
