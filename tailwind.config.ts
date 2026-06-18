@@ -69,6 +69,14 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // The mobile↔desktop UI split is gated entirely on the `lg` breakpoint
+      // (sidebar `hidden lg:block`, MobilePageSwitcher `lg:hidden`, etc.).
+      // Lowering `lg` from its 1024px default to 768px makes tablets (and any
+      // viewport ≥768px) render the full desktop website instead of the
+      // mobile UI. sm/md/xl/2xl keep their Tailwind defaults.
+      screens: {
+        lg: "768px",
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
