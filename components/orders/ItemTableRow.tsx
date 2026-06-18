@@ -175,6 +175,32 @@ function useIsTouchDevice() {
   return isTouch;
 }
 
+// Mobile↔desktop UI divider — mirrors the Tailwind `lg` breakpoint
+// (overridden to 768px in tailwind.config.ts so tablets get the desktop UI).
+const DESKTOP_MIN_WIDTH_PX = 768;
+
+// Drag-vs-swipe is decided by viewport WIDTH, not pointer type. Tablets
+// report as touch devices but run the full desktop site, so they must use
+// the dnd-kit drag-between-sections handle — the page-level GuardedTouchSensor
+// already makes that work via touch. Phones (<768px) keep the swipe gesture.
+function useIsDesktopLayout() {
+  const query = `(min-width: ${DESKTOP_MIN_WIDTH_PX}px)`;
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" && !!window.matchMedia
+      ? window.matchMedia(query).matches
+      : false
+  );
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia(query);
+    setIsDesktop(mql.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, [query]);
+  return isDesktop;
+}
+
 interface ItemTableRowProps {
   item: Item;
   index: number;
@@ -214,6 +240,7 @@ export const ItemTableRow = memo(function ItemTableRow({
 }: ItemTableRowProps) {
   const recentlyMoved = useRecentlyMovedIds().has(item.id);
   const isTouch = useIsTouchDevice();
+  const isDesktopLayout = useIsDesktopLayout();
 
   //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
   //║ 🤚 DESKTOP DRAG HANDLE                                               ║
@@ -221,8 +248,9 @@ export const ItemTableRow = memo(function ItemTableRow({
   // Desktop drag-between-sections is dnd-kit driven (page-level DndContext
   // owns the drop targets on each section header). Touch keeps the
   // framer-motion swipe-to-move gesture so the two systems never compete
-  // for the same pointer.
-  const canDesktopDrag = !isTouch && !!onStatusChange;
+  // for the same pointer. Gated on layout WIDTH (not touch capability) so
+  // tablets running the desktop site drag instead of swipe.
+  const canDesktopDrag = isDesktopLayout && !!onStatusChange;
   const {
     attributes: dragAttributes,
     listeners: dragListeners,
@@ -277,7 +305,8 @@ export const ItemTableRow = memo(function ItemTableRow({
     };
   }, [item.status]);
 
-  const canSwipe = isTouch && !!onStatusChange;
+  // Swipe-to-move only below the desktop width — tablets/desktop drag instead.
+  const canSwipe = !isDesktopLayout && !!onStatusChange;
   const canSwipeRight = canSwipe && backward.length > 0;
   const canSwipeLeft = canSwipe && forward.length > 0;
 
