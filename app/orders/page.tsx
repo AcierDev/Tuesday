@@ -242,11 +242,16 @@ export default function OrderManagementPage() {
       if (item.status === newStatus) return;
 
       try {
+        const leavesOnDeck =
+          newStatus !== ItemStatus.New && newStatus !== ItemStatus.OnDeck;
         const updatedItem = {
           ...item,
           status: newStatus,
           prevStatus: null,
           completedAt: newStatus === ItemStatus.Done ? Date.now() : undefined,
+          // A parked (held) item moving into production — or any status outside
+          // New / On Deck — is no longer parked, so clear the hold.
+          onHold: leavesOnDeck ? false : item.onHold,
         };
 
         await updateItem(updatedItem);

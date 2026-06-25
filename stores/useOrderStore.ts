@@ -11,6 +11,18 @@ const SEARCH_DEBOUNCE_MS = 300;
 const SSE_RECONNECT_BASE_MS = 2_000;
 const SSE_RECONNECT_MAX_MS = 60_000;
 
+// When a live item change arrives over SSE, refresh the stats caches so any open
+// stats page / nav badge / glued badge updates without a manual refresh. Debounced
+// (trailing) so a burst of changes coalesces into one refetch; maxWait guarantees a
+// continuous stream still refreshes stats at least this often.
+const STATS_REVALIDATE_DEBOUNCE_MS = 3_000;
+const STATS_REVALIDATE_MAXWAIT_MS = 12_000;
+const debouncedInvalidateStats = debounce(
+  invalidateStatsCaches,
+  STATS_REVALIDATE_DEBOUNCE_MS,
+  { maxWait: STATS_REVALIDATE_MAXWAIT_MS }
+);
+
 let sseReconnectAttempts = 0;
 let sseReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -229,6 +241,10 @@ export const useOrderStore = create<OrderState>()(
           try {
             const change = JSON.parse(event.data);
             const { items, doneItems, scheduledItems } = get();
+
+            // Any live item change can affect stats (glued count, throughput, etc).
+            // Refresh the stats caches so open stats views update without a refresh.
+            debouncedInvalidateStats();
 
             if (change.type === "update") {
               const updatedItem = ItemUtil.processItem(change.item);

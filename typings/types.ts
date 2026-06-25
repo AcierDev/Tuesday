@@ -102,6 +102,11 @@ export type Item = {
     hasCustomerMessage?: boolean;
   };
   isScheduled?: boolean;
+  // On Hold: parked at the bottom of On Deck. Paused in forward-looking stats,
+  // never auto-scheduled onto the planner calendar, never auto-demoted. See
+  // DueBadge (toggle), useAutoPromoteByDueDate, production-planning page, and
+  // the stats item-fetch / backlog-snapshot filters.
+  onHold?: boolean;
   searchText?: string;
   purchasedShipment?: PurchasedShipment;
 };

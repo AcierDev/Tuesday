@@ -87,6 +87,9 @@ export function useAutoPromoteByDueDate(items: Item[] | undefined) {
     // items (no prevStatus) are included so the hard cap can bump them.
     const pool = liveItems.filter((i) => {
       if (selfHealIds.has(i.id)) return false;
+      // Held items are parked: they stay OnDeck (sunk to the bottom) and never count
+      // toward the floor/cap or get ranked. The apply loop also skips them.
+      if (i.onHold) return false;
       return i.status === ItemStatus.New || i.status === ItemStatus.OnDeck;
     });
 
@@ -145,6 +148,8 @@ export function useAutoPromoteByDueDate(items: Item[] | undefined) {
     // restores to its prevStatus, a manual (no prevStatus) falls back to New.
     for (const item of liveItems) {
       if (inFlightRef.current.has(item.id)) continue;
+      // Held items are pinned in place — never auto-promote or auto-demote them.
+      if (item.onHold) continue;
 
       let next: Item | null = null;
 

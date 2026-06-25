@@ -38,6 +38,8 @@ export async function recordTodayBacklogSnapshot(): Promise<BacklogSnapshot> {
       {
         visible: true,
         deleted: false,
+        // Held items are paused — excluded from the recorded backlog trend.
+        onHold: { $ne: true },
         status: { $in: BACKLOG_STATUSES },
       },
       { projection: { size: 1, status: 1 } }

@@ -506,14 +506,17 @@ export default function ProductionPlanningPage() {
     [currentWeekKey]
   );
 
-  // Filter orders: must be unscheduled-ready (New / OnDeck), not deleted, and
-  // have a parseable W×H size. Custom/named sizes don't count toward the
-  // daily-square capacity target since they aren't square units.
+  // Filter orders: must be unscheduled-ready (New / OnDeck), not deleted, not
+  // held, and have a parseable W×H size. Custom/named sizes don't count toward
+  // the daily-square capacity target since they aren't square units. Held items
+  // are parked in On Deck and must never be auto-scheduled onto the calendar,
+  // so they're excluded from the planner pool (and its auto-fill) entirely.
   const availableOrders = useMemo(
     () =>
       items.filter(
         (item) =>
           !item.deleted &&
+          !item.onHold &&
           (item.status === ItemStatus.New ||
             item.status === ItemStatus.OnDeck) &&
           parseSquareSize(item.size) !== null

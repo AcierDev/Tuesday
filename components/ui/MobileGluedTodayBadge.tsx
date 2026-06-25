@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PaintbrushVertical } from "lucide-react";
+import { useStatsRevalidationVersion } from "@/lib/stats-shared";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🪣 SQUARES-GLUED-TODAY BADGE (mobile)                                ║
@@ -19,6 +20,9 @@ type GluedBucket = { date: string; value: number };
 
 export function MobileGluedTodayBadge() {
   const [squares, setSquares] = useState<number | null>(null);
+  // Re-fetch live: bumped whenever an item change arrives over SSE (or after a
+  // local mutation), so the badge stays current on an open/idle tab without polling.
+  const revalidateVersion = useStatsRevalidationVersion();
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +51,7 @@ export function MobileGluedTodayBadge() {
       cancelled = true;
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, []);
+  }, [revalidateVersion]);
 
   return (
     <Link

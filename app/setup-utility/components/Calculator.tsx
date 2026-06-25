@@ -3,14 +3,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ColumnTitles, ItemSizes } from "@/typings/types";
+import { ItemSizes, ItemStatus } from "@/typings/types";
 import { Design, ColorDistribution } from "../types";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PrintLabel, printStyles } from "./PrintLabel";
+import {
+  DESIGN_PILL_FULL,
+  PILL_INTERACTIVE,
+  PILL_SELECTED_RING,
+  createDesignBackground,
+} from "@/components/ui/order-pills";
 
 interface CalculatorProps {
+  designs: Design[];
   selectedDesign: Design;
+  setSelectedDesign: (design: Design) => void;
   selectedSize: ItemSizes | "custom";
   width: string;
   height: string;
@@ -21,8 +29,10 @@ interface CalculatorProps {
 }
 
 export function Calculator({
+  designs,
   selectedSize,
   selectedDesign,
+  setSelectedDesign,
   width,
   height,
   colorDistribution,
@@ -30,9 +40,24 @@ export function Calculator({
   onDimensionChange,
   onOrderSelect,
 }: CalculatorProps) {
-  const { searchQuery, setSearchQuery, searchResults } = useOrderStore();
+  const items = useOrderStore((state) => state.items);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
+  // Search only active orders by customer name — never anything in the Done
+  // (or Hidden) section. Kept local so it doesn't touch the shared store search
+  // (which also fires a server-side Done-items lookup used by the orders board).
+  const searchResults = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return [];
+    return items.filter(
+      (item) =>
+        item.status !== ItemStatus.Done &&
+        item.status !== ItemStatus.Hidden &&
+        item.customerName?.toLowerCase().includes(query)
+    );
+  }, [items, searchQuery]);
 
   const handleOrderSelect = (order: any) => {
     setSelectedOrder(order);
@@ -173,9 +198,7 @@ export function Calculator({
             type="search"
             placeholder="Search customer names..."
             value={searchQuery}
-            onChange={(e) =>
-              setSearchQuery(e.target.value, [ColumnTitles.Customer_Name])
-            }
+            onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setTimeout(() => setIsSearchFocused(false), 100)}
             className=""
@@ -236,6 +259,30 @@ export function Calculator({
             >
               Custom
             </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-gray-900 dark:text-gray-100">
+            Choose a design:
+          </Label>
+          <div className="flex flex-wrap gap-1.5">
+            {designs.map((design) => {
+              const isSelected = selectedDesign.id === design.id;
+              return (
+                <button
+                  key={design.id}
+                  type="button"
+                  onClick={() => setSelectedDesign(design)}
+                  className={`${DESIGN_PILL_FULL} ${PILL_INTERACTIVE} ${
+                    isSelected ? PILL_SELECTED_RING : ""
+                  }`}
+                  style={{ background: createDesignBackground(design.name) }}
+                >
+                  {design.name}
+                </button>
+              );
+            })}
           </div>
         </div>
 

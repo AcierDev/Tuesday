@@ -117,8 +117,9 @@ export function invalidateStatsCaches(): void {
   for (const cb of statsRevalidationListeners) cb(statsRevalidationVersion);
 }
 
-// Internal hook used by every stats data hook below to react to invalidation.
-function useStatsRevalidationVersion(): number {
+// Hook used by every stats data hook below to react to invalidation. Exported so
+// standalone widgets (e.g. the mobile glued badge) can also refetch on the same bus.
+export function useStatsRevalidationVersion(): number {
   const [v, setV] = useState(statsRevalidationVersion);
   useEffect(() => {
     const cb = (next: number) => setV(next);
@@ -613,7 +614,7 @@ type AllItemsState = {
 // Stats pages only read these fields. Trimming the projection slashes payload
 // size by ~70% (notes, blobs, history, label data are the main bulk).
 const STATS_FIELDS =
-  "dueDate,status,completedAt,createdAt,design,size,customerName";
+  "dueDate,status,completedAt,createdAt,design,size,customerName,onHold";
 const STATS_ITEMS_URL = `/api/items?includeDone=true&includeHidden=true&fields=${STATS_FIELDS}`;
 const ITEMS_CACHE_TTL_MS = 60_000;
 
@@ -626,7 +627,11 @@ async function fetchStatsItems(): Promise<Item[]> {
     try {
       const res = await fetch(STATS_ITEMS_URL);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: Item[] = await res.json();
+      const raw: Item[] = await res.json();
+      // Held items are paused: drop them here so every forward-looking stat that
+      // reads through useAllItems (backlog, overview, forecast, debt, today…)
+      // excludes them without each page needing its own filter.
+      const data = raw.filter((i) => !i.onHold);
       itemsCache = { data, ts: Date.now() };
       return data;
     } finally {
@@ -689,7 +694,10 @@ async function fetchRichItems(): Promise<Item[]> {
     try {
       const res = await fetch(RICH_ITEMS_URL);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: Item[] = await res.json();
+      const raw: Item[] = await res.json();
+      // Mirror fetchStatsItems: held items are paused, excluded from every
+      // stats page that reads through useAllItemsRich.
+      const data = raw.filter((i) => !i.onHold);
       richCache = { data, ts: Date.now() };
       return data;
     } finally {

@@ -30,6 +30,7 @@ import { useShippingStore } from "@/stores/useShippingStore";
 import { TrackingInfo, FileProgress } from "@/types/shipping";
 import { cn } from "@/utils/functions";
 import { FedExBuyLabelDialog } from "./FedExBuyLabelDialog";
+import { useLabelUpload } from "@/hooks/useLabelUpload";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🎚️ TAB CONFIG                                                        ║
@@ -84,7 +85,8 @@ export function ViewLabel({
     return info.trackers[info.trackers.length - 1]?.tracking_code ?? null;
   });
   const { updateFileProgress, markFileComplete } = useUploadProgressStore();
-  const { labels, fetchAllLabels, removeLabel, addLabel, getLabelUrl, isLoading } = useShippingStore();
+  const { uploadLabels } = useLabelUpload();
+  const { labels, fetchAllLabels, removeLabel, getLabelUrl, isLoading } = useShippingStore();
   const orderLabels = labels[orderId] || [];
   const pdfExists = orderLabels.length > 0;
   const [activeTab, setActiveTab] = useState<TabValue>(
@@ -360,236 +362,18 @@ export function ViewLabel({
     setUploading(true);
     setError(null);
 
-    // Close the dialog if provided
+    // Close the dialog if provided — progress continues in the global overlay.
     onClose?.();
 
+    const pendingFiles = files;
+    setFiles([]);
+
     try {
-      const existingLabels = await fetch(`/api/shipping/pdfs/${orderId}`);
-      const responseData = await existingLabels.json();
-      console.log("Existing labels:", responseData);
-      
-      // Handle new response format { files: string[], config: ... }
-      const existingLabelsList: string[] = Array.isArray(responseData) 
-        ? responseData 
-        : (responseData.files || []);
-
-      // Modified logic for filename generation
-      const getNextFilename = (existingFiles: string[]) => {
-        // If no files exist yet, start with base filename
-        if (existingFiles.length === 0) {
-          return `${orderId}.pdf`;
-        }
-
-        // Find the highest number suffix
-        const suffixes = existingFiles.map((filename) => {
-          if (!filename) return -1;
-          // Base filename without suffix should be considered as index 0
-          if (filename === `${orderId}.pdf`) {
-            return 0;
-          }
-          const match = filename.match(/-(\d+)\.pdf$/);
-          return match ? parseInt(match[1], 10) : -1;
-        });
-
-        const maxSuffix = Math.max(...suffixes);
-        // If maxSuffix is 0 (only base file exists), start with -1
-        // Otherwise increment the highest suffix
-        return maxSuffix === 0
-          ? `${orderId}-1.pdf`
-          : `${orderId}-${maxSuffix + 1}.pdf`;
-      };
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (!file) continue;
-
-        // Get the next available filename
-        const filename = getNextFilename(existingLabelsList);
-        existingLabelsList.push(filename); // Add to list for next iteration
-
-        // Initialize progress for this file
-        const initialProgress: FileProgress = {
-          file,
-          currentStep: "upload",
-          progress: 0,
-          steps: [
-            {
-              id: "upload",
-              label: "Uploading label",
-              status: "processing",
-            },
-            {
-              id: "extraction",
-              label: "Extracting tracking info",
-              status: "waiting",
-            },
-            {
-              id: "tracking",
-              label: "Fetching tracking details",
-              status: "waiting",
-            },
-            {
-              id: "database",
-              label: "Updating database",
-              status: "waiting",
-            },
-          ],
-        };
-
-        updateFileProgress(file.name, initialProgress);
-
-        try {
-          // Upload the file
-          const formData = new FormData();
-          formData.append("label", file);
-
-          // Update progress for upload step
-          updateFileProgress(file.name, {
-            ...initialProgress,
-            progress: 25,
-            steps: initialProgress.steps.map((step) =>
-              step.id === "upload" ? { ...step, status: "processing" } : step
-            ),
-          });
-
-          const response = await fetch(
-            `/api/shipping/upload-label?filename=${filename}`,
-            {
-              method: "POST",
-              body: formData,
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error(`Upload failed for file ${i + 1}`);
-          }
-
-          console.log("Uploaded file:", file.name);
-
-          // Add this line after the successful upload:
-          addLabel(orderId, filename);
-          console.log("Added label to store:", filename);
-
-          // Update progress for extraction step
-          updateFileProgress(file.name, {
-            ...initialProgress,
-            currentStep: "extraction",
-            progress: 50,
-            steps: initialProgress.steps.map((step) =>
-              step.id === "upload"
-                ? { ...step, status: "complete" }
-                : step.id === "extraction"
-                ? { ...step, status: "processing" }
-                : step
-            ),
-          });
-
-          // Extract tracking info
-          const trackingFormData = new FormData();
-          trackingFormData.append("label", file);
-
-          const trackingResponse = await fetch(
-            "/api/shipping/extract-tracking",
-            {
-              method: "POST",
-              body: trackingFormData,
-            }
-          );
-
-          if (!trackingResponse.ok) {
-            throw new Error("Failed to extract tracking info");
-          }
-
-          console.log("Extracted tracking info for file:", file.name);
-
-          const trackingInfo: TrackingInfo = await trackingResponse.json();
-
-          // Validate tracking number
-          const isValidTrackingNumber = validateTrackingNumber(trackingInfo);
-
-          if (!isValidTrackingNumber) {
-            setManualTracking({
-              fileIndex: i,
-              fileName: file.name,
-              show: true,
-            });
-            continue;
-          }
-
-          // Update progress for extraction step
-          updateFileProgress(file.name, {
-            ...initialProgress,
-            currentStep: "tracking",
-            progress: 75,
-            trackingInfo,
-            steps: initialProgress.steps.map((step) =>
-              step.id === "upload"
-                ? { ...step, status: "complete" }
-                : step.id === "extraction"
-                ? { ...step, status: "complete" }
-                : step.id === "tracking"
-                ? { ...step, status: "processing" }
-                : step
-            ),
-          });
-
-          // Get tracker info
-          const trackerResponse = await fetch(
-            `/api/shipping/tracker/${trackingInfo.trackingNumber}?carrier=${trackingInfo.carrier}`
-          );
-
-          if (!trackerResponse.ok) {
-            throw new Error("Failed to validate tracking number");
-          }
-
-          const tracker: Tracker = await trackerResponse.json();
-          await saveTrackingInfo(tracker);
-
-          // Update progress for extraction step
-          updateFileProgress(file.name, {
-            ...initialProgress,
-            currentStep: "database",
-            progress: 100,
-            trackingInfo,
-            steps: initialProgress.steps.map((step) =>
-              step.id === "upload"
-                ? { ...step, status: "complete" }
-                : step.id === "extraction"
-                ? { ...step, status: "complete" }
-                : step.id === "tracking"
-                ? { ...step, status: "complete" }
-                : step.id === "database"
-                ? { ...step, status: "complete" }
-                : step
-            ),
-          });
-
-          // Mark file as complete when done
-          setTimeout(() => {
-            markFileComplete(file.name);
-          }, 1000);
-        } catch (error) {
-          console.error("Error processing file:", error);
-          // Update progress to show error
-          updateFileProgress(file.name, {
-            ...initialProgress,
-            progress: 100,
-            steps: initialProgress.steps.map((step) => ({
-              ...step,
-              status: "error",
-              message:
-                error instanceof Error
-                  ? error.message
-                  : "Unknown error occurred",
-            })),
-          });
-        }
-      }
-
-      setFiles([]);
-    } catch (error) {
-      console.error("Upload error:", error);
-      setError("Failed to upload one or more files. Please try again.");
+      await uploadLabels(orderId, pendingFiles, {
+        onError: setError,
+        onManualTrackingNeeded: (fileIndex, fileName) =>
+          setManualTracking({ fileIndex, fileName, show: true }),
+      });
     } finally {
       setUploading(false);
     }

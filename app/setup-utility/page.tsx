@@ -5,7 +5,6 @@ import { ReadonlyURLSearchParams, useSearchParams } from "next/navigation";
 import { DESIGN_COLORS, ItemDesignImages } from "@/typings/constants";
 import { Item, ItemDesigns, ItemSizes } from "@/typings/types";
 import { Design, ColorDistribution } from "./types";
-import { DesignSelector } from "./components/DesignSelector";
 import { DesignDetails } from "./components/DesignDetails";
 import { Calculator } from "./components/Calculator";
 import { PackagingDetails } from "./components/PackagingDetails";
@@ -25,6 +24,15 @@ const designs: Design[] = Object.values(ItemDesigns).map((design, index) => {
   };
 });
 
+// Oceanic Harmony's palette is a symmetric fade that peaks on a single center
+// color. That middle color is woven in at this multiple of every other color's
+// allocation; every other color keeps weight 1.
+const MIDDLE_COLOR_WEIGHT = 2;
+const DOUBLE_MIDDLE_COLOR_DESIGNS = new Set<string>([
+  ItemDesigns.Oceanic_Harmony,
+  ItemDesigns.Striped_Oceanic_Harmony,
+]);
+
 function UtilitiesContent({
   UrlParams,
 }: {
@@ -38,8 +46,6 @@ function UtilitiesContent({
   );
   const [width, setWidth] = useState<string>("14");
   const [height, setHeight] = useState<string>("7");
-  const [isDesignSectionExpanded, setIsDesignSectionExpanded] = useState(false);
-  const [showAdditionalSections, setShowAdditionalSections] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Item | null>(null);
 
   const calculateColorCount = (): ColorDistribution | null => {
@@ -47,6 +53,41 @@ function UtilitiesContent({
 
     const totalSquares = parseInt(width) * parseInt(height);
     const colorCount = selectedDesign.colors.length;
+
+    // Weighted designs: the center color gets MIDDLE_COLOR_WEIGHT× the share of
+    // every other color. Apportion by largest remainder so the per-color counts
+    // still sum to totalSquares exactly.
+    if (DOUBLE_MIDDLE_COLOR_DESIGNS.has(selectedDesign.name)) {
+      const middleIndex = Math.floor(colorCount / 2);
+      const weights = selectedDesign.colors.map((_, i) =>
+        i === middleIndex ? MIDDLE_COLOR_WEIGHT : 1
+      );
+      const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+      const ideals = weights.map((w) => (totalSquares * w) / totalWeight);
+      const distribution = selectedDesign.colors.map((color, i) => ({
+        color,
+        count: Math.floor(ideals[i]!),
+      }));
+
+      const baseTotal = distribution.reduce((sum, d) => sum + d.count, 0);
+      const adjustmentCount = totalSquares - baseTotal;
+      const byFraction = ideals
+        .map((ideal, i) => ({ i, frac: ideal - Math.floor(ideal) }))
+        .sort((a, b) => b.frac - a.frac);
+      for (let k = 0; k < adjustmentCount; k++) {
+        distribution[byFraction[k]!.i]!.count += 1;
+      }
+
+      return {
+        totalSquares,
+        colorCount,
+        distribution,
+        adjustmentCount,
+        adjustmentType: "add",
+      };
+    }
+
     const averageSquaresPerColor = totalSquares / colorCount;
 
     const baseSquaresPerColor1 = Math.floor(averageSquaresPerColor);
@@ -182,16 +223,6 @@ function UtilitiesContent({
       </div>
 
       <div className="relative z-10 max-w-full mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      <DesignSelector
-        designs={designs}
-        selectedDesign={selectedDesign}
-        setSelectedDesign={setSelectedDesign}
-        isDesignSectionExpanded={isDesignSectionExpanded}
-        setIsDesignSectionExpanded={setIsDesignSectionExpanded}
-        showAdditionalSections={showAdditionalSections}
-        setShowAdditionalSections={setShowAdditionalSections}
-      />
-
       {selectedDesign && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <DesignDetails
@@ -200,7 +231,9 @@ function UtilitiesContent({
           />
 
           <Calculator
+            designs={designs}
             selectedDesign={selectedDesign}
+            setSelectedDesign={setSelectedDesign}
             selectedSize={selectedSize}
             width={width}
             height={height}

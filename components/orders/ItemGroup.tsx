@@ -260,6 +260,16 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       });
     }
 
+    // On Deck: sink held ("parked") items to the bottom as a final stable pass
+    // so they sit below the live queue regardless of due date or drag order.
+    if (group.title === ItemStatus.OnDeck) {
+      items.sort((a, b) => {
+        const aTier = a.onHold ? 1 : 0;
+        const bTier = b.onHold ? 1 : 0;
+        return aTier - bTier;
+      });
+    }
+
     return items;
   }, [group.items, sortColumn, sortDirection, group.title, inTransitOrderIds]);
 
