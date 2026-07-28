@@ -58,8 +58,7 @@ const config: Config = {
     // Required: lib/stats-shared.tsx renders chart classes (fill-slate-400,
     // text-white, bg-white/10, etc.) that would otherwise be purged.
     "./lib/**/*.{js,ts,jsx,tsx,mdx}",
-    // Required: getDueBadge() in utils/functions.tsx renders Tailwind
-    // classes (bg-red-500, hover:bg-yellow-500, min-w-[2.25rem], etc.)
+    // Required: JSX helpers in utils/functions.tsx render Tailwind classes
     // that would otherwise be purged in production.
     "./utils/**/*.{js,ts,jsx,tsx,mdx}",
     // Required: parseMinecraftColors.tsx at the repo root renders the

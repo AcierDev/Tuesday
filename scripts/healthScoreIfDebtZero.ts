@@ -47,6 +47,7 @@ async function main() {
             completedAt: 1,
             design: 1,
             size: 1,
+            onHold: 1,
           },
         }
       )

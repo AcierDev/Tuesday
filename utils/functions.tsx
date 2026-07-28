@@ -8,12 +8,7 @@ import {
   ShippingStatus,
   ItemDesigns,
 } from "../typings/types";
-import { Badge } from "@/components/ui/badge";
-import {
-  differenceInCalendarDays,
-  isBefore,
-  parseISO,
-} from "date-fns";
+import { isBefore, parseISO } from "date-fns";
 import { boardConfig } from "../config/boardconfig";
 import { DEFAULT_BOX_PRESETS_BY_SIZE } from "@/config/shipping-defaults";
 import { clsx, type ClassValue } from "clsx";
@@ -110,46 +105,6 @@ export function formatDueDelta(delta: number): {
     primary: `${delta}`,
   };
 }
-
-//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ 📅 DUE-DATE DELTA BADGE                                              ║
-//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-// Renders a small solid pill on the right of the due date showing the
-// signed delta in calendar days (e.g. "+2", "-3", "0"):
-//   • delta < 0          → red    ( -N — past due)
-//   • delta === 0        → yellow ( 0  — due today, treated as warning)
-//   • 0 < delta ≤ range  → yellow (+N  — within the configurable warning window)
-//   • delta > range      → green  (+N  — comfortably ahead)
-// The `range` arg is `OrderSettings.dueBadgeDays` (set in Settings →
-// Due Badge Settings). Signature is preserved for backwards compatibility
-// with existing callers.
-export const getDueBadge = (dateString: string, range: number) => {
-  const dueDate = parseISO(dateString);
-  const today = new Date();
-  const delta = differenceInCalendarDays(dueDate, today);
-
-  let colorClasses: string;
-  if (delta < 0) {
-    colorClasses = "bg-red-500/70 hover:bg-red-500/70 text-white";
-  } else if (delta === 0 || delta <= range) {
-    colorClasses = "bg-yellow-500/70 hover:bg-yellow-500/70 text-white";
-  } else {
-    colorClasses = "bg-green-500/70 hover:bg-green-500/70 text-white";
-  }
-
-  const label = delta === 0 ? "0" : delta > 0 ? `+${delta}` : `${delta}`;
-
-  return (
-    <Badge
-      className={cn(
-        "tabular-nums text-[0.80625rem] px-2 py-0.5 min-w-[2.475rem] justify-center rounded-[10px] border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] [text-shadow:_0_1px_2px_rgb(0_0_0_/_28%)]",
-        colorClasses
-      )}
-    >
-      {label}
-    </Badge>
-  );
-};
 
 export const isPastDue = (item: Item) => {
   const dueDateText = item.dueDate;

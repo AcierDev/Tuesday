@@ -6,7 +6,6 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 
 import { ColumnVisibilitySettings } from "./ColumnVisibilitySettings";
-import { DueBadgeSettings } from "./DueBadgeSettings";
 import { RecentEditsSettings } from "./RecentEditsSettings";
 import { ShippingSettingsEditor } from "./ShippingSettingsEditor";
 
@@ -20,7 +19,6 @@ interface SettingsPanelProps {
 }
 
 const SECTION_TITLES: Record<string, string> = {
-  "due-badge": "Due Badge",
   "recent-edits": "Recent Edits",
   shipping: "Shipping",
   columns: "Column Visibility",
@@ -30,7 +28,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   settings,
   updateSettings,
   onClose,
-  initialTab = "due-badge",
+  initialTab = "recent-edits",
 }) => {
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -118,12 +116,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     },
                   })
                 }
-              />
-            )}
-            {activeTab === "due-badge" && (
-              <DueBadgeSettings
-                dueBadgeDays={settings.dueBadgeDays}
-                updateSettings={updateSettings}
               />
             )}
             {activeTab === "recent-edits" && (

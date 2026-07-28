@@ -102,11 +102,15 @@ export type Item = {
     hasCustomerMessage?: boolean;
   };
   isScheduled?: boolean;
-  // On Hold: parked at the bottom of On Deck. Paused in forward-looking stats,
-  // never auto-scheduled onto the planner calendar, never auto-demoted. See
-  // DueBadge (toggle), useAutoPromoteByDueDate, production-planning page, and
-  // the stats item-fetch / backlog-snapshot filters.
+  // Paused due date. New / On Deck items are also parked at the bottom of On
+  // Deck, never auto-scheduled, and never auto-demoted. Packaging / At The Door
+  // items remain in their current workflow section. Paused items are excluded
+  // from forward-looking stats.
   onHold?: boolean;
+  // Calendar-day distance from today to the due date while paused. The
+  // effective due date is always today + this offset, so the days remaining
+  // stays constant until the pause is resumed.
+  dueDatePauseOffsetDays?: number | null;
   searchText?: string;
   purchasedShipment?: PurchasedShipment;
 };
@@ -452,7 +456,6 @@ export type OrderSettings = {
   automatronRules: AutomatronRule[];
   isAutomatronActive: boolean;
   columnVisibility: ColumnVisibilitySettings;
-  dueBadgeDays: number;
   statusColors: StatusColors;
   showSortingIcons: boolean;
   recentEditHours?: number;

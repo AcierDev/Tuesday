@@ -12,7 +12,6 @@ import { cn } from "@/utils/functions";
 import React from "react";
 import { Item, ColumnTitles, ItemStatus } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { DueBadge } from "./DueBadge";
 import {
   useTodayScheduledIds,
@@ -65,7 +64,6 @@ export const NameCell: React.FC<NameCellProps> = ({
   const previousValueRef = useRef(columnValue.text);
 
   const { updateItem } = useOrderStore();
-  const { settings } = useOrderSettings();
 
   useEffect(() => {
     if (columnValue.text !== previousValueRef.current) {
@@ -151,7 +149,7 @@ export const NameCell: React.FC<NameCellProps> = ({
     parsedDueDate &&
     isValid(parsedDueDate) &&
     item.status !== ItemStatus.Done ? (
-      <DueBadge item={item} range={settings.dueBadgeDays} />
+      <DueBadge item={item} />
     ) : null;
 
   const scheduleBadge = scheduleTag ? (

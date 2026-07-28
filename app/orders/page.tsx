@@ -36,6 +36,7 @@ import { useOrderFiltering } from "@/hooks/useOrderFiltering";
 import { useOrderStats } from "@/hooks/useOrderStats";
 import { useAutoPromoteByDueDate } from "@/hooks/useAutoPromoteByDueDate";
 import { ResponsiveOrdersView } from "@/components/orders/ResponsiveOrdersView";
+import { canPauseDueDate, resumeDueDate } from "@/lib/due-date-pause";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🎯 STATUS DROP TARGETS                                               ║
@@ -209,10 +210,7 @@ export default function OrderManagementPage() {
     [sortColumn, sortDirection]
   );
 
-  const dueCounts = useOrderStats({
-    items,
-    dueBadgeDays: settings.dueBadgeDays,
-  });
+  const dueCounts = useOrderStats({ items });
 
   const sortedGroups = useOrderFiltering({
     items,
@@ -242,17 +240,19 @@ export default function OrderManagementPage() {
       if (item.status === newStatus) return;
 
       try {
-        const leavesOnDeck =
-          newStatus !== ItemStatus.New && newStatus !== ItemStatus.OnDeck;
-        const updatedItem = {
+        const movedItem: Item = {
           ...item,
           status: newStatus,
           prevStatus: null,
           completedAt: newStatus === ItemStatus.Done ? Date.now() : undefined,
-          // A parked (held) item moving into production — or any status outside
-          // New / On Deck — is no longer parked, so clear the hold.
-          onHold: leavesOnDeck ? false : item.onHold,
         };
+        // Keep a pause while moving between supported sections (including
+        // Packaging → At The Door). Leaving those sections resumes the due date
+        // at its current effective value.
+        const updatedItem =
+          item.onHold && !canPauseDueDate(newStatus)
+            ? resumeDueDate(movedItem)
+            : movedItem;
 
         await updateItem(updatedItem);
       } catch (error) {

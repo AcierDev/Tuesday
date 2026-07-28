@@ -1,30 +1,28 @@
 import { useMemo, useCallback } from "react";
+import { differenceInCalendarDays, parseISO } from "date-fns";
 import { Item, ItemSizes, ItemDesigns, ItemStatus } from "@/typings/types";
+import { isWithinDueBadgeWarningWindow } from "@/config/due-badge";
 
 interface UseOrderStatsProps {
   items: Item[] | undefined;
-  dueBadgeDays: number;
 }
 
-export function useOrderStats({ items, dueBadgeDays }: UseOrderStatsProps) {
+export function isDueDateWithinStatsWindow(
+  dueDate: Item["dueDate"],
+  referenceDate = new Date()
+): boolean {
+  if (!dueDate) return false;
+
+  const calendarDayDistance = Math.abs(
+    differenceInCalendarDays(parseISO(dueDate), referenceDate)
+  );
+  return isWithinDueBadgeWarningWindow(calendarDayDistance);
+}
+
+export function useOrderStats({ items }: UseOrderStatsProps) {
   const isItemDue = useCallback(
-    (item: Item) => {
-      // Use flattened due date field
-      const dueDate = item.dueDate;
-
-      if (!dueDate) return false;
-
-      const dueDateObj = new Date(dueDate);
-      const currentDate = new Date();
-      const daysDifference = Math.abs(
-        Math.ceil(
-          (dueDateObj.getTime() - currentDate.getTime()) / (1000 * 3600 * 24)
-        )
-      );
-
-      return daysDifference <= dueBadgeDays;
-    },
-    [dueBadgeDays]
+    (item: Item) => isDueDateWithinStatsWindow(item.dueDate),
+    []
   );
 
   const dueCounts = useMemo(() => {

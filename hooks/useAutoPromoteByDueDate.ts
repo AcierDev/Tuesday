@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react";
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import { Item, ItemStatus } from "@/typings/types";
-import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { isWithinDueBadgeWarningWindow } from "@/config/due-badge";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ ⏰ AUTO-FILL ON DECK FROM NEW (yellow/red + min floor, hard max cap)   ║
@@ -35,7 +35,6 @@ const ON_DECK_MAX_COUNT = 20;
 const NO_DUE_RANK = Number.POSITIVE_INFINITY;
 
 export function useAutoPromoteByDueDate(items: Item[] | undefined) {
-  const { settings } = useOrderSettings();
   const updateItem = useOrderStore((state) => state.updateItem);
 
   const inFlightRef = useRef<Set<string>>(new Set());
@@ -48,9 +47,6 @@ export function useAutoPromoteByDueDate(items: Item[] | undefined) {
     // re-render with partial state — evaluating then would let the algorithm
     // queue contradictory updates against an inconsistent view.
     if (inFlightRef.current.size > 0) return;
-
-    const range = settings.dueBadgeDays;
-    if (typeof range !== "number") return;
 
     const today = new Date();
 
@@ -108,12 +104,13 @@ export function useAutoPromoteByDueDate(items: Item[] | undefined) {
     };
 
     // Items that WANT to be on deck before the floor/cap are applied:
-    //   • urgent  — due within `range` (yellow/red)
+    //   • urgent  — due within the fixed warning window (yellow/red)
     //   • manual  — already OnDeck with no prevStatus (user placed it)
     const wantIds = new Set<string>();
     for (const i of pool) {
       const d = computeDelta(i);
-      const isUrgent = d !== null && d <= range;
+      const isUrgent =
+        d !== null && isWithinDueBadgeWarningWindow(d);
       const isManual = i.status === ItemStatus.OnDeck && !i.prevStatus;
       if (isUrgent || isManual) wantIds.add(i.id);
     }
@@ -179,5 +176,5 @@ export function useAutoPromoteByDueDate(items: Item[] | undefined) {
           inFlightRef.current.delete(item.id);
         });
     }
-  }, [items, settings.dueBadgeDays, updateItem]);
+  }, [items, updateItem]);
 }

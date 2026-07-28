@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "incremental": false
+  },
+  "include": [
+    "../config/due-badge.ts",
+    "../hooks/useOrderStats.ts",
+    "../lib/order-settings.ts",
+    "../tests/due-badge.test.ts",
+    "../tests/order-settings.test.ts",
+    "../tests/order-settings-contract.type-test.ts",
+    "../typings/types.ts"
+  ],
+  "exclude": ["../node_modules", "../.next"]
+}

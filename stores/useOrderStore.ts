@@ -5,11 +5,14 @@ import { Item, ColumnTitles, ItemStatus } from "@/typings/types";
 import { useWeeklyScheduleStore } from "./useWeeklyScheduleStore";
 import { ItemUtil } from "@/utils/ItemUtil";
 import { invalidateStatsCaches } from "@/lib/stats-shared";
+import { laDayKey } from "@/lib/debt-metrics";
+import { updatePausedDueDate } from "@/lib/due-date-pause";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
 const SSE_RECONNECT_BASE_MS = 2_000;
 const SSE_RECONNECT_MAX_MS = 60_000;
+const PAUSED_DUE_DATE_CLOCK_CHECK_MS = 60_000;
 
 // When a live item change arrives over SSE, refresh the stats caches so any open
 // stats page / nav badge / glued badge updates without a manual refresh. Debounced
@@ -25,6 +28,8 @@ const debouncedInvalidateStats = debounce(
 
 let sseReconnectAttempts = 0;
 let sseReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let pausedDueDateClock: ReturnType<typeof setInterval> | null = null;
+let pausedDueDateClockDayKey: string | null = null;
 
 // Coalesces search keystrokes into a single API call. Lodash.debounce keeps the
 // latest args, so the trailing fire uses the most recent query.
@@ -168,6 +173,24 @@ export const useOrderStore = create<OrderState>()(
             isLoading: false,
             doneItemsLoaded: false,
           });
+
+          // Keep an already-open board current across LA midnight. ItemUtil
+          // derives each paused due date from its fixed days-remaining offset.
+          if (!pausedDueDateClock) {
+            pausedDueDateClockDayKey = laDayKey();
+            pausedDueDateClock = setInterval(() => {
+              const currentDayKey = laDayKey();
+              if (currentDayKey === pausedDueDateClockDayKey) return;
+              pausedDueDateClockDayKey = currentDayKey;
+              set((state) => ({
+                allItems: state.allItems.map(ItemUtil.processItem),
+                items: state.items.map(ItemUtil.processItem),
+                doneItems: state.doneItems.map(ItemUtil.processItem),
+                scheduledItems: state.scheduledItems.map(ItemUtil.processItem),
+                searchResults: state.searchResults.map(ItemUtil.processItem),
+              }));
+            }, PAUSED_DUE_DATE_CLOCK_CHECK_MS);
+          }
 
           // Start watching for changes after initial load
           get().startWatchingChanges();
@@ -339,7 +362,7 @@ export const useOrderStore = create<OrderState>()(
       },
 
       updateItem: async (updatedItem, changedField) => {
-        const { items } = get();
+        const { items, doneItems, scheduledItems } = get();
         if (!items) return;
 
         // Map changedField to property name
@@ -359,6 +382,20 @@ export const useOrderStore = create<OrderState>()(
 
         // Construct item to update with flat fields
         let itemToUpdate = { ...updatedItem };
+        const currentItem =
+          items.find((item) => item.id === updatedItem.id) ??
+          doneItems.find((item) => item.id === updatedItem.id) ??
+          scheduledItems.find((item) => item.id === updatedItem.id);
+        const dueDateChanged =
+          changedField === ColumnTitles.Due ||
+          (currentItem !== undefined &&
+            currentItem.dueDate !== updatedItem.dueDate);
+        if (itemToUpdate.onHold && dueDateChanged) {
+          itemToUpdate = updatePausedDueDate(
+            itemToUpdate,
+            itemToUpdate.dueDate ?? ""
+          );
+        }
 
         // If we need to track timestamps per field, we might need a separate 'metadata' object or suffix fields like 'design_timestamp'
         // For now, assuming raw update.

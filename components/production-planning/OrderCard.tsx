@@ -7,7 +7,6 @@ import { DayName, ItemStatus } from "@/typings/types";
 import { OrderMeta } from "./types";
 import { cn } from "@/utils/functions";
 import { Pin } from "lucide-react";
-import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import {
   DESIGN_PILL_TRIGGER,
   DESIGN_TAG_ALPHA,
@@ -99,8 +98,6 @@ export function OrderCard({
   justPlaced = false,
   placeIndex = 0,
 }: OrderCardProps) {
-  const { settings } = useOrderSettings();
-
   const size = meta.item.size || "N/A";
   const customerName = meta.item.customerName || "Unknown";
   const design = meta.item.design || "";
@@ -230,7 +227,6 @@ export function OrderCard({
           )}
           <DueBadge
             item={meta.item}
-            range={settings.dueBadgeDays}
             referenceDate={referenceDate}
             interactive={false}
           />

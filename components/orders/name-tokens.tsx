@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, MoveVertical, Printer, Zap } from "lucide-react";
+import { MapPin, MoveVertical, Printer, Wrench, Zap } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -12,6 +12,7 @@ import { parseMinecraftColors } from "@/parseMinecraftColors";
 const RUSHED_TOKEN = /\(rushed\)/i;
 const LOCAL_TOKEN = /\(local\)/i;
 const VERTICAL_TOKEN = /\(vertical\)/i;
+const CUSTOM_TOKEN = /\(custom\)/i;
 const BRAND_PREFIX = /^\[(EW|WF|SH)\]\s*/;
 
 export type NameTokens = {
@@ -19,6 +20,7 @@ export type NameTokens = {
   isRushed: boolean;
   isLocal: boolean;
   isVertical: boolean;
+  isCustom: boolean;
   brandPrefix: "EW" | "WF" | "SH" | null;
   isPrintMarker: boolean;
 };
@@ -31,10 +33,12 @@ export function parseNameTokens(rawName: string): NameTokens {
   const isRushed = RUSHED_TOKEN.test(trimmed);
   const isLocal = LOCAL_TOKEN.test(trimmed);
   const isVertical = VERTICAL_TOKEN.test(trimmed);
+  const isCustom = CUSTOM_TOKEN.test(trimmed);
   const stripped = trimmed
     .replace(RUSHED_TOKEN, "")
     .replace(LOCAL_TOKEN, "")
     .replace(VERTICAL_TOKEN, "")
+    .replace(CUSTOM_TOKEN, "")
     .replace(/\s{2,}/g, " ")
     .trim();
   const brandMatch = stripped.match(BRAND_PREFIX);
@@ -50,6 +54,7 @@ export function parseNameTokens(rawName: string): NameTokens {
     isRushed,
     isLocal,
     isVertical,
+    isCustom,
     brandPrefix,
     isPrintMarker,
   };
@@ -156,6 +161,30 @@ export function VerticalTag() {
   );
 }
 
+export function CustomTag() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "inline-flex items-center gap-0.5 rounded-md px-1 py-px",
+            "bg-purple-500 text-white ring-1 ring-purple-600",
+            "dark:bg-purple-500/90 dark:ring-purple-400/60",
+            "text-[0.525rem] font-bold uppercase tracking-wide flex-shrink-0",
+            "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_1px_2px_rgba(0,0,0,0.08)]"
+          )}
+        >
+          <Wrench className="h-[0.5625rem] w-[0.5625rem]" strokeWidth={2.75} />
+          Custom
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Custom order</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 // Single source of truth for rendering an order's customer name plus all
 // token-derived badges inline. Both the orders board (NameCell) and the
 // planner (OrderCard) call this, so any badge added here automatically
@@ -166,6 +195,7 @@ export function OrderNameDisplay({ rawName }: { rawName: string }) {
     isRushed,
     isLocal,
     isVertical,
+    isCustom,
     brandPrefix,
     isPrintMarker,
   } = parseNameTokens(rawName);
@@ -186,6 +216,7 @@ export function OrderNameDisplay({ rawName }: { rawName: string }) {
       {isRushed && <RushedTag />}
       {isLocal && <LocalTag />}
       {isVertical && <VerticalTag />}
+      {isCustom && <CustomTag />}
     </>
   );
 }

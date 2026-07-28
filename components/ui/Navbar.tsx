@@ -23,7 +23,6 @@ import {
   Magnet,
   Scissors,
   BarChart3,
-  Clock,
   Edit,
   UserCircle,
   Truck,
@@ -152,7 +151,6 @@ const settingsTabs: {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { value: "due-badge", label: "Due Badge", icon: Clock },
   { value: "recent-edits", label: "Recent Edits", icon: Edit },
   { value: "shipping", label: "Shipping", icon: Truck },
 ];
@@ -982,22 +980,6 @@ export function Navbar({
                   }}
                 >
                   {settingsTabs.map(({ value, label, icon: Icon }) => {
-                    if (value === "due-badge") {
-                      return (
-                        <SliderSettingPopover
-                          key={value}
-                          label={label}
-                          icon={Icon}
-                          value={settings.dueBadgeDays ?? 3}
-                          min={1}
-                          max={14}
-                          onChange={(v) => updateSettings({ dueBadgeDays: v })}
-                          open={openSliderId === value}
-                          onOpenChange={setSliderOpen(value)}
-                          description="Days before due date when the day-counter badge turns yellow."
-                        />
-                      );
-                    }
                     if (value === "recent-edits") {
                       return (
                         <SliderSettingPopover

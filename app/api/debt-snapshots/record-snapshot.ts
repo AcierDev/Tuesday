@@ -31,6 +31,7 @@ export async function recordTodayDebtSnapshot(): Promise<DebtSnapshot> {
       {
         visible: true,
         deleted: false,
+        onHold: { $ne: true },
         status: { $nin: [ItemStatus.Done, ItemStatus.Hidden] },
       },
       { projection: { dueDate: 1, status: 1 } }

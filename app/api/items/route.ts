@@ -8,6 +8,11 @@ import {
 } from "@/typings/types";
 import { ItemStatus } from "@/typings/types";
 import { logActivity } from "../activities/log";
+import {
+  getEffectiveDueDateKey,
+  hasStoredDueDatePauseOffset,
+  pauseDueDate,
+} from "@/lib/due-date-pause";
 
 // CORS headers helper function
 function getCorsHeaders(requestOrigin?: string) {
@@ -138,8 +143,45 @@ export async function GET(request: Request) {
     }
 
     const items = await cursor.toArray();
+
+    // Lazily initialize the fixed days-remaining offset for held records that
+    // predate due-date pausing. This makes an existing hold start behaving as
+    // a true pause the first time the upgraded app reads it.
+    const itemsForResponse = await Promise.all(
+      items.map(async (item) => {
+        let normalized = item;
+        if (item.onHold && !hasStoredDueDatePauseOffset(item)) {
+          const migrated = pauseDueDate(item);
+          const migratedOffset = migrated.dueDatePauseOffsetDays;
+          if (
+            typeof migratedOffset === "number" &&
+            Number.isFinite(migratedOffset)
+          ) {
+            await collection.updateOne(
+              { id: item.id, onHold: true },
+              {
+                $set: {
+                  dueDatePauseOffsetDays: migratedOffset,
+                },
+              }
+            );
+            normalized = {
+              ...item,
+              dueDatePauseOffsetDays: migratedOffset,
+            };
+          }
+        }
+
+        const effectiveDueDate = getEffectiveDueDateKey(normalized);
+        return effectiveDueDate && effectiveDueDate !== normalized.dueDate
+          ? { ...normalized, dueDate: effectiveDueDate }
+          : normalized;
+      })
+    );
     const origin = request.headers.get("origin") || undefined;
-    return NextResponse.json(items, { headers: getCorsHeaders(origin) });
+    return NextResponse.json(itemsForResponse, {
+      headers: getCorsHeaders(origin),
+    });
   } catch (error) {
     const origin = request.headers.get("origin") || undefined;
     return NextResponse.json(

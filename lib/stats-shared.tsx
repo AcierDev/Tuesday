@@ -613,8 +613,17 @@ type AllItemsState = {
 
 // Stats pages only read these fields. Trimming the projection slashes payload
 // size by ~70% (notes, blobs, history, label data are the main bulk).
-const STATS_FIELDS =
-  "dueDate,status,completedAt,createdAt,design,size,customerName,onHold";
+const STATS_FIELDS = [
+  "dueDate",
+  "status",
+  "completedAt",
+  "createdAt",
+  "design",
+  "size",
+  "customerName",
+  "onHold",
+  "dueDatePauseOffsetDays",
+].join(",");
 const STATS_ITEMS_URL = `/api/items?includeDone=true&includeHidden=true&fields=${STATS_FIELDS}`;
 const ITEMS_CACHE_TTL_MS = 60_000;
 

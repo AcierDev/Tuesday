@@ -34,7 +34,10 @@ export default function ForecastPage() {
 
     const today = laDayKey();
     const active = items.filter(
-      (i) => i.status !== ItemStatus.Done && i.status !== ItemStatus.Hidden
+      (i) =>
+        i.status !== ItemStatus.Done &&
+        i.status !== ItemStatus.Hidden &&
+        !i.onHold
     );
 
     const rows = active

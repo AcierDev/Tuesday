@@ -507,35 +507,62 @@ export function ViewLabel({
                   } for Order ${orderId}`}
                 />
               </div>
-              {orderLabels.length > 1 && (
-                <div className="flex justify-between items-center px-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setCurrentPdfIndex((prev) => Math.max(0, prev - 1))
-                    }
-                    disabled={currentPdfIndex === 0}
-                  >
-                    <ChevronLeft className="mr-1 h-4 w-4" /> Previous
-                  </Button>
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    Label {currentPdfIndex + 1} of {orderLabels.length}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setCurrentPdfIndex((prev) =>
-                        Math.min(orderLabels.length - 1, prev + 1)
-                      )
-                    }
-                    disabled={currentPdfIndex === orderLabels.length - 1}
-                  >
-                    Next <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+              <div className="flex items-center justify-between gap-3 px-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    handleRetryExtraction(
+                      orderLabels[currentPdfIndex] || "",
+                      currentPdfIndex
+                    )
+                  }
+                  disabled={retryingFiles.has(
+                    orderLabels[currentPdfIndex] || ""
+                  )}
+                  className="border-blue-500/30 text-blue-300 hover:bg-blue-500/10 hover:text-blue-200"
+                >
+                  <RefreshCw
+                    className={`mr-1.5 h-4 w-4 ${
+                      retryingFiles.has(orderLabels[currentPdfIndex] || "")
+                        ? "animate-spin"
+                        : ""
+                    }`}
+                  />
+                  {retryingFiles.has(orderLabels[currentPdfIndex] || "")
+                    ? "Rescanning…"
+                    : "Rescan"}
+                </Button>
+                {orderLabels.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPdfIndex((prev) => Math.max(0, prev - 1))
+                      }
+                      disabled={currentPdfIndex === 0}
+                    >
+                      <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                    </Button>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      Label {currentPdfIndex + 1} of {orderLabels.length}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPdfIndex((prev) =>
+                          Math.min(orderLabels.length - 1, prev + 1)
+                        )
+                      }
+                      disabled={currentPdfIndex === orderLabels.length - 1}
+                    >
+                      Next <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center">
@@ -586,7 +613,9 @@ export function ViewLabel({
                                 : ""
                             }`}
                           />
-                          {retryingFiles.has(filename) ? "Reading…" : "Retry"}
+                          {retryingFiles.has(filename)
+                            ? "Rescanning…"
+                            : "Rescan"}
                         </Button>
                         <Button
                           variant="ghost"

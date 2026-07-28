@@ -3,6 +3,29 @@ import { NextResponse } from "next/server";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
+// Number of times to run the AI analysis before giving up. The model
+// occasionally misreads or returns an invalid tracking number on the first
+// pass, so we retry once.
+const MAX_EXTRACTION_ATTEMPTS = 2;
+
+const TRACKING_FORMATS: Record<string, RegExp> = {
+  UPS: /^1Z[A-Z0-9]{16}$/,
+  FedEx: /^(\d{12}|\d{14,15})$/,
+  USPS: /^(\d{20}|\d{26}|\d{30}|9\d{15,21})$/,
+  DHL: /^[0-9]{10,12}$/,
+};
+
+function isValidTrackingInfo(info: unknown): boolean {
+  if (!info || typeof info !== "object") return false;
+  const { trackingNumber, carrier } = info as {
+    trackingNumber?: string;
+    carrier?: string;
+  };
+  if (!trackingNumber || !carrier) return false;
+  const cleaned = String(trackingNumber).replace(/\s+/g, "");
+  return TRACKING_FORMATS[carrier]?.test(cleaned) ?? false;
+}
+
 async function pdfToGenerativePart(pdfBuffer: Buffer) {
   return {
     inlineData: {
@@ -58,7 +81,22 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await pdfFile.arrayBuffer());
-    const trackingInfo = await extractTrackingNumber(buffer);
+
+    // Run the AI analysis up to MAX_EXTRACTION_ATTEMPTS times, stopping early
+    // once we get a valid tracking number. Keeps the most recent non-null read
+    // so the client still gets a result (and can fall back to manual entry)
+    // even if every attempt is invalid.
+    let trackingInfo: unknown = null;
+    for (let attempt = 1; attempt <= MAX_EXTRACTION_ATTEMPTS; attempt++) {
+      const result = await extractTrackingNumber(buffer);
+      if (result) trackingInfo = result;
+      if (isValidTrackingInfo(result)) break;
+      if (attempt < MAX_EXTRACTION_ATTEMPTS) {
+        console.warn(
+          `Tracking extraction attempt ${attempt} failed — retrying`
+        );
+      }
+    }
 
     if (!trackingInfo) {
       return NextResponse.json(

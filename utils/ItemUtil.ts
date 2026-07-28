@@ -8,6 +8,7 @@ import { DESIGN_COLOR_NAMES, SIZE_MULTIPLIERS } from "@/typings/constants";
 import { BoxRequirement } from "@/typings/interfaces";
 import { BOX_COLORS } from "@/typings/constants";
 import { backboardData } from "@/typings/constants";
+import { getEffectiveDueDateKey } from "@/lib/due-date-pause";
 
 export class ItemUtil {
   static processItem(item: Item): Item {
@@ -15,20 +16,26 @@ export class ItemUtil {
     // or if we need to calculate derived fields in the future.
     // We ensure searching works by pre-computing searchText if not present.
 
-    if (item.searchText) return item;
+    const effectiveDueDate = getEffectiveDueDateKey(item);
+    const normalizedItem =
+      effectiveDueDate && effectiveDueDate !== item.dueDate
+        ? { ...item, dueDate: effectiveDueDate }
+        : item;
+
+    if (normalizedItem.searchText) return normalizedItem;
 
     const searchableFields = [
-      item.customerName,
-      item.design,
-      item.size,
-      item.notes,
-      item.id,
+      normalizedItem.customerName,
+      normalizedItem.design,
+      normalizedItem.size,
+      normalizedItem.notes,
+      normalizedItem.id,
     ];
 
     const searchText = searchableFields.filter(Boolean).join(" ").toLowerCase();
 
     return {
-      ...item,
+      ...normalizedItem,
       searchText,
     };
   }

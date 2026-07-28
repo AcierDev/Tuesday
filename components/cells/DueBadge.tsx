@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { differenceInCalendarDays, parseISO, isValid } from "date-fns";
+import {
+  differenceInCalendarDays,
+  format,
+  parseISO,
+  isValid,
+} from "date-fns";
 import { Pause, Play } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -16,11 +21,17 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn, formatDueDelta } from "@/utils/functions";
 import { Item, ItemStatus } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import {
+  canPauseDueDate,
+  getEffectiveDueDateKey,
+  pauseDueDate,
+  resumeDueDate,
+  updatePausedDueDate,
+} from "@/lib/due-date-pause";
+import { isWithinDueBadgeWarningWindow } from "@/config/due-badge";
 
 interface DueBadgeProps {
   item: Item;
-  // Yellow-threshold cutoff, in days. Matches OrderSettings.dueBadgeDays.
-  range: number;
   // Reference date for the delta. Defaults to today; the planner passes the
   // scheduled day so a card shows "due on/by this scheduled day", not "due
   // from today".
@@ -38,14 +49,13 @@ interface DueBadgeProps {
 // updates with it.
 export const DueBadge = ({
   item,
-  range,
   referenceDate,
   interactive = true,
 }: DueBadgeProps) => {
   const [open, setOpen] = useState(false);
   const { updateItem } = useOrderStore();
 
-  const dueDateString = item.dueDate;
+  const dueDateString = getEffectiveDueDateKey(item);
   if (!dueDateString) return null;
 
   const parsed = parseISO(dueDateString);
@@ -58,11 +68,9 @@ export const DueBadge = ({
   const isWeekMode = suffix !== undefined;
   const isSingleDigit = !isWeekMode && primary.length === 1;
   const onHold = !!item.onHold;
-  // Hold is a pre-production parking concept — only offer it for New / On Deck
-  // items. (An already-held item can always be released, even if its status
-  // somehow drifted, so the toggle stays reachable.)
-  const canHold =
-    item.status === ItemStatus.New || item.status === ItemStatus.OnDeck;
+  // An already-paused item can always be resumed even if its status somehow
+  // drifted, so the toggle remains reachable.
+  const canPause = canPauseDueDate(item.status);
 
   let toneClasses: string;
   if (onHold) {
@@ -74,7 +82,7 @@ export const DueBadge = ({
     toneClasses = interactive
       ? "bg-red-500/70 hover:bg-red-500/90 text-white"
       : "bg-red-500/70 text-white";
-  } else if (delta === 0 || delta <= range) {
+  } else if (isWithinDueBadgeWarningWindow(delta)) {
     toneClasses = interactive
       ? "bg-yellow-500/70 hover:bg-yellow-500/90 text-white"
       : "bg-yellow-500/70 text-white";
@@ -111,7 +119,7 @@ export const DueBadge = ({
     primary
   );
 
-  // Held badges carry a small pause glyph so the parked state is glanceable.
+  // Paused badges carry a small glyph so the state is glanceable.
   const content = onHold ? (
     <span className="flex items-center gap-0.5">
       <Pause className="h-2.5 w-2.5 flex-shrink-0 fill-current" />
@@ -137,7 +145,10 @@ export const DueBadge = ({
   const handleSelect = async (newDate: Date | undefined) => {
     if (!newDate) return;
     try {
-      const updated = { ...item, dueDate: newDate.toISOString() };
+      const updated = updatePausedDueDate(
+        item,
+        format(newDate, "yyyy-MM-dd")
+      );
       await updateItem(updated);
       setOpen(false);
     } catch (err) {
@@ -145,16 +156,14 @@ export const DueBadge = ({
     }
   };
 
-  // Toggle Hold. Holding parks a pre-production item at the bottom of On Deck so
-  // it stays out of the live queue while being excluded from stats and the
-  // planner calendar. prevStatus is cleared so the auto-promote self-heal never fires.
+  // Toggle the due-date pause. Pre-production items are also parked at the
+  // bottom of On Deck; Packaging / At The Door items stay in their section.
   const handleToggleHold = async () => {
     const next = !onHold;
-    // Guard: never place a hold on a non-New/On Deck item (button is hidden in
-    // that case, but stay defensive). Releasing is always allowed.
-    if (next && !canHold) return;
+    // The button is hidden for unsupported statuses, but stay defensive.
+    if (next && !canPause) return;
     try {
-      const updated: Item = { ...item, onHold: next };
+      const updated = next ? pauseDueDate(item) : resumeDueDate(item);
       if (
         next &&
         (item.status === ItemStatus.New || item.status === ItemStatus.OnDeck)
@@ -203,7 +212,7 @@ export const DueBadge = ({
           onSelect={handleSelect}
           className="text-gray-900 dark:text-gray-100"
         />
-        {(canHold || onHold) && (
+        {(canPause || onHold) && (
           <>
             <Separator />
             <div className="p-2">
@@ -216,12 +225,12 @@ export const DueBadge = ({
                 {onHold ? (
                   <>
                     <Play className="h-4 w-4 fill-current" />
-                    Release hold
+                    Resume due date
                   </>
                 ) : (
                   <>
                     <Pause className="h-4 w-4 fill-current" />
-                    Hold
+                    Pause due date
                   </>
                 )}
               </Button>

@@ -41,6 +41,7 @@ export async function recordTodayHealthSnapshot(): Promise<HealthSnapshot> {
           design: 1,
           size: 1,
           shippingDetails: 1,
+          onHold: 1,
         },
       }
     )

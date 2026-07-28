@@ -961,8 +961,13 @@ export function computeHealthScore(
   const debtClearedNow = options.simulateDebtCleared || sustainedDays > 0;
   const sustainedCutoff =
     sustainedDays > 0 ? shiftDayKey(today, -(sustainedDays - 1)) : null;
+  // Paused items do not participate in debt, currently-late, or forecast
+  // health. Historical completion metrics remain unchanged.
   const activeAll = items.filter(
-    (i) => i.status !== ItemStatus.Done && i.status !== ItemStatus.Hidden
+    (i) =>
+      i.status !== ItemStatus.Done &&
+      i.status !== ItemStatus.Hidden &&
+      !i.onHold
   );
   // Counterfactual: pretend all currently-overdue items are gone. They drop
   // out of the debt, late-now, and forecast computations — but historical
