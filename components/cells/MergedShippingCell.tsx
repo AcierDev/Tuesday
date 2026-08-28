@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Image from "next/image";
 import {
   AlertCircle,
@@ -26,6 +26,8 @@ import { useShippingStore } from "@/stores/useShippingStore";
 import { useTrackingStore } from "@/stores/useTrackingStore";
 import { Item, ItemStatus } from "@/typings/types";
 import { TrackingHistory } from "../shipping/TrackingHistory";
+import { TrackingLabelAccessButton } from "../shipping/TrackingLabelAccessButton";
+import { useShippingDialogState } from "../shipping/useShippingDialogState";
 import { ViewLabel } from "../shipping/ViewLabel";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -168,9 +170,6 @@ interface MergedShippingCellProps {
 }
 
 export function MergedShippingCell({ item }: MergedShippingCellProps) {
-  const [isLabelOpen, setIsLabelOpen] = useState(false);
-  const [isTrackingOpen, setIsTrackingOpen] = useState(false);
-
   const hasLabel = useShippingStore((state) => state.hasLabel(item.id));
   const isLoading = useShippingStore((state) => state.isLoading);
   const { trackingInfo } = useTrackingStore();
@@ -206,6 +205,16 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
     () => (hasLabel ? resolveCarrierBadge(carrier) : null),
     [hasLabel, carrier]
   );
+  const {
+    isLabelOpen,
+    isTrackingOpen,
+    openLabels,
+    openPrimary,
+    setLabelOpen,
+    setTrackingOpen,
+  } = useShippingDialogState(
+    action === "openLabel" ? "label" : "tracking"
+  );
 
   if (icon === "hidden") return null;
 
@@ -219,8 +228,7 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
 
   const handleClick = () => {
     if (isLoading) return;
-    if (action === "openLabel") setIsLabelOpen(true);
-    else setIsTrackingOpen(true);
+    openPrimary();
   };
 
   return (
@@ -261,26 +269,30 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
         </Tooltip>
       </div>
 
-      {action === "openLabel" && (
-        <Dialog open={isLabelOpen} onOpenChange={setIsLabelOpen}>
+      {(action === "openLabel" || hasLabel) && (
+        <Dialog open={isLabelOpen} onOpenChange={setLabelOpen}>
           <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto bg-secondary text-secondary-foreground border-border">
             <DialogTitle className="sr-only">Shipping Label</DialogTitle>
             <ViewLabel
               orderId={item.id}
               item={item}
-              onClose={() => setIsLabelOpen(false)}
+              onClose={() => setLabelOpen(false)}
             />
           </DialogContent>
         </Dialog>
       )}
 
       {action === "openTracking" && (
-        <Dialog open={isTrackingOpen} onOpenChange={setIsTrackingOpen}>
+        <Dialog open={isTrackingOpen} onOpenChange={setTrackingOpen}>
           <DialogContent className="max-w-2xl bg-secondary text-secondary-foreground border-border">
-            <DialogHeader>
+            <DialogHeader className="flex-row items-center justify-between space-y-0 pr-10">
               <DialogTitle className="text-xl font-semibold">
                 Tracking History
               </DialogTitle>
+              <TrackingLabelAccessButton
+                hasLabel={hasLabel}
+                onViewLabels={openLabels}
+              />
             </DialogHeader>
             <TrackingHistory tracking={orderTracking} />
           </DialogContent>
