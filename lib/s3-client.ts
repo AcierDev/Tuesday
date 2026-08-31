@@ -6,6 +6,7 @@ import {
   HeadObjectCommand,
   GetObjectCommand,
 } from "@aws-sdk/client-s3";
+import { filterLegacyLabelKeys } from "@/lib/shipping-labels/storage";
 
 // Initialize the S3 client with credentials from environment variables
 const s3Client = new S3Client({
@@ -40,8 +41,8 @@ export async function listAllLabels(): Promise<string[]> {
     return [];
   }
 
-  return response.Contents.filter((obj) => obj.Key?.endsWith(".pdf")).map(
-    (obj) => obj.Key as string
+  return filterLegacyLabelKeys(
+    response.Contents.flatMap((obj) => (obj.Key ? [obj.Key] : []))
   );
 }
 

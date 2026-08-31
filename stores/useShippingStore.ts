@@ -1,8 +1,12 @@
 import { create } from "zustand";
+import { hasAnyShippingLabel } from "@/lib/shipping-labels/client";
+import { summarizeFutureLabels } from "@/lib/shipping-labels/client-api";
+import type { FutureLabelSummariesByOrder } from "@/types/shipping-labels";
 
 interface ShippingStore {
   s3Config: { bucket: string; region: string } | null;
   labels: Record<string, string[]>;
+  futureSummaries: FutureLabelSummariesByOrder;
   // Cache-busting token per filename. S3 filenames are reused (e.g. a deleted
   // `orderId.pdf` gets re-created with new content under the same name), so the
   // URL alone is not enough to defeat the browser cache — we version it.
@@ -37,6 +41,7 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
   return {
     s3Config: null,
     labels: {},
+    futureSummaries: {},
     labelVersions: {},
     isLoading: false,
     error: null,
@@ -44,14 +49,26 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
     fetchAllLabels: async () => {
       set({ isLoading: true, error: null });
       try {
-        const response = await fetch("/api/shipping/pdfs");
+        const [response, futureSummaries] = await Promise.all([
+          fetch("/api/shipping/pdfs"),
+          summarizeFutureLabels().catch((summaryError) => {
+            console.error(
+              "Failed to fetch future shipping-label counts",
+              summaryError
+            );
+            return get().futureSummaries;
+          }),
+        ]);
         if (!response.ok) throw new Error("Failed to fetch shipping labels");
 
         const data = await response.json();
-        
+
         // Handle both old array format and new object format
         const filenames: string[] = Array.isArray(data) ? data : data.files;
-        const s3Config = !Array.isArray(data) && data.config ? data.config : get().s3Config;
+        const s3Config =
+          !Array.isArray(data) && data.config
+            ? data.config
+            : get().s3Config;
 
         const labelsByOrder: Record<string, string[]> = {};
 
@@ -75,7 +92,13 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
           labelVersions[filename] = prevVersions[filename] ?? nextVersion();
         });
 
-        set({ labels: labelsByOrder, labelVersions, s3Config, isLoading: false });
+        set({
+          labels: labelsByOrder,
+          futureSummaries,
+          labelVersions,
+          s3Config,
+          isLoading: false,
+        });
       } catch (error) {
         set({
           error: error instanceof Error ? error.message : "Unknown error",
@@ -151,7 +174,10 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
     },
 
     hasLabel: (orderId: string) => {
-      return Boolean(get().labels[orderId]?.length);
+      return hasAnyShippingLabel(
+        get().labels[orderId] ?? [],
+        get().futureSummaries[orderId]
+      );
     },
 
     getLabelUrl: (filename: string) => {

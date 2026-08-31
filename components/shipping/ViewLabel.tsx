@@ -31,6 +31,7 @@ import { TrackingInfo, FileProgress } from "@/types/shipping";
 import { cn } from "@/utils/functions";
 import { FedExBuyLabelDialog } from "./FedExBuyLabelDialog";
 import { useLabelUpload } from "@/hooks/useLabelUpload";
+import { FutureLabelInventory } from "./FutureLabelInventory";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🎚️ TAB CONFIG                                                        ║
@@ -86,7 +87,7 @@ export function ViewLabel({
   });
   const { updateFileProgress, markFileComplete } = useUploadProgressStore();
   const { uploadLabels } = useLabelUpload();
-  const { labels, fetchAllLabels, removeLabel, getLabelUrl, isLoading } = useShippingStore();
+  const { labels, fetchAllLabels, removeLabel, getLabelUrl } = useShippingStore();
   const orderLabels = labels[orderId] || [];
   const pdfExists = orderLabels.length > 0;
   const [activeTab, setActiveTab] = useState<TabValue>(
@@ -425,15 +426,6 @@ export function ViewLabel({
     }
   };
 
-  if (isLoading && orderLabels.length === 0) {
-    return (
-      <div className="w-full flex items-center justify-center"
-           style={{ height: PREVIEW_HEIGHT }}>
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full space-y-4">
       {/*╔═══╗ ═══════════════════════════════════════════════════════════ ╔═══╗
@@ -485,6 +477,8 @@ export function ViewLabel({
           {item && <FedExBuyLabelDialog item={item} />}
         </div>
       </div>
+
+      <FutureLabelInventory key={orderId} orderId={orderId} />
 
       {/*╔═══╗ ═══════════════════════════════════════════════════════════ ╔═══╗
         ║ 🧱 LOCKED-HEIGHT CONTENT (toggle stays put across tabs)            ║

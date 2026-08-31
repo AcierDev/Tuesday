@@ -1,5 +1,6 @@
 import { getDb } from "@/app/api/db/connect";
 import { type OrderTrackingInfo, type Tracker } from "@/typings/types";
+import { upsertTrackerProjection } from "@/lib/shipping-labels/tracker-projection";
 
 const EASYPOST_API_KEY = process.env.EASYPOST_API_KEY;
 const EASYPOST_BASE_URL = "https://api.easypost.com/v2";
@@ -62,19 +63,12 @@ export async function createAndStoreTracker(
 ): Promise<OrderTrackingInfo> {
   const tracker = await fetchTracker(trackingCode, carrier);
   const db = await getDb();
-  const collection = db.collection<OrderTrackingInfo>(
-    `trackers-${process.env.NEXT_PUBLIC_MODE}`
-  );
   const payload: OrderTrackingInfo = {
     orderId,
     trackers: [tracker],
   };
 
-  await collection.updateOne(
-    { orderId },
-    { $set: payload },
-    { upsert: true }
-  );
+  await upsertTrackerProjection(db, orderId, tracker);
 
   return payload;
 }

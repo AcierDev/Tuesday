@@ -1,29 +1,21 @@
 import { NextResponse } from "next/server";
 import clientPromise from "../../db/connect";
-import { logActivity } from "../../activities/log";
 import {
-  Item,
   ItemStatus,
   OrderTrackingInfo,
   Tracker,
-  TrackerStatus,
 } from "@/typings/types";
+import { evaluateFutureLabelCompletion } from "@/lib/shipping-labels/order-completion";
+import { createFutureLabelCompletionDeps } from "@/lib/shipping-labels/order-completion-server";
+import { updateShippingLabelByTrackerId } from "@/lib/shipping-labels/repository";
+import { applyFutureLabelTrackerUpdate } from "@/lib/shipping-labels/webhook";
+import { processTrackerCompletion } from "@/lib/shipping-labels/webhook-completion";
 
 // Change the controller type to use string
 type ReadableStreamController = ReadableStreamDefaultController<string>;
 
 // Add a Set to store SSE clients
 const clients = new Set<ReadableStreamController>();
-
-//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ 📦 AUTO-DONE: tracker statuses meaning "package has left origin"      ║
-//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-const SHIPPED_STATUSES: ReadonlySet<TrackerStatus> = new Set<TrackerStatus>([
-  "in_transit",
-  "out_for_delivery",
-  "delivered",
-  "available_for_pickup",
-]);
 
 // Add an endpoint for SSE connections
 export async function GET() {
@@ -94,56 +86,42 @@ export async function POST(request: Request) {
 
       // console.log("Database update result:", updateResult);
 
-      //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-      //║ ✅ AUTO-COMPLETE: flip linked order to Done on first post-pickup scan  ║
-      //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-      let autoCompletedItemId: string | null = null;
-      if (SHIPPED_STATUSES.has(tracker.status)) {
-        const trackingDoc = await collection.findOne({
-          "trackers.id": tracker.id,
-        });
-        const orderId = trackingDoc?.orderId;
-        if (orderId) {
-          const itemsCollection = db.collection<Item>(
-            `items-${process.env.NEXT_PUBLIC_MODE}`
-          );
-          const item = await itemsCollection.findOne({ id: orderId });
-          if (
-            item &&
-            item.status !== ItemStatus.Done &&
-            item.status !== ItemStatus.Hidden
-          ) {
-            const previousStatus = item.status;
-            await itemsCollection.updateOne(
-              { id: orderId },
-              {
-                $set: {
-                  status: ItemStatus.Done,
-                  previousStatus,
-                  completedAt: Date.now(),
-                },
-              }
-            );
-            await logActivity(db, {
-              itemId: orderId,
-              type: "status_change",
-              changes: [
-                {
-                  field: "status",
-                  oldValue: previousStatus,
-                  newValue: ItemStatus.Done,
-                },
-              ],
-              metadata: {
-                customerName: item.customerName,
-                design: item.design,
-                size: item.size,
-              },
-            });
-            autoCompletedItemId = orderId;
-          }
+      const trackingDoc = await collection.findOne({
+        "trackers.id": tracker.id,
+      });
+      const completionDeps = createFutureLabelCompletionDeps(db);
+      const autoCompletedItemId = await processTrackerCompletion(
+        tracker,
+        trackingDoc?.orderId ?? null,
+        {
+          applyFutureLabelUpdate: (updatedTracker) =>
+            applyFutureLabelTrackerUpdate(updatedTracker, {
+              updateByTrackerId: (trackerId, nextTracker, updatedAt) =>
+                updateShippingLabelByTrackerId(
+                  db,
+                  trackerId,
+                  nextTracker,
+                  updatedAt
+                ),
+              evaluateOrderCompletion: (orderId) =>
+                evaluateFutureLabelCompletion(orderId, completionDeps),
+              now: Date.now,
+            }),
+          evaluateFutureLabelCompletion: (orderId) =>
+            evaluateFutureLabelCompletion(orderId, completionDeps),
+          completeLegacyOrder: async (orderId) => {
+            const item = await completionDeps.getOrder(orderId);
+            if (
+              !item ||
+              item.status === ItemStatus.Done ||
+              item.status === ItemStatus.Hidden
+            ) {
+              return false;
+            }
+            return completionDeps.completeOrder(item, completionDeps.now());
+          },
         }
-      }
+      );
 
       // Notify all connected clients
       const message = JSON.stringify({

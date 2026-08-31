@@ -29,6 +29,11 @@ import { TrackingHistory } from "../shipping/TrackingHistory";
 import { TrackingLabelAccessButton } from "../shipping/TrackingLabelAccessButton";
 import { useShippingDialogState } from "../shipping/useShippingDialogState";
 import { ViewLabel } from "../shipping/ViewLabel";
+import { RecentLabelIndicator } from "../shipping/RecentLabelIndicator";
+import {
+  isLabelAddedRecently,
+  RECENT_LABEL_WINDOW_HOURS,
+} from "@/lib/shipping-labels/inventory";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🎨 ICON DECISION TREE                                                 ║
@@ -171,8 +176,14 @@ interface MergedShippingCellProps {
 
 export function MergedShippingCell({ item }: MergedShippingCellProps) {
   const hasLabel = useShippingStore((state) => state.hasLabel(item.id));
+  const futureSummary = useShippingStore(
+    (state) => state.futureSummaries[item.id]
+  );
   const isLoading = useShippingStore((state) => state.isLoading);
   const { trackingInfo } = useTrackingStore();
+  const isRecentLabel =
+    isLabelAddedRecently(futureSummary?.latestCreatedAt) ||
+    isLabelAddedRecently(item.purchasedShipment?.purchasedAt);
 
   const orderTracking = useMemo(
     () => trackingInfo.find((t) => t.orderId === item.id),
@@ -239,7 +250,7 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
             <Button
               variant="ghost"
               className={`h-8 p-0 flex items-center justify-center -translate-x-[13px] ${
-                carrierBadge ? "w-auto px-1.5 gap-1" : "w-8"
+                carrierBadge || isRecentLabel ? "w-auto px-1.5 gap-1" : "w-8"
               }`}
               onClick={handleClick}
               disabled={isLoading}
@@ -254,6 +265,7 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
                   className="h-4 w-4 object-contain"
                 />
               )}
+              <RecentLabelIndicator isRecent={isRecentLabel} />
             </Button>
           </TooltipTrigger>
           {tooltip && (
@@ -262,6 +274,16 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
               {orderTracking?.trackers?.[0]?.carrier && (
                 <p className="text-xs text-muted-foreground">
                   {orderTracking.trackers[0].carrier}
+                </p>
+              )}
+              {futureSummary && (
+                <p className="text-xs text-muted-foreground">
+                  {futureSummary.unused} unused · {futureSummary.total} total
+                </p>
+              )}
+              {isRecentLabel && (
+                <p className="text-xs text-emerald-500">
+                  Label added in the last {RECENT_LABEL_WINDOW_HOURS} hours
                 </p>
               )}
             </TooltipContent>
