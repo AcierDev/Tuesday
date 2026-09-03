@@ -115,6 +115,34 @@ test("future upload passes the PDF and order into ingestion", async () => {
   assert.deepEqual((await response.json()).labels, memory.futureLabels);
 });
 
+test("future upload accepts a PDF when the runtime has no global File constructor", async () => {
+  const memory = createDeps();
+  const request = uploadRequest(
+    new File(["pdf-content"], "customer-labels.pdf", {
+      type: "application/pdf",
+    })
+  );
+  const fileDescriptor = Object.getOwnPropertyDescriptor(globalThis, "File");
+
+  try {
+    Object.defineProperty(globalThis, "File", {
+      configurable: true,
+      value: undefined,
+    });
+
+    const response = await handleFutureLabelUpload(request, memory.deps);
+
+    assert.equal(response.status, 201);
+    assert.equal(memory.getIngestedFileName(), "customer-labels.pdf");
+  } finally {
+    if (fileDescriptor) {
+      Object.defineProperty(globalThis, "File", fileDescriptor);
+    } else {
+      delete (globalThis as { File?: unknown }).File;
+    }
+  }
+});
+
 test("future list requires orderId and returns only that order", async () => {
   const memory = createDeps();
   const missing = await handleListFutureLabels(new URLSearchParams(), memory.deps);

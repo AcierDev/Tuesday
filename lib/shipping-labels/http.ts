@@ -32,7 +32,7 @@ function errorMessage(error: unknown): string {
 }
 
 function isPdfFile(value: FormDataEntryValue | null): value is File {
-  if (!(value instanceof File)) return false;
+  if (!value || typeof value === "string") return false;
   const hasPdfMime = value.type === PDF_CONTENT_TYPE;
   const hasPdfExtension =
     value.type === "" && value.name.toLowerCase().endsWith(".pdf");
