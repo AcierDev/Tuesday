@@ -181,16 +181,12 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
     },
 
     getLabelUrl: (filename: string) => {
-      // Returns the API URL for fetching the label (which redirects to S3)
-      // Returns the direct S3 URL using the stored config
-      const { s3Config, labelVersions } = get();
-      const v = labelVersions[filename];
-      const cacheBust = v ? `?v=${v}` : "";
-      if (!s3Config) {
-        console.warn("S3 config not loaded, falling back to proxy");
-        return `/api/shipping/pdf/${filename}${cacheBust}`;
-      }
-      return `https://${s3Config.bucket}.s3.${s3Config.region}.amazonaws.com/${filename}${cacheBust}`;
+      // PDF previews fetch and merge these bytes in the browser. Keep requests
+      // same-origin: public S3 URLs can display in an iframe but lack fetch CORS.
+      const { labelVersions } = get();
+      const version = labelVersions[filename];
+      const cacheBust = version ? `?v=${version}` : "";
+      return `/api/shipping/pdf/${encodeURIComponent(filename)}${cacheBust}`;
     },
   };
 });

@@ -42,7 +42,8 @@ before(async () => {
   const pdfBytes = await pdf.save();
   globalThis.fetch = async (input) => {
     const url = String(input);
-    if (url.endsWith("/pdf")) return new Response(new Uint8Array(pdfBytes));
+    if (url.startsWith("https://")) throw new TypeError("Failed to fetch");
+    if (url.endsWith("/pdf") || url.startsWith("/api/shipping/pdf/")) return new Response(new Uint8Array(pdfBytes));
     const body = url.includes("/summary")
       ? { summaries: {} }
       : url.includes("/labels?")
@@ -136,4 +137,35 @@ test("orders without any labels keep the label view disabled", async () => {
 
   assert.equal(buttonByLabel(renderer!, "View Labels").props.disabled, true);
   act(() => renderer!.unmount());
+});
+
+
+test("legacy labels combine through the same-origin proxy even with S3 config loaded", async () => {
+  const legacyOrderId = "legacy-order";
+  const expectedPages = 2;
+  useShippingStore.setState({
+    labels: { [legacyOrderId]: ["legacy-order.pdf", "legacy-order-1.pdf"] },
+    s3Config: { bucket: "labels", region: "us-east-1" },
+    futureSummaries: {},
+    isLoading: false,
+    fetchAllLabels: async () => undefined,
+  });
+  let renderer: ReactTestRenderer;
+  await act(async () => {
+    renderer = TestRenderer.create(createElement(ViewLabel, { orderId: legacyOrderId }));
+  });
+  const deadline = Date.now() + PREVIEW_TIMEOUT_MS;
+  while (!renderer!.root.findAllByType("iframe").length && Date.now() < deadline) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, PREVIEW_POLL_MS));
+    });
+  }
+  try {
+    const preview = renderer!.root.findByType("iframe");
+    const response = await originalFetch(preview.props.src);
+    const merged = await PDFDocument.load(await response.arrayBuffer());
+    assert.equal(merged.getPageCount(), expectedPages);
+  } finally {
+    act(() => renderer!.unmount());
+  }
 });
