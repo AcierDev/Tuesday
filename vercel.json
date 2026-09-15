@@ -11,6 +11,10 @@
     {
       "path": "/api/backlog-snapshots/cron",
       "schedule": "30 8 * * *"
+    },
+    {
+      "path": "/api/stats/delivery-briefing/cron",
+      "schedule": "5 7,8 * * *"
     }
   ]
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DeliveryBriefing } from "@/app/stats/components/DeliveryBriefing";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ItemStatus } from "@/typings/types";
@@ -292,6 +293,7 @@ export default function OverviewPage() {
 
   return (
     <>
+      <DeliveryBriefing />
       <header className="flex flex-wrap items-end justify-between gap-6 mb-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-slate-400">

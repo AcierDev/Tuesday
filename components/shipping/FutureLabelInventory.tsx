@@ -175,7 +175,7 @@ export function FutureLabelInventory({
     return (
       <section className="rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Organizing label pages…
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading labels…
         </div>
       </section>
     );

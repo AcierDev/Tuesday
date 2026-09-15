@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { resumeIncompleteLabels } from "@/lib/shipping-labels/client";
 import {
   deleteFutureLabel,
   listFutureLabels,
@@ -57,21 +56,13 @@ export function useFutureLabelInventory(orderId: string) {
   }, [labels, orderTrackers]);
 
   const load = useCallback(
-    async (resumeScanning: boolean) => {
+    async () => {
       const sequence = ++requestSequence.current;
       setIsLoading(true);
       setError(null);
       try {
-        let nextLabels = await listFutureLabels(orderId);
-        if (resumeScanning) {
-          const resumed = await resumeIncompleteLabels(nextLabels, {
-            scan: scanFutureLabel,
-          });
-          if (resumed.length > 0) {
-            nextLabels = await listFutureLabels(orderId);
-            await fetchTrackingInfo();
-          }
-        }
+        // Viewing labels only reads saved records; scanning requires an explicit action.
+        const nextLabels = await listFutureLabels(orderId);
         if (sequence === requestSequence.current) setLabels(nextLabels);
         await fetchAllLabels();
       } catch (loadError) {
@@ -82,17 +73,17 @@ export function useFutureLabelInventory(orderId: string) {
         if (sequence === requestSequence.current) setIsLoading(false);
       }
     },
-    [fetchAllLabels, fetchTrackingInfo, orderId]
+    [fetchAllLabels, orderId]
   );
 
   useEffect(() => {
-    void load(true);
+    void load();
     return () => {
       requestSequence.current += 1;
     };
   }, [load]);
 
-  const refresh = useCallback(() => load(false), [load]);
+  const refresh = useCallback(() => load(), [load]);
 
   const rescan = useCallback(
     async (labelId: string) => {
@@ -100,7 +91,7 @@ export function useFutureLabelInventory(orderId: string) {
       setError(null);
       try {
         await scanFutureLabel(labelId);
-        await Promise.all([load(false), fetchTrackingInfo()]);
+        await Promise.all([load(), fetchTrackingInfo()]);
       } catch (scanError) {
         setError(errorMessage(scanError));
       } finally {
@@ -128,7 +119,7 @@ export function useFutureLabelInventory(orderId: string) {
             corrected.processingError ?? "Tracking information is invalid."
           );
         }
-        await Promise.all([load(false), fetchTrackingInfo()]);
+        await Promise.all([load(), fetchTrackingInfo()]);
       } catch (correctionError) {
         setError(errorMessage(correctionError));
         throw correctionError;
@@ -145,7 +136,7 @@ export function useFutureLabelInventory(orderId: string) {
       setError(null);
       try {
         await deleteFutureLabel(labelId);
-        await load(false);
+        await load();
       } catch (deleteError) {
         setError(errorMessage(deleteError));
       } finally {

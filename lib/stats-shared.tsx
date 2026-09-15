@@ -114,6 +114,18 @@ const statsRevalidationListeners = new Set<(v: number) => void>();
 // mutation that affects items/activities (status changes, new items, etc).
 export function invalidateStatsCaches(): void {
   statsRevalidationVersion += 1;
+  // A mutation invalidates fresh TTL entries too. Detach older requests so
+  // subscribers fetch the committed state instead of joining a stale request.
+  itemsCache = null;
+  richCache = null;
+  activitiesCache = null;
+  trackingCache = null;
+  inflight = null;
+  richInflight = null;
+  activitiesInflight = null;
+  trackingInflight = null;
+  gluedStatsCache.clear();
+  gluedStatsInflight.clear();
   for (const cb of statsRevalidationListeners) cb(statsRevalidationVersion);
 }
 
@@ -632,6 +644,7 @@ let inflight: Promise<Item[]> | null = null;
 
 async function fetchStatsItems(): Promise<Item[]> {
   if (inflight) return inflight;
+  const requestVersion = statsRevalidationVersion;
   inflight = (async () => {
     try {
       const res = await fetch(STATS_ITEMS_URL);
@@ -641,10 +654,10 @@ async function fetchStatsItems(): Promise<Item[]> {
       // reads through useAllItems (backlog, overview, forecast, debt, today…)
       // excludes them without each page needing its own filter.
       const data = raw.filter((i) => !i.onHold);
-      itemsCache = { data, ts: Date.now() };
+      if (requestVersion === statsRevalidationVersion) itemsCache = { data, ts: Date.now() };
       return data;
     } finally {
-      inflight = null;
+      if (requestVersion === statsRevalidationVersion) inflight = null;
     }
   })();
   return inflight;
@@ -699,6 +712,7 @@ let richInflight: Promise<Item[]> | null = null;
 
 async function fetchRichItems(): Promise<Item[]> {
   if (richInflight) return richInflight;
+  const requestVersion = statsRevalidationVersion;
   richInflight = (async () => {
     try {
       const res = await fetch(RICH_ITEMS_URL);
@@ -707,10 +721,10 @@ async function fetchRichItems(): Promise<Item[]> {
       // Mirror fetchStatsItems: held items are paused, excluded from every
       // stats page that reads through useAllItemsRich.
       const data = raw.filter((i) => !i.onHold);
-      richCache = { data, ts: Date.now() };
+      if (requestVersion === statsRevalidationVersion) richCache = { data, ts: Date.now() };
       return data;
     } finally {
-      richInflight = null;
+      if (requestVersion === statsRevalidationVersion) richInflight = null;
     }
   })();
   return richInflight;
@@ -771,6 +785,7 @@ let activitiesInflight: Promise<Activity[]> | null = null;
 
 async function fetchActivities(): Promise<Activity[]> {
   if (activitiesInflight) return activitiesInflight;
+  const requestVersion = statsRevalidationVersion;
   activitiesInflight = (async () => {
     try {
       const res = await fetch(
@@ -778,10 +793,10 @@ async function fetchActivities(): Promise<Activity[]> {
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = (await res.json()) as { activities: Activity[] };
-      activitiesCache = { data: json.activities, ts: Date.now() };
+      if (requestVersion === statsRevalidationVersion) activitiesCache = { data: json.activities, ts: Date.now() };
       return json.activities;
     } finally {
-      activitiesInflight = null;
+      if (requestVersion === statsRevalidationVersion) activitiesInflight = null;
     }
   })();
   return activitiesInflight;
@@ -854,15 +869,16 @@ let trackingInflight: Promise<OrderTrackingInfo[]> | null = null;
 
 async function fetchTrackingInfos(): Promise<OrderTrackingInfo[]> {
   if (trackingInflight) return trackingInflight;
+  const requestVersion = statsRevalidationVersion;
   trackingInflight = (async () => {
     try {
       const res = await fetch("/api/order-tracking");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: OrderTrackingInfo[] = await res.json();
-      trackingCache = { data, ts: Date.now() };
+      if (requestVersion === statsRevalidationVersion) trackingCache = { data, ts: Date.now() };
       return data;
     } finally {
-      trackingInflight = null;
+      if (requestVersion === statsRevalidationVersion) trackingInflight = null;
     }
   })();
   return trackingInflight;
@@ -940,6 +956,7 @@ async function fetchGluedStats(
   const cacheKey = `${start}|${end}`;
   const existing = gluedStatsInflight.get(cacheKey);
   if (existing && !bypassCache) return existing;
+  const requestVersion = statsRevalidationVersion;
   const promise = (async () => {
     try {
       const base = `/api/stats/glued?start=${start}&end=${end}`;
@@ -947,10 +964,10 @@ async function fetchGluedStats(
       const res = await fetch(url, bypassCache ? { cache: "no-store" } : {});
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as GluedStatsPayload;
-      gluedStatsCache.set(cacheKey, { data, ts: Date.now() });
+      if (requestVersion === statsRevalidationVersion) gluedStatsCache.set(cacheKey, { data, ts: Date.now() });
       return data;
     } finally {
-      gluedStatsInflight.delete(cacheKey);
+      if (requestVersion === statsRevalidationVersion) gluedStatsInflight.delete(cacheKey);
     }
   })();
   gluedStatsInflight.set(cacheKey, promise);

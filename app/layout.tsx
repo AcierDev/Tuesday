@@ -13,6 +13,7 @@ import {
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UploadProgressToast } from "@/components/shipping/UploadProgress";
+import { MorningBriefing } from "@/components/orders/MorningBriefing";
 import { MobilePageSwitcher } from "@/components/ui/MobilePageSwitcher";
 
 // Load custom fonts
@@ -65,6 +66,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       <MobilePageSwitcher />
+      <MorningBriefing />
       {isSettingsOpen && (
         <SettingsPanel
           onClose={handleCloseSettings}
