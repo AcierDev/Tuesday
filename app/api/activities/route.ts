@@ -5,7 +5,9 @@ import { getDb } from "../db/connect";
 
 async function getCollection() {
   const db = await getDb();
-  return db.collection<Activity>(`activities-${process.env.NEXT_PUBLIC_MODE}`);
+  return db.collection<Omit<Activity, "_id"> & { _id: ObjectId }>(
+    `activities-${process.env.NEXT_PUBLIC_MODE}`
+  );
 }
 
 export async function POST(request: Request) {

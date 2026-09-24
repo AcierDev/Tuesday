@@ -248,11 +248,11 @@ function UtilitiesContent({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <PackagingDetails
           selectedSize={selectedSize}
-          selectedOrder={selectedOrder}
+          selectedOrder={selectedOrder ?? undefined}
         />
         <BackboardDetails
           selectedSize={selectedSize}
-          selectedOrder={selectedOrder}
+          selectedOrder={selectedOrder ?? undefined}
         />
       </div>
       </div>

@@ -1,0 +1,22 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "allowJs": false,
+    "plugins": [],
+    "types": ["node", "react", "react-dom"]
+  },
+  "include": [
+    "../lib/reporting/**/*.ts",
+    "../lib/shipping-labels/order-completion-server.ts",
+    "../app/api/items/route.ts",
+    "../app/api/reporting/**/*.ts",
+    "../app/stats/weekly/page.tsx",
+    "../tests/weekly-report.test.ts",
+    "../tests/reporting-records.test.ts",
+    "../tests/reporting-auth.test.ts",
+    "../tests/reporting-window.test.ts",
+    "../tests/item-history.test.ts"
+  ],
+  "exclude": ["../node_modules", "../.next", "../.next-backup-*"]
+}

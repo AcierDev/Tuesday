@@ -34,7 +34,9 @@ export function TrackingHistory({ tracking }: TrackingHistoryProps) {
     }
   };
 
-  if (!tracking || !tracking.trackers.length) {
+  const latestTracker = tracking?.trackers.at(-1);
+
+  if (!latestTracker) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
         <Package className="h-16 w-16 text-muted-foreground/50 mb-4" />
@@ -45,7 +47,6 @@ export function TrackingHistory({ tracking }: TrackingHistoryProps) {
     );
   }
 
-  const latestTracker = tracking.trackers[tracking.trackers.length - 1];
   const details = latestTracker.tracking_details.sort(
     (a: TrackingDetail, b: TrackingDetail) =>
       new Date(b.datetime).getTime() - new Date(a.datetime).getTime()

@@ -79,10 +79,10 @@ export const DateCell = ({ item, columnValue }: DateCellProps) => {
           <Calendar
             initialFocus
             mode="single"
-            selected={date}
-            onSelect={(newDate: Date | null) => {
-              setDate(newDate);
-              handleUpdate(newDate);
+            selected={date ?? undefined}
+            onSelect={(newDate) => {
+              setDate(newDate ?? null);
+              handleUpdate(newDate ?? null);
             }}
             className="text-gray-900 dark:text-gray-100"
           />

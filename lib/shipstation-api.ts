@@ -5,14 +5,43 @@ import {
   ShippingRate,
 } from "@/typings/interfaces";
 import {
-  ColumnTitles,
-  ColumnTypes,
   Item,
   ItemSizes,
   ItemStatus,
 } from "@/typings/types";
 
 const SHIPSTATION_API_URL = "https://ssapi.shipstation.com";
+const INCHES_PER_FOOT = 12;
+const LEGACY_ITEM_SIZES = {
+  Nineteen_By_Ten: "19 x 10",
+  TwentyTwo_By_Ten: "22 x 10",
+  Nineteen_By_Eleven: "19 x 11",
+  TwentyTwo_By_Eleven: "22 x 11",
+  TwentySeven_By_Eleven: "27 x 11",
+  TwentySeven_By_Fifteen: "27 x 15",
+  ThirtyOne_By_Fifteen: "31 x 15",
+  ThirtySix_By_Fifteen: "36 x 15",
+} as const;
+const ITEM_SIZE_BY_DIMENSIONS: Readonly<
+  Record<number, Readonly<Record<number, ItemSizes | string>>>
+> = {
+  18: { 36: ItemSizes.Fourteen_By_Seven, 48: ItemSizes.Sixteen_By_Six },
+  30: {
+    48: ItemSizes.Sixteen_By_Ten,
+    60: LEGACY_ITEM_SIZES.Nineteen_By_Ten,
+    72: LEGACY_ITEM_SIZES.TwentyTwo_By_Ten,
+  },
+  36: {
+    60: LEGACY_ITEM_SIZES.Nineteen_By_Eleven,
+    72: LEGACY_ITEM_SIZES.TwentyTwo_By_Eleven,
+    84: LEGACY_ITEM_SIZES.TwentySeven_By_Eleven,
+  },
+  48: {
+    84: LEGACY_ITEM_SIZES.TwentySeven_By_Fifteen,
+    96: LEGACY_ITEM_SIZES.ThirtyOne_By_Fifteen,
+    108: LEGACY_ITEM_SIZES.ThirtySix_By_Fifteen,
+  },
+};
 
 async function shipstationFetch(endpoint: string, method = "GET", body?: any) {
   console.log(`${SHIPSTATION_API_URL}${endpoint}`, {
@@ -56,37 +85,20 @@ export async function getOrder(orderId: string): Promise<ShipStationOrder> {
   console.log(order.shipByDate);
   console.log(order.shipTo);
 
-  for (const item of order.items) {
+  for (const [index, item] of order.items.entries()) {
     const newOrder: Item = {
       id: order.orderId.toString(),
-      values: [
-        {
-          text: order.shipTo.name,
-          columnName: ColumnTitles.Customer_Name,
-          type: ColumnTypes.Text,
-        },
-        {
-          text: new Date(order.shipByDate).getTime().toString(),
-          columnName: ColumnTitles.Due,
-          type: ColumnTypes.Date,
-        },
-        {
-          columnName: ColumnTitles.Design,
-          type: ColumnTypes.Dropdown,
-          text: item.name.split("-")[1]?.trim(),
-        },
-        {
-          columnName: ColumnTitles.Size,
-          type: ColumnTypes.Dropdown,
-          text: parseDimensions(item.options[0]!.value)!,
-        },
-      ],
+      customerName: order.shipTo.name,
+      dueDate: new Date(order.shipByDate).getTime().toString(),
+      design: item.name.split("-")[1]?.trim(),
+      size: parseDimensions(item.options[0]!.value)!,
       createdAt: new Date(order.createDate).getTime(),
       status: ItemStatus.New,
-      vertical: false,
+      tags: { isVertical: false },
       visible: false,
       deleted: false,
-      shippingDetails: order.shipTo,
+      index,
+      shippingDetails: { addressVerified: "unknown", ...order.shipTo },
     };
 
     console.log(newOrder);
@@ -199,20 +211,20 @@ function parseDimensions(str: string) {
   const inchPattern = /(\d+)"\s*x\s*(\d+)"/i; // Inches, e.g., 18"x12"
   const footInchPattern = /(\d+)"\s*x\s*(\d+)\s*feet/i; // Mix of inches and feet, e.g., 18"x4feet
 
-  let width = 0;
-  let length = 0;
+  let width: number;
+  let length: number;
 
   // Try matching dimensions in inches directly
   const inchMatch = inchPattern.exec(str);
   if (inchMatch) {
-    width = parseInt(inchMatch[1]);
-    length = parseInt(inchMatch[2]);
+    width = Number(inchMatch[1]);
+    length = Number(inchMatch[2]);
   } else {
     // Try matching a mix of inches and feet
     const footInchMatch = footInchPattern.exec(str);
     if (footInchMatch) {
-      width = parseInt(footInchMatch[1]);
-      length = parseInt(footInchMatch[2]) * 12; // Convert feet to inches
+      width = Number(footInchMatch[1]);
+      length = Number(footInchMatch[2]) * INCHES_PER_FOOT;
     } else {
       console.error("Unable to parse dimensions from:", str);
       return null; // Return null if parsing fails
@@ -225,46 +237,6 @@ function parseDimensions(str: string) {
   return size;
 }
 
-function convertInchesToSize(
-  length: number,
-  width: number
-): ItemSizes | "Contact Ben" {
-  switch (width) {
-    case 18:
-      switch (length) {
-        case 36:
-          return ItemSizes.Fourteen_By_Seven;
-        case 48:
-          return ItemSizes.Sixteen_By_Six;
-      }
-    case 30:
-      switch (length) {
-        case 48:
-          return ItemSizes.Sixteen_By_Ten;
-        case 60:
-          return ItemSizes.Nineteen_By_Ten;
-        case 72:
-          return ItemSizes.TwentyTwo_By_Ten;
-      }
-    case 36:
-      switch (length) {
-        case 60:
-          return ItemSizes.Nineteen_By_Eleven;
-        case 72:
-          return ItemSizes.TwentyTwo_By_Eleven;
-        case 84:
-          return ItemSizes.TwentySeven_By_Eleven;
-      }
-    case 48:
-      switch (length) {
-        case 84:
-          return ItemSizes.TwentySeven_By_Fifteen;
-        case 96:
-          return ItemSizes.ThirtyOne_By_Fifteen;
-        case 108:
-          return ItemSizes.ThirtySix_By_Fifteen;
-      }
-    default:
-      return "Contact Ben";
-  }
+function convertInchesToSize(length: number, width: number) {
+  return ITEM_SIZE_BY_DIMENSIONS[width]?.[length] ?? "Contact Ben";
 }

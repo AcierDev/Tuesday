@@ -90,6 +90,11 @@ export type Item = {
 
   createdAt: number;
   completedAt?: number;
+  // Immutable promise at creation and promise frozen when moving to Done.
+  // Older orders lack these fields and must be reported as historically unknown.
+  originalDueDate?: string;
+  dueDateAtCompletion?: string;
+  promiseTrackingStartedAt?: number;
   deletedAt?: number | null;
   status: ItemStatus;
   prevStatus?: ItemStatus | null;

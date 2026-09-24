@@ -10,6 +10,7 @@ import React, {
 import {
   ColumnTitles,
   ColumnVisibility,
+  ColumnVisibilitySettings,
   ItemStatus,
   OrderSettings,
 } from "@/typings/types";
@@ -24,13 +25,14 @@ type OrderSettingsAction =
     }
   | { type: "RESET_SETTINGS" };
 
-const defaultColumnVisibility: ColumnVisibility = {};
-Object.values(ItemStatus).forEach((group) => {
-  defaultColumnVisibility[group] = {};
-  Object.values(ColumnTitles).forEach((field) => {
-    defaultColumnVisibility[group]![field] = true;
-  });
-});
+const defaultColumnVisibility: ColumnVisibilitySettings = Object.fromEntries(
+  Object.values(ItemStatus).map((group) => [
+    group,
+    Object.fromEntries(
+      Object.values(ColumnTitles).map((field) => [field, true])
+    ) as ColumnVisibility,
+  ])
+) as ColumnVisibilitySettings;
 
 const defaultSettings: OrderSettings = {
   automatronRules: [],
@@ -62,7 +64,7 @@ function orderSettingsReducer(
         columnVisibility: {
           ...state.columnVisibility,
           [group]: {
-            ...state.columnVisibility[group],
+            ...state.columnVisibility[group as ItemStatus],
             [field]: isVisible,
           },
         },

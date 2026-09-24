@@ -13,6 +13,11 @@ import {
   hasStoredDueDatePauseOffset,
   pauseDueDate,
 } from "@/lib/due-date-pause";
+import { prepareItemPatchHistory, prepareNewItemHistory } from "@/lib/reporting/item-history";
+import {
+  ensureCompletionEventIndex,
+  recordCompletionEvent,
+} from "@/lib/reporting/completion-events-server";
 
 // CORS headers helper function
 function getCorsHeaders(requestOrigin?: string) {
@@ -210,20 +215,59 @@ export async function PATCH(request: Request) {
       updatesWithoutId.deletedAt = null;
     }
 
-    // Fetch + update in a single round trip; `before` lets us diff against prior state.
-    const currentItem = await collection.findOneAndUpdate(
-      { id },
-      { $set: updatesWithoutId },
-      { returnDocument: "before", upsert: true }
-    );
+    if (updatesWithoutId.status === ItemStatus.Done) {
+      await ensureCompletionEventIndex(db);
+    }
 
-    if (!currentItem) {
+    const session = client.startSession();
+    let transactionResult: {
+      currentItem: Item;
+      updatesWithHistory: Partial<Item>;
+    } | null = null;
+    try {
+      transactionResult = await session.withTransaction(async () => {
+        const currentItem = await collection.findOne({ id }, { session });
+        if (!currentItem) return null;
+
+        const updatesWithHistory = prepareItemPatchHistory(
+          currentItem,
+          updatesWithoutId,
+          Date.now()
+        );
+        await collection.updateOne(
+          { _id: currentItem._id },
+          { $set: updatesWithHistory },
+          { session }
+        );
+
+        if (currentItem.status !== ItemStatus.Done &&
+          updatesWithHistory.status === ItemStatus.Done &&
+          typeof updatesWithHistory.completedAt === "number") {
+          const completedItem = { ...currentItem, ...updatesWithHistory } as Item;
+          await recordCompletionEvent(
+            db,
+            completedItem,
+            updatesWithHistory.completedAt,
+            updatesWithHistory.dueDateAtCompletion,
+            session
+          );
+        }
+
+        return { currentItem, updatesWithHistory };
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    if (!transactionResult) {
       const origin = request.headers.get("origin") || undefined;
       return NextResponse.json(
         { error: "Item not found" },
         { status: 404, headers: getCorsHeaders(origin) }
       );
     }
+
+    const { currentItem, updatesWithHistory } = transactionResult;
 
     const result = { matchedCount: 1, modifiedCount: 1 };
 
@@ -342,7 +386,7 @@ export async function POST(request: Request) {
       `items-${process.env.NEXT_PUBLIC_MODE}`
     );
 
-    const newItem = (await request.json()) as Item;
+    const newItem = prepareNewItemHistory((await request.json()) as Item);
 
     const result = await collection.insertOne(newItem);
 

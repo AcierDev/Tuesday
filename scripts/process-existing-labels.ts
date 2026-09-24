@@ -40,7 +40,10 @@ async function processLabel(
     }
 
     const trackingInfo = await trackingResponse.json();
-    console.log(`Customer Name: ${item.values[0].text}`);
+    const legacyItem = item as Item & { values?: Array<{ text?: string }> };
+    console.log(
+      `Customer Name: ${item.customerName ?? legacyItem.values?.[0]?.text ?? ""}`
+    );
     console.log("Tracking Info:");
     console.log(trackingInfo);
 
@@ -158,7 +161,9 @@ async function processExistingLabels() {
 
       // First, get all orders
       const boards = await collection.find({}).toArray();
-      const items = boards[0].items_page.items;
+      const board = boards[0];
+      if (!board) throw new Error("No board found in production collection");
+      const items = board.items_page.items;
       console.log(`Found ${items.length} total orders to process`);
 
       // Get all existing labels
@@ -171,12 +176,9 @@ async function processExistingLabels() {
         if (filename.startsWith("deleted_")) return;
 
         const match = filename.match(/^(\d+)(?:-\d+)?\.pdf$/);
-        if (match) {
+        if (match?.[1]) {
           const orderId = match[1];
-          if (!labelsData[orderId]) {
-            labelsData[orderId] = [];
-          }
-          labelsData[orderId].push(filename);
+          (labelsData[orderId] ??= []).push(filename);
         }
       });
 

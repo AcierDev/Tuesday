@@ -1,18 +1,19 @@
 import { MongoClient } from "mongodb";
-import { Board, WeeklyScheduleData, Item } from "../typings/types.ts";
+import { Board, WeeklyScheduleData, Item } from "../typings/types";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const uri =
-  process.env.MONGODB_URI ||
-  "mongodb+srv://Backend:2nywFe9Nh76OsynP@sharedcluster.ftf6xg6.mongodb.net/?retryWrites=true&w=majority&appName=SharedCluster";
-console.log(uri);
 const sourceDbName = "react-web-app";
 const sourceCollection = "production";
 
 async function splitCollections() {
   try {
+    const uri = process.env.MONGODB_URI;
+    if (!uri) {
+      throw new Error("MONGODB_URI is required to split collections");
+    }
+
     // Connect to MongoDB
     const client = new MongoClient(uri);
     await client.connect();
@@ -38,8 +39,8 @@ async function splitCollections() {
     if (board.items_page?.items) {
       const itemsWithMetadata = board.items_page.items.map((item) => ({
         ...item,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       }));
 
       await itemsCollection.deleteMany({});
@@ -57,7 +58,7 @@ async function splitCollections() {
         .filter(([key]) => key !== "createdAt" && key !== "updatedAt")
         .map(([weekKey, schedule]) => ({
           weekKey,
-          schedule: schedule as WeeklyScheduleData,
+          schedule: schedule as WeeklyScheduleData["schedule"],
         }));
 
       await schedulesCollection.deleteMany({});

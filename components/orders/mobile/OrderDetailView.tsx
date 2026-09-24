@@ -143,7 +143,6 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                       type: ColumnTypes.Dropdown,
                       text: item.design || ""
                   }}
-                  onUpdate={() => {}}
                 />
               </DetailItem>
               <DetailItem label="Size">
@@ -154,7 +153,6 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                       type: ColumnTypes.Dropdown,
                       text: item.size || ""
                   }}
-                  onUpdate={() => {}}
                 />
               </DetailItem>
               <DetailItem label="Due Date">

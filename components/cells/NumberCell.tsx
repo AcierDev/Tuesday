@@ -23,7 +23,7 @@ export const NumberCell = ({
 
   const { updateItem } = useOrderStore();
 
-  const handleUpdate = async (newRating) => {
+  const handleUpdate = async (newRating: number) => {
     setRatingValue(newRating);
     try {
       const updatedItem = {
@@ -54,7 +54,10 @@ export const NumberCell = ({
             max={10}
             step={1}
             value={[ratingValue]}
-            onValueChange={(value) => handleUpdate(value[0])}
+            onValueChange={(value) => {
+              const newRating = value[0];
+              if (newRating !== undefined) handleUpdate(newRating);
+            }}
           />
           <div className="text-center font-bold text-2xl">{ratingValue}</div>
         </div>

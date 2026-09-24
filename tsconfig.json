@@ -29,5 +29,5 @@
     ".next/types/**/*.ts",
     "app/webcam/page.tsx"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", ".next-backup-*"]
 }

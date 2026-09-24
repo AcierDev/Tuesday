@@ -26,8 +26,8 @@ export function laDayKey(d: Date = new Date()): string {
 // Calendar-day diff between two YYYY-MM-DD keys (b - a). Treats keys as
 // labels via Date.UTC to sidestep DST drift.
 export function dayDiffKeys(a: string, b: string): number {
-  const [ay, am, ad] = a.split("-").map(Number);
-  const [by, bm, bd] = b.split("-").map(Number);
+  const [ay = Number.NaN, am = Number.NaN, ad = Number.NaN] = a.split("-").map(Number);
+  const [by = Number.NaN, bm = Number.NaN, bd = Number.NaN] = b.split("-").map(Number);
   return Math.round(
     (Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / MS_PER_DAY
   );
@@ -35,7 +35,7 @@ export function dayDiffKeys(a: string, b: string): number {
 
 // Returns the YYYY-MM-DD key offset by `days` calendar days from `key`.
 export function shiftDayKey(key: string, days: number): string {
-  const [y, m, d] = key.split("-").map(Number);
+  const [y = Number.NaN, m = Number.NaN, d = Number.NaN] = key.split("-").map(Number);
   const t = Date.UTC(y, m - 1, d) + days * MS_PER_DAY;
   return new Date(t).toISOString().slice(0, 10);
 }

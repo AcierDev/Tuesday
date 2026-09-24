@@ -269,6 +269,21 @@ export const useOrderStore = create<OrderState>()(
             // Refresh the stats caches so open stats views update without a refresh.
             debouncedInvalidateStats();
 
+            // Soft deletions arrive as updates. Remove them before normal status
+            // routing can put the order back into an active or completed list.
+            if (change.item?.deleted || change.type === "delete") {
+              const deletedId = change.item?.id ?? change.itemId;
+              if (!deletedId) return;
+              set((state) => ({
+                items: state.items.filter((item) => item.id !== deletedId),
+                doneItems: state.doneItems.filter((item) => item.id !== deletedId),
+                scheduledItems: state.scheduledItems.filter((item) => item.id !== deletedId),
+                allItems: state.allItems.filter((item) => item.id !== deletedId),
+                searchResults: state.searchResults.filter((item) => item.id !== deletedId),
+              }));
+              return;
+            }
+
             if (change.type === "update") {
               const updatedItem = ItemUtil.processItem(change.item);
               
@@ -732,57 +747,12 @@ export const useOrderStore = create<OrderState>()(
         set({ doneItems: [], doneItemsLoaded: false });
       },
 
-      fetchItemsByIds: async (ids: string[]) => {
-        const { items, doneItems, scheduledItems } = get();
-        // Create a set of known IDs for fast lookup
-        const knownIds = new Set([
-          ...items.map((i) => i.id),
-          ...doneItems.map((i) => i.id),
-          ...scheduledItems.map((i) => i.id),
-        ]);
-
-        // Filter out IDs that we already have
-        const missingIds = ids.filter((id) => !knownIds.has(id));
-
-        if (missingIds.length === 0) return;
-
-        try {
-          const response = await fetch(`/api/items?ids=${missingIds.join(",")}`);
-          if (!response.ok) throw new Error("Failed to fetch items by IDs");
-
-          const newItems = await response.json();
-          const processedItems = newItems.map(ItemUtil.processItem);
-          
-          set((state) => ({
-            scheduledItems: [...state.scheduledItems, ...processedItems],
-          }));
-        } catch (err) {
-          console.error("Failed to fetch items by IDs", err);
-        }
-      },
-
       updateItemScheduleStatus: async (
         boardId: string,
         itemId: string,
         isScheduled: boolean
       ) => {
           // This seems to be related to other functionality, leave as is
-      },
-
-      updateIsScheduled: () => {
-        const { items } = get();
-        const { schedules } = useWeeklyScheduleStore.getState();
-
-        const updatedItems = items.map((item) => ({
-          ...item,
-          isScheduled: schedules.some((schedule) =>
-            Object.values(schedule.schedule).some((day) =>
-              day.some((dayItem) => dayItem.id === item.id)
-            )
-          ),
-        }));
-
-        set({ items: updatedItems });
       },
 
       setSearchQuery: (

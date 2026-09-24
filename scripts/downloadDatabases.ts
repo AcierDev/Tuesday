@@ -56,7 +56,7 @@ async function downloadDatabases() {
         acc[p.type] = p.value;
         return acc;
       }, {});
-    const tzAbbr = parts.timeZoneName.replace(/\s+/g, "");
+    const tzAbbr = (parts.timeZoneName ?? "").replace(/\s+/g, "");
     const timestamp = `${parts.year}-${parts.month}-${parts.day}_${parts.hour}-${parts.minute}-${parts.second}-${tzAbbr}`;
     const outputDir = path.join(
       downloadsDir,

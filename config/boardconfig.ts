@@ -77,6 +77,12 @@ export const boardConfig: BoardConfig = {
       type: ColumnTypes.Text,
       requiredForNewItem: true,
     },
+    Shipping: {
+      title: ColumnTitles.Shipping,
+      id: ColumnTitles.Shipping,
+      type: ColumnTypes.Shipping,
+      requiredForNewItem: false,
+    },
     "Due Date": {
       title: ColumnTitles.Due,
       id: ColumnTitles.Due,
@@ -91,13 +97,6 @@ export const boardConfig: BoardConfig = {
       ColumnTitles.Customer_Name,
       ColumnTitles.Design,
       ColumnTitles.Size,
-      ColumnTitles.Due,
-    ],
-    [ItemStatus.Paint]: [
-      ColumnTitles.Customer_Name,
-      ColumnTitles.Design,
-      ColumnTitles.Size,
-      ColumnTitles.Painted,
       ColumnTitles.Due,
     ],
     [ItemStatus.OnDeck]: [
@@ -122,12 +121,6 @@ export const boardConfig: BoardConfig = {
       ColumnTitles.Design,
       ColumnTitles.Size,
       ColumnTitles.Glued,
-      ColumnTitles.Due,
-    ],
-    Shipping: [
-      ColumnTitles.Customer_Name,
-      ColumnTitles.Design,
-      ColumnTitles.Size,
       ColumnTitles.Due,
     ],
   },

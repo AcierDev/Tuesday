@@ -5,10 +5,11 @@ import {
   Group,
 } from "@/typings/types";
 import { DESIGN_COLOR_NAMES, SIZE_MULTIPLIERS } from "@/typings/constants";
-import { BoxRequirement } from "@/typings/interfaces";
 import { BOX_COLORS } from "@/typings/constants";
 import { backboardData } from "@/typings/constants";
 import { getEffectiveDueDateKey } from "@/lib/due-date-pause";
+
+type BoxDetails = Pick<(typeof BOX_COLORS)[ItemSizes], "count" | "hardwareBag" | "mountingRail">;
 
 export class ItemUtil {
   static processItem(item: Item): Item {
@@ -84,7 +85,7 @@ export class ItemUtil {
     return requirements;
   }
 
-  static getBoxRequirements(item: Item): BoxRequirement | null {
+  static getBoxRequirements(item: Item): BoxDetails | null {
     const sizeKey = item.size as ItemSizes | undefined;
     if (sizeKey && BOX_COLORS[sizeKey]) {
       return {
@@ -98,7 +99,7 @@ export class ItemUtil {
 
   static getBackboardRequirements(item: Item): {
     panels: number;
-    blankSize: string;
+    blankSize: number;
     instructions: string;
   } | null {
     const sizeKey = item.size as ItemSizes | undefined;
@@ -112,7 +113,7 @@ export class ItemUtil {
     return null;
   }
 
-  static getDesignColors(design: ItemDesigns): string[] {
+  static getDesignColors(design: ItemDesigns): (string | number)[] {
     return DESIGN_COLOR_NAMES[design] || [];
   }
 
@@ -140,8 +141,8 @@ export class ItemUtil {
     return (backboardData[size]?.panels as number | undefined) || 0;
   }
 
-  static getBackboardBlankSize(size: ItemSizes): string | null {
-    return (backboardData[size]?.blankSize as string | undefined) || null;
+  static getBackboardBlankSize(size: ItemSizes): number | null {
+    return backboardData[size]?.blankSize || null;
   }
 
   static getBackboardInstructions(size: ItemSizes): string | null {
@@ -161,22 +162,18 @@ export class ItemUtil {
     return requirements;
   }
 
-  static getTotalBoxRequirements(group: Group): Record<string, BoxRequirement> {
-    const requirements: Record<string, BoxRequirement> = {};
+  static getTotalBoxRequirements(group: Group): Record<string, BoxDetails> {
+    const requirements: Record<string, BoxDetails> = {};
 
     group.items.forEach((item) => {
       const boxReq = this.getBoxRequirements(item);
       if (boxReq) {
         const color = this.getBoxColor(item.size as ItemSizes);
         if (color) {
-          if (!requirements[color]) {
-            requirements[color] = {
-              count: 0,
-              hardwareBag: boxReq.hardwareBag,
-              mountingRail: boxReq.mountingRail,
-            };
-          }
-          requirements[color].count += boxReq.count;
+          const current = requirements[color];
+          requirements[color] = current
+            ? { ...current, count: current.count + boxReq.count }
+            : { ...boxReq };
         }
       }
     });

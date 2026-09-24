@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.reporting.json",
+  "include": [
+    "../lib/reporting/auth.ts",
+    "../lib/reporting/fulfillment.ts",
+    "../lib/reporting/item-history.ts",
+    "../lib/reporting/marketing.ts",
+    "../lib/reporting/records.ts",
+    "../lib/reporting/window.ts",
+    "./weekly-report.test.ts",
+    "./reporting-records.test.ts",
+    "./reporting-auth.test.ts",
+    "./reporting-window.test.ts",
+    "./item-history.test.ts"
+  ]
+}

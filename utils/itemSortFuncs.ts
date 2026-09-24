@@ -2,6 +2,13 @@ import { ColumnTitles, ItemSortFuncs } from "@/typings/types";
 import { compareAsc, compareDesc, isValid, parseISO } from "date-fns";
 
 export const itemSortFuncs: ItemSortFuncs = {
+  [ColumnTitles.Labels]: (items, ascending) =>
+    [...items].sort((a, b) =>
+      ascending
+        ? (a.labels || "").localeCompare(b.labels || "")
+        : (b.labels || "").localeCompare(a.labels || "")
+    ),
+  [ColumnTitles.Shipping]: (items) => items,
   [ColumnTitles.Customer_Name]: (items, ascending) =>
     [...items].sort((a, b) => {
       const aName = a.customerName || "";

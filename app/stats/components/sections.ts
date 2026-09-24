@@ -2,6 +2,7 @@ export const SECTIONS = [
   { group: "Snapshot", items: [
     { href: "/stats/overview", label: "Overview" },
     { href: "/stats/today", label: "Today" },
+    { href: "/stats/weekly", label: "Weekly Report" },
     { href: "/stats/glued", label: "Glued" },
   ]},
   { group: "Operations", items: [

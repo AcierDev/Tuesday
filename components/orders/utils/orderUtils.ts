@@ -7,7 +7,6 @@ export const STATUS_ORDER: ItemStatus[] = [
   ItemStatus.OnDeck,
   ItemStatus.Wip,
   ItemStatus.Packaging,
-  ItemStatus.Shipping,
   ItemStatus.At_The_Door,
   ItemStatus.Done,
   // "Hidden" status can be added if needed

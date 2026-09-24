@@ -18,7 +18,7 @@ if (!uri) {
 }
 
 async function removeValuesField(collectionName: string) {
-  const client = new MongoClient(uri);
+  const client = new MongoClient(uri!);
 
   try {
     await client.connect();
@@ -57,5 +57,4 @@ main().catch((err) => {
   console.error("Unhandled error in remove-values-field script:", err);
   process.exit(1);
 });
-
 

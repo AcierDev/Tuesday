@@ -18,7 +18,7 @@ export const LoadMoreSentinel: React.FC<LoadMoreSentinelProps> = ({
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading) {
+        if (entries[0]?.isIntersecting && hasMore && !isLoading) {
           onLoadMore();
         }
       },

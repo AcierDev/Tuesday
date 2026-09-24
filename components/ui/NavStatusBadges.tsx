@@ -198,7 +198,14 @@ function applyFedExPickupOverride(
   return computeFedExPickupStatus(purchasedAts, now);
 }
 
+const SHOW_FEDEX_PICKUP_BADGE =
+  process.env.NEXT_PUBLIC_SHOW_FEDEX_PICKUP_BADGE === "true";
+
 export function FedExPickupBadge() {
+  return SHOW_FEDEX_PICKUP_BADGE ? <FedExPickupBadgeContent /> : null;
+}
+
+function FedExPickupBadgeContent() {
   const [purchasedAts, setPurchasedAts] = useState<number[]>([]);
   const [now, setNow] = useState<Date>(() => new Date());
   const [override, setOverride] = useState<FedExPickupOverride | null>(null);

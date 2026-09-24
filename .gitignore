@@ -67,6 +67,7 @@ yarn.lock
 
 # Next.js
 .next/
+.next-backup-*/
 *.next
 
 # Nuxt.js
