@@ -7,6 +7,12 @@ interface UseOrderStatsProps {
   items: Item[] | undefined;
 }
 
+const ALWAYS_COUNTED_STATUSES = new Set<ItemStatus>([
+  ItemStatus.New,
+  ItemStatus.OnDeck,
+  ItemStatus.Wip,
+]);
+
 export function isDueDateWithinStatsWindow(
   dueDate: Item["dueDate"],
   referenceDate = new Date()
@@ -38,7 +44,7 @@ export function useOrderStats({ items }: UseOrderStatsProps) {
     };
 
     items.forEach((item) => {
-      if (isItemDue(item) || item.status === ItemStatus.New) {
+      if (isItemDue(item) || ALWAYS_COUNTED_STATUSES.has(item.status)) {
         counts.all = (counts.all || 0) + 1;
 
         // Use flattened fields
