@@ -97,6 +97,10 @@ export const useWeeklyScheduleStore = create<WeeklyScheduleState>()(
       fetchSchedules: async () => {
         try {
           set({ isLoading: true });
+          const reconciliation = await fetch("/api/weekly-schedules/reconcile-overdue", {
+            method: "POST",
+          });
+          if (!reconciliation.ok) throw new Error("Failed to reconcile overdue schedules");
           const response = await fetch("/api/weekly-schedules");
           if (!response.ok) throw new Error("Failed to fetch schedules");
 

@@ -255,6 +255,7 @@ export const ItemTableRow = memo(function ItemTableRow({
     attributes: dragAttributes,
     listeners: dragListeners,
     setNodeRef: setDragHandleRef,
+    setActivatorNodeRef,
     isDragging,
   } = useDraggable({
     id: item.id,
@@ -442,9 +443,12 @@ export const ItemTableRow = memo(function ItemTableRow({
   const rowDragRef = useCallback(
     (node: HTMLTableRowElement | null) => {
       rowRef.current = node;
-      if (canDesktopDrag) setDragHandleRef(node);
+      if (canDesktopDrag) {
+        setDragHandleRef(node);
+        setActivatorNodeRef(node);
+      }
     },
-    [canDesktopDrag, setDragHandleRef]
+    [canDesktopDrag, setDragHandleRef, setActivatorNodeRef]
   );
   const rowDragListeners = canDesktopDrag ? dragListeners : undefined;
   const rowDragAttributes = canDesktopDrag ? dragAttributes : undefined;

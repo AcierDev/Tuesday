@@ -57,6 +57,7 @@ import {
 } from "@/lib/production-metrics";
 import { getDesignFamily } from "@/components/production-planning/design-family";
 import { parseNameTokens } from "@/components/orders/name-tokens";
+import { laDayKey } from "@/lib/debt-metrics";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🚫 NO-DRAG WHILE MODAL OPEN                                          ║
@@ -141,6 +142,7 @@ const AUTO_PLAN_LATE_PENALTY_PER_DAY = 375;
 const NIGHTLY_AUTO_PLAN_TIMEZONE = "America/Los_Angeles";
 const NIGHTLY_AUTO_PLAN_HOUR = 20; // 8pm local
 const NIGHTLY_AUTO_PLAN_BUFFER_MS = 500;
+const PLANNER_DAY_CHECK_INTERVAL_MS = 60_000;
 
 // Returns ms until the next occurrence of `hour:00:00` in the given IANA tz.
 // Reads wall-clock time in the target zone via Intl rather than the browser's
@@ -450,8 +452,22 @@ export default function ProductionPlanningPage() {
     startOfDay(parseISO(currentWeekKey))
   );
   useEffect(() => {
-    setToday(startOfDay(new Date()));
-  }, []);
+    let currentDayKey = laDayKey();
+    setToday(startOfDay(parseISO(currentDayKey)));
+    const checkDay = () => {
+      const nextDayKey = laDayKey();
+      if (nextDayKey === currentDayKey) return;
+      currentDayKey = nextDayKey;
+      setToday(startOfDay(parseISO(nextDayKey)));
+      void fetchSchedules();
+    };
+    const timer = window.setInterval(checkDay, PLANNER_DAY_CHECK_INTERVAL_MS);
+    window.addEventListener("focus", checkDay);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", checkDay);
+    };
+  }, [fetchSchedules]);
 
   // Live daily capacity = recency-weighted gluing forecast rounded UP to the
   // nearest CAPACITY_ROUND_STEP. Falls back to DAILY_CAPACITY_FALLBACK_SQUARES
@@ -506,7 +522,7 @@ export default function ProductionPlanningPage() {
     [currentWeekKey]
   );
 
-  // Filter orders: must be unscheduled-ready (New / OnDeck), not deleted, not
+  // Filter orders: must be unfinished production, not deleted, not
   // held, and have a parseable W×H size. Custom/named sizes don't count toward
   // the daily-square capacity target since they aren't square units. Held items
   // are parked in On Deck and must never be auto-scheduled onto the calendar,
@@ -518,7 +534,8 @@ export default function ProductionPlanningPage() {
           !item.deleted &&
           !item.onHold &&
           (item.status === ItemStatus.New ||
-            item.status === ItemStatus.OnDeck) &&
+            item.status === ItemStatus.OnDeck ||
+            item.status === ItemStatus.Wip) &&
           parseSquareSize(item.size) !== null
       ),
     [items]
@@ -1128,6 +1145,7 @@ export default function ProductionPlanningPage() {
     const pool: PoolEntry[] = availableOrders
       .filter(
         (item) =>
+          PRE_WIP_STATUSES.has(item.status) &&
           !scheduledInOtherWeeks.has(item.id) &&
           !lockedItemIds.has(item.id) &&
           !excludedItemIds.has(item.id)
