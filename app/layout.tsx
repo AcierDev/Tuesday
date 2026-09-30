@@ -3,6 +3,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 import "./globals.css";
 import { Navbar } from "@/components/ui/Navbar";
@@ -36,12 +37,15 @@ const metadata: Metadata = {
 
 // Create a wrapper component that uses the context
 function LayoutContent({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<
     string | undefined
   >(undefined);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { settings, updateSettings } = useOrderSettings();
+
+  if (pathname === "/access") return <>{children}</>;
 
   const handleOpenSettings = (tab?: string) => {
     setSettingsInitialTab(tab);
