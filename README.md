@@ -37,4 +37,4 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 # Site password
 
-The default password is configured in `lib/site-access-config.ts`; set `SITE_ACCESS_PASSWORD` and `SITE_ACCESS_SECRET` in the server environment to override the defaults. A successful password entry remembers that browser for the duration set by `SITE_ACCESS_DURATION_DAYS` in `lib/site-access.ts`. Clearing browser cookies or using a different browser requires the password again.
+The default password is configured in `lib/site-access-config.ts`. Set `SITE_ACCESS_PASSWORD` to override it. Cookie signing uses `SITE_ACCESS_SECRET`, or the existing private `MONGODB_URI` if no dedicated secret is set. If neither is present, access stays locked. A successful password entry remembers that browser for the duration set by `SITE_ACCESS_DURATION_DAYS` in `lib/site-access.ts`. Clearing browser cookies or using a different browser requires the password again.

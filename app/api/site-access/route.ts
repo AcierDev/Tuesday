@@ -4,10 +4,12 @@ import { siteAccessPassword, siteAccessSecret } from "@/lib/site-access-config";
 
 const HTTP_BAD_REQUEST = 400;
 const HTTP_UNAUTHORIZED = 401;
+const HTTP_SERVICE_UNAVAILABLE = 503;
 
 export async function POST(request: NextRequest) {
   const password = siteAccessPassword();
   const secret = siteAccessSecret();
+  if (!secret) return NextResponse.json({ error: "Site access is not configured." }, { status: HTTP_SERVICE_UNAVAILABLE });
 
   let supplied: unknown;
   try {

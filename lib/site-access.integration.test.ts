@@ -47,6 +47,7 @@ test("password entry grants remembered access to pages and APIs", async () => {
 test("site access works when deployment environment overrides are absent", async () => {
   delete process.env.SITE_ACCESS_PASSWORD;
   delete process.env.SITE_ACCESS_SECRET;
+  process.env.MONGODB_URI = "mongodb://test-only";
 
   const login = await POST(new NextRequest("http://localhost:3000/api/site-access", {
     method: "POST", body: JSON.stringify({ password: DEFAULT_SITE_ACCESS_PASSWORD }),
