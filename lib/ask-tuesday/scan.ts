@@ -1,7 +1,8 @@
 import { ASK_TUESDAY, ASK_TUESDAY_HTTP, ASK_TUESDAY_NO_STORE } from "../../config/ask-tuesday";
 import { ItemStatus } from "../../typings/types";
 import { laDayKey } from "../debt-metrics";
-import { auditName, excludedFromAudit, validDueKey } from "./search";
+import { excludedFromAudit, validDueKey } from "./search";
+import { auditName, tuesdayOrderScope } from "./order-scope";
 import { savedFindingNeedsReview } from "./knowledge";
 import type { AskTuesdayRequest, TuesdayIssue, TuesdayScanResponse, TuesdaySnapshot } from "./types";
 
@@ -14,8 +15,17 @@ const DEADLINE_LIMIT = "A dashboard due date is not a verified arrival promise. 
 export function scanTuesdaySnapshot(snapshot: TuesdaySnapshot, now: string): TuesdayScanResponse {
   const today = laDayKey(new Date(now));
   const issues: TuesdayIssue[] = [];
+  const scope = tuesdayOrderScope(snapshot);
+  const customerChats = (snapshot.knowledge?.conversations ?? []).flatMap(conversation => {
+    if (scope.excludeConversation(conversation) || !(conversation.messages.some(message => message.sender === "buyer")
+      || conversation.summary?.evidence.some(quote => quote.sender === "buyer"))) return [];
+    const orderIds = scope.conversationOrderIds(conversation);
+    if (!orderIds.length) return [];
+    return [{threadId: conversation.threadId, buyerName: boundedText(conversation.buyerName.trim() || scope.orderName(orderIds[EMPTY_COUNT]!).trim() || "Customer"), orderIds,
+      checkedAt: conversation.checkedAt, historyComplete: conversation.historyComplete, summary: conversation.summary ?? null}];
+  });
   if (snapshot.ordersCheckedAt) for (const order of snapshot.orders) {
-    if (order.visible === false || order.deleted || order.status === ItemStatus.Done || order.status === ItemStatus.Hidden
+    if (order.visible === false || order.deleted || order.status === ItemStatus.Done || scope.orderIsDone(order.id) || order.status === ItemStatus.Hidden
       || excludedFromAudit(order, snapshot)) continue;
     const due = validDueKey(order, today);
     const rules: {rule: TuesdayIssue["rule"]; detail: string; severity: TuesdayIssue["severity"]}[] = [];
@@ -36,12 +46,13 @@ export function scanTuesdaySnapshot(snapshot: TuesdaySnapshot, now: string): Tue
     });
   }
   for (const finding of snapshot.knowledge?.findings ?? []) {
-    if (!savedFindingNeedsReview(finding) || (snapshot.knowledge?.excludedAuditCustomers ?? [])
+    if (scope.excludeFinding(finding) || !savedFindingNeedsReview(finding) || (snapshot.knowledge?.excludedAuditCustomers ?? [])
       .some(customer => auditName(customer) === auditName(finding.customer))) continue;
     issues.push({kind: "finding", key: `issue:saved:${finding.key}`, rule: "saved-review", severity: "review",
       title: finding.customer || finding.key,
       detail: finding.action || (finding.status === "unknown" ? "Resolution is unknown in the saved review." : "Unresolved in the saved review."), facts: finding.evidence,
       sources: finding.sources, observedAt: finding.observedOn, observedPrecision: "date",
+      orderIds: scope.findingOrderIds(finding),
       uncertainty: [...finding.uncertainty, NOT_LIVE_ETSY,
         ...(finding.status === "unknown" ? ["Saved issue resolution is unknown; it cannot be treated as resolved."] : [])],
     });
@@ -49,10 +60,12 @@ export function scanTuesdaySnapshot(snapshot: TuesdaySnapshot, now: string): Tue
   issues.sort((left, right) => ASK_TUESDAY.resultPriority[left.kind] - ASK_TUESDAY.resultPriority[right.kind]);
   const totalIssues = issues.length;
   const status = !snapshot.ordersCheckedAt && !snapshot.knowledge ? "unavailable"
-    : !snapshot.ordersCheckedAt || !snapshot.knowledge || snapshot.ordersTruncated || snapshot.knowledge.evidenceTruncated
+    : !snapshot.ordersCheckedAt || !snapshot.knowledge || !scope.verified || snapshot.ordersTruncated || snapshot.knowledge.evidenceTruncated
       || snapshot.knowledge.conversations.some(conversation => !conversation.historyComplete) ? "partial" : "checked";
   return {
     mode: "issue-scan", checkedAt: now, status, totalIssues, issues: issues.slice(EMPTY_COUNT, ASK_TUESDAY.maxScanIssues),
+    orderIssues: issues.filter(issue => issue.orderId || issue.orderIds?.length),
+    customerChats,
     freshness: {ordersCheckedAt: snapshot.ordersCheckedAt, activitiesCheckedAt: snapshot.activitiesCheckedAt,
       reviewObservedOn: snapshot.knowledge?.reviewObservedOn ?? null, sourceUpdatedAt: snapshot.knowledge?.sourceUpdatedAt ?? null,
       importedAt: snapshot.knowledge?.importedAt ?? null},
@@ -61,6 +74,7 @@ export function scanTuesdaySnapshot(snapshot: TuesdaySnapshot, now: string): Tue
       "Automatic checks flag recorded risks for review; they do not prove an artwork error or missed arrival promise.",
       "Live Etsy messages are not connected to this website; the scheduled reviewer must supply fresh, cited evidence.",
       ...(snapshot.knowledge?.limitations ?? []), ...snapshot.limitations,
+      ...(scope.limitation ? [scope.limitation] : []),
       ...(!snapshot.ordersCheckedAt ? ["Live orders could not be checked."] : []),
       ...(!snapshot.knowledge ? ["Saved Etsy review evidence is unavailable."] : []),
       ...(snapshot.ordersTruncated ? ["The order limit was reached; board coverage is incomplete."] : []),

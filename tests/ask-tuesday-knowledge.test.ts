@@ -36,6 +36,175 @@ function conversation(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function summary(overrides: Record<string, unknown> = {}) {
+  return {
+    text: "The buyer requested the white palette, and the seller confirmed it.",
+    highlights: ["Use the white palette."], nextAction: null,
+    evidence: [
+      { sender: "buyer", text: "Use the white palette." },
+      { sender: "seller", text: "Confirmed white." },
+    ],
+    ...overrides,
+  };
+}
+
+test("verified conversation summaries survive normalization with only employee-facing fields", () => {
+  const result = parseConversationSnapshots({ conversations: [conversation({ summary: summary({
+    text: "  The buyer requested white.  ", nextAction: "  Prepare the white render.  ",
+    evidence: [{ sender: "buyer", text: "  Use the white palette.  ", messageToken: "ignore" }],
+    accessToken: "ignore",
+  }) })] }, IMPORTED_AT);
+  assert.deepEqual(result[EMPTY_COUNT]?.summary, {
+    text: "The buyer requested white.", highlights: ["Use the white palette."],
+    nextAction: "Prepare the white render.", evidence: [{ sender: "buyer", text: "Use the white palette." }],
+  });
+  assert.ok(!JSON.stringify(result).includes("accessToken"));
+});
+
+test("a summary with observed buyer quotes needs no invented per-message timestamps", () => {
+  const result = parseConversationSnapshots({ conversations: [conversation({
+    messages: [], agreements: [], historyComplete: true, summary: summary(),
+  })] }, IMPORTED_AT);
+  assert.deepEqual(result[EMPTY_COUNT]?.summary, summary());
+  assert.deepEqual(result[EMPTY_COUNT]?.messages, []);
+  assert.equal(result[EMPTY_COUNT]?.checkedAt, CHECKED_AT);
+  assert.equal(result[EMPTY_COUNT]?.historyComplete, false);
+});
+
+test("summaries reject missing buyer evidence, invalid senders, and unbounded authoritative text", () => {
+  const extraEntry = 1;
+  const invalid = [
+    summary({ text: " " }),
+    summary({ text: "a".repeat(ASK_TUESDAY.maxSummaryLength + extraEntry) }),
+    summary({ highlights: ["a".repeat(ASK_TUESDAY.maxSummaryLength + extraEntry)] }),
+    summary({ highlights: Array.from({ length: ASK_TUESDAY.maxSummaryHighlights + extraEntry }, () => "Highlight") }),
+    summary({ nextAction: "a".repeat(ASK_TUESDAY.maxSummaryLength + extraEntry) }),
+    summary({ evidence: [] }),
+    summary({ evidence: [{ sender: "seller", text: "Confirmed white." }] }),
+    summary({ evidence: [{ sender: "customer", text: "Use the white palette." }] }),
+    summary({ evidence: [{ sender: "buyer", text: " " }] }),
+    summary({ evidence: [{ sender: "buyer", text: "a".repeat(ASK_TUESDAY.maxSummaryQuoteLength + extraEntry) }] }),
+    summary({ evidence: Array.from({ length: ASK_TUESDAY.maxSummaryEvidence + extraEntry }, () => ({ sender: "buyer", text: "Use the white palette." })) }),
+  ];
+  for (const value of invalid) {
+    const result = parseConversationSnapshots({ conversations: [conversation({ summary: value })] }, IMPORTED_AT);
+    assert.equal(result[EMPTY_COUNT]?.summary, undefined);
+    assert.equal(result.length, ONE_RECORD);
+  }
+});
+
+test("bounded cited summaries remain available when persisted knowledge is read again", () => {
+  const savedSummary = summary({
+    text: "a".repeat(ASK_TUESDAY.maxSummaryLength),
+    highlights: Array.from({ length: ASK_TUESDAY.maxSummaryHighlights }, (_, index) => `Observed choice ${index}`),
+    nextAction: "a".repeat(ASK_TUESDAY.maxSummaryLength),
+    evidence: Array.from({ length: ASK_TUESDAY.maxSummaryEvidence }, () => ({
+      sender: "buyer", text: "a".repeat(ASK_TUESDAY.maxSummaryQuoteLength),
+    })),
+  });
+  const result = parseTuesdayKnowledge({ ...normalizeOperationalReview({ findings: [] }, IMPORTED_AT),
+    conversations: [conversation({ messages: [], agreements: [], historyComplete: false, summary: savedSummary })],
+  }, IMPORTED_AT);
+  assert.deepEqual(result.conversations[EMPTY_COUNT]?.summary, savedSummary);
+  assert.equal(result.conversations[EMPTY_COUNT]?.historyComplete, false);
+});
+
+test("summary quotes must match the retained message and sender when messages are supplied", () => {
+  for (const evidence of [
+    [{ sender: "buyer", text: "Use the blue palette." }],
+    [{ sender: "buyer", text: "Confirmed white." }],
+    [{ sender: "buyer", text: "Use the white palette." }, { sender: "seller", text: "Made-up confirmation." }],
+  ]) {
+    const result = parseConversationSnapshots({ conversations: [conversation({ summary: summary({ evidence }) })] }, IMPORTED_AT);
+    assert.equal(result[EMPTY_COUNT]?.summary, undefined);
+  }
+  const partial = parseConversationSnapshots({ conversations: [conversation({ historyComplete: false, summary: summary() })] }, IMPORTED_AT);
+  assert.deepEqual(partial[EMPTY_COUNT]?.summary, summary());
+  assert.equal(partial[EMPTY_COUNT]?.historyComplete, false);
+  assert.ok(partial[EMPTY_COUNT]?.agreements.every(agreement => agreement.status !== "final"));
+});
+
+test("summary evidence cannot cite an invalid message discarded from the imported history", () => {
+  const result = parseConversationSnapshots({ conversations: [conversation({ summary: summary(), messages: [
+    { id: "buyer-1", sentAt: "not-observed", sender: "buyer", text: "Use the white palette." },
+  ] })] }, IMPORTED_AT);
+  assert.equal(result[EMPTY_COUNT]?.summary, undefined);
+  assert.equal(result[EMPTY_COUNT]?.historyComplete, false);
+});
+
+test("a newer incomplete conversation snapshot removes the older summary", () => {
+  const result = parseConversationSnapshots({ conversations: [conversation({ summary: summary() }), conversation({
+    checkedAt: "2026-10-06T22:00:00Z", historyComplete: false, messages: [], agreements: [],
+  })] }, IMPORTED_AT);
+  assert.equal(result.length, ONE_RECORD);
+  assert.equal(result[EMPTY_COUNT]?.summary, undefined);
+});
+
+test("equal-time conflicting summaries cannot preserve an arbitrary earlier AI claim", () => {
+  const left = conversation({ summary: summary() });
+  const right = conversation({ summary: summary({ text: "The buyer still needs a render." }) });
+  for (const records of [[left, right], [right, left]]) {
+    const result = parseConversationSnapshots({ conversations: records }, IMPORTED_AT);
+    assert.equal(result[EMPTY_COUNT]?.summary, undefined);
+    assert.equal(result[EMPTY_COUNT]?.historyComplete, false);
+  }
+});
+
+test("equal-time disputed buyers or order links clear the association and AI summary in either input order", () => {
+  const left = conversation({ summary: summary() });
+  for (const override of [
+    { buyerName: "Different Buyer" },
+    { orderIds: ["4180000002"] },
+    { buyerName: "Different Buyer", orderIds: ["4180000002"] },
+  ]) {
+    const right = conversation({ ...override, summary: summary() });
+    for (const records of [[left, right], [right, left]]) {
+      const result = parseConversationSnapshots({ conversations: records }, IMPORTED_AT);
+      assert.equal(result[EMPTY_COUNT]?.buyerName, "");
+      assert.deepEqual(result[EMPTY_COUNT]?.orderIds, []);
+      assert.equal(result[EMPTY_COUNT]?.summary, undefined);
+      assert.equal(result[EMPTY_COUNT]?.historyComplete, false);
+      assert.deepEqual(result[EMPTY_COUNT]?.messages, left.messages);
+      assert.ok(result[EMPTY_COUNT]?.agreements.every(agreement => agreement.status !== "final"));
+    }
+  }
+});
+
+test("a third duplicate cannot restore a disputed equal-time customer association or summary", () => {
+  const left = conversation({ summary: summary() });
+  const right = conversation({ buyerName: "Different Buyer", orderIds: ["4180000002"], summary: summary() });
+  const unlinked = conversation({ buyerName: "", orderIds: [], summary: summary() });
+  for (const records of [[left, right, left], [right, left, right], [left, right, unlinked]]) {
+    const result = parseConversationSnapshots({ conversations: records }, IMPORTED_AT);
+    assert.equal(result[EMPTY_COUNT]?.buyerName, "");
+    assert.deepEqual(result[EMPTY_COUNT]?.orderIds, []);
+    assert.equal(result[EMPTY_COUNT]?.summary, undefined);
+    assert.equal(result[EMPTY_COUNT]?.historyComplete, false);
+  }
+});
+
+test("reordering identical order links does not dispute the customer or downgrade the saved history", () => {
+  const left = conversation({ orderIds: ["4180000001", "4180000002"], summary: summary() });
+  const right = conversation({ orderIds: ["4180000002", "4180000001"], summary: summary() });
+  for (const records of [[left, right], [right, left]]) {
+    const result = parseConversationSnapshots({ conversations: records }, IMPORTED_AT);
+    assert.equal(result[EMPTY_COUNT]?.buyerName, "Example Buyer");
+    assert.deepEqual([...result[EMPTY_COUNT]!.orderIds].sort(), ["4180000001", "4180000002"]);
+    assert.deepEqual(result[EMPTY_COUNT]?.summary, summary());
+    assert.equal(result[EMPTY_COUNT]?.historyComplete, true);
+    assert.ok(result[EMPTY_COUNT]?.agreements.some(agreement => agreement.status === "final"));
+  }
+});
+
+test("equal-time partial histories with identical customer links retain their shared cited summary", () => {
+  const result = parseConversationSnapshots({ conversations: [conversation({ summary: summary() }),
+    conversation({ historyComplete: false, summary: summary() })] }, IMPORTED_AT);
+  assert.equal(result[EMPTY_COUNT]?.buyerName, "Example Buyer");
+  assert.deepEqual(result[EMPTY_COUNT]?.orderIds, ["4180000001"]);
+  assert.deepEqual(result[EMPTY_COUNT]?.summary, summary());
+  assert.equal(result[EMPTY_COUNT]?.historyComplete, false);
+});
+
 test("normalizes daily findings without substituting save or import time for observation", () => {
   const result = normalizeOperationalReview({
     schemaVersion: 1, latestReviewDate: "2026-10-06", updatedAt: "2026-10-06T16:06:07-07:00",
@@ -254,6 +423,30 @@ test("CLI defaults to local output without initializing Mongo and imports only v
     assert.equal(output.conversations[EMPTY_COUNT].historyComplete, false);
     assert.ok(output.conversations[EMPTY_COUNT].agreements.every((agreement: { status: string }) => agreement.status !== "final"));
     assert.ok(!result.stdout.includes("No approved palette"));
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("CLI saves cited AI summaries locally without publishing or inventing transcript messages", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "ask-tuesday-summary-import-"));
+  try {
+    const reviewFile = path.join(directory, "review.json");
+    const messageFile = path.join(directory, "messages.json");
+    const outputFile = path.join(directory, "normalized.json");
+    await writeFile(reviewFile, JSON.stringify({ reviewDate: "2026-10-06", findings: [] }));
+    await writeFile(messageFile, JSON.stringify({ conversations: [conversation({
+      messages: [], agreements: [], historyComplete: false, summary: summary(),
+    })] }));
+    const result = spawnSync(process.execPath, ["--import", "tsx", "scripts/import-ask-tuesday.ts",
+      "--review", reviewFile, "--messages", messageFile, "--out", outputFile], {
+      cwd: process.cwd(), env: { ...process.env, MONGODB_URI: "", NEXT_PUBLIC_MODE: "" }, encoding: "utf8",
+    });
+    assert.equal(result.status, PROCESS_SUCCESS, result.stderr);
+    const output = JSON.parse(await readFile(outputFile, "utf8"));
+    assert.deepEqual(output.conversations[EMPTY_COUNT].summary, summary());
+    assert.deepEqual(output.conversations[EMPTY_COUNT].messages, []);
+    assert.equal(output.conversations[EMPTY_COUNT].historyComplete, false);
+    assert.match(result.stdout, /No remote changes/);
+    assert.ok(!result.stdout.includes("Use the white palette"));
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 

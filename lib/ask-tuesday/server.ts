@@ -5,7 +5,8 @@ import { ASK_TUESDAY } from "../../config/ask-tuesday";
 import { ItemStatus } from "../../typings/types";
 import { planTuesdaySearch } from "./search";
 import { parseTuesdayKnowledge } from "./knowledge";
-import type { AskActivity, AskOrder, AskTuesdayRequest, TuesdayKnowledge, TuesdaySnapshot } from "./types";
+import { readTuesdaySummaryCache } from "../server/tuesday-summaries";
+import type { AskActivity, AskOrder, AskOrderState, AskTuesdayRequest, TuesdayKnowledge, TuesdaySnapshot } from "./types";
 
 type Dependencies = {getDb: () => Promise<Db>; readKnowledge: () => Promise<string>; now: () => string; mode: string};
 const EMPTY_COUNT = 0;
@@ -13,6 +14,7 @@ const LOOKAHEAD_RECORDS = 1;
 const SORT_DESCENDING = -1;
 const ORDER_FIELDS = ["id", "customerName", "design", "size", "notes", "labels", "status", "dueDate", "visible", "deleted", "onHold", "dueDatePauseOffsetDays", "tags.hasCustomerMessage"];
 const ACTIVITY_FIELDS = ["id", "itemId", "timestamp", "type", "changes", "metadata.customerName", "metadata.design", "metadata.size"];
+const ORDER_STATE_FIELDS = ["id", "customerName", "status"];
 const projection = (fields: string[]) => Object.fromEntries([...fields.map(field => [field, LOOKAHEAD_RECORDS]), ["_id", EMPTY_COUNT]]);
 const LATIN_SEARCH_CODE_POINT_RANGES = [[0x00c0, 0x024f], [0x1e00, 0x1eff]] as const;
 const SINGLE_CHARACTER_LENGTH = 1;
@@ -42,7 +44,8 @@ async function knowledgeFromFile(dependencies: Dependencies): Promise<TuesdayKno
 
 export async function loadTuesdaySnapshot(request: AskTuesdayRequest, dependencies: Dependencies): Promise<TuesdaySnapshot> {
   const snapshot: TuesdaySnapshot = {orders: [], activities: [], knowledge: null,
-    ordersCheckedAt: null, activitiesCheckedAt: null, ordersTruncated: false, activitiesTruncated: false, limitations: []};
+    ordersCheckedAt: null, activitiesCheckedAt: null, ordersTruncated: false, activitiesTruncated: false, limitations: [],
+    orderScope: {orders: [], checkedAt: null, truncated: false}};
   const plan = planTuesdaySearch(request);
   let db: Db;
   try {
@@ -55,9 +58,7 @@ export async function loadTuesdaySnapshot(request: AskTuesdayRequest, dependenci
     return snapshot;
   }
 
-  const orderFilter: Filter<AskOrder> = {visible: true, deleted: false};
-  if (plan.intent === "attention" || (plan.intent === "page" && !plan.terms.length)) orderFilter.status = {$nin: [ItemStatus.Done, ItemStatus.Hidden]};
-  else orderFilter.status = {$ne: ItemStatus.Hidden};
+  const orderFilter: Filter<AskOrder> = {visible: true, deleted: false, status: {$nin: [ItemStatus.Done, ItemStatus.Hidden]}};
   if (plan.terms.length) orderFilter.$and = plan.terms.map(term => ({$or: ["id", "customerName", "design", "size", "notes", "labels"].map(field => ({[field]: literalRegex(term)}))}));
 
   const timestamp = Date.parse(dependencies.now());
@@ -75,8 +76,15 @@ export async function loadTuesdaySnapshot(request: AskTuesdayRequest, dependenci
     db.collection<AskActivity>(`activities-${dependencies.mode}`).find(activityFilter, {projection: projection(ACTIVITY_FIELDS)})
       .sort({timestamp: SORT_DESCENDING}).limit(ASK_TUESDAY.maxLoadedActivities + LOOKAHEAD_RECORDS).toArray(),
     db.collection(`${ASK_TUESDAY.knowledgeCollection}-${dependencies.mode}`).findOne({id: ASK_TUESDAY.knowledgeDocumentId}),
+    db.collection<AskOrderState>(`items-${dependencies.mode}`).find({deleted: {$ne: true},
+      $or: [{visible: {$ne: false}}, {status: ItemStatus.Done}]}, {projection: projection(ORDER_STATE_FIELDS)})
+      .sort({id: LOOKAHEAD_RECORDS}).limit(ASK_TUESDAY.maxLoadedOrderStates + LOOKAHEAD_RECORDS).toArray(),
   ]);
-  const [orders, activities, knowledge] = reads;
+  const [orders, activities, knowledge, orderStates] = reads;
+  if (orderStates?.status === "fulfilled") snapshot.orderScope = {
+    orders: orderStates.value.slice(EMPTY_COUNT, ASK_TUESDAY.maxLoadedOrderStates),
+    checkedAt: dependencies.now(), truncated: orderStates.value.length > ASK_TUESDAY.maxLoadedOrderStates,
+  };
   if (orders?.status === "fulfilled") {
     snapshot.orders = orders.value.slice(EMPTY_COUNT, ASK_TUESDAY.maxLoadedOrders);
     snapshot.ordersTruncated = orders.value.length > ASK_TUESDAY.maxLoadedOrders;
@@ -91,6 +99,7 @@ export async function loadTuesdaySnapshot(request: AskTuesdayRequest, dependenci
     try {snapshot.knowledge = parseTuesdayKnowledge(knowledge.value, dependencies.now());} catch { /* Invalid imported evidence is unavailable. */ }
   }
   if (!snapshot.knowledge) snapshot.knowledge = await knowledgeFromFile(dependencies);
+  snapshot.knowledge = await readTuesdaySummaryCache(snapshot, db, dependencies.mode, dependencies.now());
   if (!snapshot.knowledge) snapshot.limitations.push("Saved review findings and message snapshots are unavailable.");
   return snapshot;
 }

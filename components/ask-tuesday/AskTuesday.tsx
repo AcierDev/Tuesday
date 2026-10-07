@@ -41,6 +41,7 @@ export function AskTuesday() {
   const [turns, setTurns] = useState<SearchTurn[]>([]);
   const [pending, setPending] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const issuesTabRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const latestRef = useRef<HTMLElement>(null);
   const activeRequest = useRef<AbortController | null>(null);
@@ -62,8 +63,11 @@ export function AskTuesday() {
   }, []);
 
   useEffect(() => {
-    if (isOpen) inputRef.current?.focus();
-  }, [isOpen]);
+    if (isOpen) {
+      if (view === "search") inputRef.current?.focus();
+      else issuesTabRef.current?.focus();
+    }
+  }, [isOpen, view]);
 
   useEffect(() => {
     if (isOpen && view === "search" && turns.length) latestRef.current?.scrollIntoView({ block: "start" });
@@ -149,29 +153,27 @@ export function AskTuesday() {
           <header className="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 px-4 py-3">
             <div>
               <h2 className="text-base font-semibold text-slate-100">Ask Tuesday</h2>
-              <p className="mt-0.5 text-xs text-sky-300">Automatic issue checks</p>
-              <p className="mt-2 max-w-sm text-xs leading-relaxed text-slate-400">Current orders and saved Etsy reviews. Live Etsy messages aren’t connected to this popup.</p>
+              <p className="mt-0.5 text-xs text-slate-400">Orders and saved Etsy reviews</p>
             </div>
             <button type="button" aria-label="Close Ask Tuesday" onClick={closePopup}
               className="rounded-lg px-2 py-1 text-xl leading-none text-slate-400 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">×</button>
           </header>
           <div role="group" aria-label="Tuesday view" className="flex shrink-0 gap-2 border-b border-white/10 px-4 py-2">
-            <button type="button" aria-pressed={view === "issues"} aria-label="Show automatic issues"
+            <button ref={issuesTabRef} type="button" aria-pressed={view === "issues"} aria-label="Show automatic issues"
               onClick={() => setView("issues")} className={`rounded-lg px-3 py-1.5 text-xs ${view === "issues" ? "bg-sky-300/15 text-sky-200" : "text-slate-400 hover:bg-white/5"}`}>Issues</button>
             <button type="button" aria-pressed={view === "search"} aria-label="Show record search"
-              onClick={() => setView("search")} className={`rounded-lg px-3 py-1.5 text-xs ${view === "search" ? "bg-sky-300/15 text-sky-200" : "text-slate-400 hover:bg-white/5"}`}>Ask / search</button>
+              onClick={() => setView("search")} className={`rounded-lg px-3 py-1.5 text-xs ${view === "search" ? "bg-sky-300/15 text-sky-200" : "text-slate-400 hover:bg-white/5"}`}>Find an order</button>
           </div>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4">
             {view === "issues" ? <TuesdayIssues scan={scan.response} pending={scan.pending} error={scan.error}
               onRetry={scan.refresh} onOpenOrder={openOrder} referencePrefix={`${popupId}-issues`} /> : <>
             {!turns.length && <div className="space-y-3">
-              <p className="text-sm leading-relaxed text-slate-300">Search current orders, saved reviews, and verified conversation quotes.</p>
+              <p className="text-sm leading-relaxed text-slate-300">Search by customer name or order number.</p>
               <div className="flex flex-wrap gap-2">
                 {SUGGESTIONS.map((suggestion) => <button key={suggestion.label} type="button" aria-label={suggestion.ariaLabel}
                   onClick={() => { void runSearch(suggestion.question); }} disabled={pending}
                   className="rounded-full border border-white/15 bg-white/5 px-3 py-2 text-xs text-slate-200 hover:bg-white/10 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">{suggestion.label}</button>)}
               </div>
-              <p className="text-xs leading-relaxed text-slate-500">Saved evidence may be incomplete. Every result shows its source dates and evidence gaps.</p>
             </div>}
             {turns.map((turn, index) => <article key={turn.id} ref={index === turns.length - LAST_TURN_OFFSET ? latestRef : undefined}
               data-search-turn={true} className="space-y-3 border-b border-white/10 pb-4 last:border-0">
@@ -186,18 +188,18 @@ export function AskTuesday() {
                   onClick={() => { void runSearch(turn.question, turn.id); }}
                   className="rounded-lg border border-amber-300/20 px-2 py-1 text-xs text-amber-100 hover:bg-white/10 disabled:opacity-50">Retry</button>
               </div>}
-              {turn.response && <AskTuesdayResults response={turn.response} referencePrefix={turn.id} onOpenOrder={openOrder} />}
+              {turn.response && <AskTuesdayResults response={scan.filterSearchResponse(turn.response)} referencePrefix={turn.id} onOpenOrder={openOrder} />}
             </article>)}
             </>}
           </div>
-          <form className="shrink-0 space-y-2 border-t border-white/10 p-3" onSubmit={(event) => {
+          {view === "search" && <form className="shrink-0 space-y-2 border-t border-white/10 p-3" onSubmit={(event) => {
             event.preventDefault();
             void runSearch(question);
           }}>
             <label htmlFor={inputId} className="block text-xs text-slate-400">Customer, order, or question</label>
             <div className="flex items-end gap-2">
               <textarea ref={inputRef} id={inputId} rows={TEXTAREA_ROWS} value={question}
-                maxLength={ASK_TUESDAY.maxQuestionLength} placeholder="Search Tuesday records…"
+                maxLength={ASK_TUESDAY.maxQuestionLength} placeholder="Customer name or order number…"
                 onChange={(event) => setQuestion(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -209,9 +211,7 @@ export function AskTuesday() {
               <button type="submit" aria-label="Search records" disabled={pending || !question.trim()}
                 className="rounded-xl bg-sky-300 px-3 py-2 text-sm font-medium text-slate-950 hover:bg-sky-200 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">Search</button>
             </div>
-            <p className="text-[0.65rem] text-slate-500">{view === "issues" ? "Automatic checks cover the active board, independent of your filter."
-              : <>Uses this page{pathname === "/orders" && orderSearch ? " and your order filter" : ""}. Searches do not change orders.</>}</p>
-          </form>
+          </form>}
         </section>
       )}
       <button ref={triggerRef} type="button" aria-label={isOpen ? "Hide Ask Tuesday" : "Open Ask Tuesday"}

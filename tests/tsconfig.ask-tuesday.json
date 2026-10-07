@@ -3,7 +3,12 @@
   "compilerOptions": { "incremental": false, "types": ["node", "react", "react-dom"] },
   "include": [
     "../config/ask-tuesday.ts",
+    "../config/tuesday-monitor.ts",
+    "../config/tuesday-summaries.ts",
     "../lib/ask-tuesday/**/*.ts",
+    "../lib/server/tuesday-monitor.ts",
+    "../lib/server/tuesday-summaries.ts",
+    "../instrumentation.ts",
     "../app/api/ask-tuesday/**/*.ts",
     "../components/ask-tuesday/**/*.tsx",
     "../scripts/import-ask-tuesday.ts",

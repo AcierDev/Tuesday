@@ -2,7 +2,6 @@ import React from "react";
 import { motion } from "framer-motion";
 import {
   ArrowUpRightSquare,
-  MessageSquare,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +16,8 @@ import {
 } from "../utils/orderUtils";
 
 import { parseMinecraftColors } from "@/parseMinecraftColors";
+import { OrderIssueIcon } from "@/components/ask-tuesday/OrderIssueIcon";
+import { OrderCustomerChatIcon } from "@/components/ask-tuesday/OrderCustomerChatIcon";
 
 interface OrderCardProps {
   item: OrderItem;
@@ -41,13 +42,6 @@ export const OrderCard: React.FC<OrderCardProps> = React.memo(
         text: "Vertical",
         color: "text-blue-500",
       });
-    if (item.tags?.hasCustomerMessage)
-      tags.push({
-        icon: MessageSquare,
-        text: "Message",
-        color: "text-green-500",
-      });
-
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -69,8 +63,10 @@ export const OrderCard: React.FC<OrderCardProps> = React.memo(
         >
           <div className="p-3">
             {/* Header Line */}
-            <div className="text-sm font-medium mb-2 text-gray-200 truncate">
-              {parsedCustomerName}
+            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-200">
+              <span className="min-w-0 truncate">{parsedCustomerName}</span>
+              <OrderIssueIcon item={item} />
+              <OrderCustomerChatIcon item={item} />
             </div>
 
             <div className="flex gap-3">

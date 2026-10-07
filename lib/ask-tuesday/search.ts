@@ -3,6 +3,7 @@ import { dayDiffKeys, laDayKey, shiftDayKey } from "../debt-metrics";
 import { getEffectiveDueDateKey } from "../due-date-pause";
 import { ItemStatus } from "../../typings/types";
 import { savedFindingNeedsReview } from "./knowledge";
+import { auditName, tuesdayOrderScope } from "./order-scope";
 import type { AskOrder, AskTuesdayRequest, AskTuesdayResponse, AskTuesdayResult, TuesdaySnapshot } from "./types";
 
 type SearchIntent = "attention" | "activity" | "page" | "search";
@@ -45,11 +46,6 @@ export function planTuesdaySearch(request: AskTuesdayRequest): TuesdaySearchPlan
   const terms = [...new Set(words(searchText).filter(word => !STOP_WORDS.has(word) && word.length >= ASK_TUESDAY.minSearchTermLength))]
     .slice(EMPTY_COUNT, ASK_TUESDAY.maxSearchTerms);
   return { intent, terms, dueScope };
-}
-
-export function auditName(value: string): string {
-  return normalized(value).replace(/^\[(ew|wf|sh)\]\s*/, "")
-    .replace(/\((rushed|semi-rushed|custom|local|vertical|center fade)\)/g, "").replace(/\s+/g, " ").trim();
 }
 
 export function excludedFromAudit(order: AskOrder, snapshot: TuesdaySnapshot): boolean {
@@ -99,12 +95,13 @@ export function searchTuesdayRecords(request: AskTuesdayRequest, snapshot: Tuesd
   const plan = planTuesdaySearch(request);
   const today = laDayKey(new Date(now));
   const results: AskTuesdayResult[] = [];
+  const scope = tuesdayOrderScope(snapshot);
   const isAttention = plan.intent === "attention" || (plan.intent === "page" && !plan.terms.length);
   const isActivity = plan.intent === "activity";
   const isSearch = plan.intent === "search" || (plan.intent === "page" && !!plan.terms.length);
 
   if (!isActivity && (isAttention || plan.terms.length)) {
-    const orders = snapshot.orders.filter(order => order.visible !== false && !order.deleted && order.status !== ItemStatus.Hidden);
+    const orders = snapshot.orders.filter(order => order.visible !== false && !order.deleted && !INACTIVE_STATUSES.has(order.status) && !scope.orderIsDone(order.id));
     for (const order of orders) {
       const haystack = [order.id, order.customerName, order.design, order.size, order.notes, order.labels].join(" ");
       if (!textMatches(haystack, plan.terms)) continue;
@@ -123,6 +120,7 @@ export function searchTuesdayRecords(request: AskTuesdayRequest, snapshot: Tuesd
   }
 
   for (const finding of snapshot.knowledge?.findings ?? []) {
+    if (scope.excludeFinding(finding)) continue;
     if (plan.dueScope) continue;
     if (isAttention || isActivity) {
       if (!savedFindingNeedsReview(finding)) continue;
@@ -132,18 +130,21 @@ export function searchTuesdayRecords(request: AskTuesdayRequest, snapshot: Tuesd
     results.push({kind: "finding", key: finding.key, title: finding.customer,
       detail: finding.action ?? `Saved finding: ${finding.status}`, facts: finding.evidence,
       sources: finding.sources, observedAt: finding.observedOn, observedPrecision: "date",
+      orderIds: scope.findingOrderIds(finding),
       uncertainty: [...finding.uncertainty, `Status was ${finding.status} when reviewed; this is not a live Etsy check.`],
     });
   }
 
   if (isSearch && plan.terms.length) {
     for (const conversation of snapshot.knowledge?.conversations ?? []) {
+      if (scope.excludeConversation(conversation)) continue;
       if (!textMatches([conversation.buyerName, ...conversation.orderIds, ...conversation.messages.map(message => message.text),
         ...conversation.agreements.map(agreement => `${agreement.status} ${agreement.text}`)].join(" "), plan.terms)) continue;
       results.push({kind: "conversation", key: `conversation:${conversation.threadId}`, title: conversation.buyerName,
         detail: conversation.historyComplete ? "Verified full-history snapshot; later messages may exist." : "Partial history; final requirements are unverified.",
         facts: [], sources: [{label: `Etsy conversation ${conversation.threadId}`, href: `https://www.etsy.com/messages/${conversation.threadId}`}],
         observedAt: conversation.checkedAt, observedPrecision: "time", agreements: conversation.agreements, messages: conversation.messages,
+        orderIds: scope.conversationOrderIds(conversation),
         uncertainty: ["Saved message snapshot, not a fresh Etsy lookup.", ...(!conversation.orderIds.length ? ["Conversation-to-order linkage has not been supplied."] : [])],
       });
     }
@@ -152,6 +153,7 @@ export function searchTuesdayRecords(request: AskTuesdayRequest, snapshot: Tuesd
   if (isActivity || (isSearch && plan.terms.length)) {
     const windowStart = shiftDayKey(today, -ASK_TUESDAY.activityWindowDays);
     for (const activity of snapshot.activities) {
+      if (scope.excludeActivity(activity.itemId)) continue;
       if (!Number.isFinite(activity.timestamp) || activity.timestamp > Date.parse(now) || laDayKey(new Date(activity.timestamp)) < windowStart) continue;
       const facts = activity.changes.map(change => `${change.field}: ${text(change.oldValue) || "(empty)"} → ${text(change.newValue) || "(empty)"}`);
       if (!textMatches([activity.itemId, activity.metadata?.customerName, ...facts].join(" "), plan.terms)) continue;
@@ -175,6 +177,7 @@ export function searchTuesdayRecords(request: AskTuesdayRequest, snapshot: Tuesd
     "Live Etsy messages are not connected. Saved findings cannot replace the full relevant buyer history and final agreements.",
     "Customer arrival windows, holds and actual promises override routine dashboard due dates; due dates shown are not verified arrival commitments.",
     ...snapshot.limitations, ...(snapshot.knowledge?.limitations ?? []),
+    ...(scope.limitation ? [scope.limitation] : []),
     ...(snapshot.ordersTruncated ? ["Order lookup reached its record limit; results may be incomplete."] : []),
     ...(snapshot.activitiesTruncated ? ["Only the latest activity records were loaded; activity coverage is incomplete."] : []),
     ...(totalMatches > ASK_TUESDAY.maxResults ? [`Showing the first ${ASK_TUESDAY.maxResults} matches. Refine the customer or order search.`] : []),

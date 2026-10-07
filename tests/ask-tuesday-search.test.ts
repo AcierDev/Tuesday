@@ -53,6 +53,46 @@ test("attention ignores held, completed, hidden, deleted and discontinued framed
   assert.match(response.results[0]?.detail ?? "", /Overdue/);
 });
 
+test("Done orders and their saved messages and activity are ignored in every search mode", () => {
+  const data = snapshot({orders: [order({status: ItemStatus.Done})], knowledge: {
+    ...knowledge, findings: [{...knowledge.findings[0]!, customer: "Harrison Winn"}],
+    conversations: [{threadId: "1701319028", buyerName: "Harrison Winn", checkedAt: now, historyComplete: true,
+      orderIds: ["tuesday-harrison"], messages: [{id: "m1", sender: "buyer", sentAt: now, text: "Use tan"}], agreements: []}],
+  }, activities: [{id: "a1", itemId: "tuesday-harrison", timestamp: Date.parse(now), type: "status_change",
+    changes: [{field: "status", oldValue: "New", newValue: "Done"}], metadata: {customerName: "Harrison Winn"}}]});
+  for (const question of ["Find Harrison", "What needs attention?", "Any unusual activity?", "What is on this page?"]) {
+    const result = searchTuesdayRecords({question, page: "/orders", orderSearch: "Harrison"}, data, now);
+    assert.equal(result.totalMatches, 0, question);
+    assert.deepEqual(result.results, [], question);
+  }
+});
+
+test("search honors a newly observed Done status over an older active order row", () => {
+  const data = snapshot({knowledge: null, orderScope: {checkedAt: now, truncated: false, orders: [
+    {id: "tuesday-harrison", customerName: "Harrison Winn", status: ItemStatus.Done},
+  ]}});
+  assert.equal(searchTuesdayRecords({question: "Find Harrison", page: "/orders"}, data, now).totalMatches, 0);
+});
+
+test("external receipt IDs do not override a completed Tuesday customer's exclusion", () => {
+  const data = snapshot({orders: [order({status: ItemStatus.Done})], knowledge: {...knowledge,
+    findings: [{...knowledge.findings[0]!, customer: "Harrison Winn"}], conversations: [{threadId: "1701319028",
+      buyerName: "Harrison Winn", checkedAt: now, historyComplete: true, orderIds: ["external-receipt"], messages: [], agreements: []}],
+  }});
+  assert.equal(searchTuesdayRecords({question: "Find Harrison", page: "/orders"}, data, now).totalMatches, 0);
+});
+
+test("explicit active conversation links survive a completed namesake and unrelated issue-key numbers", () => {
+  const data = snapshot({orders: [], orderScope: {checkedAt: now, truncated: false, orders: [
+    {id: "4192583968", customerName: "Harrison Winn", status: ItemStatus.Done},
+    {id: "new-order", customerName: "Harrison Winn", status: ItemStatus.New},
+  ]}, knowledge: {...knowledge, conversations: [{threadId: "1701319028", buyerName: "Harrison Winn", checkedAt: now,
+    historyComplete: true, orderIds: ["new-order"], messages: [], agreements: []}]}});
+  const response = searchTuesdayRecords({question: "Find Harrison", page: "/orders"}, data, now);
+  assert.deepEqual(response.results.map(result => result.kind), ["conversation", "finding"]);
+  assert.deepEqual(response.results.find(result => result.kind === "conversation")?.orderIds, ["new-order"]);
+});
+
 test("the attention shortcut retains actionable findings whose resolution is unknown", () => {
   const response = searchTuesdayRecords({question: "What needs attention?", page: "/orders"}, snapshot({orders: [],
     knowledge: {...knowledge, findings: [{...knowledge.findings[0]!, status: "unknown"}]},

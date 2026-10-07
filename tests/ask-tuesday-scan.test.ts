@@ -39,8 +39,8 @@ test("holds suppress deadline alerts but do not hide explicit requirement checks
   assert.deepEqual(result.issues.map(issue => issue.rule), ["requirements-check"]);
 });
 
-test("saved unresolved findings retain quotes, dates and uncertainty, including completed orders", () => {
-  const data = snapshot([order("done", {status: ItemStatus.Done})]);
+test("saved unresolved findings retain quotes, dates and uncertainty for eligible work", () => {
+  const data = snapshot();
   data.knowledge!.findings = [
     {key: "thread:123", customer: "Done Buyer", status: "unresolved", evidence: ["Buyer asked for center fade."],
       action: "Review the buyer's requested change", observedOn: "2026-10-01", sources: [{label: "Etsy conversation", href: "https://www.etsy.com/messages/123"}], uncertainty: ["Earlier agreement unverified."]},
@@ -53,6 +53,142 @@ test("saved unresolved findings retain quotes, dates and uncertainty, including 
   assert.equal(result.issues[0]?.observedAt, "2026-10-01");
   assert.deepEqual(result.issues[0]?.facts, ["Buyer asked for center fade."]);
   assert.match(result.issues[0]?.uncertainty.join(" ") ?? "", /not a live Etsy check/i);
+});
+
+test("Done customers cannot reappear as saved message issues", () => {
+  const data = snapshot([order("done", {customerName: "[EW] José Buyer (Semi-Rushed) (Center Fade)", status: ItemStatus.Done})]);
+  data.knowledge!.findings = [{key: "closed-thread", customer: "Jose Buyer", status: "unresolved",
+    evidence: ["Old requested change"], action: "Check artwork", observedOn: "2026-10-01", sources: [], uncertainty: []}];
+  assert.equal(scanTuesdaySnapshot(data, now).totalIssues, 0);
+});
+
+test("a Hidden namesake cannot revive a completed customer's saved issue", () => {
+  const data = snapshot([order("done", {customerName: "Buyer", status: ItemStatus.Done}),
+    order("hidden", {customerName: "Buyer", status: ItemStatus.Hidden})]);
+  data.knowledge!.findings = [{key: "old", customer: "Buyer", status: "unresolved", evidence: ["Old change"],
+    action: null, observedOn: "2026-10-01", sources: [], uncertainty: []}];
+  assert.equal(scanTuesdaySnapshot(data, now).totalIssues, 0);
+});
+
+test("a saved account-alias issue stays excluded when its matched order is Done", () => {
+  const data = snapshot([order("done", {customerName: "Harrison Winn", status: ItemStatus.Done})]);
+  data.knowledge!.findings = [{key: "accounts", customer: "Harrison Winn / Donn Winn", status: "unresolved",
+    evidence: ["Old account-linkage question"], action: null, observedOn: "2026-10-01", sources: [], uncertainty: []}];
+  assert.equal(scanTuesdaySnapshot(data, now).totalIssues, 0);
+});
+
+test("a newly observed Done status overrides an older active order read", () => {
+  const data = snapshot([order("just-completed", {notes: "AI needs double check"})]);
+  data.orderScope = {checkedAt: now, truncated: false, orders: [{id: "just-completed", customerName: "Buyer", status: ItemStatus.Done}]};
+  assert.equal(scanTuesdaySnapshot(data, now).totalIssues, 0);
+});
+
+test("completed thread linkage overrides a repeat buyer's active order", () => {
+  const data = snapshot([order("active", {customerName: "Buyer", dueDate: "2026-10-12"})]);
+  data.orderScope = {checkedAt: now, truncated: false, orders: [
+    {id: "completed", customerName: "Buyer", status: ItemStatus.Done},
+    {id: "active", customerName: "Buyer", status: ItemStatus.New},
+  ]};
+  data.knowledge!.conversations = [{threadId: "123", buyerName: "Other account", orderIds: ["completed"],
+    checkedAt: now, historyComplete: true, messages: [], agreements: []}];
+  data.knowledge!.findings = [{key: "thread:123", customer: "Buyer / Other account", status: "unresolved",
+    evidence: ["Old requested change"], action: null, observedOn: "2026-10-01",
+    sources: [{label: "Messages", href: "https://www.etsy.com/messages/123"}], uncertainty: []}];
+  assert.equal(scanTuesdaySnapshot(data, now).totalIssues, 0);
+});
+
+test("unverified completion status hides saved issues while retaining active order alerts", () => {
+  for (const scope of [{checkedAt: null, truncated: false, orders: []}, {checkedAt: now, truncated: true, orders: []}]) {
+    const data = snapshot([order("active")]);
+    data.orderScope = scope;
+    data.knowledge!.findings = [{key: "saved", customer: "Buyer", status: "unresolved", evidence: ["Check change"],
+      action: null, observedOn: "2026-10-06", sources: [], uncertainty: []}];
+    const result = scanTuesdaySnapshot(data, now);
+    assert.deepEqual(result.issues.map(issue => issue.kind), ["order"]);
+    assert.equal(result.status, "partial");
+    assert.match(result.limitations.join(" "), /order status.*(?:unavailable|incomplete)/i);
+  }
+});
+
+test("order-linked issues remain available for row icons beyond the global card limit", () => {
+  const data = snapshot(Array.from({length: ASK_TUESDAY.maxScanIssues + 1}, (_, index) => order(`active-${index}`)));
+  data.orders.push(order("completed", {status: ItemStatus.Done}));
+  const result = scanTuesdaySnapshot(data, now);
+  assert.equal(result.issues.length, ASK_TUESDAY.maxScanIssues);
+  assert.equal(result.orderIssues?.length, ASK_TUESDAY.maxScanIssues + 1);
+  assert.equal(result.orderIssues?.at(-1)?.orderId, `active-${ASK_TUESDAY.maxScanIssues}`);
+  assert.ok(result.orderIssues?.every(issue => issue.orderId !== "completed"));
+});
+
+test("a saved issue gets only the active order IDs established by its thread", () => {
+  const data = snapshot([order("new-order", {customerName: "Buyer", dueDate: "2026-10-12"}),
+    order("completed", {customerName: "Buyer", status: ItemStatus.Done})]);
+  data.knowledge!.conversations = [{threadId: "123", buyerName: "Other account", orderIds: ["completed", "new-order"],
+    checkedAt: now, historyComplete: true, messages: [], agreements: []}];
+  data.knowledge!.findings = [{key: "thread:123", customer: "Buyer / Other account", status: "unresolved",
+    evidence: ["Check agreed change"], action: null, observedOn: "2026-10-06",
+    sources: [{label: "Messages", href: "https://www.etsy.com/messages/123"}], uncertainty: []}];
+  const result = scanTuesdaySnapshot(data, now);
+  assert.deepEqual(result.issues[0]?.orderIds, ["new-order"]);
+});
+
+test("a name-only issue is not attached to a repeat buyer's new order", () => {
+  const data = snapshot([order("new-order", {customerName: "Buyer", dueDate: "2026-10-12"}),
+    order("completed", {customerName: "Buyer", status: ItemStatus.Done})]);
+  data.knowledge!.findings = [{key: "unlinked", customer: "Buyer", status: "unresolved", evidence: ["Check palette"],
+    action: null, observedOn: "2026-10-06", sources: [], uncertainty: []}];
+  const result = scanTuesdaySnapshot(data, now);
+  assert.deepEqual(result.issues[0]?.orderIds, []);
+});
+
+test("active buyer chats are available even without an issue, while Done and seller-only histories are excluded", () => {
+  const data = snapshot([order("active", {customerName: "Buyer", dueDate: "2026-10-12"}),
+    order("completed", {customerName: "Done Buyer", status: ItemStatus.Done})]);
+  const summary = {text: "The buyer wants a white palette.", highlights: ["White palette"], nextAction: null,
+    evidence: [{sender: "buyer" as const, text: "Use white."}]};
+  const message = {id: "m1", sentAt: now, sender: "buyer" as const, text: "Use white."};
+  data.knowledge!.conversations = [
+    {threadId: "111", buyerName: "Buyer", orderIds: ["active"], checkedAt: now, historyComplete: true,
+      messages: [message], agreements: [], summary},
+    {threadId: "222", buyerName: "Done Buyer", orderIds: ["completed"], checkedAt: now, historyComplete: true,
+      messages: [message], agreements: [], summary},
+    {threadId: "333", buyerName: "Buyer", orderIds: ["active"], checkedAt: now, historyComplete: true,
+      messages: [{...message, sender: "seller"}], agreements: []},
+  ];
+  const result = scanTuesdaySnapshot(data, now);
+  assert.equal(result.totalIssues, 0);
+  assert.deepEqual(result.customerChats?.map(chat => chat.threadId), ["111"]);
+  assert.deepEqual(result.customerChats?.[0]?.orderIds, ["active"]);
+  assert.equal(result.customerChats?.[0]?.summary?.text, "The buyer wants a white palette.");
+});
+
+test("a partial cited summary can establish a buyer chat without fabricated message timestamps", () => {
+  const data = snapshot([order("active", {customerName: "Buyer", dueDate: "2026-10-12"})]);
+  data.knowledge!.conversations = [{threadId: "111", buyerName: "Buyer", orderIds: ["active"], checkedAt: now,
+    historyComplete: false, messages: [], agreements: [], summary: {text: "The buyer requested white.", highlights: [],
+      nextAction: "Check the latest approval before production.", evidence: [{sender: "buyer", text: "Use white."}]}}];
+  const result = scanTuesdaySnapshot(data, now);
+  assert.equal(result.customerChats?.length, 1);
+  assert.equal(result.customerChats?.[0]?.historyComplete, false);
+  assert.equal(result.status, "partial");
+});
+
+test("uncertain order status and ambiguous repeat buyers never attach chats to active rows", () => {
+  const data = snapshot([order("active", {customerName: "Buyer", dueDate: "2026-10-12"}),
+    order("completed", {customerName: "Buyer", status: ItemStatus.Done})]);
+  data.knowledge!.conversations = [{threadId: "111", buyerName: "Buyer", orderIds: [], checkedAt: now,
+    historyComplete: true, messages: [{id: "m1", sentAt: now, sender: "buyer", text: "Use white."}], agreements: []}];
+  assert.deepEqual(scanTuesdaySnapshot(data, now).customerChats, []);
+  data.knowledge!.conversations[0]!.orderIds = ["active"];
+  data.orderScope = {checkedAt: null, truncated: false, orders: []};
+  assert.deepEqual(scanTuesdaySnapshot(data, now).customerChats, []);
+});
+
+test("a linked buyer chat without a saved buyer name uses the active order label", () => {
+  const data = snapshot([order("active", {customerName: "Buyer", dueDate: "2026-10-12"})]);
+  data.knowledge!.conversations = [{threadId: "111", buyerName: "", orderIds: ["active"], checkedAt: now,
+    historyComplete: true, messages: [{id: "m1", sentAt: now, sender: "buyer", text: "Use white."}], agreements: []}];
+  assert.equal(scanTuesdaySnapshot(data, now).customerChats?.[0]?.buyerName, "Buyer");
 });
 
 test("missing sources and record limits never produce a complete all-clear", () => {

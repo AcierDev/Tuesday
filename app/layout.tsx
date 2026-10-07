@@ -17,6 +17,7 @@ import { UploadProgressToast } from "@/components/shipping/UploadProgress";
 import { MorningBriefing } from "@/components/orders/MorningBriefing";
 import { MobilePageSwitcher } from "@/components/ui/MobilePageSwitcher";
 import { AskTuesday } from "@/components/ask-tuesday/AskTuesday";
+import { TuesdayScanProvider } from "@/components/ask-tuesday/TuesdayScanProvider";
 
 // Load custom fonts
 const geistSans = localFont({
@@ -55,6 +56,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const handleCloseSettings = () => setIsSettingsOpen(false);
 
   return (
+    <TuesdayScanProvider>
     <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
       <Navbar
         onOpenSettings={handleOpenSettings}
@@ -82,6 +84,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         />
       )}
     </div>
+    </TuesdayScanProvider>
   );
 }
 

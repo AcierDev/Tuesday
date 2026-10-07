@@ -1,6 +1,6 @@
 import { ASK_TUESDAY } from "../../config/ask-tuesday";
 import type {
-  ConversationSnapshot, SavedAgreement, SavedFinding, SourceReference,
+  ConversationSnapshot, ConversationSummary, SavedAgreement, SavedFinding, SourceReference,
   TuesdayKnowledge, VerifiedMessage,
 } from "./types";
 
@@ -50,6 +50,40 @@ function timestampBefore(value: unknown, latest: string): string | null {
 function observation(value: unknown, latest: string): string | null {
   const parsed = date(value);
   return parsed && parsed <= new Date(latest).toISOString().slice(START_INDEX, DATE_TEXT_LENGTH) ? parsed : null;
+}
+
+function boundedText(value: unknown, limit: number): string | null {
+  if (typeof value !== "string") return null;
+  const parsed = value.trim();
+  return parsed && parsed.length <= limit ? parsed : null;
+}
+
+export function parseConversationSummary(value: unknown, messages: VerifiedMessage[], hasMessageHistory: boolean): ConversationSummary | null {
+  const input = record(value);
+  const body = boundedText(input?.text, ASK_TUESDAY.maxSummaryLength);
+  if (!input || !body || !Array.isArray(input.evidence) || !input.evidence.length
+    || input.evidence.length > ASK_TUESDAY.maxSummaryEvidence
+    || (input.highlights !== undefined && !Array.isArray(input.highlights))) return null;
+  const rawHighlights = list(input.highlights);
+  if (rawHighlights.length > ASK_TUESDAY.maxSummaryHighlights) return null;
+  const highlights: string[] = [];
+  for (const value of rawHighlights) {
+    const highlight = boundedText(value, ASK_TUESDAY.maxSummaryLength);
+    if (!highlight) return null;
+    if (!highlights.includes(highlight)) highlights.push(highlight);
+  }
+  const nextAction = input.nextAction == null ? null : boundedText(input.nextAction, ASK_TUESDAY.maxSummaryLength);
+  if (input.nextAction != null && !nextAction) return null;
+  const evidence: ConversationSummary["evidence"] = [];
+  for (const value of input.evidence) {
+    const entry = record(value);
+    const quote = boundedText(entry?.text, ASK_TUESDAY.maxSummaryQuoteLength);
+    if (!entry || !quote || (entry.sender !== "buyer" && entry.sender !== "seller")
+      || (hasMessageHistory && !messages.some(message => message.sender === entry.sender && message.text.includes(quote)))) return null;
+    evidence.push({ sender: entry.sender, text: quote });
+  }
+  if (!evidence.some(entry => entry.sender === "buyer")) return null;
+  return { text: body, highlights, nextAction, evidence };
 }
 
 function safeSource(value: unknown): SourceReference | null {
@@ -182,6 +216,8 @@ function conversation(value: unknown, now: string): ConversationSnapshot | null 
     messageIds.add(id);
     messages.push({ id, sentAt, sender: message.sender, text: body });
   }
+  const summary = parseConversationSummary(input.summary, messages, rawMessages.length > START_INDEX);
+  if (summary && !messages.length) historyComplete = false;
   const agreements: SavedAgreement[] = [];
   for (const value of rawAgreements.slice(START_INDEX, ASK_TUESDAY.maxMessagesPerConversation)) {
     const agreement = record(value);
@@ -194,7 +230,7 @@ function conversation(value: unknown, now: string): ConversationSnapshot | null 
     agreements.push({ status: agreement.status, text: body, messageIds: refs });
   }
   return { threadId, buyerName: text(input.buyerName) ?? "", checkedAt, historyComplete, evidenceTruncated,
-    orderIds: strings(input.orderIds, ASK_TUESDAY.maxFindings), messages, agreements };
+    orderIds: strings(input.orderIds, ASK_TUESDAY.maxFindings), messages, agreements, ...(summary ? {summary} : {}) };
 }
 
 export function parseConversationSnapshots(value: unknown, now: string): ConversationSnapshot[] {
@@ -206,12 +242,22 @@ export function parseConversationSnapshots(value: unknown, now: string): Convers
     if (!next) continue;
     const existing = result.get(next.threadId);
     if (!existing || Date.parse(next.checkedAt) > Date.parse(existing.checkedAt)) result.set(next.threadId, next);
-    else if (Date.parse(next.checkedAt) === Date.parse(existing.checkedAt) && JSON.stringify(next) !== JSON.stringify(existing)) {
+    else if (Date.parse(next.checkedAt) === Date.parse(existing.checkedAt)) {
+      const sameOrderLinks = next.orderIds.length === existing.orderIds.length
+        && next.orderIds.every(id => existing.orderIds.includes(id));
+      const identityConflict = next.buyerName !== existing.buyerName || !sameOrderLinks;
+      if (!identityConflict && JSON.stringify({...next, orderIds: existing.orderIds}) === JSON.stringify(existing)) continue;
       const messages = existing.messages.filter(message => next.messages.some(other => JSON.stringify(other) === JSON.stringify(message)));
       const ids = new Set(messages.map(message => message.id));
+      const summary = !identityConflict && JSON.stringify(existing.summary) === JSON.stringify(next.summary)
+        ? parseConversationSummary(existing.summary, messages, existing.messages.length > START_INDEX || next.messages.length > START_INDEX)
+        : null;
       result.set(next.threadId, { ...existing, historyComplete: false, messages,
+        buyerName: identityConflict ? "" : existing.buyerName,
+        orderIds: identityConflict ? [] : existing.orderIds,
         evidenceTruncated: existing.evidenceTruncated || next.evidenceTruncated,
-        agreements: existing.agreements.filter(agreement => agreement.status !== "final" && agreement.messageIds.every(id => ids.has(id))) });
+        agreements: existing.agreements.filter(agreement => agreement.status !== "final" && agreement.messageIds.every(id => ids.has(id))),
+        summary: summary ?? undefined });
     }
   }
   return [...result.values()];

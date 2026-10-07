@@ -32,6 +32,13 @@ export type SavedAgreement = {
   messageIds: string[];
 };
 
+export type ConversationSummary = {
+  text: string;
+  highlights: string[];
+  nextAction: string | null;
+  evidence: {sender: "buyer" | "seller"; text: string}[];
+};
+
 export type ConversationSnapshot = {
   threadId: string;
   buyerName: string;
@@ -41,6 +48,16 @@ export type ConversationSnapshot = {
   orderIds: string[];
   messages: VerifiedMessage[];
   agreements: SavedAgreement[];
+  summary?: ConversationSummary;
+};
+
+export type OrderCustomerChat = {
+  threadId: string;
+  buyerName: string;
+  orderIds: string[];
+  checkedAt: string;
+  historyComplete: boolean;
+  summary: ConversationSummary | null;
 };
 
 export type TuesdayKnowledge = {
@@ -62,6 +79,7 @@ export type AskOrder = Pick<Item,
 >;
 
 export type AskActivity = Pick<Activity, "id" | "itemId" | "timestamp" | "type" | "changes" | "metadata">;
+export type AskOrderState = Pick<AskOrder, "id" | "customerName" | "status">;
 
 export type TuesdaySnapshot = {
   orders: AskOrder[];
@@ -71,6 +89,7 @@ export type TuesdaySnapshot = {
   activitiesCheckedAt: string | null;
   ordersTruncated: boolean;
   activitiesTruncated: boolean;
+  orderScope?: {orders: AskOrderState[]; checkedAt: string | null; truncated: boolean};
   limitations: string[];
 };
 
@@ -82,6 +101,7 @@ export type AskTuesdayResult = {
   facts: string[];
   sources: SourceReference[];
   orderId?: string;
+  orderIds?: string[];
   observedAt: string | null;
   observedPrecision: "date" | "time";
   uncertainty: string[];
@@ -120,6 +140,8 @@ export type TuesdayScanResponse = {
   checkedAt: string;
   status: "checked" | "partial" | "unavailable";
   issues: TuesdayIssue[];
+  orderIssues?: TuesdayIssue[];
+  customerChats?: OrderCustomerChat[];
   totalIssues: number;
   freshness: AskTuesdayResponse["freshness"];
   capabilities: AskTuesdayResponse["capabilities"];

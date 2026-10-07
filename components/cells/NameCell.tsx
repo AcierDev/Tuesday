@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { FileWarning, MessageCircleWarning } from "lucide-react";
+import { FileWarning } from "lucide-react";
 import { parseISO, isValid } from "date-fns";
 import { cn } from "@/utils/functions";
 import React from "react";
@@ -18,6 +18,8 @@ import {
   useTomorrowScheduledIds,
 } from "@/hooks/useTodayScheduledIds";
 import { OrderNameDisplay } from "@/components/orders/name-tokens";
+import { OrderIssueIcon } from "@/components/ask-tuesday/OrderIssueIcon";
+import { OrderCustomerChatIcon } from "@/components/ask-tuesday/OrderCustomerChatIcon";
 
 // // Add this style block right after imports
 // const pulseKeyframes = `
@@ -170,6 +172,8 @@ export const NameCell: React.FC<NameCellProps> = ({
   return (
     <div className="flex items-center w-full h-full relative group -translate-x-[13px]">
       <div className="flex items-center space-x-2 w-full">
+        <OrderIssueIcon item={item} />
+        <OrderCustomerChatIcon item={{ ...item, tags: { ...item.tags, hasCustomerMessage: tags?.hasCustomerMessage ?? item.tags?.hasCustomerMessage } }} />
         {tags?.isDuplicate && (
           <Tooltip>
             <TooltipTrigger>
@@ -180,17 +184,6 @@ export const NameCell: React.FC<NameCellProps> = ({
             </TooltipContent>
           </Tooltip>
         )}
-        {tags?.hasCustomerMessage && (
-          <Tooltip>
-            <TooltipTrigger>
-              <MessageCircleWarning className="h-4 w-4 text-blue-500" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Customer messaged</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-
         {isEditing ? (
           <div className="flex flex-1 min-w-0 items-center justify-start gap-2">
             {dueBadge}
