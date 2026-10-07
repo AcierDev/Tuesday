@@ -47,6 +47,11 @@ status; customer details remain in the current employee response. Failed runs
 retain the last successful scan, record a sanitized failure, and retry on later ticks. Employee requests
 still check current active statuses rather than serving that saved scan.
 
+After a production build, `npm run check:tuesday-startup` verifies the compiled
+startup hook with the worker enabled and disabled. It intercepts startup before
+the timer or any source/model work runs and clears database/model credentials.
+This catches hosts where Next's runtime flag exists only as a build definition.
+
 Automatic timers are disabled during development, builds and known serverless
 environments. Set `ASK_TUESDAY_MONITOR_ENABLED=false` for local production
 previews or to disable the worker. Hosted production needs the same existing
