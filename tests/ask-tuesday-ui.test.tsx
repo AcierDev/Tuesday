@@ -15,6 +15,7 @@ let AskTuesdayResults: typeof import("../components/ask-tuesday/AskTuesdayResult
 let TuesdayScanProvider: typeof import("../components/ask-tuesday/TuesdayScanProvider").TuesdayScanProvider;
 let OrderIssueIcon: typeof import("../components/ask-tuesday/OrderIssueIcon").OrderIssueIcon;
 let OrderCustomerChatIcon: typeof import("../components/ask-tuesday/OrderCustomerChatIcon").OrderCustomerChatIcon;
+let OrderAttentionIcons: typeof import("../components/ask-tuesday/OrderAttentionIcons").OrderAttentionIcons;
 let pathname = "/orders";
 let searchQuery = "Jane";
 let navigatedTo = "";
@@ -109,6 +110,7 @@ before(async () => {
   ({ TuesdayScanProvider } = await import("../components/ask-tuesday/TuesdayScanProvider"));
   ({ OrderIssueIcon } = await import("../components/ask-tuesday/OrderIssueIcon"));
   ({ OrderCustomerChatIcon } = await import("../components/ask-tuesday/OrderCustomerChatIcon"));
+  ({ OrderAttentionIcons } = await import("../components/ask-tuesday/OrderAttentionIcons"));
 });
 
 after(() => { globalThis.fetch = originalFetch; });
@@ -669,7 +671,7 @@ test("customer chat icons share the existing poll and show saved AI summaries on
   ];
   let renderer: ReactTestRenderer;
   await act(async () => { renderer = TestRenderer.create(<TuesdayScanProvider><AskTuesday />
-    {rows.map((item, index) => <div key={index} data-chat-row={`${item.id}:${item.status}`}><OrderIssueIcon item={item} /><OrderCustomerChatIcon item={item} /></div>)}
+    {rows.map((item, index) => <div key={index} data-chat-row={`${item.id}:${item.status}`}><OrderAttentionIcons item={item} /></div>)}
   </TuesdayScanProvider>); });
   try {
     assert.equal(calls, 1);
@@ -721,7 +723,7 @@ test("chat gestures stay inside the icon and Escape returns focus while replacin
   let renderer: ReactTestRenderer;
   let stopped = 0;
   let focused = 0;
-  await act(async () => { renderer = TestRenderer.create(<TuesdayScanProvider><OrderIssueIcon item={item} /><OrderCustomerChatIcon item={item} /></TuesdayScanProvider>); });
+  await act(async () => { renderer = TestRenderer.create(<TuesdayScanProvider><OrderAttentionIcons item={item} /></TuesdayScanProvider>); });
   try {
     act(() => renderer!.root.findByProps({ "aria-label": "Show 1 issue for Jane 123" }).props.onClick({ currentTarget: { focus() {} }, stopPropagation() {} }));
     const icon = renderer!.root.findByProps({ "aria-label": "Show customer chat for Jane order 123" });

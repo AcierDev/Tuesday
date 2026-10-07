@@ -1,8 +1,10 @@
 "use client";
 
+import { Fragment } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ShippingStatusIcon } from "./ShippingStatusIcon";
 import { PreviewTableCell } from "./PreviewTableCell";
+import { OrderAttentionCell } from "./OrderAttentionCell";
 import { cn } from "@/utils/functions";
 import {
   ColumnTitles,
@@ -75,18 +77,22 @@ export function PreviewTableRow({
           };
 
           return (
-            <PreviewTableCell
-              key={`${item.id}-${columnName}`}
-              item={item}
-              columnValue={columnValue}
-              columnName={columnName}
-              cellIndex={cellIndex}
-              onDaySelect={onDaySelect}
-              onAddToSchedule={onAddToSchedule}
-              onScheduleUpdate={onScheduleUpdate}
-            />
+            <Fragment key={`${item.id}-${columnName}`}>
+              <PreviewTableCell
+                item={item}
+                columnValue={columnValue}
+                columnName={columnName}
+                cellIndex={cellIndex}
+                hasAttentionColumn
+                onDaySelect={onDaySelect}
+                onAddToSchedule={onAddToSchedule}
+                onScheduleUpdate={onScheduleUpdate}
+              />
+              {columnName === ColumnTitles.Size && <OrderAttentionCell item={item} />}
+            </Fragment>
           );
         })}
+      {!visibleColumns.includes(ColumnTitles.Size) && <OrderAttentionCell item={item} />}
     </TableRow>
   );
 }

@@ -16,8 +16,7 @@ import {
 } from "../utils/orderUtils";
 
 import { parseMinecraftColors } from "@/parseMinecraftColors";
-import { OrderIssueIcon } from "@/components/ask-tuesday/OrderIssueIcon";
-import { OrderCustomerChatIcon } from "@/components/ask-tuesday/OrderCustomerChatIcon";
+import { OrderAttentionIcons } from "@/components/ask-tuesday/OrderAttentionIcons";
 
 interface OrderCardProps {
   item: OrderItem;
@@ -64,9 +63,7 @@ export const OrderCard: React.FC<OrderCardProps> = React.memo(
           <div className="p-3">
             {/* Header Line */}
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-200">
-              <span className="min-w-0 truncate">{parsedCustomerName}</span>
-              <OrderIssueIcon item={item} />
-              <OrderCustomerChatIcon item={item} />
+              <span className="min-w-0 flex-1 truncate">{parsedCustomerName}</span>
             </div>
 
             <div className="flex gap-3">
@@ -86,8 +83,9 @@ export const OrderCard: React.FC<OrderCardProps> = React.memo(
                     <div className="text-sm text-gray-400">
                         Design: <span className="text-white">"{item.design || "N/A"}"</span>
                     </div>
-                    <div className="text-sm text-gray-400">
-                        Size: <span className="text-white">{item.size || "N/A"}</span>
+                    <div className="flex min-w-0 items-center gap-2 text-sm text-gray-400">
+                        <span className="min-w-0 break-words">Size: <span className="text-white">{item.size || "N/A"}</span></span>
+                        <OrderAttentionIcons item={item} />
                     </div>
                     <div className={cn("text-sm", isPastDue ? "text-red-400 font-medium" : "text-gray-400")}>
                         Due: <span className={cn(isPastDue ? "text-red-400" : "text-white")}>{item.dueDate ? formatDate(item.dueDate) : "N/A"}</span>

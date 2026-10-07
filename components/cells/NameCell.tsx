@@ -18,8 +18,6 @@ import {
   useTomorrowScheduledIds,
 } from "@/hooks/useTodayScheduledIds";
 import { OrderNameDisplay } from "@/components/orders/name-tokens";
-import { OrderIssueIcon } from "@/components/ask-tuesday/OrderIssueIcon";
-import { OrderCustomerChatIcon } from "@/components/ask-tuesday/OrderCustomerChatIcon";
 
 // // Add this style block right after imports
 // const pulseKeyframes = `
@@ -171,22 +169,12 @@ export const NameCell: React.FC<NameCellProps> = ({
 
   return (
     <div className="flex items-center w-full h-full relative group -translate-x-[13px]">
-      <div className="flex items-center space-x-2 w-full">
-        <OrderIssueIcon item={item} />
-        <OrderCustomerChatIcon item={{ ...item, tags: { ...item.tags, hasCustomerMessage: tags?.hasCustomerMessage ?? item.tags?.hasCustomerMessage } }} />
-        {tags?.isDuplicate && (
-          <Tooltip>
-            <TooltipTrigger>
-              <FileWarning className="h-4 w-4 text-orange-500" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Multiple orders with this customer name</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
+      <div className="flex min-w-0 items-center gap-2 w-full">
+        <div className="flex w-[1.875rem] shrink-0 items-center justify-center sm:w-[2.475rem]">
+          {dueBadge}
+        </div>
         {isEditing ? (
           <div className="flex flex-1 min-w-0 items-center justify-start gap-2">
-            {dueBadge}
             <div className="flex flex-col items-start gap-0.5 flex-1 min-w-0">
               {scheduleBadge}
               <input
@@ -214,19 +202,25 @@ export const NameCell: React.FC<NameCellProps> = ({
               "rounded-md",
               "flex items-center justify-start gap-2"
             )}
-            onClick={() => {
-              console.log("clicked");
-              handleFocus();
-            }}
+            onClick={handleFocus}
           >
-            {dueBadge}
-            <div className="flex flex-col items-start gap-0.5">
+            <div className="flex min-w-0 flex-col items-start gap-0.5">
               {scheduleBadge}
-              <span className="inline-flex items-center gap-2">
+              <span className="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1">
                 <OrderNameDisplay rawName={inputValue} />
               </span>
             </div>
           </div>
+        )}
+        {tags?.isDuplicate && (
+          <Tooltip>
+            <TooltipTrigger className="shrink-0">
+              <FileWarning className="h-4 w-4 text-orange-500" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Multiple orders with this customer name</p>
+            </TooltipContent>
+          </Tooltip>
         )}
       </div>
     </div>

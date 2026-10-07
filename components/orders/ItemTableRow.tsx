@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   motion,
   useMotionValue,
@@ -13,6 +13,7 @@ import { TableCell } from "@/components/ui/table";
 import { Portal } from "@/components/ui/portal";
 import { MergedShippingCell } from "../cells/MergedShippingCell";
 import { ItemTableCell } from "./ItemTableCell";
+import { OrderAttentionCell } from "./OrderAttentionCell";
 import { ItemActions } from "./ItemActions";
 import { cn } from "@/utils/functions";
 import {
@@ -553,18 +554,23 @@ export const ItemTableRow = memo(function ItemTableRow({
             };
 
             return (
-              <ItemTableCell
-                key={`${item.id}-${columnName}`}
-                item={item}
-                columnValue={columnValue}
-                columnName={columnName}
-                cellIndex={cellIndex}
-                onDaySelect={onDaySelect}
-                onAddToSchedule={onAddToSchedule}
-                onScheduleUpdate={onScheduleUpdate}
-              />
+              <Fragment key={`${item.id}-${columnName}`}>
+                <ItemTableCell
+                  item={item}
+                  columnValue={columnValue}
+                  columnName={columnName}
+                  cellIndex={cellIndex}
+                  hasAttentionColumn
+                  onDaySelect={onDaySelect}
+                  onAddToSchedule={onAddToSchedule}
+                  onScheduleUpdate={onScheduleUpdate}
+                />
+                {columnName === ColumnTitles.Size && <OrderAttentionCell item={item} />}
+              </Fragment>
             );
           })}
+
+        {!visibleColumns.includes(ColumnTitles.Size) && <OrderAttentionCell item={item} />}
 
         <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-0 text-center w-8">
           <ItemActions

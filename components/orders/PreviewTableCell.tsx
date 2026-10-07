@@ -8,12 +8,14 @@ import { DueDateTooltip } from "./DueDateTooltip";
 import { cn } from "@/utils/functions";
 import { ColumnTitles, Item, ColumnValue, DayName } from "@/typings/types";
 import { getStatusColor } from "./ItemGroup";
+import { orderColumnWidth } from "@/config/order-attention-layout";
 
 interface PreviewTableCellProps {
   item: Item;
   columnValue: ColumnValue;
   columnName: ColumnTitles;
   cellIndex: number;
+  hasAttentionColumn?: boolean;
   onDaySelect: (itemId: string, date: Date) => void;
   onAddToSchedule: (
     weekKey: string,
@@ -28,6 +30,7 @@ export function PreviewTableCell({
   columnValue,
   columnName,
   cellIndex,
+  hasAttentionColumn = false,
   onDaySelect,
   onAddToSchedule,
   onScheduleUpdate,
@@ -83,12 +86,10 @@ export function PreviewTableCell({
       key={`${item.id}-${columnName}`}
       className={cn(
         "border-b border-gray-100 dark:border-gray-700/60 p-2 relative",
-        columnName === ColumnTitles.Customer_Name ? "w-[38%]" : "",
-        columnName === ColumnTitles.Design ? "w-[32%]" : "",
-        columnName === ColumnTitles.Size ? "w-[22%]" : "",
         columnName === ColumnTitles.Labels ? "w-[2.44734375rem] flex-shrink-0 overflow-hidden p-0" : "",
         getStatusColor(columnValue)
       )}
+      style={{ width: orderColumnWidth(columnName, hasAttentionColumn) }}
       onMouseEnter={(e) => {
         if (isDueDateColumn) {
           handleMouseEnter(item.id, columnName, e.currentTarget);

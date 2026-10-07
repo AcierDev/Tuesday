@@ -4,11 +4,12 @@ import React, { useEffect } from "react";
 import { CircleAlert } from "lucide-react";
 import { ItemStatus, type Item } from "@/typings/types";
 import { useTuesdayScanContext } from "./TuesdayScanProvider";
+import { cn } from "@/utils/functions";
 
 const EMPTY_COUNT = 0;
 const SINGLE_ISSUE_COUNT = 1;
 
-export function OrderIssueIcon({ item }: { item: Pick<Item, "id" | "status" | "customerName"> }) {
+export function OrderIssueIcon({ item, className }: { item: Pick<Item, "id" | "status" | "customerName">; className?: string }) {
   const context = useTuesdayScanContext();
   const ignored = item.status === ItemStatus.Done || item.status === ItemStatus.Hidden;
   const dismiss = context?.dismissOrderIssues;
@@ -24,7 +25,7 @@ export function OrderIssueIcon({ item }: { item: Pick<Item, "id" | "status" | "c
     onPointerDownCapture={stopPropagation} onPointerDown={stopPropagation} onMouseDown={stopPropagation}
     onTouchStart={stopPropagation} onKeyDown={stopPropagation}
     onClick={(event) => { event.stopPropagation(); context.showOrderIssues(item, event.currentTarget); }}
-    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-300 hover:bg-amber-300/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+    className={cn("inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-300 hover:bg-amber-300/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300", className)}>
     <CircleAlert aria-hidden="true" className="h-4 w-4" />
   </button>;
 }
