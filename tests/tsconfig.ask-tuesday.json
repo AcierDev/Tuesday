@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "incremental": false, "types": ["node", "react", "react-dom"] },
+  "include": [
+    "../config/ask-tuesday.ts",
+    "../lib/ask-tuesday/**/*.ts",
+    "../app/api/ask-tuesday/**/*.ts",
+    "../components/ask-tuesday/**/*.tsx",
+    "../scripts/import-ask-tuesday.ts",
+    "../stores/useShippingStore.ts",
+    "../tests/shipping-store-startup.test.ts",
+    "../tests/ask-tuesday-*.test.ts",
+    "../tests/ask-tuesday-*.test.tsx"
+  ],
+  "exclude": ["../node_modules", "../.next", "../.next-backup-*"]
+}

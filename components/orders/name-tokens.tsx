@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, MoveVertical, Printer, Wrench, Zap } from "lucide-react";
+import { Blend, MapPin, MoveVertical, Printer, Wrench, Zap } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -10,17 +10,23 @@ import { cn, splitFirstTwoWords } from "@/utils/functions";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
 
 const RUSHED_TOKEN = /\(rushed\)/i;
+const SEMI_RUSHED_TOKEN = /\(semi-rushed\)/i;
+const SEMI_RUSHED_ICON_STROKE_WIDTH = 2.75;
 const LOCAL_TOKEN = /\(local\)/i;
 const VERTICAL_TOKEN = /\(vertical\)/i;
 const CUSTOM_TOKEN = /\(custom\)/i;
+const CENTER_FADE_TOKEN = /\(center fade\)/i;
+const CENTER_FADE_ICON_STROKE_WIDTH = 2.75;
 const BRAND_PREFIX = /^\[(EW|WF|SH)\]\s*/;
 
 export type NameTokens = {
   displayName: string;
   isRushed: boolean;
+  isSemiRushed: boolean;
   isLocal: boolean;
   isVertical: boolean;
   isCustom: boolean;
+  isCenterFade: boolean;
   brandPrefix: "EW" | "WF" | "SH" | null;
   isPrintMarker: boolean;
 };
@@ -31,14 +37,18 @@ export type NameTokens = {
 export function parseNameTokens(rawName: string): NameTokens {
   const trimmed = rawName ?? "";
   const isRushed = RUSHED_TOKEN.test(trimmed);
+  const isSemiRushed = SEMI_RUSHED_TOKEN.test(trimmed);
   const isLocal = LOCAL_TOKEN.test(trimmed);
   const isVertical = VERTICAL_TOKEN.test(trimmed);
   const isCustom = CUSTOM_TOKEN.test(trimmed);
+  const isCenterFade = CENTER_FADE_TOKEN.test(trimmed);
   const stripped = trimmed
     .replace(RUSHED_TOKEN, "")
+    .replace(SEMI_RUSHED_TOKEN, "")
     .replace(LOCAL_TOKEN, "")
     .replace(VERTICAL_TOKEN, "")
     .replace(CUSTOM_TOKEN, "")
+    .replace(CENTER_FADE_TOKEN, "")
     .replace(/\s{2,}/g, " ")
     .trim();
   const brandMatch = stripped.match(BRAND_PREFIX);
@@ -52,9 +62,11 @@ export function parseNameTokens(rawName: string): NameTokens {
   return {
     displayName,
     isRushed,
+    isSemiRushed,
     isLocal,
     isVertical,
     isCustom,
+    isCenterFade,
     brandPrefix,
     isPrintMarker,
   };
@@ -101,6 +113,33 @@ export function RushedTag() {
       </TooltipTrigger>
       <TooltipContent>
         <p>Rushed order</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function SemiRushedTag() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "inline-flex items-center gap-0.5 rounded-md px-1 py-px",
+            "bg-orange-500 text-white ring-1 ring-orange-600",
+            "dark:bg-orange-500/90 dark:ring-orange-400/60",
+            "text-[0.525rem] font-bold uppercase tracking-wide flex-shrink-0",
+            "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_1px_2px_rgba(0,0,0,0.08)]"
+          )}
+        >
+          <Zap
+            className="h-[0.5625rem] w-[0.5625rem]"
+            strokeWidth={SEMI_RUSHED_ICON_STROKE_WIDTH}
+          />
+          Semi-Rushed
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Semi-rushed order</p>
       </TooltipContent>
     </Tooltip>
   );
@@ -185,6 +224,33 @@ export function CustomTag() {
   );
 }
 
+export function CenterFadeTag() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "inline-flex items-center gap-0.5 rounded-md px-1 py-px",
+            "bg-cyan-600 text-white ring-1 ring-cyan-700",
+            "dark:bg-cyan-600/90 dark:ring-cyan-400/60",
+            "text-[0.525rem] font-bold uppercase tracking-wide flex-shrink-0",
+            "shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_1px_2px_rgba(0,0,0,0.08)]"
+          )}
+        >
+          <Blend
+            className="h-[0.5625rem] w-[0.5625rem]"
+            strokeWidth={CENTER_FADE_ICON_STROKE_WIDTH}
+          />
+          Center Fade
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Center fade order</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 // Single source of truth for rendering an order's customer name plus all
 // token-derived badges inline. Both the orders board (NameCell) and the
 // planner (OrderCard) call this, so any badge added here automatically
@@ -193,9 +259,11 @@ export function OrderNameDisplay({ rawName }: { rawName: string }) {
   const {
     displayName,
     isRushed,
+    isSemiRushed,
     isLocal,
     isVertical,
     isCustom,
+    isCenterFade,
     brandPrefix,
     isPrintMarker,
   } = parseNameTokens(rawName);
@@ -214,9 +282,11 @@ export function OrderNameDisplay({ rawName }: { rawName: string }) {
       )}
       {brandPrefix && <BrandTag prefix={brandPrefix} />}
       {isRushed && <RushedTag />}
+      {isSemiRushed && <SemiRushedTag />}
       {isLocal && <LocalTag />}
       {isVertical && <VerticalTag />}
       {isCustom && <CustomTag />}
+      {isCenterFade && <CenterFadeTag />}
     </>
   );
 }

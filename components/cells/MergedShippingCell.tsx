@@ -260,6 +260,8 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
                 <Image
                   src={carrierBadge.src}
                   alt={carrierBadge.alt}
+                  // Direct requests retain the site-access cookie for protected local assets.
+                  unoptimized
                   width={32}
                   height={32}
                   className="h-4 w-4 object-contain"

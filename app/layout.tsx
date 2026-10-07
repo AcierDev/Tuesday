@@ -16,6 +16,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { UploadProgressToast } from "@/components/shipping/UploadProgress";
 import { MorningBriefing } from "@/components/orders/MorningBriefing";
 import { MobilePageSwitcher } from "@/components/ui/MobilePageSwitcher";
+import { AskTuesday } from "@/components/ask-tuesday/AskTuesday";
 
 // Load custom fonts
 const geistSans = localFont({
@@ -71,6 +72,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       </div>
       <MobilePageSwitcher />
       <MorningBriefing />
+      <AskTuesday />
       {isSettingsOpen && (
         <SettingsPanel
           onClose={handleCloseSettings}

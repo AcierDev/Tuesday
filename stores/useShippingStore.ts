@@ -191,5 +191,7 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
   };
 });
 
-// Start polling when the store is initialized
-useShippingStore.getState().startPolling();
+// Start polling when the store is initialized in the browser.
+if (typeof window !== "undefined") {
+  useShippingStore.getState().startPolling();
+}
