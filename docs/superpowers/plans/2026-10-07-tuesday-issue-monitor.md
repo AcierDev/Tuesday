@@ -39,8 +39,8 @@ returned HTTP 200 with 20 items for review. The existing hourly heartbeat update
 is saved; 27 real dated findings were published to its dedicated collection.
 Complete conversation snapshots remain pending an actual browser review.
 The production build completes successfully. Build files stored only in iCloud
-were restored from identical verified package versions; project manifests remain
-unchanged. Visual verification remains blocked by browser security checks.
+were restored from identical verified package versions. Visual verification
+remains blocked by browser security checks.
 
 Independent review found unknown-resolution and saved-evidence-truncation gaps;
 both now have regression coverage. Unknown actionable findings remain visible,
@@ -50,3 +50,23 @@ image requests retain the access cookie. Its component/asset checks pass.
 The release startup check also exposed shipping polling during server rendering.
 Browser-only initialization fixes the invalid relative requests and server timers;
 regressions verify quiet server imports and immediate, recurring browser updates.
+
+The push exposed existing dependency security alerts. The release follow-up
+raises Next.js to a patched 15.x minimum and applies compatible Axios, WebSocket,
+PostCSS, XML-builder and proxy-address minimums. The Next.js patch disables
+vulnerable AVIF optimization. Separate Sharp advisories require a newer native dependency and
+Hostinger Node-version confirmation; they are not claimed as resolved. The
+unpatched brace-parser advisory is confined to build/dev glob patterns in this
+app, with no runtime user-pattern exposure found during review.
+
+After those updates, all 189 tests and focused TypeScript validation pass. The
+authenticated read-only scan still returns HTTP 200 and 20 issues. The production
+dependency audit reports zero critical alerts, with seven high, three moderate
+and one low alert remaining across Sharp and existing build/unused dependencies.
+Patched installed versions are Next.js/env/SWC 15.5.27, Axios 1.20.0, ws 8.22.0,
+PostCSS 8.5.29, proxy-addr 2.0.8 and fast-xml-builder 1.1.9. Other locked versions
+were preserved. The entire prior local dependency installation was backed up.
+The production build also passes after the patches. The feature release was
+pushed to `main`; GitHub exposed no deployment/status checks for that commit.
+Hostinger deployment and browser appearance remain unverified because the
+built-in browser's URL policy service is unavailable.
