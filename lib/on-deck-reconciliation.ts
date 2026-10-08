@@ -1,5 +1,6 @@
 import { isWithinDueBadgeWarningWindow } from "../config/due-badge";
 import { ItemStatus, type Item } from "../typings/types";
+import { isOrderWip } from "./order-wip";
 
 export const ON_DECK_MIN_COUNT = 10;
 export const ON_DECK_MAX_COUNT = 20;
@@ -67,7 +68,7 @@ export function planOnDeckTransitions(
   items: Item[],
   now: Date
 ): OnDeckTransition[] {
-  const liveItems = items.filter((item) => !item.deleted);
+  const liveItems = items.filter((item) => !item.deleted && !isOrderWip(item));
   const selfHealIds = new Set<string>();
 
   for (const item of liveItems) {

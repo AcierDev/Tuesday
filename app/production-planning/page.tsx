@@ -36,6 +36,7 @@ import { DroppableDayColumn } from "@/components/production-planning/DroppableDa
 import { OrderCard } from "@/components/production-planning/OrderCard";
 import { OrderContextMenu } from "@/components/production-planning/OrderContextMenu";
 import { OrderMeta } from "@/components/production-planning/types";
+import { isOrderWip } from "@/lib/order-wip";
 import {
   POST_WIP_STATUSES,
   PRE_WIP_STATUSES,
@@ -1014,6 +1015,7 @@ export default function ProductionPlanningPage() {
             !entry.pinned &&
             item &&
             PRE_WIP_STATUSES.has(item.status) &&
+            !isOrderWip(item) &&
             parseSquareSize(item.size) !== null;
           if (!isMovable) lockedByDay[day].push(entry);
         });
@@ -1146,6 +1148,7 @@ export default function ProductionPlanningPage() {
       .filter(
         (item) =>
           PRE_WIP_STATUSES.has(item.status) &&
+          !isOrderWip(item) &&
           !scheduledInOtherWeeks.has(item.id) &&
           !lockedItemIds.has(item.id) &&
           !excludedItemIds.has(item.id)

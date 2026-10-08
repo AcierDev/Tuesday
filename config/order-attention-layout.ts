@@ -7,6 +7,12 @@ export const ORDER_ATTENTION_LAYOUT = {
   buttonSizeRem: 1.5,
 } as const;
 
+export const ORDER_ROW_LAYOUT = {
+  cellSpacing: "px-0.5 py-[0.3125rem] sm:px-2 sm:py-[0.46875rem]",
+  nameSpacing: "py-[0.3125rem] pr-2 leading-tight",
+  namePreview: "w-full line-clamp-2",
+} as const;
+
 const ORDER_COLUMN_LAYOUT: Partial<
   Record<ColumnTitles, { widthPercent: number; attentionSpaceShare: number }>
 > = {

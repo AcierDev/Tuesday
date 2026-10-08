@@ -7,6 +7,7 @@ import { ItemUtil } from "@/utils/ItemUtil";
 import { invalidateStatsCaches } from "@/lib/stats-shared";
 import { laDayKey } from "@/lib/debt-metrics";
 import { updatePausedDueDate } from "@/lib/due-date-pause";
+import { normalizeOrderWipPatch } from "@/lib/order-wip";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -401,6 +402,9 @@ export const useOrderStore = create<OrderState>()(
           items.find((item) => item.id === updatedItem.id) ??
           doneItems.find((item) => item.id === updatedItem.id) ??
           scheduledItems.find((item) => item.id === updatedItem.id);
+        if (currentItem) {
+          itemToUpdate = { ...itemToUpdate, ...normalizeOrderWipPatch(currentItem, itemToUpdate) };
+        }
         const dueDateChanged =
           changedField === ColumnTitles.Due ||
           (currentItem !== undefined &&
@@ -649,12 +653,12 @@ export const useOrderStore = create<OrderState>()(
         console.log(`Inserting item at index: ${insertAt}`);
 
         // Insert the item at the new position
-        const updatedItem = {
-          ...movedItem,
+        const movePatch = normalizeOrderWipPatch(movedItem, {
           status: destinationStatus,
           completedAt:
             destinationStatus === ItemStatus.Done ? Date.now() : undefined,
-        };
+        });
+        const updatedItem = { ...movedItem, ...movePatch };
         updatedItems.splice(insertAt, 0, updatedItem);
 
         try {
@@ -663,13 +667,7 @@ export const useOrderStore = create<OrderState>()(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               id: itemId,
-              updates: {
-                status: destinationStatus,
-                completedAt:
-                  destinationStatus === ItemStatus.Done
-                    ? Date.now()
-                    : undefined,
-              },
+              updates: movePatch,
             }),
           });
 

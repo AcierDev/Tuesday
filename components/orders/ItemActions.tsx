@@ -3,6 +3,7 @@ import {
   Trash2,
   Clipboard,
   MoreVertical,
+  Hammer,
 } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -17,6 +18,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/utils/functions";
+import { useOrderStore } from "@/stores/useOrderStore";
+import { canMarkOrderWip, isOrderWip, orderWipToggle } from "@/lib/order-wip";
 
 import {
   type Item,
@@ -31,6 +34,7 @@ interface ItemActionsProps {
   onShip: (itemId: string) => void;
   onGetLabel: (item: Item) => void;
   showTrigger?: boolean;
+  onWipChanged?: () => void;
 }
 
 export const ItemActions = ({
@@ -40,8 +44,34 @@ export const ItemActions = ({
   onShip,
   onGetLabel,
   showTrigger = true,
+  onWipChanged,
 }: ItemActionsProps) => {
   const router = useRouter();
+  const updateItem = useOrderStore((state) => state.updateItem);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [wipSaving, setWipSaving] = useState(false);
+  const [wipError, setWipError] = useState<string | null>(null);
+  const wipSavingRef = useRef(false);
+
+  const handleWipSelection = async (event: Event) => {
+    // Keep the menu visible until persistence succeeds, including a retry if it fails.
+    event.preventDefault();
+    if (wipSavingRef.current || !canMarkOrderWip(item)) return;
+    wipSavingRef.current = true;
+    setWipSaving(true);
+    setWipError(null);
+    try {
+      const saved = await updateItem(orderWipToggle(item));
+      if (!saved) throw new Error("Order update did not complete");
+      setMenuOpen(false);
+      onWipChanged?.();
+    } catch {
+      setWipError("Couldn't save WIP. Please try again.");
+    } finally {
+      wipSavingRef.current = false;
+      setWipSaving(false);
+    }
+  };
 
   const handleSetupUtility = () => {
     const design = item.design as ItemDesigns | undefined;
@@ -67,6 +97,21 @@ export const ItemActions = ({
       <DropdownMenuLabel className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
         Actions
       </DropdownMenuLabel>
+      {canMarkOrderWip(item) && (
+        <DropdownMenuItem
+          className="cursor-pointer rounded-lg px-2 py-1.5 text-sm text-slate-700 dark:text-slate-200 focus:bg-white/40 dark:focus:bg-white/10 focus:text-slate-900 dark:focus:text-white"
+          disabled={wipSaving}
+          onSelect={handleWipSelection}
+        >
+          <Hammer className="mr-2 h-4 w-4" />
+          {wipSaving ? "Saving WIP…" : isOrderWip(item) ? "Remove WIP" : "Mark as WIP"}
+        </DropdownMenuItem>
+      )}
+      {wipError && (
+        <p role="alert" className="px-2 py-1 text-xs text-red-600 dark:text-red-300">
+          {wipError}
+        </p>
+      )}
       <DropdownMenuItem
         className="cursor-pointer rounded-lg px-2 py-1.5 text-sm text-slate-700 dark:text-slate-200 focus:bg-white/40 dark:focus:bg-white/10 focus:text-slate-900 dark:focus:text-white"
         onClick={() => onEdit(item)}
@@ -96,7 +141,7 @@ export const ItemActions = ({
     return menuContent;
   }
 
-  return <ItemActionsTrigger>{menuContent}</ItemActionsTrigger>;
+  return <ItemActionsTrigger open={menuOpen} onOpenChange={setMenuOpen}>{menuContent}</ItemActionsTrigger>;
 };
 
 // Radix's DropdownMenuTrigger opens the menu on pointer-down by default —
@@ -105,13 +150,16 @@ export const ItemActions = ({
 // pops the menu. Switching to controlled mode and gating the open behind a
 // click event (which the browser only emits on pointer-up *without*
 // significant movement) lets a swipe stay a swipe.
-function ItemActionsTrigger({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
+function ItemActionsTrigger({ children, open, onOpenChange }: {
+  children: React.ReactNode;
+  open: boolean;
+  onOpenChange: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
   const movedRef = useRef(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button
           className={cn(
@@ -156,7 +204,7 @@ function ItemActionsTrigger({ children }: { children: React.ReactNode }) {
                 e.preventDefault();
                 return;
               }
-              setOpen((o) => !o);
+              onOpenChange((o) => !o);
             }
           }}
         >

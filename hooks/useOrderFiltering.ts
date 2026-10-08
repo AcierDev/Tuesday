@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Item, ItemStatus, ItemSizes, ItemDesigns } from "@/typings/types";
 import { parseSquareSize } from "@/lib/production-metrics";
+import { orderBoardStatus } from "@/lib/order-wip";
 
 interface UseOrderFilteringProps {
   items: Item[] | undefined;
@@ -17,7 +18,7 @@ export function useOrderFiltering({
     if (!items) return [];
 
     const groupValues: string[] = Object.values(ItemStatus).filter(
-      (status) => status !== ItemStatus.Hidden
+      (status) => status !== ItemStatus.Hidden && status !== ItemStatus.Wip
     );
 
     const groups = groupValues.map((value) => ({
@@ -40,7 +41,7 @@ export function useOrderFiltering({
     });
 
     matchedSearch.forEach((item) => {
-      const group = groups.find((g) => g.title === item.status);
+      const group = groups.find((g) => g.title === orderBoardStatus(item.status));
       if (group) {
         const design = item.design || "";
         const size = item.size || "";

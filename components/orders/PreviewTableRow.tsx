@@ -13,6 +13,8 @@ import {
   DayName,
 } from "@/typings/types";
 import { boardConfig } from "@/config/boardconfig";
+import { isOrderWip } from "@/lib/order-wip";
+import { ORDER_WIP_STYLES } from "@/config/order-wip";
 
 interface PreviewTableRowProps {
   item: Item;
@@ -53,11 +55,13 @@ export function PreviewTableRow({
   return (
     <TableRow
       key={item.id}
+      data-wip={isOrderWip(item) || undefined}
       className={cn(
-        index % 2 === 0
+        isOrderWip(item) ? ORDER_WIP_STYLES.row : index % 2 === 0
           ? "bg-white dark:bg-gray-800"
           : "bg-gray-50 dark:bg-gray-800/60",
-        "hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors duration-150"
+        !isOrderWip(item) && "hover:bg-gray-100 dark:hover:bg-gray-700/70",
+        "transition-colors duration-150"
       )}
     >
       <TableCell className="border-b border-gray-100 dark:border-gray-700/60 p-2 text-center">

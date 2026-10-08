@@ -35,6 +35,7 @@ export function createFutureLabelCompletionDeps(
             { _id: currentItem._id },
             { $set: {
               status: ItemStatus.Done,
+              isWip: false,
               prevStatus: currentItem.status,
               completedAt,
               dueDateAtCompletion,

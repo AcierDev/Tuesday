@@ -1,4 +1,5 @@
 import { ItemStatus, type Item } from "../../typings/types";
+import { normalizeOrderWipPatch } from "../order-wip";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -20,7 +21,8 @@ export function prepareItemPatchHistory(
   now: number
 ): Partial<Item> {
   const { originalDueDate: _ignoredOriginal, dueDateAtCompletion: _ignoredCompletion,
-    promiseTrackingStartedAt: _ignoredStart, completedAt: _ignoredCompleted, ...updates } = incoming;
+    promiseTrackingStartedAt: _ignoredStart, completedAt: _ignoredCompleted, ...rawUpdates } = incoming;
+  const updates = normalizeOrderWipPatch(current, rawUpdates);
   const firstPromise = current.promiseTrackingStartedAt != null &&
     !current.originalDueDate && !current.dueDate &&
     updates.dueDate && DATE_PATTERN.test(updates.dueDate)

@@ -27,6 +27,8 @@ import {
 import { boardConfig } from "@/config/boardconfig";
 import { useActivities } from "@/lib/stats-shared";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
+import { isOrderWip, orderBoardStatus } from "@/lib/order-wip";
+import { ORDER_WIP_STYLES } from "@/config/order-wip";
 
 // Rows whose item is in today's planner lane get a small TODAY tag above
 // the DueBadge inside NameCell — no row-level border treatment.
@@ -106,7 +108,6 @@ const ROW_OPEN_RADIUS_PX = 10;
 const STATUS_CHAIN: readonly ItemStatus[] = [
   ItemStatus.New,
   ItemStatus.OnDeck,
-  ItemStatus.Wip,
   ItemStatus.Packaging,
   ItemStatus.At_The_Door,
   ItemStatus.Done,
@@ -296,7 +297,7 @@ export const ItemTableRow = memo(function ItemTableRow({
   );
 
   const { backward, forward } = useMemo(() => {
-    const idx = STATUS_CHAIN.indexOf(item.status);
+    const idx = STATUS_CHAIN.indexOf(orderBoardStatus(item.status));
     if (idx < 0)
       return { backward: [] as ItemStatus[], forward: [] as ItemStatus[] };
     return {
@@ -459,6 +460,7 @@ export const ItemTableRow = memo(function ItemTableRow({
       <motion.tr
         ref={rowDragRef}
         data-h-tier={rowHeightTier(item.size)}
+        data-wip={isOrderWip(item) || undefined}
         drag={canSwipe ? "x" : false}
         dragDirectionLock
         dragConstraints={{
@@ -473,14 +475,14 @@ export const ItemTableRow = memo(function ItemTableRow({
         {...rowDragListeners}
         className={cn(
           "group select-none",
-          index % 2 === 0
+          isOrderWip(item) ? ORDER_WIP_STYLES.row : index % 2 === 0
             ? "bg-white dark:bg-gray-800"
             : "bg-gray-50 dark:bg-gray-800/60",
           "transition-colors duration-200",
           // Hover tints only on devices with a real pointer — mobile webkit
           // leaves ghost-hover state on tapped rows during scroll, which made
           // random rows look highlighted while flicking through the list.
-          !isTouch &&
+          !isTouch && !isOrderWip(item) &&
             "hover:bg-gray-100 dark:hover:bg-gray-700/70",
           clickToAddTarget &&
             cn(

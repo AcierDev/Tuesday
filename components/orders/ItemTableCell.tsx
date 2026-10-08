@@ -8,7 +8,7 @@ import { DueDateTooltip } from "./DueDateTooltip";
 import { cn } from "@/utils/functions";
 import { ColumnTitles, Item, ColumnValue, DayName } from "@/typings/types";
 import { getStatusColor } from "./ItemGroup";
-import { orderColumnWidth } from "@/config/order-attention-layout";
+import { orderColumnWidth, ORDER_ROW_LAYOUT } from "@/config/order-attention-layout";
 
 interface ItemTableCellProps {
   item: Item;
@@ -85,7 +85,8 @@ export function ItemTableCell({
     <TableCell
       key={`${item.id}-${columnName}`}
       className={cn(
-        "border-b border-gray-100 dark:border-gray-700/60 px-0.5 py-1 sm:px-2 sm:py-1.5 text-[0.6875rem] sm:text-sm relative group",
+        "border-b border-gray-100 dark:border-gray-700/60 text-[0.6875rem] sm:text-sm relative group",
+        ORDER_ROW_LAYOUT.cellSpacing,
         columnName === ColumnTitles.Labels ? "w-[2.44734375rem] flex-shrink-0 overflow-hidden p-0" : "",
         getStatusColor(columnValue)
       )}

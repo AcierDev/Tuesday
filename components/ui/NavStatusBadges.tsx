@@ -36,6 +36,7 @@ import {
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { MiniSparkline } from "@/components/orders/MiniSparkline";
 import { cn } from "@/utils/functions";
+import { orderBoardStatus } from "@/lib/order-wip";
 
 const STATUS_SHORT_LABELS: Partial<Record<ItemStatus, string>> = {
   [ItemStatus.Packaging]: "Pack",
@@ -45,7 +46,6 @@ const STATUS_SHORT_LABELS: Partial<Record<ItemStatus, string>> = {
 const SECTION_COUNTER_ORDER: ItemStatus[] = [
   ItemStatus.New,
   ItemStatus.OnDeck,
-  ItemStatus.Wip,
   ItemStatus.Packaging,
   ItemStatus.At_The_Door,
 ];
@@ -383,7 +383,8 @@ export function NavSectionCounters() {
     const counts = {} as Record<ItemStatus, number>;
     for (const status of Object.values(ItemStatus)) counts[status] = 0;
     for (const item of items || []) {
-      if (counts[item.status] !== undefined) counts[item.status] += 1;
+      const section = orderBoardStatus(item.status);
+      if (counts[section] !== undefined) counts[section] += 1;
     }
     return counts;
   }, [items]);

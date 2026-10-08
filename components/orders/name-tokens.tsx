@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/tooltip";
 import { cn, splitFirstTwoWords } from "@/utils/functions";
 import { parseMinecraftColors } from "@/parseMinecraftColors";
+import type { ReactNode } from "react";
+import { ORDER_ROW_LAYOUT } from "@/config/order-attention-layout";
 
 const RUSHED_TOKEN = /\(rushed\)/i;
 const SEMI_RUSHED_TOKEN = /\(semi-rushed\)/i;
@@ -255,7 +257,11 @@ export function CenterFadeTag() {
 // token-derived badges inline. Both the orders board (NameCell) and the
 // planner (OrderCard) call this, so any badge added here automatically
 // appears on every surface.
-export function OrderNameDisplay({ rawName }: { rawName: string }) {
+export function OrderNameDisplay({ rawName, compact = false, extraBadge }: {
+  rawName: string;
+  compact?: boolean;
+  extraBadge?: ReactNode;
+}) {
   const {
     displayName,
     isRushed,
@@ -268,18 +274,19 @@ export function OrderNameDisplay({ rawName }: { rawName: string }) {
     isPrintMarker,
   } = parseNameTokens(rawName);
   const [firstTwoWords, restOfName] = splitFirstTwoWords(displayName);
-  return (
+  const name = isPrintMarker ? (
+    <PrintMarkerTag />
+  ) : (
+    <span className={compact ? ORDER_ROW_LAYOUT.namePreview : undefined} title={compact ? rawName : undefined}>
+      {parseMinecraftColors(firstTwoWords)}
+      <span className="opacity-55 text-[0.92em]">
+        {parseMinecraftColors(restOfName)}
+      </span>
+    </span>
+  );
+  const badges = (
     <>
-      {isPrintMarker ? (
-        <PrintMarkerTag />
-      ) : (
-        <span>
-          {parseMinecraftColors(firstTwoWords)}
-          <span className="opacity-55 text-[0.92em]">
-            {parseMinecraftColors(restOfName)}
-          </span>
-        </span>
-      )}
+      {extraBadge}
       {brandPrefix && <BrandTag prefix={brandPrefix} />}
       {isRushed && <RushedTag />}
       {isSemiRushed && <SemiRushedTag />}
@@ -289,6 +296,17 @@ export function OrderNameDisplay({ rawName }: { rawName: string }) {
       {isCenterFade && <CenterFadeTag />}
     </>
   );
+  const hasBadges = extraBadge || brandPrefix || isRushed || isSemiRushed || isLocal || isVertical || isCustom || isCenterFade;
+  return compact ? (
+    <span className="flex w-full min-w-0 flex-col gap-0.5">
+      {name}
+      {hasBadges && (
+        <span className="flex max-w-full items-center gap-1 overflow-x-auto whitespace-nowrap scrollbar-hide">
+          {badges}
+        </span>
+      )}
+    </span>
+  ) : <>{name}{badges}</>;
 }
 
 export function PrintMarkerTag() {

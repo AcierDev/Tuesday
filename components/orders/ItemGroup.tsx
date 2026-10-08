@@ -15,7 +15,7 @@ import { useDndContext, useDroppable } from "@dnd-kit/core";
 
 import {
   DropdownMenu,
-  DropdownMenuContent,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   TableBody,
@@ -51,6 +51,7 @@ import { useOrderStore } from "@/stores/useOrderStore";
 import { LoadMoreSentinel } from "./LoadMoreSentinel";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { useTrackingStore } from "@/stores/useTrackingStore";
+import { Portal } from "@/components/ui/portal";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🚚 IN-TRANSIT TRACKER STATUSES                                        ║
@@ -105,7 +106,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
     y: number;
     item: Item;
   } | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement>(null);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
   const addItemToDay = useWeeklyScheduleStore((s) => s.addItemToDay);
@@ -182,21 +182,6 @@ export const ItemGroupSection = memo(function ItemGroupSection({
   const closeContextMenu = useCallback(() => {
     setContextMenu(null);
   }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        contextMenuRef.current &&
-        !contextMenuRef.current.contains(event.target as Node)
-      ) {
-        closeContextMenu();
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [closeContextMenu]);
 
   // FRONTEND-ONLY HIDE: columns in FRONTEND_HIDDEN_COLUMN_TITLES (Painted,
   // Backboard, Boxes, Glued, Notes, Rating) are force-hidden regardless of
@@ -655,17 +640,16 @@ export const ItemGroupSection = memo(function ItemGroupSection({
         onConfirm={handleConfirmDelete}
       />
       {contextMenu ? (
-        <div
-          ref={contextMenuRef}
-          style={{
-            position: "fixed",
-            top: contextMenu.y,
-            left: contextMenu.x,
-            zIndex: 1000,
-          }}
-        >
-          <DropdownMenu open>
-            <DropdownMenuContent>
+        <Portal>
+          <DropdownMenu open modal={false} onOpenChange={(open) => { if (!open) closeContextMenu(); }}>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-hidden="true"
+                tabIndex={-1}
+                className="pointer-events-none fixed h-px w-px opacity-0"
+                style={{ top: contextMenu.y, left: contextMenu.x }}
+              />
+            </DropdownMenuTrigger>
               <ItemActions
                 item={contextMenu.item}
                 showTrigger={false}
@@ -673,10 +657,10 @@ export const ItemGroupSection = memo(function ItemGroupSection({
                 onEdit={handleEdit}
                 onGetLabel={onGetLabel}
                 onShip={onShip}
+                onWipChanged={closeContextMenu}
               />
-            </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        </Portal>
       ) : null}
     </div>
   );

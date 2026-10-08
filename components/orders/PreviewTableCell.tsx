@@ -8,7 +8,7 @@ import { DueDateTooltip } from "./DueDateTooltip";
 import { cn } from "@/utils/functions";
 import { ColumnTitles, Item, ColumnValue, DayName } from "@/typings/types";
 import { getStatusColor } from "./ItemGroup";
-import { orderColumnWidth } from "@/config/order-attention-layout";
+import { orderColumnWidth, ORDER_ROW_LAYOUT } from "@/config/order-attention-layout";
 
 interface PreviewTableCellProps {
   item: Item;
@@ -85,7 +85,8 @@ export function PreviewTableCell({
     <TableCell
       key={`${item.id}-${columnName}`}
       className={cn(
-        "border-b border-gray-100 dark:border-gray-700/60 p-2 relative",
+        "border-b border-gray-100 dark:border-gray-700/60 relative",
+        ORDER_ROW_LAYOUT.cellSpacing,
         columnName === ColumnTitles.Labels ? "w-[2.44734375rem] flex-shrink-0 overflow-hidden p-0" : "",
         getStatusColor(columnValue)
       )}

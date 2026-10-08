@@ -45,7 +45,6 @@ import { canPauseDueDate, resumeDueDate } from "@/lib/due-date-pause";
 const VALID_DROP_STATUSES = new Set<string>([
   ItemStatus.New,
   ItemStatus.OnDeck,
-  ItemStatus.Wip,
   ItemStatus.Packaging,
   ItemStatus.At_The_Door,
   ItemStatus.Done,

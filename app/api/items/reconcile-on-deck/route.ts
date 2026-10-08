@@ -37,6 +37,7 @@ export async function POST() {
             visible: true,
             deleted: false,
             onHold: { $ne: true },
+            isWip: { $ne: true },
           },
           {
             $set: {

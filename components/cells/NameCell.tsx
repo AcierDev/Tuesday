@@ -18,6 +18,9 @@ import {
   useTomorrowScheduledIds,
 } from "@/hooks/useTodayScheduledIds";
 import { OrderNameDisplay } from "@/components/orders/name-tokens";
+import { ORDER_ROW_LAYOUT } from "@/config/order-attention-layout";
+import { OrderWipBadge } from "@/components/orders/OrderWipBadge";
+import { isOrderWip } from "@/lib/order-wip";
 
 // // Add this style block right after imports
 // const pulseKeyframes = `
@@ -184,7 +187,8 @@ export const NameCell: React.FC<NameCellProps> = ({
                 onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
                 className={cn(
-                  "w-full py-2 pr-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                  "w-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                  ORDER_ROW_LAYOUT.nameSpacing,
                   "font-medium text-left break-words",
                   "transition-shadow duration-200",
                   "rounded-md",
@@ -197,19 +201,17 @@ export const NameCell: React.FC<NameCellProps> = ({
         ) : (
           <div
             className={cn(
-              "min-w-0 flex-1 py-2 pr-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+              "min-w-0 flex-1 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+              ORDER_ROW_LAYOUT.nameSpacing,
               "font-medium text-left break-words",
               "rounded-md",
               "flex items-center justify-start gap-2"
             )}
             onClick={handleFocus}
           >
-            <div className="flex min-w-0 flex-col items-start gap-0.5">
-              {scheduleBadge}
-              <span className="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1">
-                <OrderNameDisplay rawName={inputValue} />
-              </span>
-            </div>
+            <OrderNameDisplay rawName={inputValue} compact extraBadge={
+              scheduleBadge || isOrderWip(item) ? <>{scheduleBadge}<OrderWipBadge item={item} /></> : null
+            } />
           </div>
         )}
         {tags?.isDuplicate && (

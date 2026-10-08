@@ -97,6 +97,8 @@ export type Item = {
   promiseTrackingStartedAt?: number;
   deletedAt?: number | null;
   status: ItemStatus;
+  // Work in progress is an order marker; the workflow section stays unchanged.
+  isWip?: boolean;
   prevStatus?: ItemStatus | null;
   visible: boolean;
   deleted: boolean;

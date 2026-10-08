@@ -35,12 +35,11 @@ const NEW_AUTO_EXPAND_TYPES: ReadonlySet<string> = new Set([
 //║ 🧩 STATUS LANE LAYOUT                                                ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 // New + Done are full-width. OnDeck lives in the left lane and
-// Wip/Packaging/At_The_Door live in the right lane (Wip above Packaging).
+// Packaging/At_The_Door live in the right lane; WIP stays marked on its order.
 const LEFT_LANE_STATUSES: ReadonlySet<string> = new Set<string>([
   ItemStatus.OnDeck,
 ]);
 const RIGHT_LANE_ORDER: ItemStatus[] = [
-  ItemStatus.Wip,
   ItemStatus.Packaging,
   ItemStatus.At_The_Door,
 ];
