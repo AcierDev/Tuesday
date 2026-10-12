@@ -19,6 +19,22 @@ import {
   recordCompletionEvent,
 } from "@/lib/reporting/completion-events-server";
 
+import {
+  DEFAULT_ETSY_QUANTITY_INDEX,
+  etsyOrderIdentityFilter,
+  isPlainRecord,
+  mergeOrderShippingPatch,
+  normalizeOrderShippingInput,
+  OrderShippingValidationError,
+  type ShippingUpdateMode,
+} from "@/lib/order-shipping-patch";
+
+const BAD_REQUEST_STATUS = 400;
+const CONFLICT_STATUS = 409;
+const MONGO_DUPLICATE_KEY_CODE = 11000;
+const ASCENDING_INDEX_DIRECTION = 1;
+const ETSY_ORDER_UNIQUE_INDEX = "etsy_order_receipt_transaction_quantity_unique";
+
 // CORS headers helper function
 function getCorsHeaders(requestOrigin?: string) {
   const headers = new Headers();
@@ -70,6 +86,21 @@ export async function GET(request: Request) {
     const search = searchParams.get("search") || "";
     const ids = searchParams.get("ids");
     const fields = searchParams.get("fields") || "";
+    let etsyFilter: Record<string, unknown> | undefined;
+    if (["etsyReceiptId", "etsyTransactionId", "etsyQuantityIndex"].some(field => searchParams.has(field))) {
+      const receiptId = searchParams.get("etsyReceiptId");
+      const transactionId = searchParams.get("etsyTransactionId");
+      const quantityParam = searchParams.get("etsyQuantityIndex");
+      if (!receiptId || !transactionId || (quantityParam !== null && !/^\d+$/.test(quantityParam))) {
+        throw new OrderShippingValidationError("Valid Etsy receipt and transaction IDs are required; quantity must be a positive integer");
+      }
+      const lookup = normalizeOrderShippingInput({ etsyOrder: {
+        receiptId,
+        transactionId,
+        quantityIndex: quantityParam === null ? DEFAULT_ETSY_QUANTITY_INDEX : Number(quantityParam),
+      } });
+      etsyFilter = etsyOrderIdentityFilter(lookup.etsyOrder!);
+    }
 
     const client = await clientPromise;
     const db = client.db("react-web-app");
@@ -119,6 +150,8 @@ export async function GET(request: Request) {
         filter.status = status;
       }
     }
+
+    if (etsyFilter) filter.$and = [etsyFilter];
 
     const findOptions: { projection?: Record<string, 1> } = {};
     if (fields) {
@@ -190,22 +223,30 @@ export async function GET(request: Request) {
   } catch (error) {
     const origin = request.headers.get("origin") || undefined;
     return NextResponse.json(
-      { error: "Failed to fetch board" },
-      { status: 500, headers: getCorsHeaders(origin) }
+      { error: error instanceof OrderShippingValidationError ? error.message : "Failed to fetch board" },
+      { status: error instanceof OrderShippingValidationError ? BAD_REQUEST_STATUS : 500, headers: getCorsHeaders(origin) }
     );
   }
 }
 
 export async function PATCH(request: Request) {
   try {
+    const body: unknown = await request.json();
+    if (!isPlainRecord(body) || typeof body.id !== "string" || !body.id.trim() || !isPlainRecord(body.updates)) {
+      throw new OrderShippingValidationError("An item id and updates object are required");
+    }
+    if (body.shippingUpdateMode !== undefined && body.shippingUpdateMode !== "merge" && body.shippingUpdateMode !== "fillMissing") {
+      throw new OrderShippingValidationError("shippingUpdateMode must be merge or fillMissing");
+    }
+    const id = body.id;
+    const shippingUpdateMode = body.shippingUpdateMode as ShippingUpdateMode | undefined;
+    const { _id, ...updatesWithoutId } = normalizeOrderShippingInput(body.updates) as Partial<Item> & { _id?: unknown };
+
     const client = await clientPromise;
     const db = client.db("react-web-app");
     const collection = db.collection<Item>(
       `items-${process.env.NEXT_PUBLIC_MODE}`
     );
-
-    const { id, updates } = await request.json();
-    const { _id, ...updatesWithoutId } = updates;
 
     // Stamp deletedAt when soft-deleting so the /deleted view can bucket by
     // age. Clear it on restore.
@@ -231,7 +272,7 @@ export async function PATCH(request: Request) {
 
         const updatesWithHistory = prepareItemPatchHistory(
           currentItem,
-          updatesWithoutId,
+          mergeOrderShippingPatch(currentItem, updatesWithoutId, shippingUpdateMode),
           Date.now()
         );
         await collection.updateOne(
@@ -269,7 +310,12 @@ export async function PATCH(request: Request) {
 
     const { currentItem, updatesWithHistory } = transactionResult;
 
-    const result = { matchedCount: 1, modifiedCount: 1 };
+    const result = {
+      matchedCount: 1,
+      modifiedCount: 1,
+      ...(Object.hasOwn(updatesWithHistory, "shippingDetails") ? { shippingDetails: updatesWithHistory.shippingDetails } : {}),
+      ...(Object.hasOwn(updatesWithHistory, "etsyOrder") ? { etsyOrder: updatesWithHistory.etsyOrder } : {}),
+    };
 
     // Determine changes and log activity
     const changes: ActivityChange[] = [];
@@ -369,6 +415,14 @@ export async function PATCH(request: Request) {
     const origin = request.headers.get("origin") || undefined;
     return NextResponse.json(result, { headers: getCorsHeaders(origin) });
   } catch (error) {
+    if (error instanceof OrderShippingValidationError || error instanceof SyntaxError) {
+      const origin = request.headers.get("origin") || undefined;
+      return NextResponse.json({ error: error.message }, { status: BAD_REQUEST_STATUS, headers: getCorsHeaders(origin) });
+    }
+    if (typeof error === "object" && error !== null && "code" in error && error.code === MONGO_DUPLICATE_KEY_CODE) {
+      const origin = request.headers.get("origin") || undefined;
+      return NextResponse.json({ error: "This Etsy quantity unit already belongs to another item" }, { status: CONFLICT_STATUS, headers: getCorsHeaders(origin) });
+    }
     console.error("Error updating item:", error);
     const origin = request.headers.get("origin") || undefined;
     return NextResponse.json(
@@ -380,15 +434,65 @@ export async function PATCH(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const body: unknown = await request.json();
+    if (!isPlainRecord(body)) throw new OrderShippingValidationError("An item object is required");
+    const newItem = prepareNewItemHistory(normalizeOrderShippingInput(body) as Item);
+    if (newItem.etsyOrder?.receiptId && newItem.etsyOrder.transactionId && newItem.etsyOrder.quantityIndex === undefined) {
+      newItem.etsyOrder.quantityIndex = DEFAULT_ETSY_QUANTITY_INDEX;
+    }
+
     const client = await clientPromise;
     const db = client.db("react-web-app");
     const collection = db.collection<Item>(
       `items-${process.env.NEXT_PUBLIC_MODE}`
     );
 
-    const newItem = prepareNewItemHistory((await request.json()) as Item);
-
-    const result = await collection.insertOne(newItem);
+    const confirmedEtsyIds = newItem.etsyOrder?.receiptId && newItem.etsyOrder?.transactionId
+      ? etsyOrderIdentityFilter(newItem.etsyOrder)
+      : null;
+    if (confirmedEtsyIds) {
+      // Legacy links without an ordinal represent the first quantity unit.
+      const existing = await collection.findOne(confirmedEtsyIds);
+      if (existing) {
+        const origin = request.headers.get("origin") || undefined;
+        return NextResponse.json({ error: "This Etsy quantity unit already belongs to an item", id: existing.id }, {
+          status: CONFLICT_STATUS, headers: getCorsHeaders(origin),
+        });
+      }
+    }
+    let result;
+    let duplicateProtectionReady = false;
+    try {
+      if (confirmedEtsyIds) {
+        // Partial compound uniqueness permits receipt-only legacy orders and multiple items per receipt.
+        await collection.createIndex(
+          { "etsyOrder.receiptId": ASCENDING_INDEX_DIRECTION, "etsyOrder.transactionId": ASCENDING_INDEX_DIRECTION, "etsyOrder.quantityIndex": ASCENDING_INDEX_DIRECTION },
+          {
+            name: ETSY_ORDER_UNIQUE_INDEX,
+            unique: true,
+            partialFilterExpression: {
+              "etsyOrder.receiptId": { $type: "string", $gt: "" },
+              "etsyOrder.transactionId": { $type: "string", $gt: "" },
+              "etsyOrder.quantityIndex": { $type: "number", $gte: DEFAULT_ETSY_QUANTITY_INDEX },
+            },
+          }
+        );
+      }
+      duplicateProtectionReady = true;
+      result = await collection.insertOne(newItem);
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "code" in error && error.code === MONGO_DUPLICATE_KEY_CODE) {
+        const existing = confirmedEtsyIds ? await collection.findOne(confirmedEtsyIds) : null;
+        const origin = request.headers.get("origin") || undefined;
+        return NextResponse.json({
+          error: duplicateProtectionReady
+            ? "This Etsy quantity unit already belongs to an item"
+            : "Existing duplicate Etsy IDs prevent enabling duplicate protection; no item was added",
+          ...(existing ? { id: existing.id } : {}),
+        }, { status: CONFLICT_STATUS, headers: getCorsHeaders(origin) });
+      }
+      throw error;
+    }
 
     if (!result.acknowledged) {
       const origin = request.headers.get("origin") || undefined;
@@ -421,6 +525,10 @@ export async function POST(request: Request) {
     const origin = request.headers.get("origin") || undefined;
     return NextResponse.json(newItem, { headers: getCorsHeaders(origin) });
   } catch (error) {
+    if (error instanceof OrderShippingValidationError || error instanceof SyntaxError) {
+      const origin = request.headers.get("origin") || undefined;
+      return NextResponse.json({ error: error.message }, { status: BAD_REQUEST_STATUS, headers: getCorsHeaders(origin) });
+    }
     console.error("Error adding item:", error);
     const origin = request.headers.get("origin") || undefined;
     return NextResponse.json(

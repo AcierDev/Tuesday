@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { OrderShippingFields } from "./OrderShippingFields";
+import type { ShippingDetails, EtsyOrderLink } from "@/typings/types";
 import { cn } from "@/utils/functions";
 import { boardConfig } from "@/config/boardconfig";
 import {
@@ -245,6 +247,9 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shippingPatch, setShippingPatch] = useState<Partial<ShippingDetails>>({});
+  const [etsyPatch, setEtsyPatch] = useState<EtsyOrderLink>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [sizeOpen, setSizeOpen] = useState(false);
   const [sizeQuery, setSizeQuery] = useState("");
@@ -326,6 +331,7 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
     }
 
     setIsSubmitting(true);
+    setSaveError(null);
 
     const prefix = COMPANY_PREFIX[company];
 
@@ -343,6 +349,9 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
       dueDate: dueDate ? format(dueDate, "yyyy-MM-dd") : "",
       tags: { ...initialItem?.tags, isVertical: vertical },
     };
+    // Send only explicitly edited keys so partial corrections retain saved manual fields.
+    if (Object.keys(shippingPatch).length) order.shippingDetails = shippingPatch as ShippingDetails;
+    if (Object.keys(etsyPatch).length) order.etsyOrder = etsyPatch;
 
     try {
       await onSubmit(order);
@@ -359,7 +368,7 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
       }, SUCCESS_DISPLAY_MS);
     } catch (error) {
       console.error("Error saving order:", error);
-      alert(isEditing ? "Failed to save order" : "Failed to create order");
+      setSaveError(isEditing ? "Couldn't save order. Your changes are still here; try again." : "Couldn't create order. Your changes are still here; try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -378,6 +387,9 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
     setDesignOpen(false);
     setDesignQuery("");
     setIsSubmitting(false);
+    setShippingPatch({});
+    setEtsyPatch({});
+    setSaveError(null);
   };
 
   return (
@@ -723,6 +735,19 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
                 </Popover>
               </Field>
             </div>
+            <details className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2">
+              <summary className="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-200">
+                Shipping address <span className="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+                  {Object.keys(shippingPatch).length || Object.keys(etsyPatch).length ? "· Unsaved changes" : initialItem?.shippingDetails?.street1 ? "· Saved" : "· Not added"}
+                </span>
+              </summary>
+              <div className="mt-3"><OrderShippingFields
+                address={{ ...initialItem?.shippingDetails, ...shippingPatch }} etsyOrder={{ ...initialItem?.etsyOrder, ...etsyPatch }}
+                disabled={isSubmitting} onAddressChange={patch => setShippingPatch(previous => ({ ...previous, ...patch }))}
+                onEtsyChange={patch => setEtsyPatch(previous => ({ ...previous, ...patch }))} />
+              </div>
+            </details>
+            {saveError && <p role="alert" className="text-sm text-red-600 dark:text-red-300">{saveError}</p>}
           </motion.div>
 
           {/*╔═══╗ ═════════════════════════════════════════════ ╔═══╗

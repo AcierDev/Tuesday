@@ -104,6 +104,7 @@ export type Item = {
   deleted: boolean;
   index: number;
   shippingDetails?: ShippingDetails;
+  etsyOrder?: EtsyOrderLink;
   tags?: {
     isVertical?: boolean;
     hasCustomerMessage?: boolean;
@@ -121,6 +122,8 @@ export type Item = {
   searchText?: string;
   purchasedShipment?: PurchasedShipment;
 };
+
+export type EtsyOrderLink = { receiptId?: string; transactionId?: string; quantityIndex?: number };
 
 export type ShippingDetails = {
   name: string;
