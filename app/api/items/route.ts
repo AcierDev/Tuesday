@@ -35,6 +35,8 @@ const CONFLICT_STATUS = 409;
 const MONGO_DUPLICATE_KEY_CODE = 11000;
 const ASCENDING_INDEX_DIRECTION = 1;
 const ETSY_ORDER_UNIQUE_INDEX = "etsy_order_receipt_transaction_quantity_unique";
+const SHIPPING_CONTRACT_HEADER = "X-Order-Shipping-Contract";
+const SHIPPING_CONTRACT_VERSION = "1";
 
 // CORS headers helper function
 function getCorsHeaders(requestOrigin?: string) {
@@ -218,8 +220,13 @@ export async function GET(request: Request) {
       })
     );
     const origin = request.headers.get("origin") || undefined;
+    const responseHeaders = getCorsHeaders(origin);
+    if (etsyFilter) {
+      responseHeaders.set(SHIPPING_CONTRACT_HEADER, SHIPPING_CONTRACT_VERSION);
+      responseHeaders.set("Access-Control-Expose-Headers", SHIPPING_CONTRACT_HEADER);
+    }
     return NextResponse.json(itemsForResponse, {
-      headers: getCorsHeaders(origin),
+      headers: responseHeaders,
     });
   } catch (error) {
     const origin = request.headers.get("origin") || undefined;

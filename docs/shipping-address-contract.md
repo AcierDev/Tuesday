@@ -27,3 +27,5 @@ The server merges only supplied nested keys inside the existing transaction. `fi
 Dashboard access: New/Edit Order → Shipping address. Label workflow → Edit saved address. Saved recipients override old label-recipient drafts atomically; package, origin and purchase choices remain. No automatic address backfill, carrier validation, label purchase, or customer message is part of this feature.
 
 Extension imports based on an exact Etsy lookup must additionally send `requireEtsyLinkMatch: true` with `shippingUpdateMode: "fillMissing"` and complete confirmed receipt/item/unit linkage. The transaction compares the current saved link exactly, including legacy first-unit handling; a changed or cleared link returns 409 before any write. Default manual completion permits compatible initial linkage for verified backfills.
+
+Successful exact Etsy GET lookups expose `X-Order-Shipping-Contract: 1` through CORS. Version 1 guarantees quantity identities, partial `fillMissing` merges, and transactional `requireEtsyLinkMatch`. The extension must refuse address writes if that header/version is absent, including during rollout against an older server.

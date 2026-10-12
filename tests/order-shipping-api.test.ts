@@ -184,6 +184,8 @@ test("separate quantity units use separate duplicate identities and exact lookup
   assert.equal((await POST(request("POST", second))).status, RESPONSE_OK);
   const lookup = await GET(new Request("https://example.test/api/items?etsyReceiptId=123&etsyTransactionId=456&etsyQuantityIndex=2&includeDone=true&includeHidden=true"));
   assert.equal(lookup.status, RESPONSE_OK);
+  assert.equal(lookup.headers.get("X-Order-Shipping-Contract"), "1");
+  assert.equal(lookup.headers.get("Access-Control-Expose-Headers"), "X-Order-Shipping-Contract");
   assert.deepEqual((await lookup.json()).map((item: Item) => item.id), ["quantity-two"]);
   const defaultLookup = await GET(new Request("https://example.test/api/items?etsyReceiptId=123&etsyTransactionId=456"));
   assert.deepEqual((await defaultLookup.json()).map((item: Item) => item.id), ["quantity-one"]);
