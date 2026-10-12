@@ -149,7 +149,7 @@ test("fillMissing imports preserve concurrent manual shipping values and saved E
   const response = await PATCH(request("PATCH", {
     id: ORDER_ID, shippingUpdateMode: "fillMissing", updates: {
       shippingDetails: { name: "Imported name", street1: "Imported street", street2: "Imported suite", residential: false },
-      etsyOrder: { receiptId: "999" },
+      etsyOrder: { receiptId: "123" },
     },
   }));
   assert.equal(response.status, RESPONSE_OK);
@@ -237,4 +237,128 @@ test("concurrent POST retries create a single quantity record", async () => {
   assert.equal(persisted.etsyOrder?.quantityIndex, 1);
   const conflict = responses.find(response => response.status === RESPONSE_CONFLICT)!;
   assert.equal((await conflict.json()).id, persisted.id);
+});
+
+
+test("fillMissing rejects a stale import after the saved item is relinked without writing its address", async () => {
+  reset();
+  saved.shippingDetails!.street2 = "";
+  const lookup = await GET(new Request("https://example.test/api/items?etsyReceiptId=123&etsyTransactionId=456"));
+  const previousLink = (await lookup.json())[0].etsyOrder;
+  saved.etsyOrder = { receiptId: "987", transactionId: "654", quantityIndex: 1 };
+  const before = structuredClone(saved);
+  const response = await PATCH(request("PATCH", {
+    id: ORDER_ID, shippingUpdateMode: "fillMissing", updates: {
+      etsyOrder: previousLink, shippingDetails: { street2: "Wrong buyer's suite" },
+    },
+  }));
+  assert.equal(response.status, RESPONSE_CONFLICT);
+  assert.equal(response.headers.get("Access-Control-Allow-Origin"), "https://www.etsy.com");
+  assert.equal(writes, NO_WRITES);
+  assert.deepEqual(saved, before);
+});
+
+test("fillMissing rejects receipt, transaction, quantity and partial-link conflicts before writing", async () => {
+  for (const [currentLink, incomingLink] of [
+    [{ receiptId: "987", transactionId: "456" }, { receiptId: "123", transactionId: "456" }],
+    [{ receiptId: "123", transactionId: "987" }, { receiptId: "123", transactionId: "456" }],
+    [{ receiptId: "123", transactionId: "456", quantityIndex: 2 }, { receiptId: "123", transactionId: "456" }],
+    [{ receiptId: "123", transactionId: "456" }, { receiptId: "123", transactionId: "456", quantityIndex: 2 }],
+    [{ receiptId: "987" }, { receiptId: "123", transactionId: "456" }],
+    [{ receiptId: "123", transactionId: "456" }, { receiptId: "987" }],
+  ]) {
+    reset();
+    saved.etsyOrder = currentLink;
+    saved.shippingDetails!.street2 = "";
+    const before = structuredClone(saved);
+    const response = await PATCH(request("PATCH", {
+      id: ORDER_ID, shippingUpdateMode: "fillMissing", updates: {
+        etsyOrder: incomingLink, shippingDetails: { street2: "Wrong unit" },
+      },
+    }));
+    assert.equal(response.status, RESPONSE_CONFLICT, JSON.stringify([currentLink, incomingLink]));
+    assert.equal(writes, NO_WRITES);
+    assert.deepEqual(saved, before);
+  }
+});
+
+test("fillMissing allows compatible incomplete links and treats the missing legacy ordinal as one", async () => {
+  for (const currentLink of [undefined, {}, { receiptId: "123" }, { transactionId: "456" }, { receiptId: "123", transactionId: "456" }]) {
+    reset();
+    saved.etsyOrder = currentLink;
+    saved.shippingDetails!.street2 = "";
+    const response = await PATCH(request("PATCH", {
+      id: ORDER_ID, shippingUpdateMode: "fillMissing", updates: {
+        etsyOrder: { receiptId: "123", transactionId: "456", quantityIndex: 1 }, shippingDetails: { street2: "Verified suite" },
+      },
+    }));
+    assert.equal(response.status, RESPONSE_OK);
+    assert.equal(saved.shippingDetails?.street2, "Verified suite");
+    assert.deepEqual(saved.etsyOrder, { receiptId: "123", transactionId: "456", quantityIndex: 1 });
+  }
+});
+
+test("manual merge mode still permits explicit Etsy relinking and address correction", async () => {
+  reset();
+  const response = await PATCH(request("PATCH", {
+    id: ORDER_ID, updates: { etsyOrder: { receiptId: "987", transactionId: "654", quantityIndex: 2 }, shippingDetails: { street2: "Manual correction" } },
+  }));
+  assert.equal(response.status, RESPONSE_OK);
+  assert.deepEqual(saved.etsyOrder, { receiptId: "987", transactionId: "654", quantityIndex: 2 });
+  assert.equal(saved.shippingDetails?.street2, "Manual correction");
+});
+
+test("strict Etsy imports reject cleared, missing, changed and different-quantity links before any write", async () => {
+  for (const currentLink of [
+    undefined, {}, { receiptId: "", transactionId: "" }, { receiptId: "123" },
+    { receiptId: "987", transactionId: "456" }, { receiptId: "123", transactionId: "456", quantityIndex: 2 },
+  ]) {
+    reset();
+    saved.etsyOrder = currentLink;
+    saved.shippingDetails!.street2 = "";
+    const before = structuredClone(saved);
+    const response = await PATCH(request("PATCH", {
+      id: ORDER_ID, shippingUpdateMode: "fillMissing", requireEtsyLinkMatch: true, updates: {
+        etsyOrder: { receiptId: "123", transactionId: "456" }, shippingDetails: { street2: "Stale import" },
+      },
+    }));
+    assert.equal(response.status, RESPONSE_CONFLICT, JSON.stringify(currentLink));
+    assert.equal(writes, NO_WRITES);
+    assert.deepEqual(saved, before);
+  }
+});
+
+test("strict Etsy imports accept the exact saved unit including legacy unit one", async () => {
+  for (const currentLink of [
+    { receiptId: "123", transactionId: "456" },
+    { receiptId: "123", transactionId: "456", quantityIndex: 1 },
+    { receiptId: "123", transactionId: "456", quantityIndex: 2 },
+  ]) {
+    reset();
+    saved.etsyOrder = currentLink;
+    saved.shippingDetails!.street2 = "";
+    const response = await PATCH(request("PATCH", {
+      id: ORDER_ID, shippingUpdateMode: "fillMissing", requireEtsyLinkMatch: true, updates: {
+        etsyOrder: currentLink, shippingDetails: { street2: "Exact linked suite" },
+      },
+    }));
+    assert.equal(response.status, RESPONSE_OK);
+    assert.equal(saved.shippingDetails?.street2, "Exact linked suite");
+  }
+});
+
+test("strict link matching rejects malformed flags and incomplete or non-import requests before writes", async () => {
+  for (const body of [
+    { requireEtsyLinkMatch: "true", shippingUpdateMode: "fillMissing", updates: { etsyOrder: { receiptId: "123", transactionId: "456" } } },
+    { requireEtsyLinkMatch: true, updates: { etsyOrder: { receiptId: "123", transactionId: "456" } } },
+    { requireEtsyLinkMatch: true, shippingUpdateMode: "merge", updates: { etsyOrder: { receiptId: "123", transactionId: "456" } } },
+    { requireEtsyLinkMatch: true, shippingUpdateMode: "fillMissing", updates: { shippingDetails: { street2: "Invalid" } } },
+    { requireEtsyLinkMatch: true, shippingUpdateMode: "fillMissing", updates: { etsyOrder: { receiptId: "123" } } },
+    { requireEtsyLinkMatch: true, shippingUpdateMode: "fillMissing", updates: { etsyOrder: { receiptId: "123", transactionId: "" } } },
+  ]) {
+    reset();
+    const response = await PATCH(request("PATCH", { id: ORDER_ID, ...body }));
+    assert.equal(response.status, RESPONSE_BAD_REQUEST, JSON.stringify(body));
+    assert.equal(writes, NO_WRITES);
+  }
 });

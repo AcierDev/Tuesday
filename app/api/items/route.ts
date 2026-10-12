@@ -26,6 +26,7 @@ import {
   mergeOrderShippingPatch,
   normalizeOrderShippingInput,
   OrderShippingValidationError,
+  OrderShippingConflictError,
   type ShippingUpdateMode,
 } from "@/lib/order-shipping-patch";
 
@@ -238,9 +239,17 @@ export async function PATCH(request: Request) {
     if (body.shippingUpdateMode !== undefined && body.shippingUpdateMode !== "merge" && body.shippingUpdateMode !== "fillMissing") {
       throw new OrderShippingValidationError("shippingUpdateMode must be merge or fillMissing");
     }
+    if (body.requireEtsyLinkMatch !== undefined && typeof body.requireEtsyLinkMatch !== "boolean") {
+      throw new OrderShippingValidationError("requireEtsyLinkMatch must be a boolean");
+    }
     const id = body.id;
+    const requireEtsyLinkMatch = body.requireEtsyLinkMatch === true;
     const shippingUpdateMode = body.shippingUpdateMode as ShippingUpdateMode | undefined;
     const { _id, ...updatesWithoutId } = normalizeOrderShippingInput(body.updates) as Partial<Item> & { _id?: unknown };
+    if (requireEtsyLinkMatch && (shippingUpdateMode !== "fillMissing" ||
+      !updatesWithoutId.etsyOrder?.receiptId || !updatesWithoutId.etsyOrder.transactionId)) {
+      throw new OrderShippingValidationError("requireEtsyLinkMatch requires fillMissing and complete incoming Etsy receipt and transaction IDs");
+    }
 
     const client = await clientPromise;
     const db = client.db("react-web-app");
@@ -272,7 +281,7 @@ export async function PATCH(request: Request) {
 
         const updatesWithHistory = prepareItemPatchHistory(
           currentItem,
-          mergeOrderShippingPatch(currentItem, updatesWithoutId, shippingUpdateMode),
+          mergeOrderShippingPatch(currentItem, updatesWithoutId, shippingUpdateMode, requireEtsyLinkMatch),
           Date.now()
         );
         await collection.updateOne(
@@ -418,6 +427,10 @@ export async function PATCH(request: Request) {
     if (error instanceof OrderShippingValidationError || error instanceof SyntaxError) {
       const origin = request.headers.get("origin") || undefined;
       return NextResponse.json({ error: error.message }, { status: BAD_REQUEST_STATUS, headers: getCorsHeaders(origin) });
+    }
+    if (error instanceof OrderShippingConflictError) {
+      const origin = request.headers.get("origin") || undefined;
+      return NextResponse.json({ error: error.message }, { status: CONFLICT_STATUS, headers: getCorsHeaders(origin) });
     }
     if (typeof error === "object" && error !== null && "code" in error && error.code === MONGO_DUPLICATE_KEY_CODE) {
       const origin = request.headers.get("origin") || undefined;

@@ -25,3 +25,5 @@ Complete missing fields without overwriting concurrent manual edits:
 The server merges only supplied nested keys inside the existing transaction. `fillMissing` preserves populated saved values, including `false`. Successful PATCH returns counters and authoritative merged address/linkage for metadata included in the update. Invalid metadata returns 400. Index setup conflicts return 409 without adding an order.
 
 Dashboard access: New/Edit Order → Shipping address. Label workflow → Edit saved address. Saved recipients override old label-recipient drafts atomically; package, origin and purchase choices remain. No automatic address backfill, carrier validation, label purchase, or customer message is part of this feature.
+
+Extension imports based on an exact Etsy lookup must additionally send `requireEtsyLinkMatch: true` with `shippingUpdateMode: "fillMissing"` and complete confirmed receipt/item/unit linkage. The transaction compares the current saved link exactly, including legacy first-unit handling; a changed or cleared link returns 409 before any write. Default manual completion permits compatible initial linkage for verified backfills.

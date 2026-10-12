@@ -16,6 +16,7 @@ export type ShippingUpdateMode = "merge" | "fillMissing";
 type ShippingMetadata = { shippingDetails?: ShippingDetails; etsyOrder?: EtsyOrderMetadata };
 
 export class OrderShippingValidationError extends Error {}
+export class OrderShippingConflictError extends Error {}
 
 export function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value) &&
@@ -87,9 +88,34 @@ function isMissing(value: unknown): boolean {
 export function mergeOrderShippingPatch<T extends Record<string, unknown>>(
   current: ShippingMetadata,
   incoming: T,
-  mode: ShippingUpdateMode = "merge"
+  mode: ShippingUpdateMode = "merge",
+  requireEtsyLinkMatch = false
 ): T & ShippingMetadata {
   const updates = normalizeOrderShippingInput(incoming);
+  if (requireEtsyLinkMatch) {
+    const savedLink = current.etsyOrder;
+    const incomingLink = updates.etsyOrder;
+    if (!savedLink?.receiptId || !savedLink.transactionId ||
+      savedLink.receiptId !== incomingLink?.receiptId || savedLink.transactionId !== incomingLink?.transactionId ||
+      (savedLink.quantityIndex ?? DEFAULT_ETSY_QUANTITY_INDEX) !== (incomingLink?.quantityIndex ?? DEFAULT_ETSY_QUANTITY_INDEX)) {
+      throw new OrderShippingConflictError("The saved Etsy link no longer matches this import; no item fields were updated");
+    }
+  }
+  if (mode === "fillMissing" && current.etsyOrder && updates.etsyOrder) {
+    const savedLink = current.etsyOrder;
+    const incomingLink = updates.etsyOrder;
+    const conflictingIds = ETSY_ID_FIELDS.some(field =>
+      !isMissing(savedLink[field]) && !isMissing(incomingLink[field]) && savedLink[field] !== incomingLink[field]
+    );
+    const savedComplete = Boolean(savedLink.receiptId && savedLink.transactionId);
+    const incomingComplete = Boolean(incomingLink.receiptId && incomingLink.transactionId);
+    const conflictingQuantity = (savedComplete || savedLink.quantityIndex !== undefined) &&
+      (incomingComplete || incomingLink.quantityIndex !== undefined) &&
+      (savedLink.quantityIndex ?? DEFAULT_ETSY_QUANTITY_INDEX) !== (incomingLink.quantityIndex ?? DEFAULT_ETSY_QUANTITY_INDEX);
+    if (conflictingIds || conflictingQuantity) {
+      throw new OrderShippingConflictError("The saved Etsy link changed or conflicts with this import; no item fields were updated");
+    }
+  }
   if (updates.shippingDetails) {
     const merged = { ...current.shippingDetails };
     for (const [field, value] of Object.entries(updates.shippingDetails)) {
