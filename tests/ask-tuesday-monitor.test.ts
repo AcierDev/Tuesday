@@ -248,7 +248,8 @@ test("the loop handles a rejected tick and continues polling without exposing th
 });
 
 test("the actual disabled startup hook does not load database or create background timers", () => {
-  const environment: NodeJS.ProcessEnv = {...process.env, NODE_ENV: "production", NEXT_RUNTIME: "nodejs", ASK_TUESDAY_MONITOR_ENABLED: "false"};
+  const environment: NodeJS.ProcessEnv = {...process.env, NODE_ENV: "production", NEXT_RUNTIME: "nodejs", ASK_TUESDAY_MONITOR_ENABLED: "false",
+    SCHEDULED_JOBS_ENABLED: "false"};
   delete environment.MONGODB_URI;
   const url = new URL("../instrumentation.ts", import.meta.url).href;
   const child = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", `

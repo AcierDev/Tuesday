@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      # Tests use in-memory mocks only and need no secrets.
+      - run: npm test
+
+      # app/api/db/connect.ts requires MONGODB_URI when route modules load
+      # during "Collecting page data". The placeholder points at a closed local
+      # port: no page queries the database at build time, and the startup
+      # connection attempt fails quietly. Background jobs never start in a build.
+      - name: Build
+        run: npm run build
+        env:
+          MONGODB_URI: mongodb://127.0.0.1:27017/ci-build-placeholder
+          NEXT_PUBLIC_MODE: ci
+          ASK_TUESDAY_MONITOR_ENABLED: "false"
+          SCHEDULED_JOBS_ENABLED: "false"

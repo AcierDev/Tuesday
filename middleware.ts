@@ -4,6 +4,8 @@ import { SITE_ACCESS_COOKIE, verifyAccessToken } from "@/lib/site-access";
 import { siteAccessSecret } from "@/lib/site-access-config";
 
 const PUBLIC_WEBHOOK_PATHS = new Set(["/api/heartbeat", "/api/webhooks/easypost"]);
+// Read-only, secret-free deploy check (commit + build time).
+const PUBLIC_READ_PATHS = new Set(["/api/version"]);
 // Scheduled jobs listed in vercel.json; each route checks CRON_SECRET itself.
 const CRON_PATHS = new Set([
   "/api/backlog-snapshots/cron",
@@ -19,6 +21,7 @@ export async function middleware(request: NextRequest) {
     path === "/access" ||
     path === "/api/site-access" ||
     (request.method === "POST" && PUBLIC_WEBHOOK_PATHS.has(path)) ||
+    (request.method === "GET" && PUBLIC_READ_PATHS.has(path)) ||
     CRON_PATHS.has(path)
   ) {
     return NextResponse.next();

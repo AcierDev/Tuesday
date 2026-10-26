@@ -15,7 +15,9 @@ const projectDirectory = resolve(__dirname, "..");
 // need not exist in the host environment. Intercept the timer before source work
 // starts, so this check cannot read customer data or call the model.
 for (const enabled of [true, false]) {
-  const environment = {...process.env, NODE_ENV: "production", ASK_TUESDAY_MONITOR_ENABLED: String(enabled)};
+  // The daily job scheduler also starts a timer; keep it off so this checks the monitor alone.
+  const environment = {...process.env, NODE_ENV: "production", ASK_TUESDAY_MONITOR_ENABLED: String(enabled),
+    SCHEDULED_JOBS_ENABLED: "false"};
   for (const name of STARTUP_CHECK.clearedEnvironment) delete environment[name];
   const source = `
     const startMarker = ${JSON.stringify(STARTUP_CHECK.startMarker)};
