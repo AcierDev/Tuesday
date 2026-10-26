@@ -10,57 +10,64 @@ import { createFutureLabelCompletionDeps } from "@/lib/shipping-labels/order-com
 import { updateShippingLabelByTrackerId } from "@/lib/shipping-labels/repository";
 import { applyFutureLabelTrackerUpdate } from "@/lib/shipping-labels/webhook";
 import { processTrackerCompletion } from "@/lib/shipping-labels/webhook-completion";
+import {
+  EASYPOST_SIGNATURE_HEADER,
+  EASYPOST_WEBHOOK_SECRET_ENV,
+  verifyEasyPostSignature,
+} from "@/lib/shipping-labels/easypost-webhook-signature";
+import { isEasyPostTrackerId } from "@/lib/shipping-labels/tracker-summary";
 
-// Change the controller type to use string
-type ReadableStreamController = ReadableStreamDefaultController<string>;
+const HTTP_BAD_REQUEST = 400;
+const HTTP_UNAUTHORIZED = 401;
 
-// Add a Set to store SSE clients
-const clients = new Set<ReadableStreamController>();
-
-// Add an endpoint for SSE connections
-export async function GET() {
-  const stream = new ReadableStream({
-    start(controller) {
-      clients.add(controller);
-
-      // Remove client when connection closes
-      return () => clients.delete(controller);
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
-}
-
+// Live browser updates moved to the authenticated /api/tracking/changes stream.
 export async function POST(request: Request) {
-  // console.log("Received webhook request");
-
   try {
-    const payload = await request.text();
-    // console.log("Raw payload:", payload);
+    // Verify the signature over the exact bytes EasyPost sent, before parsing.
+    const rawBody = Buffer.from(await request.arrayBuffer());
+    const signature = verifyEasyPostSignature(
+      rawBody,
+      request.headers.get(EASYPOST_SIGNATURE_HEADER),
+      process.env[EASYPOST_WEBHOOK_SECRET_ENV]
+    );
+    // Transitional: until the secret is set on the host, keep accepting
+    // unsigned events (as before) so tracking doesn't stop. Once it is set,
+    // every unsigned or mis-signed event is rejected.
+    if (!signature.ok && signature.reason === "missing-secret") {
+      console.warn(
+        `EasyPost webhook accepted unsigned: set ${EASYPOST_WEBHOOK_SECRET_ENV} to enforce signatures.`
+      );
+    } else if (!signature.ok) {
+      return NextResponse.json(
+        { error: "Invalid webhook signature" },
+        { status: HTTP_UNAUTHORIZED }
+      );
+    }
 
-    // Log all headers for debugging
-    // console.log("All request headers:", Object.fromEntries(request.headers));
-
-    const event = JSON.parse(payload);
-    // console.log("Parsed event:", event);
+    let event: { description?: unknown; result?: unknown };
+    try {
+      event = JSON.parse(rawBody.toString("utf8"));
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON" },
+        { status: HTTP_BAD_REQUEST }
+      );
+    }
 
     // Handle tracker updates
-    if (event.description === "tracker.updated") {
-      // console.log("Processing tracker.updated event");
-      const tracker: Tracker = event.result;
-      // console.log("Tracker data:", tracker);
-
-      // AlertManager.sendText(
-      //   "Ben",
-      //   "New Message",
-      //   `Tracker code: ${tracker.tracking_code} updated`
-      // );
+    if (event?.description === "tracker.updated") {
+      const tracker = event.result as Tracker | undefined;
+      // Only a real EasyPost id may reach the Mongo filter (blocks operator objects).
+      if (
+        !tracker ||
+        typeof tracker !== "object" ||
+        !isEasyPostTrackerId(tracker.id)
+      ) {
+        return NextResponse.json(
+          { error: "Invalid tracker payload" },
+          { status: HTTP_BAD_REQUEST }
+        );
+      }
 
       const client = await clientPromise;
       // console.log("MongoDB client connected");
@@ -75,7 +82,7 @@ export async function POST(request: Request) {
       // );
 
       // Update tracking info in database
-      const updateResult = await collection.updateOne(
+      await collection.updateOne(
         { "trackers.id": tracker.id },
         {
           $set: {
@@ -83,8 +90,6 @@ export async function POST(request: Request) {
           },
         }
       );
-
-      // console.log("Database update result:", updateResult);
 
       const trackingDoc = await collection.findOne({
         "trackers.id": tracker.id,
@@ -123,23 +128,11 @@ export async function POST(request: Request) {
         }
       );
 
-      // Notify all connected clients
-      const message = JSON.stringify({
-        type: "tracker.updated",
-        data: tracker,
-        autoCompletedItemId,
-      });
-
-      clients.forEach((client) => {
-        try {
-          client.enqueue(`data: ${message}\n\n`);
-        } catch (error) {
-          console.error("Failed to send SSE update, removing client:", error);
-          clients.delete(client);
-        }
-      });
-
-      return NextResponse.json({ status: "success" }, { status: 200 });
+      // Browsers receive this change through the trackers change stream.
+      return NextResponse.json(
+        { status: "success", autoCompletedItemId },
+        { status: 200 }
+      );
     }
 
     // Ignore other event types

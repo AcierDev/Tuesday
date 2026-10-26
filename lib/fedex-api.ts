@@ -1,9 +1,35 @@
+import { mergePdfPages } from "@/lib/shipping-labels/pdf";
 import {
   type FedExRateQuote,
   type ShippingAddressInput,
   type ShippingBoxPreset,
   type ShippingPurchaseDefaults,
 } from "@/typings/types";
+
+// Rates are read-only and can be retried; label creation buys a real label, so
+// it gets more time before we give up and tell the user to check FedEx history.
+export const FEDEX_AUTH_TIMEOUT_MS = 15_000;
+export const FEDEX_RATE_TIMEOUT_MS = 20_000;
+export const FEDEX_SHIP_TIMEOUT_MS = 60_000;
+export const FEDEX_CANCEL_TIMEOUT_MS = 30_000;
+export const FEDEX_LABEL_DOWNLOAD_TIMEOUT_MS = 20_000;
+const TOKEN_REFRESH_MARGIN_MS = 30_000;
+const DEFAULT_TOKEN_TTL_SECONDS = 3600;
+const MS_PER_SECOND = 1000;
+const HTTP_UNAUTHORIZED = 401;
+
+/** Server env var holding the shipping contact phone used when an address has none. */
+export const SHIP_FROM_PHONE_ENV = "SHIP_FROM_PHONE";
+/** Etsy imports carry no residential flag; most buyers are homes. */
+export const DEFAULT_RECIPIENT_RESIDENTIAL = true;
+const NO_SIGNATURE_OPTION = "NO_SIGNATURE_REQUIRED";
+/** FedEx documents Cancel Shipment as PUT /ship/v1/shipments/cancel. */
+const FEDEX_CANCEL_PATH = "/ship/v1/shipments/cancel";
+const FEDEX_CANCEL_METHOD = "PUT";
+const FEDEX_CANCEL_DELETION_CONTROL = "DELETE_ALL_PACKAGES";
+
+/** Recipient addresses may carry a third street line (Etsy `street3`). */
+export type FedExAddressInput = ShippingAddressInput & { line3?: string };
 
 type FedExCredentials = {
   clientId: string;
@@ -15,8 +41,8 @@ type FedExCredentials = {
 };
 
 type FedExRateRequest = {
-  shipFrom: ShippingAddressInput;
-  shipTo: ShippingAddressInput;
+  shipFrom: FedExAddressInput;
+  shipTo: FedExAddressInput;
   packages: ShippingBoxPreset[];
   purchaseDefaults: ShippingPurchaseDefaults;
 };
@@ -25,14 +51,46 @@ type FedExPurchaseRequest = FedExRateRequest & {
   serviceType: string;
 };
 
-type FedExPurchaseResult = {
+export type FedExPurchaseResult = {
   serviceType: string;
   serviceName: string;
+  /** Master tracking number (first box). */
   trackingNumber: string;
-  labelBuffer: Buffer;
-  totalNetCharge: number;
+  /** Every box's tracking number, master first. */
+  trackingNumbers: string[];
+  /**
+   * All box labels merged into one PDF. Null when FedEx created (and billed)
+   * the shipment but its label could not be read; see labelError.
+   */
+  labelBuffer: Buffer | null;
+  labelError?: string;
+  /** Null when FedEx's response had no parseable charge. */
+  totalNetCharge: number | null;
   currency: string;
 };
+
+export type FedExRatesResult = {
+  quotes: FedExRateQuote[];
+  /** Services FedEx returned without a parseable price (never offered for purchase). */
+  unpricedServiceTypes: string[];
+};
+
+export type FedExCancelResult = {
+  cancelled: boolean;
+  message: string;
+};
+
+export class FedExTimeoutError extends Error {
+  constructor(path: string, timeoutMs: number) {
+    const seconds = Math.round(timeoutMs / MS_PER_SECOND);
+    super(
+      path.includes("/ship/")
+        ? `FedEx did not answer within ${seconds}s. The label may still have been created: check FedEx shipment history before retrying to avoid a duplicate charge.`
+        : `FedEx did not answer within ${seconds}s. Try again.`
+    );
+    this.name = "FedExTimeoutError";
+  }
+}
 
 type FedExApiErrorPayload = {
   transactionId?: string;
@@ -77,27 +135,88 @@ function getFedExCredentials(): FedExCredentials {
   };
 }
 
-function formatAddress(address: ShippingAddressInput) {
+export function resetFedExAuthCache() {
+  cachedToken = undefined;
+}
+
+function resolveContactPhone(
+  address: FedExAddressInput,
+  required: boolean
+): string | undefined {
+  const phone =
+    address.phone?.trim() || process.env[SHIP_FROM_PHONE_ENV]?.trim() || "";
+  if (!phone && required) {
+    throw new Error(
+      `A phone number is required for ${address.name || "this address"}. Enter one in the dialog or set ${SHIP_FROM_PHONE_ENV} on the server.`
+    );
+  }
+  return phone || undefined;
+}
+
+function formatAddress(
+  address: FedExAddressInput,
+  options: { residentialDefault: boolean; requirePhone: boolean }
+) {
   return {
     contact: {
       personName: address.name,
       companyName: address.company || address.name,
-      phoneNumber: address.phone || "0000000000",
-      emailAddress: address.email,
+      phoneNumber: resolveContactPhone(address, options.requirePhone),
+      emailAddress: address.email || undefined,
     },
     address: {
-      streetLines: [address.line1, address.line2].filter(Boolean),
+      streetLines: [address.line1, address.line2, address.line3].filter(
+        (line): line is string => Boolean(line?.trim())
+      ),
       city: address.city,
       stateOrProvinceCode: address.state,
       postalCode: address.postalCode,
       countryCode: address.country,
-      residential: Boolean(address.residential),
+      residential: address.residential ?? options.residentialDefault,
     },
   };
 }
 
-function formatPackages(packages: ShippingBoxPreset[]) {
+function formatShipper(address: FedExAddressInput, requirePhone: boolean) {
+  return formatAddress(address, { residentialDefault: false, requirePhone });
+}
+
+function formatRecipient(address: FedExAddressInput, requirePhone: boolean) {
+  return formatAddress(address, {
+    residentialDefault: DEFAULT_RECIPIENT_RESIDENTIAL,
+    requirePhone,
+  });
+}
+
+/**
+ * Package special services sent identically with rate quotes and purchases, so
+ * a quote covers the same signature option that is bought. FedEx REST takes the
+ * signature on each package (packageSpecialServices.signatureOptionType).
+ */
+export function buildPackageSpecialServices(
+  purchaseDefaults: ShippingPurchaseDefaults
+) {
+  if (
+    !purchaseDefaults.signatureOption ||
+    purchaseDefaults.signatureOption === NO_SIGNATURE_OPTION
+  ) {
+    return {};
+  }
+  return {
+    packageSpecialServices: {
+      specialServiceTypes: ["SIGNATURE_OPTION"],
+      signatureOptionType: purchaseDefaults.signatureOption,
+    },
+  };
+}
+
+export function formatPackages(
+  packages: ShippingBoxPreset[],
+  purchaseDefaults: ShippingPurchaseDefaults
+) {
+  const specialServices = buildPackageSpecialServices(purchaseDefaults);
   return packages.map((pkg, index) => ({
+    ...specialServices,
     sequenceNumber: index + 1,
     groupPackageCount: 1,
     weight: {
@@ -172,7 +291,11 @@ function pickCharge(detail: any) {
   return extractFedExRatedChargeMoney(ratedShipmentDetail);
 }
 
-function parseRateQuote(detail: any): FedExRateQuote | null {
+type ParsedRateQuote =
+  | { priced: true; quote: FedExRateQuote }
+  | { priced: false; serviceType: string };
+
+export function parseRateQuote(detail: any): ParsedRateQuote | null {
   const serviceType = detail?.serviceType;
   if (!serviceType) {
     return null;
@@ -181,8 +304,11 @@ function parseRateQuote(detail: any): FedExRateQuote | null {
   const rawCharge = pickCharge(detail);
   const amount =
     extractFedExMoneyAmount(rawCharge) ??
-    extractFedExMoneyAmount(detail?.totalNetCharge) ??
-    0;
+    extractFedExMoneyAmount(detail?.totalNetCharge);
+  // A missing price must never read as $0: it would sort first and be bought.
+  if (amount === undefined) {
+    return { priced: false, serviceType };
+  }
   const currency =
     extractFedExMoneyCurrency(rawCharge) ||
     extractFedExMoneyCurrency(detail?.totalNetCharge) ||
@@ -196,12 +322,15 @@ function parseRateQuote(detail: any): FedExRateQuote | null {
     detail?.commit?.transitTime || detail?.operationalDetail?.transitTime;
 
   return {
-    serviceType,
-    serviceName: detail?.serviceName || humanizeServiceType(serviceType),
-    totalNetCharge: amount,
-    currency,
-    estimatedDeliveryDate,
-    transitTime,
+    priced: true,
+    quote: {
+      serviceType,
+      serviceName: detail?.serviceName || humanizeServiceType(serviceType),
+      totalNetCharge: amount,
+      currency,
+      estimatedDeliveryDate,
+      transitTime,
+    },
   };
 }
 
@@ -238,7 +367,7 @@ function formatFedExApiFailure(path: string, status: number, errorText: string):
 }
 
 async function getAccessToken() {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 30_000) {
+  if (cachedToken && cachedToken.expiresAt > Date.now() + TOKEN_REFRESH_MARGIN_MS) {
     return cachedToken.accessToken;
   }
 
@@ -257,13 +386,18 @@ async function getAccessToken() {
     body.set("child_secret", credentials.childSecret);
   }
 
-  const response = await fetch(`${credentials.baseUrl}/oauth/token`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
+  const response = await fetchWithTimeout(
+    "/oauth/token",
+    `${credentials.baseUrl}/oauth/token`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: body.toString(),
     },
-    body: body.toString(),
-  });
+    FEDEX_AUTH_TIMEOUT_MS
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -294,28 +428,70 @@ async function getAccessToken() {
   }
 
   const data = await response.json();
-  const expiresIn = Number(data.expires_in || 3600);
+  const expiresIn = Number(data.expires_in || DEFAULT_TOKEN_TTL_SECONDS);
 
   cachedToken = {
     accessToken: data.access_token,
-    expiresAt: Date.now() + expiresIn * 1000,
+    expiresAt: Date.now() + expiresIn * MS_PER_SECOND,
   };
 
   return data.access_token as string;
 }
 
-async function fedexFetch<T>(path: string, body: unknown): Promise<T> {
+type FedExFetchOptions = {
+  method?: "POST" | "PUT";
+  timeoutMs: number;
+};
+
+function isTimeoutError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === "TimeoutError" || error.name === "AbortError")
+  );
+}
+
+async function fetchWithTimeout(
+  path: string,
+  url: string,
+  init: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (error) {
+    if (isTimeoutError(error)) throw new FedExTimeoutError(path, timeoutMs);
+    throw error;
+  }
+}
+
+async function fedexFetch<T>(
+  path: string,
+  body: unknown,
+  options: FedExFetchOptions
+): Promise<T> {
   const credentials = getFedExCredentials();
-  const accessToken = await getAccessToken();
-  const response = await fetch(`${credentials.baseUrl}${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-      "X-locale": "en_US",
-    },
-    body: JSON.stringify(body),
-  });
+  const send = async () =>
+    fetchWithTimeout(
+      path,
+      `${credentials.baseUrl}${path}`,
+      {
+        method: options.method ?? "POST",
+        headers: {
+          Authorization: `Bearer ${await getAccessToken()}`,
+          "Content-Type": "application/json",
+          "X-locale": "en_US",
+        },
+        body: JSON.stringify(body),
+      },
+      options.timeoutMs
+    );
+
+  let response = await send();
+  if (response.status === HTTP_UNAUTHORIZED) {
+    // FedEx revoked or expired the cached token early: refresh once and retry.
+    resetFedExAuthCache();
+    response = await send();
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -325,125 +501,145 @@ async function fedexFetch<T>(path: string, body: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-function extractEncodedLabel(payload: any): string | undefined {
-  const candidates = [
-    payload?.output?.transactionShipments?.[0]?.pieceResponses?.[0]?.packageDocuments?.[0]?.encodedLabel,
-    payload?.output?.transactionShipments?.[0]?.pieceResponses?.[0]?.packageDocuments?.[0]?.encodedLabelContent,
-    payload?.output?.completedShipmentDetail?.completedPackageDetails?.[0]?.label?.parts?.[0]?.image,
-  ];
-
-  return candidates.find((candidate) => typeof candidate === "string" && candidate.length > 0);
-}
-
-function extractLabelUrl(payload: any): string | undefined {
-  const candidates = [
-    payload?.output?.transactionShipments?.[0]?.pieceResponses?.[0]?.packageDocuments?.[0]?.url,
-    payload?.output?.transactionShipments?.[0]?.shipmentDocuments?.[0]?.url,
-  ];
-
-  return candidates.find((candidate) => typeof candidate === "string" && candidate.length > 0);
-}
-
-function extractTrackingNumber(payload: any): string | undefined {
-  return (
-    payload?.output?.transactionShipments?.[0]?.masterTrackingNumber ||
-    payload?.output?.transactionShipments?.[0]?.pieceResponses?.[0]?.trackingNumber ||
-    payload?.output?.completedShipmentDetail?.completedPackageDetails?.[0]?.trackingIds?.[0]?.trackingNumber
+function nonEmptyStrings(values: unknown[]): string[] {
+  return values.filter(
+    (value): value is string => typeof value === "string" && value.length > 0
   );
 }
 
-async function resolveLabelBuffer(payload: any): Promise<Buffer> {
-  const encodedLabel = extractEncodedLabel(payload);
-  if (encodedLabel) {
-    return Buffer.from(encodedLabel, "base64");
-  }
+function transactionShipment(payload: any) {
+  return payload?.output?.transactionShipments?.[0];
+}
 
-  const labelUrl = extractLabelUrl(payload);
-  if (!labelUrl) {
-    throw new Error("FedEx shipment response did not contain a label.");
-  }
+/** Every box's label document, in box order (multi-box shipments have one per piece). */
+export function extractEncodedLabels(payload: any): string[] {
+  const pieces: any[] = transactionShipment(payload)?.pieceResponses ?? [];
+  const pieceLabels = nonEmptyStrings(
+    pieces.flatMap((piece) =>
+      (piece?.packageDocuments ?? []).map(
+        (document: any) => document?.encodedLabel ?? document?.encodedLabelContent
+      )
+    )
+  );
+  if (pieceLabels.length) return pieceLabels;
 
-  const response = await fetch(labelUrl);
+  const packages: any[] =
+    payload?.output?.completedShipmentDetail?.completedPackageDetails ?? [];
+  return nonEmptyStrings(
+    packages.flatMap((pkg) =>
+      (pkg?.label?.parts ?? []).map((part: any) => part?.image)
+    )
+  );
+}
+
+function extractLabelUrls(payload: any): string[] {
+  const shipment = transactionShipment(payload);
+  const pieces: any[] = shipment?.pieceResponses ?? [];
+  const pieceUrls = nonEmptyStrings(
+    pieces.flatMap((piece) =>
+      (piece?.packageDocuments ?? []).map((document: any) => document?.url)
+    )
+  );
+  if (pieceUrls.length) return pieceUrls;
+  return nonEmptyStrings([shipment?.shipmentDocuments?.[0]?.url]);
+}
+
+/** Master tracking number first, then every other box's number, deduplicated. */
+export function extractTrackingNumbers(payload: any): string[] {
+  const shipment = transactionShipment(payload);
+  const pieces: any[] = shipment?.pieceResponses ?? [];
+  const packages: any[] =
+    payload?.output?.completedShipmentDetail?.completedPackageDetails ?? [];
+  return [
+    ...new Set(
+      nonEmptyStrings([
+        shipment?.masterTrackingNumber,
+        ...pieces.map((piece) => piece?.trackingNumber),
+        ...packages.flatMap((pkg) =>
+          (pkg?.trackingIds ?? []).map((id: any) => id?.trackingNumber)
+        ),
+      ])
+    ),
+  ];
+}
+
+async function downloadLabel(url: string): Promise<Buffer> {
+  const response = await fetchWithTimeout(
+    "label download",
+    url,
+    {},
+    FEDEX_LABEL_DOWNLOAD_TIMEOUT_MS
+  );
   if (!response.ok) {
     throw new Error("Failed to download FedEx label from returned URL.");
   }
+  return Buffer.from(await response.arrayBuffer());
+}
 
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer);
+/** One PDF holding every box's label. */
+export async function resolveLabelBuffer(payload: any): Promise<Buffer> {
+  const encodedLabels = extractEncodedLabels(payload);
+  const labelBuffers = encodedLabels.length
+    ? encodedLabels.map((label) => Buffer.from(label, "base64"))
+    : await Promise.all(extractLabelUrls(payload).map(downloadLabel));
+
+  if (labelBuffers.length === 0) {
+    throw new Error("FedEx shipment response did not contain a label.");
+  }
+  const [onlyLabel] = labelBuffers;
+  return labelBuffers.length === 1 && onlyLabel
+    ? onlyLabel
+    : mergePdfPages(labelBuffers);
 }
 
 export async function fetchFedExRates(
   request: FedExRateRequest
-): Promise<FedExRateQuote[]> {
+): Promise<FedExRatesResult> {
   const credentials = getFedExCredentials();
-  const payload = await fedexFetch<any>("/rate/v1/rates/quotes", {
-    accountNumber: { value: credentials.accountNumber },
-    rateRequestControlParameters: {
-      returnTransitTimes: true,
-    },
-    requestedShipment: {
-      shipper: formatAddress(request.shipFrom),
-      recipient: formatAddress(request.shipTo),
-      pickupType: request.purchaseDefaults.pickupType,
-      packagingType: request.purchaseDefaults.packagingType,
-      rateRequestType: ["ACCOUNT"],
-      requestedPackageLineItems: formatPackages(request.packages),
-    },
-  });
-
-  const quotes = (payload?.output?.rateReplyDetails || [])
-    .map(parseRateQuote)
-    .filter(Boolean) as FedExRateQuote[];
-
-  return quotes.sort((a, b) => a.totalNetCharge - b.totalNetCharge);
-}
-
-export async function purchaseFedExShipment(
-  request: FedExPurchaseRequest
-): Promise<FedExPurchaseResult> {
-  const credentials = getFedExCredentials();
-  const payload = await fedexFetch<any>("/ship/v1/shipments", {
-    labelResponseOptions: "LABEL",
-    accountNumber: { value: credentials.accountNumber },
-    requestedShipment: {
-      shipDatestamp: new Date().toISOString().slice(0, 10),
-      pickupType: request.purchaseDefaults.pickupType,
-      serviceType: request.serviceType,
-      packagingType: request.purchaseDefaults.packagingType,
-      rateRequestType: ["ACCOUNT"],
-      shipper: formatAddress(request.shipFrom),
-      recipients: [formatAddress(request.shipTo)],
-      labelSpecification: {
-        imageType: "PDF",
-        labelStockType: request.purchaseDefaults.labelStockType,
-        labelFormatType: "COMMON2D",
+  const payload = await fedexFetch<any>(
+    "/rate/v1/rates/quotes",
+    {
+      accountNumber: { value: credentials.accountNumber },
+      rateRequestControlParameters: {
+        returnTransitTimes: true,
       },
-      shippingChargesPayment: {
-        paymentType: "SENDER",
+      requestedShipment: {
+        shipper: formatShipper(request.shipFrom, false),
+        recipient: formatRecipient(request.shipTo, false),
+        pickupType: request.purchaseDefaults.pickupType,
+        packagingType: request.purchaseDefaults.packagingType,
+        rateRequestType: ["ACCOUNT"],
+        requestedPackageLineItems: formatPackages(
+          request.packages,
+          request.purchaseDefaults
+        ),
       },
-      requestedPackageLineItems: formatPackages(request.packages),
-      ...(request.purchaseDefaults.signatureOption !== "NO_SIGNATURE_REQUIRED"
-        ? {
-            specialServicesRequested: {
-              specialServiceTypes: ["SIGNATURE_OPTION"],
-              signatureOptionDetail: {
-                optionType: request.purchaseDefaults.signatureOption,
-              },
-            },
-          }
-        : {}),
     },
-  });
+    { timeoutMs: FEDEX_RATE_TIMEOUT_MS }
+  );
 
-  const trackingNumber = extractTrackingNumber(payload);
-  if (!trackingNumber) {
-    throw new Error("FedEx shipment response did not include a tracking number.");
+  const quotes: FedExRateQuote[] = [];
+  const unpricedServiceTypes: string[] = [];
+  for (const detail of payload?.output?.rateReplyDetails || []) {
+    const parsed = parseRateQuote(detail);
+    if (!parsed) continue;
+    if (parsed.priced) quotes.push(parsed.quote);
+    else unpricedServiceTypes.push(parsed.serviceType);
   }
 
-  const labelBuffer = await resolveLabelBuffer(payload);
-  const shipmentRating =
-    payload?.output?.transactionShipments?.[0]?.shipmentRating;
-  const rateDetailsList = shipmentRating?.shipmentRateDetails;
+  return {
+    quotes: quotes.sort((a, b) => a.totalNetCharge - b.totalNetCharge),
+    unpricedServiceTypes,
+  };
+}
+
+/** The charge FedEx reports for a created shipment, or null when it can't be read. */
+export function extractShipmentCharge(payload: any): {
+  totalNetCharge: number | null;
+  currency: string;
+} {
+  const rateDetailsList =
+    transactionShipment(payload)?.shipmentRating?.shipmentRateDetails;
   const rateDetail =
     rateDetailsList?.find(
       (detail: any) =>
@@ -455,11 +651,99 @@ export async function purchaseFedExShipment(
   const net =
     extractFedExRatedChargeMoney(rateDetail) ?? rateDetail?.totalNetCharge;
   return {
+    totalNetCharge: extractFedExMoneyAmount(net) ?? null,
+    currency: extractFedExMoneyCurrency(net) || "USD",
+  };
+}
+
+export async function purchaseFedExShipment(
+  request: FedExPurchaseRequest
+): Promise<FedExPurchaseResult> {
+  const credentials = getFedExCredentials();
+  const payload = await fedexFetch<any>(
+    "/ship/v1/shipments",
+    {
+      labelResponseOptions: "LABEL",
+      accountNumber: { value: credentials.accountNumber },
+      requestedShipment: {
+        shipDatestamp: new Date().toISOString().slice(0, 10),
+        pickupType: request.purchaseDefaults.pickupType,
+        serviceType: request.serviceType,
+        packagingType: request.purchaseDefaults.packagingType,
+        rateRequestType: ["ACCOUNT"],
+        shipper: formatShipper(request.shipFrom, true),
+        recipients: [formatRecipient(request.shipTo, true)],
+        labelSpecification: {
+          imageType: "PDF",
+          labelStockType: request.purchaseDefaults.labelStockType,
+          labelFormatType: "COMMON2D",
+        },
+        shippingChargesPayment: {
+          paymentType: "SENDER",
+        },
+        requestedPackageLineItems: formatPackages(
+          request.packages,
+          request.purchaseDefaults
+        ),
+      },
+    },
+    { timeoutMs: FEDEX_SHIP_TIMEOUT_MS }
+  );
+
+  const trackingNumbers = extractTrackingNumbers(payload);
+  const [trackingNumber] = trackingNumbers;
+  if (!trackingNumber) {
+    throw new Error("FedEx shipment response did not include a tracking number.");
+  }
+
+  // The shipment now exists and is billed: never throw past this point, so the
+  // caller can record the tracking number and charge even without a label.
+  let labelBuffer: Buffer | null = null;
+  let labelError: string | undefined;
+  try {
+    labelBuffer = await resolveLabelBuffer(payload);
+  } catch (error) {
+    labelError =
+      error instanceof Error ? error.message : "FedEx label could not be read.";
+  }
+
+  return {
     serviceType: request.serviceType,
     serviceName: humanizeServiceType(request.serviceType),
     trackingNumber,
+    trackingNumbers,
     labelBuffer,
-    totalNetCharge: extractFedExMoneyAmount(net) ?? 0,
-    currency: extractFedExMoneyCurrency(net) || "USD",
+    labelError,
+    ...extractShipmentCharge(payload),
+  };
+}
+
+/** Voids a label that FedEx has not yet received (FedEx Ship API Cancel Shipment). */
+export async function cancelFedExShipment(
+  trackingNumber: string,
+  senderCountryCode: string
+): Promise<FedExCancelResult> {
+  const credentials = getFedExCredentials();
+  const payload = await fedexFetch<any>(
+    FEDEX_CANCEL_PATH,
+    {
+      accountNumber: { value: credentials.accountNumber },
+      emailShipment: false,
+      senderCountryCode,
+      deletionControl: FEDEX_CANCEL_DELETION_CONTROL,
+      trackingNumber,
+    },
+    { method: FEDEX_CANCEL_METHOD, timeoutMs: FEDEX_CANCEL_TIMEOUT_MS }
+  );
+
+  const output = payload?.output;
+  const alertMessage = output?.alerts?.find((alert: any) => alert?.message)?.message;
+  return {
+    cancelled: output?.cancelledShipment === true,
+    message:
+      output?.message ||
+      output?.successMessage ||
+      alertMessage ||
+      (output?.cancelledShipment ? "Shipment cancelled." : "FedEx did not cancel the shipment."),
   };
 }

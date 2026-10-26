@@ -1,7 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Loader2, Plus, Truck, X } from "lucide-react";
+import {
+  forwardRef,
+  type ForwardedRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  Loader2,
+  Plus,
+  Truck,
+  X,
+} from "lucide-react";
 
 import {
   Accordion,
@@ -43,7 +60,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { normalizeShippingSettings } from "@/config/shipping-defaults";
+import {
+  normalizeShippingSettings,
+  validateShippingSettingsInput,
+} from "@/config/shipping-defaults";
 import { useShippingSettingsStore } from "@/stores/useShippingSettingsStore";
 import {
   ItemSizes,
@@ -101,7 +121,7 @@ function createBoxPreset(index: number): ShippingBoxPreset {
   };
 }
 
-function isDirty(a: ShippingSettings | null, b: ShippingSettings | null) {
+function isDirty<T>(a: T | null, b: T | null) {
   if (!a || !b) {
     return false;
   }
@@ -111,7 +131,118 @@ function isDirty(a: ShippingSettings | null, b: ShippingSettings | null) {
 
 const AUTO_SAVE_DEBOUNCE_MS = 600;
 
-export function ShippingSettingsEditor() {
+interface DraftAutosaveOptions<T> {
+  draft: T | null;
+  saved: T | null;
+  isSaving: boolean;
+  save: (value: T) => Promise<unknown>;
+  debounceMs?: number;
+}
+
+// Debounced autosave for an editable draft. A failed save is not retried
+// automatically: the exact draft that failed is remembered and skipped until
+// the next edit produces a new draft object (or the user hits Retry).
+export function useDraftAutosave<T>({
+  draft,
+  saved,
+  isSaving,
+  save,
+  debounceMs = AUTO_SAVE_DEBOUNCE_MS,
+}: DraftAutosaveOptions<T>) {
+  const [failedDraft, setFailedDraft] = useState<T | null>(null);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const savedRef = useRef(saved);
+  savedRef.current = saved;
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  const failedDraftRef = useRef<T | null>(null);
+  const lastSavedDraftRef = useRef<T | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightRef = useRef<Promise<boolean> | null>(null);
+
+  const dirty = useMemo(() => isDirty(draft, saved), [draft, saved]);
+  const saveFailed = draft !== null && draft === failedDraft;
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const persistDraft = useCallback(
+    (value: T): Promise<boolean> => {
+      clearTimer();
+      const attempt = saveRef.current(value).then(
+        () => {
+          lastSavedDraftRef.current = value;
+          failedDraftRef.current = null;
+          setFailedDraft(null);
+          return true;
+        },
+        () => {
+          failedDraftRef.current = value;
+          setFailedDraft(value);
+          return false;
+        }
+      );
+      inFlightRef.current = attempt;
+      void attempt.finally(() => {
+        if (inFlightRef.current === attempt) inFlightRef.current = null;
+      });
+      return attempt;
+    },
+    [clearTimer]
+  );
+
+  useEffect(() => {
+    if (!draft || !dirty || isSaving || draft === failedDraft) return;
+
+    timerRef.current = setTimeout(() => void persistDraft(draft), debounceMs);
+
+    return clearTimer;
+  }, [draft, dirty, isSaving, failedDraft, debounceMs, persistDraft, clearTimer]);
+
+  // Saves the pending edit now. Resolves false only when this save failed (the
+  // error is then visible); a draft that already failed resolves true so a
+  // second close discards it instead of trapping the user.
+  const flush = useCallback(async (): Promise<boolean> => {
+    clearTimer();
+    const value = draftRef.current;
+    if (!value || value === failedDraftRef.current) return true;
+    if (inFlightRef.current) await inFlightRef.current;
+    if (value === failedDraftRef.current) return false;
+    if (value === lastSavedDraftRef.current) return true;
+    if (!isDirty(value, savedRef.current)) return true;
+    return persistDraft(value);
+  }, [clearTimer, persistDraft]);
+
+  // Safety net: an unmount that skipped flush() still saves the pending edit.
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  useEffect(() => {
+    const latestFlush = flushRef;
+    return () => void latestFlush.current();
+  }, []);
+
+  const flushOnBlur = () => {
+    if (!draft || !dirty || isSaving || saveFailed) return;
+    void persistDraft(draft);
+  };
+
+  return { dirty, saveFailed, persistDraft, flush, flushOnBlur };
+}
+
+export interface ShippingSettingsEditorHandle {
+  /** Saves any pending edit now; false when that save failed. */
+  flush: () => Promise<boolean>;
+}
+
+function ShippingSettingsEditorImpl(
+  _props: object,
+  ref: ForwardedRef<ShippingSettingsEditorHandle>
+) {
   const { settings, isLoading, isSaving, error, fetchSettings, saveSettings } =
     useShippingSettingsStore();
   const [draft, setDraft] = useState<ShippingSettings | null>(null);
@@ -130,29 +261,35 @@ export function ShippingSettingsEditor() {
     }
   }, [settings]);
 
-  const dirty = useMemo(() => isDirty(draft, settings), [draft, settings]);
-
-  const persistDraft = (value: ShippingSettings) => {
-    saveSettings(normalizeShippingSettings(value)).catch((saveError) => {
-      console.error(
-        "Failed to save shipping settings",
-        saveError instanceof Error ? saveError.message : saveError
-      );
+  const { dirty, saveFailed, persistDraft, flush, flushOnBlur } =
+    useDraftAutosave({
+      draft,
+      saved: settings,
+      isSaving,
+      save: (value) => {
+        // Never send a draft the server would reject (e.g. a new box whose
+        // measurements are still 0); the reason is shown in the status area.
+        const validation = validateShippingSettingsInput(value);
+        if (!validation.ok) {
+          return Promise.reject(new Error(validation.errors.join(" ")));
+        }
+        return saveSettings(validation.settings).catch((saveError) => {
+          console.error(
+            "Failed to save shipping settings",
+            saveError instanceof Error ? saveError.message : saveError
+          );
+          throw saveError;
+        });
+      },
     });
-  };
 
-  useEffect(() => {
-    if (!draft || !dirty || isSaving) return;
+  const draftValidationError = useMemo(() => {
+    if (!draft) return null;
+    const validation = validateShippingSettingsInput(draft);
+    return validation.ok ? null : validation.errors[0] ?? null;
+  }, [draft]);
 
-    const handle = setTimeout(() => persistDraft(draft), AUTO_SAVE_DEBOUNCE_MS);
-
-    return () => clearTimeout(handle);
-  }, [draft, dirty, isSaving, saveSettings]);
-
-  const handleBlurFlush = () => {
-    if (!draft || !dirty || isSaving) return;
-    persistDraft(draft);
-  };
+  useImperativeHandle(ref, () => ({ flush }), [flush]);
 
   const updateShipFrom = (field: keyof ShippingAddressInput, value: string | boolean) => {
     setDraft((current) =>
@@ -273,7 +410,7 @@ export function ShippingSettingsEditor() {
   }
 
   return (
-    <div className="space-y-6" onBlurCapture={handleBlurFlush}>
+    <div className="space-y-6" onBlurCapture={flushOnBlur}>
       <Card className="border-none shadow-none dark:bg-transparent">
         <CardHeader className="px-0">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -286,8 +423,35 @@ export function ShippingSettingsEditor() {
                 FedEx ship-from defaults and editable box presets by item size.
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {dirty || isSaving ? (
+            <div
+              className="flex items-center gap-2 text-sm text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              {draftValidationError ? (
+                <>
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                  <span className="text-red-600 dark:text-red-400">
+                    Not saved: {draftValidationError}
+                  </span>
+                </>
+              ) : saveFailed && !isSaving ? (
+                <>
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                  <span className="text-red-600 dark:text-red-400">
+                    {error || "Couldn't save"}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => void persistDraft(draft)}
+                  >
+                    Retry
+                  </Button>
+                </>
+              ) : dirty || isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Saving…</span>
@@ -610,3 +774,5 @@ export function ShippingSettingsEditor() {
     </div>
   );
 }
+
+export const ShippingSettingsEditor = forwardRef(ShippingSettingsEditorImpl);

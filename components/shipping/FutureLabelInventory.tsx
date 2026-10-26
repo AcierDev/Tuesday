@@ -56,8 +56,20 @@ function words(value: string): string {
     .join(" ");
 }
 
+function isAwaitingTracking(record: ShippingLabelRecord): boolean {
+  return record.processingStatus === "ready" && record.tracker?.status === "unknown";
+}
+
 function categoryPresentation(record: ShippingLabelRecord) {
   const category = classifyShippingLabel(record);
+  // Printable like any unused label; the carrier just has no scans yet.
+  if (isAwaitingTracking(record)) {
+    return {
+      label: "Awaiting tracking",
+      icon: RefreshCw,
+      className: "bg-amber-500/10 text-amber-300 ring-amber-500/30",
+    };
+  }
   if (category === "unused") {
     return {
       label: "Unused",
@@ -70,13 +82,6 @@ function categoryPresentation(record: ShippingLabelRecord) {
       label: `Used · ${words(record.tracker?.status ?? "unknown")}`,
       icon: CheckCircle2,
       className: "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30",
-    };
-  }
-  if (record.processingStatus === "ready" && record.tracker?.status === "unknown") {
-    return {
-      label: "Awaiting tracking",
-      icon: RefreshCw,
-      className: "bg-amber-500/10 text-amber-300 ring-amber-500/30",
     };
   }
   return {
@@ -373,7 +378,7 @@ export function FutureLabelInventory({
                     <Printer className="mr-1 h-3.5 w-3.5" /> Print
                   </Button>
                 )}
-                {category === "issues" && (
+                {(category === "issues" || isAwaitingTracking(record)) && (
                   <>
                     {(record.processingStatus !== "ready" || !record.tracker) && (
                       <Button

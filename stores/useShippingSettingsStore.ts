@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { type ShippingSettings } from "@/typings/types";
+import { shouldBootAppData } from "@/lib/app-boot";
 
 interface ShippingSettingsState {
   settings: ShippingSettings | null;
@@ -70,7 +71,7 @@ export const useShippingSettingsStore = create<ShippingSettingsState>(
   })
 );
 
-if (typeof window !== "undefined") {
+if (shouldBootAppData()) {
   useShippingSettingsStore
     .getState()
     .fetchSettings()

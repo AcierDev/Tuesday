@@ -6,6 +6,7 @@ import { mergePdfPages, splitPdfPages } from "../lib/shipping-labels/pdf";
 import {
   canCompleteFutureLabelOrder,
   classifyShippingLabel,
+  isShippingLabelPrintable,
 } from "../lib/shipping-labels/status";
 import type { ShippingLabelRecord } from "../types/shipping-labels";
 import type { Tracker, TrackerStatus } from "../typings/types";
@@ -18,7 +19,6 @@ const SHIPPED_STATUSES: TrackerStatus[] = [
 ];
 
 const UNCONFIRMED_STATUSES: TrackerStatus[] = [
-  "unknown",
   "return_to_sender",
   "failure",
   "cancelled",
@@ -90,7 +90,17 @@ test("only confirmed shipping statuses count as used", () => {
   }
 });
 
-test("unknown and unsuccessful tracking statuses are issues, not proof of pickup", () => {
+test("a ready label whose tracker is still unknown is unused and printable, not shipped", () => {
+  assert.equal(classifyShippingLabel(labelRecord("unknown")), "unused");
+  assert.equal(isShippingLabelPrintable(labelRecord("unknown")), true);
+  assert.equal(canCompleteFutureLabelOrder([labelRecord("unknown")]), false);
+  assert.equal(
+    classifyShippingLabel(labelRecord("unknown", "scanning")),
+    "issues"
+  );
+});
+
+test("unsuccessful tracking statuses are issues, not proof of pickup", () => {
   for (const status of UNCONFIRMED_STATUSES) {
     assert.equal(classifyShippingLabel(labelRecord(status)), "issues", status);
     assert.equal(canCompleteFutureLabelOrder([labelRecord(status)]), false, status);

@@ -13,6 +13,12 @@ export const SHIPPED_TRACKER_STATUSES: ReadonlySet<TrackerStatus> = new Set([
   "available_for_pickup",
 ]);
 
+// Label exists but the carrier hasn't received the package yet.
+export const NOT_YET_SHIPPED_TRACKER_STATUSES: ReadonlySet<TrackerStatus> = new Set([
+  "pre_transit",
+  "unknown",
+]);
+
 type ClassifiableShippingLabel = Pick<
   ShippingLabelRecord,
   "processingStatus" | "tracker"
@@ -25,7 +31,9 @@ export function classifyShippingLabel(
     return "issues";
   }
 
-  if (record.tracker.status === "pre_transit") return "unused";
+  // A freshly scanned label often reads "unknown" until the carrier has data:
+  // it is a usable, printable label, not a problem.
+  if (NOT_YET_SHIPPED_TRACKER_STATUSES.has(record.tracker.status)) return "unused";
   return SHIPPED_TRACKER_STATUSES.has(record.tracker.status) ? "used" : "issues";
 }
 

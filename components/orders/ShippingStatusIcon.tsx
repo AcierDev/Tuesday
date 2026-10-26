@@ -10,7 +10,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useTrackingStore } from "@/stores/useTrackingStore";
+import { useOrderTracking } from "@/stores/useTrackingStore";
+import { aggregateTrackerStatus } from "@/lib/shipping-labels/tracker-summary";
 import { useMemo } from "react";
 
 interface ShippingStatusIconProps {
@@ -18,12 +19,8 @@ interface ShippingStatusIconProps {
 }
 
 export function ShippingStatusIcon({ orderId }: ShippingStatusIconProps) {
-  const { trackingInfo } = useTrackingStore();
-
-  // Memoize the tracking info lookup
-  const orderTracking = useMemo(() => {
-    return trackingInfo.find((t) => t.orderId === orderId);
-  }, [trackingInfo, orderId]);
+  // Subscribe to this order's trackers only, not the whole tracking list.
+  const orderTracking = useOrderTracking(orderId);
 
   // Memoize the status icon calculation which is an expensive operation
   const { icon, text } = useMemo(() => {
@@ -34,11 +31,10 @@ export function ShippingStatusIcon({ orderId }: ShippingStatusIconProps) {
       };
     }
 
-    // Use the most recent tracker
-    const latestTracker =
-      orderTracking.trackers[orderTracking.trackers.length - 1];
+    // One status across every box: any exception wins, delivered needs all.
+    const status = aggregateTrackerStatus(orderTracking.trackers);
 
-    switch (latestTracker?.status?.toLowerCase()) {
+    switch (status) {
       case "delivered":
         return {
           icon: <CheckCircle2 className="h-4 w-4 text-green-500" />,
@@ -74,7 +70,7 @@ export function ShippingStatusIcon({ orderId }: ShippingStatusIconProps) {
       default:
         return {
           icon: <Package className="h-4 w-4 text-muted-foreground" />,
-          text: latestTracker?.status || "Unknown",
+          text: status || "Unknown",
         };
     }
   }, [orderTracking]);

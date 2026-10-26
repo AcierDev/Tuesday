@@ -30,6 +30,7 @@ import { useShippingStore } from "@/stores/useShippingStore";
 import { TrackingInfo, FileProgress } from "@/types/shipping";
 import { cn } from "@/utils/functions";
 import { FedExBuyLabelDialog } from "./FedExBuyLabelDialog";
+import { PurchasedLabelsPanel } from "./PurchasedLabelsPanel";
 import { useLabelUpload } from "@/hooks/useLabelUpload";
 import { CombinedLabelPreview } from "./CombinedLabelPreview";
 import { FutureLabelInventory } from "./FutureLabelInventory";
@@ -50,6 +51,12 @@ const TAB_ICON: Record<TabValue, React.ComponentType<{ className?: string }>> = 
 };
 
 const PREVIEW_HEIGHT = "clamp(440px, 68vh, 760px)";
+/** extract-tracking answers 422 when the label was read but no valid number found. */
+const HTTP_UNPROCESSABLE = 422;
+
+function trackerUrl(trackingNumber: string, carrier: string): string {
+  return `/api/shipping/tracker/${encodeURIComponent(trackingNumber)}?carrier=${encodeURIComponent(carrier)}`;
+}
 
 type ManualTrackingInput = {
   fileIndex: number;
@@ -81,9 +88,10 @@ export function ViewLabel({
     useState<TrackingInfo["carrier"]>("UPS");
   const [retryingFiles, setRetryingFiles] = useState<Set<string>>(new Set());
   const [copiedTracking, setCopiedTracking] = useState(false);
-  const { addTrackingInfo } = useTrackingStore();
+  const [submittingManualTracking, setSubmittingManualTracking] = useState(false);
+  const addTrackingInfo = useTrackingStore((state) => state.addTrackingInfo);
   const latestTrackingCode = useTrackingStore((state) => {
-    const info = state.trackingInfo.find((t) => t.orderId === orderId);
+    const info = state.trackingByOrderId[orderId];
     if (!info || info.trackers.length === 0) return null;
     return info.trackers[info.trackers.length - 1]?.tracking_code ?? null;
   });
@@ -167,34 +175,23 @@ export function ViewLabel({
   };
 
   const handleManualTrackingSubmit = async () => {
-    console.log("Submitting manual tracking:", {
-      trackingNumber: manualTrackingNumber,
-      carrier: manualCarrier,
-    });
+    if (submittingManualTracking) return;
+    setSubmittingManualTracking(true);
 
     try {
       setError(null);
 
       const trackerResponse = await fetch(
-        `/api/shipping/tracker/${manualTrackingNumber}?carrier=${manualCarrier}`
+        trackerUrl(manualTrackingNumber.trim(), manualCarrier)
       );
+      // Read the body exactly once; it is JSON for both success and failure.
+      const body = await trackerResponse.json().catch(() => null);
 
       if (!trackerResponse.ok) {
-        const errorText = await trackerResponse.text();
-        console.log("Manual tracking API error:", {
-          status: trackerResponse.status,
-          statusText: trackerResponse.statusText,
-          response: errorText,
-        });
-        const errorData = await trackerResponse.json();
-        throw new Error(
-          errorData.error || "Failed to validate tracking number"
-        );
+        throw new Error(body?.error || "Failed to validate tracking number");
       }
 
-      const tracker: Tracker = await trackerResponse.json();
-      console.log("Received tracker data:", tracker);
-
+      const tracker = body as Tracker;
       await saveTrackingInfo(tracker);
 
       // Close the modal only after successful submission
@@ -211,6 +208,8 @@ export function ViewLabel({
           ? error.message
           : "Failed to process tracking number"
       );
+    } finally {
+      setSubmittingManualTracking(false);
     }
   };
 
@@ -226,7 +225,9 @@ export function ViewLabel({
     let initialProgress: FileProgress | null = null;
 
     try {
-      const pdfResponse = await fetch(`/api/shipping/pdf/${filename}`);
+      const pdfResponse = await fetch(
+        `/api/shipping/pdf/${encodeURIComponent(filename)}`
+      );
       if (!pdfResponse.ok) throw new Error("Failed to fetch label PDF");
       const pdfBlob = await pdfResponse.blob();
       const pdfFile = new globalThis.File([pdfBlob], filename, {
@@ -266,13 +267,19 @@ export function ViewLabel({
         body: trackingFormData,
       });
 
-      if (!trackingResponse.ok) {
+      if (
+        !trackingResponse.ok &&
+        trackingResponse.status !== HTTP_UNPROCESSABLE
+      ) {
         throw new Error("Failed to extract tracking info");
       }
 
-      const trackingInfo: TrackingInfo = await trackingResponse.json();
+      // 422: the label was read but held no valid tracking number.
+      const trackingInfo: TrackingInfo | null = trackingResponse.ok
+        ? await trackingResponse.json()
+        : null;
 
-      if (!validateTrackingNumber(trackingInfo)) {
+      if (!trackingInfo || !validateTrackingNumber(trackingInfo)) {
         updateFileProgress(filename, {
           ...initialProgress,
           progress: 100,
@@ -305,7 +312,7 @@ export function ViewLabel({
       });
 
       const trackerResponse = await fetch(
-        `/api/shipping/tracker/${trackingInfo.trackingNumber}?carrier=${trackingInfo.carrier}`
+        trackerUrl(trackingInfo.trackingNumber, trackingInfo.carrier)
       );
       if (!trackerResponse.ok) {
         throw new Error("Failed to validate tracking number");
@@ -419,9 +426,10 @@ export function ViewLabel({
       
       console.log("Deleting file:", filename, "for order:", orderId);
 
-      const response = await fetch(`/api/shipping/pdf/${filename}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/shipping/pdf/${encodeURIComponent(filename)}`,
+        { method: "DELETE" }
+      );
 
       if (response.ok) {
         console.log("Delete successful, updating store and state");
@@ -568,6 +576,7 @@ export function ViewLabel({
           ╚═══╝ ═══════════════════════════════════════════════════════════ ╚═══╝*/}
         {activeTab === "manage" && (
           <div className="flex flex-col h-full gap-4">
+            {item && <PurchasedLabelsPanel item={item} />}
             {orderLabels.length > 0 && (
               <ScrollArea className="max-h-[180px] overflow-y-auto rounded-xl border border-blue-500/15 bg-gradient-to-b from-blue-500/[0.04] to-transparent">
                 <div className="divide-y divide-border/60">
@@ -734,10 +743,10 @@ export function ViewLabel({
               <div className="flex space-x-2">
                 <Button
                   onClick={handleManualTrackingSubmit}
-                  disabled={!manualTrackingNumber}
+                  disabled={!manualTrackingNumber.trim() || submittingManualTracking}
                   className="flex-1"
                 >
-                  Submit
+                  {submittingManualTracking ? "Submitting…" : "Submit"}
                 </Button>
                 <Button
                   variant="outline"

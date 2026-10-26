@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { hasAnyShippingLabel } from "@/lib/shipping-labels/client";
 import { summarizeFutureLabels } from "@/lib/shipping-labels/client-api";
 import type { FutureLabelSummariesByOrder } from "@/types/shipping-labels";
+import { shouldBootAppData } from "@/lib/app-boot";
 
 interface ShippingStore {
   s3Config: { bucket: string; region: string } | null;
@@ -192,6 +193,6 @@ export const useShippingStore = create<ShippingStore>((set, get) => {
 });
 
 // Start polling when the store is initialized in the browser.
-if (typeof window !== "undefined") {
+if (shouldBootAppData()) {
   useShippingStore.getState().startPolling();
 }

@@ -23,7 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useShippingStore } from "@/stores/useShippingStore";
-import { useTrackingStore } from "@/stores/useTrackingStore";
+import { useOrderTracking } from "@/stores/useTrackingStore";
 import { Item, ItemStatus } from "@/typings/types";
 import { TrackingHistory } from "../shipping/TrackingHistory";
 import { TrackingLabelAccessButton } from "../shipping/TrackingLabelAccessButton";
@@ -34,6 +34,7 @@ import {
   isLabelAddedRecently,
   RECENT_LABEL_WINDOW_HOURS,
 } from "@/lib/shipping-labels/inventory";
+import { aggregateTrackerStatus } from "@/lib/shipping-labels/tracker-summary";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🎨 ICON DECISION TREE                                                 ║
@@ -180,21 +181,17 @@ export function MergedShippingCell({ item }: MergedShippingCellProps) {
     (state) => state.futureSummaries[item.id]
   );
   const isLoading = useShippingStore((state) => state.isLoading);
-  const { trackingInfo } = useTrackingStore();
+  // Subscribe to this order's trackers only, not the whole tracking list.
+  const orderTracking = useOrderTracking(item.id);
   const isRecentLabel =
     isLabelAddedRecently(futureSummary?.latestCreatedAt) ||
     isLabelAddedRecently(item.purchasedShipment?.purchasedAt);
 
-  const orderTracking = useMemo(
-    () => trackingInfo.find((t) => t.orderId === item.id),
-    [trackingInfo, item.id]
+  // Every box counts: an exception on any box wins, delivered needs them all.
+  const trackerStatus = useMemo(
+    () => aggregateTrackerStatus(orderTracking?.trackers),
+    [orderTracking]
   );
-
-  const trackerStatus = useMemo(() => {
-    const trackers = orderTracking?.trackers;
-    if (!trackers || trackers.length === 0) return undefined;
-    return trackers[trackers.length - 1]?.status?.toLowerCase();
-  }, [orderTracking]);
 
   const carrier = useMemo(() => {
     const trackers = orderTracking?.trackers;

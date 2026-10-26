@@ -9,14 +9,41 @@ import {
 } from "lucide-react";
 import { OrderTrackingInfo } from "@/typings/types";
 import { TrackingDetail } from "@/typings/types";
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
+import { trackerScansNewestFirst } from "@/lib/shipping-labels/tracker-summary";
+import { useTrackingStore } from "@/stores/useTrackingStore";
+
+const COLLAPSED_SCAN_COUNT = 5;
 
 interface TrackingHistoryProps {
+  /** Lean tracking from the shared store; full scan history loads on open. */
   tracking?: OrderTrackingInfo;
 }
 
 export function TrackingHistory({ tracking }: TrackingHistoryProps) {
   const [showAll, setShowAll] = useState(false);
+  const [fullTracking, setFullTracking] = useState<OrderTrackingInfo | null>(null);
+  const fetchOrderTrackingDetails = useTrackingStore(
+    (state) => state.fetchOrderTrackingDetails
+  );
+  const orderId = tracking?.orderId;
+  const latestUpdate = tracking?.trackers.at(-1)?.updated_at;
+
+  useEffect(() => {
+    if (!orderId) return;
+    let cancelled = false;
+    fetchOrderTrackingDetails(orderId)
+      .then((details) => {
+        if (!cancelled) setFullTracking(details);
+      })
+      .catch((error) => {
+        console.error("Failed to load tracking history", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Refetch when a live update changes this order's latest tracker.
+  }, [orderId, latestUpdate, fetchOrderTrackingDetails]);
 
   // Add ref for the container
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,7 +61,7 @@ export function TrackingHistory({ tracking }: TrackingHistoryProps) {
     }
   };
 
-  const latestTracker = tracking?.trackers.at(-1);
+  const latestTracker = (fullTracking ?? tracking)?.trackers.at(-1);
 
   if (!latestTracker) {
     return (
@@ -47,12 +74,11 @@ export function TrackingHistory({ tracking }: TrackingHistoryProps) {
     );
   }
 
-  const details = latestTracker.tracking_details.sort(
-    (a: TrackingDetail, b: TrackingDetail) =>
-      new Date(b.datetime).getTime() - new Date(a.datetime).getTime()
-  );
+  const details = trackerScansNewestFirst(latestTracker.tracking_details);
 
-  const displayedDetails = showAll ? details : details.slice(0, 5);
+  const displayedDetails = showAll
+    ? details
+    : details.slice(0, COLLAPSED_SCAN_COUNT);
 
   return (
     <div
@@ -177,7 +203,7 @@ export function TrackingHistory({ tracking }: TrackingHistoryProps) {
         ))}
 
         {/* Show More Button */}
-        {details.length > 5 && (
+        {details.length > COLLAPSED_SCAN_COUNT && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -196,7 +222,7 @@ export function TrackingHistory({ tracking }: TrackingHistoryProps) {
               <span>
                 {showAll
                   ? "Show Less"
-                  : `Show ${details.length - 5} More Updates`}
+                  : `Show ${details.length - COLLAPSED_SCAN_COUNT} More Updates`}
               </span>
               <motion.span
                 animate={{ rotate: showAll ? 180 : 0 }}

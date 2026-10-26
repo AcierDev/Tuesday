@@ -15,6 +15,7 @@ import { motion } from "framer-motion";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,22 @@ import {
   type FedExShipmentDraft,
 } from "@/utils/fedex-shipment-draft-storage";
 import { normalizeShippingSettings } from "@/config/shipping-defaults";
+import {
+  chargeMismatchWarning,
+  draftSourceHash,
+  recipientAddressWarnings,
+  type RecipientAddress,
+} from "@/lib/shipping-labels/buy-label-draft";
+import {
+  activePurchase,
+  orderPurchaseFields,
+  purchaseTrackingNumbers,
+  type StoredPurchase,
+} from "@/lib/shipping-labels/purchase-records";
+import {
+  INTERNATIONAL_NOT_SUPPORTED_MESSAGE,
+  isDomesticDestination,
+} from "@/lib/shipping-labels/purchase-request";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useShippingSettingsStore } from "@/stores/useShippingSettingsStore";
 import { useShippingStore } from "@/stores/useShippingStore";
@@ -59,7 +76,12 @@ import {
   type ShippingPurchaseDefaults,
 } from "@/typings/types";
 
-type ShipmentDraft = FedExShipmentDraft;
+type ShipmentDraft = FedExShipmentDraft & { shipTo: RecipientAddress };
+/** Saved with the browser draft to detect a changed order address or settings. */
+type StoredShipmentDraft = ShipmentDraft & { sourceHash?: string };
+
+const HTTP_CONFLICT = 409;
+const DRAFT_SAVE_DEBOUNCE_MS = 300;
 
 const signatureOptions = [
   { value: "NO_SIGNATURE_REQUIRED", label: "No signature" },
@@ -89,6 +111,19 @@ const ADDRESS_FIELD_ROWS: [keyof ShippingAddressInput, string][] = [
   ["postalCode", "Postal Code"],
   ["country", "Country"],
 ];
+
+const RECIPIENT_FIELD_ROWS: [keyof RecipientAddress, string][] =
+  ADDRESS_FIELD_ROWS.flatMap((row): [keyof RecipientAddress, string][] =>
+    row[0] === "line2" ? [row, ["line3", "Address Line 3"]] : [row]
+  );
+
+function describePurchase(purchase: StoredPurchase): string {
+  const tracking = purchaseTrackingNumbers(purchase).join(", ");
+  const boughtOn = purchase.purchasedAt
+    ? new Date(purchase.purchasedAt).toLocaleDateString()
+    : "an earlier date";
+  return `tracking ${tracking}, bought ${boughtOn}`;
+}
 
 /** Match orders page (`Header`, `ItemTableRow`) + search input styling */
 const ordersInputClassName =
@@ -124,7 +159,7 @@ function createPackage(index: number): ShippingBoxPreset {
   };
 }
 
-function mapShippingDetailsToAddress(item: Item): ShippingAddressInput {
+function mapShippingDetailsToAddress(item: Item): RecipientAddress {
   const shippingDetails = item.shippingDetails;
   if (!shippingDetails) {
     return emptyAddress();
@@ -137,11 +172,13 @@ function mapShippingDetailsToAddress(item: Item): ShippingAddressInput {
     email: shippingDetails.buyer_email || "",
     line1: shippingDetails.street1 || "",
     line2: shippingDetails.street2 || "",
+    line3: shippingDetails.street3 || "",
     city: shippingDetails.city || "",
     state: shippingDetails.state?.slice(0, 2).toUpperCase() || "",
     postalCode: shippingDetails.postalCode || "",
     country: shippingDetails.country?.slice(0, 2).toUpperCase() || "US",
-    residential: shippingDetails.residential,
+    // Etsy imports carry no flag; most buyers are homes (FedEx Home Delivery).
+    residential: shippingDetails.residential ?? true,
   };
 }
 
@@ -263,10 +300,17 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<ShipmentDraft | null>(null);
   const [rates, setRates] = useState<FedExRateQuote[]>([]);
+  const [unpricedServiceTypes, setUnpricedServiceTypes] = useState<string[]>([]);
   const [selectedServiceType, setSelectedServiceType] = useState("");
   const [isFetchingRates, setIsFetchingRates] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Shown after a purchase that needs attention (price change, failed follow-up). */
+  const [purchaseNotices, setPurchaseNotices] = useState<string[]>([]);
+  const purchaseInFlightRef = useRef(false);
+  /** The user already confirmed buying a second label for this order. */
+  const repurchaseConfirmedRef = useRef(false);
+  const draftSourceHashRef = useRef<string>("");
   /** Single toggle: Ship From and Recipient expand/collapse together */
   const [addressSectionsOpen, setAddressSectionsOpen] = useState(true);
 
@@ -287,6 +331,44 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
     () => rates.find((rate) => rate.serviceType === selectedServiceType),
     [rates, selectedServiceType]
   );
+
+  const saveDraft = (value: ShipmentDraft) => {
+    const stored: StoredShipmentDraft = {
+      ...value,
+      sourceHash: draftSourceHashRef.current,
+    };
+    saveFedExShipmentDraft(item.id, stored);
+  };
+
+  const existingPurchase = activePurchase(orderPurchaseFields(item));
+  const recipientWarnings = useMemo(
+    () => (draft ? recipientAddressWarnings(draft.shipTo) : []),
+    [draft]
+  );
+  const isInternational = draft ? !isDomesticDestination(draft.shipTo) : false;
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen && existingPurchase) {
+      const confirmed = window.confirm(
+        `This order already has a FedEx label (${describePurchase(existingPurchase)}). Buy another label anyway?`
+      );
+      if (!confirmed) return;
+      repurchaseConfirmedRef.current = true;
+    }
+    if (!nextOpen) repurchaseConfirmedRef.current = false;
+    setOpen(nextOpen);
+  };
+
+  /** Any edit invalidates the quotes on screen: they no longer match the shipment. */
+  const editDraft = (
+    updater: (current: ShipmentDraft | null) => ShipmentDraft | null
+  ) => {
+    setDraft(updater);
+    setRates([]);
+    setUnpricedServiceTypes([]);
+    setSelectedServiceType("");
+    setPurchaseNotices([]);
+  };
 
   const liveRatesSectionRef = useRef<HTMLDivElement | null>(null);
   /** One init per dialog open so shippingSettings refetches do not wipe edits or cache */
@@ -338,15 +420,30 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
 
     const normalized = normalizeShippingSettings(shippingSettings);
     const base = initializeDraft(item, normalized);
-    const cached = loadFedExShipmentDraft(item.id);
-    const nextDraft = cached ?? base;
+    const sourceHash = draftSourceHash({
+      shippingDetails: item.shippingDetails,
+      customerName: item.customerName,
+      settingsUpdatedAt: shippingSettings.updatedAt,
+    });
+    draftSourceHashRef.current = sourceHash;
+    // A saved draft only wins while the order address and settings are unchanged.
+    const cached = loadFedExShipmentDraft(item.id) as StoredShipmentDraft | null;
+    let nextDraft: ShipmentDraft = base;
+    if (cached?.sourceHash === sourceHash) {
+      const { sourceHash: _savedHash, ...cachedDraft } = cached;
+      nextDraft = cachedDraft;
+    } else if (cached) {
+      clearFedExShipmentDraft(item.id);
+    }
     setDraft(nextDraft);
     const shipFromOk = isShipFromSectionComplete(nextDraft.shipFrom);
     const recipientOk = isRecipientSectionComplete(nextDraft.shipTo);
     setAddressSectionsOpen(!(shipFromOk && recipientOk));
     setRates([]);
+    setUnpricedServiceTypes([]);
     setSelectedServiceType("");
     setError(null);
+    setPurchaseNotices([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- item is current row; keyed by item.id
   }, [open, shippingSettings, item.id]);
 
@@ -355,14 +452,14 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
       return;
     }
     const t = window.setTimeout(() => {
-      saveFedExShipmentDraft(item.id, draft);
-    }, 300);
+      saveDraft(draft);
+    }, DRAFT_SAVE_DEBOUNCE_MS);
     return () => window.clearTimeout(t);
   }, [draft, open, item.id]);
 
   useEffect(() => {
     if (prevOpenRef.current && !open && draft) {
-      saveFedExShipmentDraft(item.id, draft);
+      saveDraft(draft);
     }
     prevOpenRef.current = open;
   }, [open, draft, item.id]);
@@ -379,10 +476,10 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
 
   const updateAddress = (
     scope: "shipFrom" | "shipTo",
-    field: keyof ShippingAddressInput,
-    value: string
+    field: keyof RecipientAddress,
+    value: string | boolean
   ) => {
-    setDraft((current) =>
+    editDraft((current) =>
       current
         ? {
             ...current,
@@ -399,7 +496,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
     field: keyof ShippingPurchaseDefaults,
     value: string
   ) => {
-    setDraft((current) =>
+    editDraft((current) =>
       current
         ? {
             ...current,
@@ -417,7 +514,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
     field: keyof ShippingBoxPreset,
     value: string
   ) => {
-    setDraft((current) =>
+    editDraft((current) =>
       current
         ? {
             ...current,
@@ -438,7 +535,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
   };
 
   const addPackage = () => {
-    setDraft((current) =>
+    editDraft((current) =>
       current
         ? {
             ...current,
@@ -449,7 +546,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
   };
 
   const removePackage = (packageId: string) => {
-    setDraft((current) => {
+    editDraft((current) => {
       if (!current) {
         return current;
       }
@@ -467,9 +564,14 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
       setError("Complete the recipient and box details before requesting rates.");
       return;
     }
+    if (isInternational) {
+      setError(INTERNATIONAL_NOT_SUPPORTED_MESSAGE);
+      return;
+    }
 
     setIsFetchingRates(true);
     setError(null);
+    setPurchaseNotices([]);
 
     try {
       const response = await fetch("/api/shipping/fedex/rates", {
@@ -485,8 +587,11 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
         throw new Error(data.error || "Failed to fetch FedEx rates");
       }
 
+      // Only priced quotes come back; services without a price are listed apart
+      // and can never be selected.
       const nextRates = (data.rates || []) as FedExRateQuote[];
       setRates(nextRates);
+      setUnpricedServiceTypes((data.unpricedServiceTypes || []) as string[]);
       setSelectedServiceType(nextRates[0]?.serviceType || "");
     } catch (rateError) {
       setError(
@@ -499,39 +604,80 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
     }
   };
 
+  const requestPurchase = (confirmRepurchase: boolean) =>
+    fetch("/api/shipping/fedex/purchase", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        orderId: item.id,
+        serviceType: selectedServiceType,
+        quotedNetCharge: selectedRate?.totalNetCharge ?? null,
+        confirmRepurchase,
+        ...draft,
+      }),
+    });
+
   const handlePurchase = async () => {
-    if (!draft || !selectedServiceType) {
+    if (!draft || !selectedServiceType || !selectedRate) {
       setError("Choose a FedEx service before purchasing.");
       return;
     }
+    if (isInternational) {
+      setError(INTERNATIONAL_NOT_SUPPORTED_MESSAGE);
+      return;
+    }
+    // Double-submit guard: state updates are async, the ref is immediate.
+    if (purchaseInFlightRef.current) return;
+    purchaseInFlightRef.current = true;
 
     setIsPurchasing(true);
     setError(null);
+    setPurchaseNotices([]);
 
     try {
-      const response = await fetch("/api/shipping/fedex/purchase", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          orderId: item.id,
-          serviceType: selectedServiceType,
-          ...draft,
-        }),
-      });
-
-      const data = await response.json();
+      let response = await requestPurchase(repurchaseConfirmedRef.current);
+      let data = await response.json().catch(() => ({}));
+      if (response.status === HTTP_CONFLICT && data.existingPurchase) {
+        const confirmed = window.confirm(
+          `This order already has a FedEx label (${describePurchase(data.existingPurchase)}). Buy another label anyway?`
+        );
+        if (!confirmed) return;
+        repurchaseConfirmedRef.current = true;
+        response = await requestPurchase(true);
+        data = await response.json().catch(() => ({}));
+      }
       if (!response.ok) {
         throw new Error(data.error || "Failed to purchase FedEx label");
       }
 
       await Promise.all([fetchAllLabels(), fetchTrackingInfo(), loadItems()]);
       clearFedExShipmentDraft(item.id);
+
+      const purchased = data.purchasedShipment as StoredPurchase | undefined;
+      const notices = [
+        chargeMismatchWarning(
+          selectedRate.totalNetCharge,
+          purchased?.totalNetCharge,
+          purchased?.currency || selectedRate.currency
+        ),
+        ...((data.warnings || []) as string[]),
+      ].filter((notice): notice is string => Boolean(notice));
+
       setDraft(null);
       setRates([]);
+      setUnpricedServiceTypes([]);
       setSelectedServiceType("");
-      setOpen(false);
+      if (notices.length) {
+        // Keep the dialog open so the price change / follow-up problem is seen.
+        setPurchaseNotices([
+          `Label purchased (tracking ${purchased ? purchaseTrackingNumbers(purchased).join(", ") : "unknown"}).`,
+          ...notices,
+        ]);
+        return;
+      }
+      handleOpenChange(false);
     } catch (purchaseError) {
       setError(
         purchaseError instanceof Error
@@ -539,12 +685,13 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
           : "Failed to purchase FedEx label"
       );
     } finally {
+      purchaseInFlightRef.current = false;
       setIsPurchasing(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
           variant="ghost"
@@ -612,6 +759,20 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>FedEx request failed</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            {purchaseNotices.length ? (
+              <Alert className="border-amber-500 !bg-amber-50 !text-amber-950 dark:!bg-amber-950 dark:!text-amber-50">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Check this label</AlertTitle>
+                <AlertDescription>
+                  <ul className="list-disc space-y-1 pl-4">
+                    {purchaseNotices.map((notice) => (
+                      <li key={notice}>{notice}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
               </Alert>
             ) : null}
 
@@ -708,6 +869,15 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                         aria-hidden
                       />
                     </button>
+                    <label className="mt-3 flex w-fit cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <Checkbox
+                        checked={draft.shipTo.residential ?? true}
+                        onCheckedChange={(checked) =>
+                          updateAddress("shipTo", "residential", checked === true)
+                        }
+                      />
+                      Residential address
+                    </label>
                     {addressSectionsOpen ? (
                       <motion.div
                         id="fedex-recipient-fields"
@@ -718,7 +888,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                         transition={{ duration: 0.15 }}
                         className="grid grid-cols-1 gap-4 border-t border-gray-100 pt-4 dark:border-gray-600 md:grid-cols-2"
                       >
-                        {ADDRESS_FIELD_ROWS.map(([field, label]) => (
+                        {RECIPIENT_FIELD_ROWS.map(([field, label]) => (
                           <div key={field} className="space-y-2">
                             <Label>{label}</Label>
                             <Input
@@ -901,10 +1071,32 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                   </div>
                 </section>
 
+                {isInternational ? (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>International shipment</AlertTitle>
+                    <AlertDescription>{INTERNATIONAL_NOT_SUPPORTED_MESSAGE}</AlertDescription>
+                  </Alert>
+                ) : null}
+
+                {recipientWarnings.length ? (
+                  <Alert className="border-amber-500 !bg-amber-50 !text-amber-950 dark:!bg-amber-950 dark:!text-amber-50">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Check the recipient address</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc space-y-1 pl-4">
+                        {recipientWarnings.map((warning) => (
+                          <li key={warning}>{warning}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+
                 <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 dark:border-gray-600 dark:bg-gray-800">
                   <Button
                     onClick={handleGetRates}
-                    disabled={isFetchingRates || isPurchasing}
+                    disabled={isFetchingRates || isPurchasing || isInternational}
                     className="bg-blue-500 font-semibold text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
                   >
                     {isFetchingRates ? (
@@ -927,6 +1119,12 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           Choose the FedEx service to purchase for this shipment.
                         </p>
+                        {unpricedServiceTypes.length ? (
+                          <p className="text-xs text-amber-700 dark:text-amber-300">
+                            FedEx returned no price for{" "}
+                            {unpricedServiceTypes.join(", ")}; not offered for purchase.
+                          </p>
+                        ) : null}
                       </div>
                       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                         {rates.map((rate) => {
@@ -985,7 +1183,8 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                                     disabled={
                                       isFetchingRates ||
                                       isPurchasing ||
-                                      !selectedRate
+                                      !selectedRate ||
+                                      isInternational
                                     }
                                     onClick={() => handlePurchase()}
                                   >

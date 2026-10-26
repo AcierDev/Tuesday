@@ -1,56 +1,33 @@
 import { NextResponse } from "next/server";
-import { fetchFedExRates } from "@/lib/fedex-api";
+import { fetchFedExRates, FedExTimeoutError } from "@/lib/fedex-api";
 import { normalizeShippingSettings } from "@/config/shipping-defaults";
-import { type ShippingAddressInput, type ShippingBoxPreset } from "@/typings/types";
+import { parseFedExRateRequest } from "@/lib/shipping-labels/purchase-request";
+
+import type { ShippingPurchaseDefaults } from "@/typings/types";
 
 export const runtime = "nodejs";
 
-function hasInvalidPackage(packages: ShippingBoxPreset[]) {
-  return packages.some(
-    (pkg) =>
-      !pkg.length ||
-      !pkg.width ||
-      !pkg.height ||
-      !pkg.weight ||
-      Number(pkg.length) <= 0 ||
-      Number(pkg.width) <= 0 ||
-      Number(pkg.height) <= 0 ||
-      Number(pkg.weight) <= 0
-  );
-}
+const HTTP_BAD_REQUEST = 400;
+const HTTP_GATEWAY_TIMEOUT = 504;
+const HTTP_INTERNAL_ERROR = 500;
 
 export async function POST(request: Request) {
   try {
-    const payload = await request.json();
-    const shipFrom = payload.shipFrom as ShippingAddressInput;
-    const shipTo = payload.shipTo as ShippingAddressInput;
-    const packages = payload.packages as ShippingBoxPreset[];
-    const purchaseDefaults = normalizeShippingSettings({
-      purchaseDefaults: payload.purchaseDefaults,
-    }).purchaseDefaults;
-
-    if (!shipFrom?.postalCode || !shipTo?.postalCode || !shipTo?.country) {
-      return NextResponse.json(
-        { error: "Ship-from and recipient postal details are required." },
-        { status: 400 }
-      );
+    const payload = await request.json().catch(() => null);
+    const parsed = parseFedExRateRequest(payload);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: HTTP_BAD_REQUEST });
     }
 
-    if (!packages?.length || hasInvalidPackage(packages)) {
-      return NextResponse.json(
-        { error: "Each package must include positive dimensions and weight." },
-        { status: 400 }
-      );
-    }
-
-    const rates = await fetchFedExRates({
-      shipFrom,
-      shipTo,
-      packages,
-      purchaseDefaults,
+    const { quotes, unpricedServiceTypes } = await fetchFedExRates({
+      ...parsed.value,
+      purchaseDefaults: normalizeShippingSettings({
+        purchaseDefaults: parsed.value
+          .purchaseDefaults as ShippingPurchaseDefaults,
+      }).purchaseDefaults,
     });
 
-    return NextResponse.json({ rates });
+    return NextResponse.json({ rates: quotes, unpricedServiceTypes });
   } catch (error) {
     console.error("Failed to fetch FedEx rates:", error);
     return NextResponse.json(
@@ -60,7 +37,12 @@ export async function POST(request: Request) {
             ? error.message
             : "Failed to fetch FedEx rates",
       },
-      { status: 500 }
+      {
+        status:
+          error instanceof FedExTimeoutError
+            ? HTTP_GATEWAY_TIMEOUT
+            : HTTP_INTERNAL_ERROR,
+      }
     );
   }
 }

@@ -13,11 +13,12 @@ import { futureLabelCounts } from "../lib/shipping-labels/repository";
 import type { ShippingLabelRecord } from "../types/shipping-labels";
 import type { Tracker, TrackerStatus } from "../typings/types";
 
+// A ready label whose tracker is still "unknown" counts as unused (printable).
 const EXPECTED_INVENTORY_COUNTS = {
   all: 5,
-  unused: 1,
+  unused: 2,
   used: 1,
-  issues: 3,
+  issues: 2,
 };
 const LABEL_CREATED_AT = 1;
 
@@ -83,7 +84,7 @@ test("inventory filters use exact automatic categories", () => {
   );
   assert.deepEqual(
     filterShippingLabelInventory(labels, "issues").map((label) => label.id),
-    ["c", "d", "e"]
+    ["c", "d"]
   );
   assert.deepEqual(
     filterShippingLabelInventory(labels, DEFAULT_SHIPPING_LABEL_FILTER),
@@ -116,7 +117,7 @@ test("order summary counts do not report unknown or failed trackers as used", as
   });
 });
 
-test("unused and shipped labels remain selectable for printing", () => {
+test("unused, freshly unknown and shipped labels remain selectable for printing", () => {
   const labels = [
     record("unused", "pre_transit"),
     record("used", "in_transit"),
@@ -125,7 +126,7 @@ test("unused and shipped labels remain selectable for printing", () => {
   ];
   assert.deepEqual(
     [...normalizePrintableSelection(new Set(["unused", "used", "issue", "unknown", "deleted"]), labels)],
-    ["unused", "used"]
+    ["unused", "used", "unknown"]
   );
 });
 

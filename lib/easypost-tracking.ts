@@ -4,6 +4,8 @@ import { upsertTrackerProjection } from "@/lib/shipping-labels/tracker-projectio
 
 const EASYPOST_API_KEY = process.env.EASYPOST_API_KEY;
 const EASYPOST_BASE_URL = "https://api.easypost.com/v2";
+// A hung EasyPost call must not hold a label purchase (and its order lock) open.
+const EASYPOST_REQUEST_TIMEOUT_MS = 15_000;
 
 export async function fetchTracker(
   trackingCode: string,
@@ -26,6 +28,7 @@ export async function fetchTracker(
         carrier: easyPostCarrier,
       },
     }),
+    signal: AbortSignal.timeout(EASYPOST_REQUEST_TIMEOUT_MS),
   });
 
   if (createResponse.ok) {
@@ -33,11 +36,14 @@ export async function fetchTracker(
   }
 
   const listResponse = await fetch(
-    `${EASYPOST_BASE_URL}/trackers?tracking_codes[]=${trackingCode}`,
+    `${EASYPOST_BASE_URL}/trackers?tracking_codes[]=${encodeURIComponent(
+      trackingCode
+    )}`,
     {
       headers: {
         Authorization: `Bearer ${EASYPOST_API_KEY}`,
       },
+      signal: AbortSignal.timeout(EASYPOST_REQUEST_TIMEOUT_MS),
     }
   );
 

@@ -7,6 +7,10 @@ import {
   GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { filterLegacyLabelKeys } from "@/lib/shipping-labels/storage";
+import {
+  legacyLabelKeyPattern,
+  uniqueLegacyLabelFilename,
+} from "@/lib/shipping-labels/legacy-filename";
 
 // Initialize the S3 client with credentials from environment variables
 const s3Client = new S3Client({
@@ -63,32 +67,20 @@ export async function listLabelsForOrder(orderId: string): Promise<string[]> {
   }
 
   // Filter to only include exact matches for this order ID
-  // (orderId.pdf or orderId-N.pdf)
-  const regex = new RegExp(`^${orderId}(?:-\\d+)?\\.pdf$`);
+  // (orderId.pdf or orderId-N.pdf); the id is escaped before building the regex.
+  const regex = legacyLabelKeyPattern(orderId);
 
   return response.Contents.filter((obj) => obj.Key && regex.test(obj.Key)).map(
     (obj) => obj.Key as string
   );
 }
 
+/**
+ * Filename for a newly purchased label. Unique per call, so two purchases for
+ * the same order can never pick (and overwrite) the same key.
+ */
 export async function getNextLabelFilename(orderId: string): Promise<string> {
-  const existingLabels = await listLabelsForOrder(orderId);
-
-  if (!existingLabels.length) {
-    return `${orderId}.pdf`;
-  }
-
-  const suffixes = existingLabels.map((filename) => {
-    if (filename === `${orderId}.pdf`) {
-      return 0;
-    }
-
-    const match = filename.match(/-(\d+)\.pdf$/);
-    return match ? Number(match[1]) : -1;
-  });
-
-  const maxSuffix = Math.max(...suffixes);
-  return maxSuffix <= 0 ? `${orderId}-1.pdf` : `${orderId}-${maxSuffix + 1}.pdf`;
+  return uniqueLegacyLabelFilename(orderId);
 }
 
 /**
