@@ -1,40 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tuesday
 
-## Getting Started
+Everwood Photo Studio's internal operations app (Next.js 15 App Router + MongoDB):
+the orders board, shipping labels (EasyPost/FedEx), production planning, stats and
+weekly reporting, and the Ask Tuesday issue monitor (`docs/ask-tuesday.md`).
 
-First, run the development server:
+## Run
+
+Requires Node 22+.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev            # http://localhost:3000
+npm run dev:inspect    # same, with the Node inspector enabled
+npm test               # all tests/**/*.test.ts(x) via node:test + tsx
+npm run test:file -- tests/due-badge.test.ts
+npm run typecheck      # tsc --noEmit
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The per-file test timeout is `config.test_timeout_ms` in `package.json`. Focused
+type checks for test areas live in `tests/tsconfig.*.json`
+(e.g. `npx tsc -p tests/tsconfig.ask-tuesday.json`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Put these in `.env.local` (values are private; never commit them):
 
-## Learn More
+- `MONGODB_URI`, `NEXT_PUBLIC_MODE`
+- `NEXT_PUBLIC_APP_URL`
+- `SITE_ACCESS_PASSWORD`, `SITE_ACCESS_SECRET`
+- `EASYPOST_API_KEY`, `EASYPOST_WEBHOOK_SECRET`
+- `FEDEX_CLIENT_ID`, `FEDEX_CLIENT_SECRET`, `FEDEX_ACCOUNT_NUMBER`
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET`
+- `GEMINI_API_KEY`
+- `EMAIL_USER`, `EMAIL_PASS`
+- `WAREHOUSE_OUTLET_PORT`, `WAREHOUSE_PROTOCOL`
 
-To learn more about Next.js, take a look at the following resources:
+**Warning:** local `.env.local` points at the production database
+(`NEXT_PUBLIC_MODE` selects the `*-production` collections). Anything you do in
+`npm run dev`, and any script run with `--env-file=.env.local`, changes live data.
+Tests do not load `.env.local`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Site password
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The site code defaults to `DEFAULT_SITE_ACCESS_PASSWORD` in `lib/site-access-config.ts`;
+`SITE_ACCESS_PASSWORD` overrides it. `SITE_ACCESS_SECRET` (cookie signing) is required;
+if it is missing, access stays locked. Wrong guesses are rate-limited per IP
+(`lib/site-access-rate-limit.ts`). A successful entry is remembered for
+`SITE_ACCESS_DURATION_DAYS` (`lib/site-access.ts`).
 
-## Deploy on Vercel
+## Deploy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Production runs on a persistent Node host under PM2 (`ecosystem.config.js`, app
+name `shadcn-nextjs`, which runs `npm start` = `next start -p 3000 -H 0.0.0.0`
+with `NODE_ENV=production`):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+npm run check:tuesday-startup   # verifies the compiled Ask Tuesday startup hook
+pm2 startOrReload ecosystem.config.js
+```
 
-# Site password
+`next.config.mjs` currently sets `typescript.ignoreBuildErrors`, so run
+`npm run typecheck` before deploying.
 
-The default password is configured in `lib/site-access-config.ts`. Set `SITE_ACCESS_PASSWORD` to override it. Cookie signing uses `SITE_ACCESS_SECRET`, or the existing private `MONGODB_URI` if no dedicated secret is set. If neither is present, access stays locked. A successful password entry remembers that browser for the duration set by `SITE_ACCESS_DURATION_DAYS` in `lib/site-access.ts`. Clearing browser cookies or using a different browser requires the password again.
+`instrumentation.ts` starts the Ask Tuesday background monitor inside that
+process; set `ASK_TUESDAY_MONITOR_ENABLED=false` to disable it. `vercel.json`
+lists the snapshot/briefing cron routes; those routes check `CRON_SECRET`.
+
+## iCloud note
+
+This repo lives in iCloud-synced `~/Documents`. Keep `node_modules` and `.next`
+out of iCloud (e.g. real folders named `*.nosync` with `node_modules`/`.next`
+symlinked to them). Evicted dependency files make imports and tests stall.

@@ -6,8 +6,15 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Node modules
-node_modules/
+# Node modules (no trailing slash: also ignores a node_modules symlink)
+node_modules
+
+# iCloud: *.nosync folders are excluded from sync (node_modules/.next can point here)
+*.nosync
+
+# Finder/iCloud duplicate copies ("file 2.tsx", "folder 3")
+* [0-9].*
+* [0-9]
 
 # Build directories
 dist/
@@ -52,8 +59,7 @@ coverage/
 .env.local
 .env.*.local
 
-# Package manager files
-package-lock.json
+# Package manager files (package-lock.json is committed for reproducible installs)
 yarn.lock
 .pnpm-lock.yaml
 
@@ -65,8 +71,8 @@ yarn.lock
 .svelte-kit/
 .svelte/
 
-# Next.js
-.next/
+# Next.js (no trailing slash: also ignores a .next symlink)
+.next
 .next-backup-*/
 *.next
 
@@ -82,8 +88,6 @@ yarn.lock
 *.env.development.local
 *.env.test.local
 *.env.production.local
-node_modules/
-dist/
 
 # Temporary files and directories
 tmp/
