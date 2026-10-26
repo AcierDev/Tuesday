@@ -16,17 +16,21 @@ export const ORDER_ROW_LAYOUT = {
 const ORDER_COLUMN_LAYOUT: Partial<
   Record<ColumnTitles, { widthPercent: number; attentionSpaceShare: number }>
 > = {
-  [ColumnTitles.Customer_Name]: { widthPercent: 38, attentionSpaceShare: 0.4 },
-  [ColumnTitles.Design]: { widthPercent: 32, attentionSpaceShare: 0.4 },
-  [ColumnTitles.Size]: { widthPercent: 22, attentionSpaceShare: 0.2 },
+  [ColumnTitles.Customer_Name]: { widthPercent: 37, attentionSpaceShare: 0.4 },
+  [ColumnTitles.Design]: { widthPercent: 25, attentionSpaceShare: 0.3 },
+  [ColumnTitles.Size]: { widthPercent: 28, attentionSpaceShare: 0.3 },
 };
 
+// Share of the table width handed to the attention icon column when shown.
+const ATTENTION_COLUMN_WIDTH_PERCENT = 10;
+
 // Reclaim the new icon column's width from the existing columns so a narrow
-// table does not grow beyond its clipped board container.
+// table does not grow beyond its clipped board container. Plain percentages:
+// browsers treat calc() widths that mix % and rem on table cells as auto.
 export function orderColumnWidth(column: ColumnTitles, hasAttentionColumn: boolean) {
   const layout = ORDER_COLUMN_LAYOUT[column];
   if (!layout) return undefined;
   if (!hasAttentionColumn) return `${layout.widthPercent}%`;
-  const reserved = ORDER_ATTENTION_LAYOUT.cellWidthRem * layout.attentionSpaceShare;
-  return `calc(${layout.widthPercent}% - ${reserved}rem)`;
+  const reserved = ATTENTION_COLUMN_WIDTH_PERCENT * layout.attentionSpaceShare;
+  return `${layout.widthPercent - reserved}%`;
 }

@@ -7,7 +7,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn, splitFirstTwoWords } from "@/utils/functions";
-import { parseMinecraftColors } from "@/parseMinecraftColors";
+import { parseMinecraftColors } from "@/utils/parseMinecraftColors";
 import type { ReactNode } from "react";
 import { ORDER_ROW_LAYOUT } from "@/config/order-attention-layout";
 
@@ -21,6 +21,9 @@ const CUSTOM_TOKEN = /\(custom\)/i;
 const CENTER_FADE_TOKEN = /\(center fade\)/i;
 const CENTER_FADE_ICON_STROKE_WIDTH = 2.75;
 const BRAND_PREFIX = /^\[(EW|WF|SH)\]\s*/;
+// Phones get a single-line, ellipsized name in the narrow board column so it
+// never breaks mid-word; sm+ keeps the two-line preview.
+const PHONE_NAME_PREVIEW = "max-sm:block max-sm:truncate";
 
 export type NameTokens = {
   displayName: string;
@@ -75,6 +78,21 @@ export function parseNameTokens(rawName: string, savedIsVertical?: boolean): Nam
   };
 }
 
+type TokenTagProps = {
+  // Board rows on phones show icon-only chips: the name column is too narrow
+  // for labels like "VERTICAL". The label stays available to screen readers
+  // and reappears from the sm breakpoint up.
+  iconOnlyOnPhone?: boolean;
+};
+
+function TagLabel({ children, iconOnlyOnPhone }: TokenTagProps & { children: ReactNode }) {
+  return (
+    <span className={iconOnlyOnPhone ? "sr-only sm:not-sr-only" : undefined}>
+      {children}
+    </span>
+  );
+}
+
 export function BrandTag({ prefix }: { prefix: "EW" | "WF" | "SH" }) {
   const tone =
     prefix === "SH"
@@ -93,7 +111,7 @@ export function BrandTag({ prefix }: { prefix: "EW" | "WF" | "SH" }) {
   );
 }
 
-export function RushedTag() {
+export function RushedTag({ iconOnlyOnPhone }: TokenTagProps = {}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -111,7 +129,7 @@ export function RushedTag() {
             strokeWidth={2.75}
             fill="currentColor"
           />
-          Rushed
+          <TagLabel iconOnlyOnPhone={iconOnlyOnPhone}>Rushed</TagLabel>
         </span>
       </TooltipTrigger>
       <TooltipContent>
@@ -121,7 +139,7 @@ export function RushedTag() {
   );
 }
 
-export function SemiRushedTag() {
+export function SemiRushedTag({ iconOnlyOnPhone }: TokenTagProps = {}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -138,7 +156,7 @@ export function SemiRushedTag() {
             className="h-[0.5625rem] w-[0.5625rem]"
             strokeWidth={SEMI_RUSHED_ICON_STROKE_WIDTH}
           />
-          Semi-Rushed
+          <TagLabel iconOnlyOnPhone={iconOnlyOnPhone}>Semi-Rushed</TagLabel>
         </span>
       </TooltipTrigger>
       <TooltipContent>
@@ -148,7 +166,7 @@ export function SemiRushedTag() {
   );
 }
 
-export function LocalTag() {
+export function LocalTag({ iconOnlyOnPhone }: TokenTagProps = {}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -166,7 +184,7 @@ export function LocalTag() {
             strokeWidth={2.75}
             fill="currentColor"
           />
-          Local
+          <TagLabel iconOnlyOnPhone={iconOnlyOnPhone}>Local</TagLabel>
         </span>
       </TooltipTrigger>
       <TooltipContent>
@@ -176,7 +194,7 @@ export function LocalTag() {
   );
 }
 
-export function VerticalTag() {
+export function VerticalTag({ iconOnlyOnPhone }: TokenTagProps = {}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -193,7 +211,7 @@ export function VerticalTag() {
             className="h-[0.5625rem] w-[0.5625rem]"
             strokeWidth={2.75}
           />
-          Vertical
+          <TagLabel iconOnlyOnPhone={iconOnlyOnPhone}>Vertical</TagLabel>
         </span>
       </TooltipTrigger>
       <TooltipContent>
@@ -203,7 +221,7 @@ export function VerticalTag() {
   );
 }
 
-export function CustomTag() {
+export function CustomTag({ iconOnlyOnPhone }: TokenTagProps = {}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -217,7 +235,7 @@ export function CustomTag() {
           )}
         >
           <Wrench className="h-[0.5625rem] w-[0.5625rem]" strokeWidth={2.75} />
-          Custom
+          <TagLabel iconOnlyOnPhone={iconOnlyOnPhone}>Custom</TagLabel>
         </span>
       </TooltipTrigger>
       <TooltipContent>
@@ -227,7 +245,7 @@ export function CustomTag() {
   );
 }
 
-export function CenterFadeTag() {
+export function CenterFadeTag({ iconOnlyOnPhone }: TokenTagProps = {}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -244,7 +262,7 @@ export function CenterFadeTag() {
             className="h-[0.5625rem] w-[0.5625rem]"
             strokeWidth={CENTER_FADE_ICON_STROKE_WIDTH}
           />
-          Center Fade
+          <TagLabel iconOnlyOnPhone={iconOnlyOnPhone}>Center Fade</TagLabel>
         </span>
       </TooltipTrigger>
       <TooltipContent>
@@ -279,7 +297,7 @@ export function OrderNameDisplay({ rawName, compact = false, extraBadge, isVerti
   const name = isPrintMarker ? (
     <PrintMarkerTag />
   ) : (
-    <span className={compact ? ORDER_ROW_LAYOUT.namePreview : undefined} title={compact ? rawName : undefined}>
+    <span className={compact ? cn(ORDER_ROW_LAYOUT.namePreview, PHONE_NAME_PREVIEW) : undefined} title={compact ? rawName : undefined}>
       {parseMinecraftColors(firstTwoWords)}
       <span className="opacity-55 text-[0.92em]">
         {parseMinecraftColors(restOfName)}
@@ -290,12 +308,12 @@ export function OrderNameDisplay({ rawName, compact = false, extraBadge, isVerti
     <>
       {extraBadge}
       {brandPrefix && <BrandTag prefix={brandPrefix} />}
-      {isRushed && <RushedTag />}
-      {isSemiRushed && <SemiRushedTag />}
-      {isLocal && <LocalTag />}
-      {isVertical && <VerticalTag />}
-      {isCustom && <CustomTag />}
-      {isCenterFade && <CenterFadeTag />}
+      {isRushed && <RushedTag iconOnlyOnPhone={compact} />}
+      {isSemiRushed && <SemiRushedTag iconOnlyOnPhone={compact} />}
+      {isLocal && <LocalTag iconOnlyOnPhone={compact} />}
+      {isVertical && <VerticalTag iconOnlyOnPhone={compact} />}
+      {isCustom && <CustomTag iconOnlyOnPhone={compact} />}
+      {isCenterFade && <CenterFadeTag iconOnlyOnPhone={compact} />}
     </>
   );
   const hasBadges = extraBadge || brandPrefix || isRushed || isSemiRushed || isLocal || isVertical || isCustom || isCenterFade;

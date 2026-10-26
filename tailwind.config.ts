@@ -62,10 +62,6 @@ const config: Config = {
     // Required: JSX helpers in utils/functions.tsx render Tailwind classes
     // that would otherwise be purged in production.
     "./utils/**/*.{js,ts,jsx,tsx,mdx}",
-    // Required: parseMinecraftColors.tsx at the repo root renders the
-    // (N/M) fraction badge (bg-violet-500, etc.) which would otherwise
-    // be purged.
-    "./parseMinecraftColors.tsx",
   ],
   theme: {
     extend: {

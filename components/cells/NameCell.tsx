@@ -46,6 +46,10 @@ import { showErrorToast } from "@/components/ui/app-toast";
 //   document.head.appendChild(styleElement);
 // }
 
+// Phones trim the name's right padding (nameSpacing uses pr-2) to give the
+// narrow name column a few more pixels.
+const PHONE_NAME_RIGHT_PADDING = "pr-1 sm:pr-2";
+
 interface NameCellProps {
   item: Item;
   columnValue: {
@@ -177,9 +181,11 @@ export const NameCell: React.FC<NameCellProps> = ({
     </span>
   ) : null;
 
+  // The cell is shifted 13px left into the shipping column; on phones it also
+  // widens by the same 13px (plus tighter gaps) so the name gets that room.
   return (
-    <div className="flex items-center w-full h-full relative group -translate-x-[13px]">
-      <div className="flex min-w-0 items-center gap-2 w-full">
+    <div className="flex items-center w-[calc(100%+13px)] sm:w-full h-full relative group -translate-x-[13px]">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-2 w-full">
         <div className="flex w-[1.875rem] shrink-0 items-center justify-center sm:w-[2.475rem]">
           {dueBadge}
         </div>
@@ -210,6 +216,7 @@ export const NameCell: React.FC<NameCellProps> = ({
             className={cn(
               "min-w-0 flex-1 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
               ORDER_ROW_LAYOUT.nameSpacing,
+              PHONE_NAME_RIGHT_PADDING,
               "font-medium text-left break-words",
               "rounded-md",
               "flex items-center justify-start gap-2"
