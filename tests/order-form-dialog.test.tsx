@@ -218,3 +218,30 @@ test("the vertical toggle has no nested buttons", async () => {
   }
   act(() => renderer!.unmount());
 });
+
+test("edit sends only address corrections and preserves other order instructions", async () => {
+  let saved: Partial<Item> | undefined;
+  let renderer: ReactTestRenderer;
+  const item = { ...ORDER, shippingDetails: { ...ORDER.shippingDetails, street2: "Unit 9", country: "CA", state: "Ontario" },
+    artworkInstructions: { requirements: "Keep this artwork" }, etsyOrder: { receiptId: "123456", transactionId: "987654" } } as Item;
+  await act(async () => { renderer = TestRenderer.create(<OrderFormDialog isOpen initialItem={item}
+    onClose={() => undefined} onSubmit={async order => { saved = order; }} />); });
+  assert.equal(renderer!.root.findByProps({ "aria-label": "Recipient name" }).props.value, "Jane Doe");
+  assert.equal(renderer!.root.findByProps({ "aria-label": "State / province" }).props.value, "Ontario");
+  await act(async () => renderer!.root.findByProps({ "aria-label": "Address line 1" }).props.onChange({ target: { value: "456 New Street" } }));
+  await act(async () => submitButton(renderer!).props.onClick());
+  // Only the edited fields are sent, so everything else stays as saved.
+  assert.deepEqual(saved, { shippingDetails: { street1: "456 New Street" } });
+  act(() => renderer!.unmount());
+});
+
+test("failed address save keeps entered corrections and shows an inline error", async () => {
+  let renderer: ReactTestRenderer;
+  await act(async () => { renderer = TestRenderer.create(<OrderFormDialog isOpen initialItem={ORDER}
+    onClose={() => assert.fail("failed save must remain open")} onSubmit={async () => { throw new Error("Offline"); }} />); });
+  await act(async () => renderer!.root.findByProps({ "aria-label": "Postal code" }).props.onChange({ target: { value: "90210" } }));
+  await act(async () => submitButton(renderer!).props.onClick());
+  assert.equal(renderer!.root.findByProps({ "aria-label": "Postal code" }).props.value, "90210");
+  assert.match(renderer!.root.findByProps({ role: "alert" }).children.join(""), /save/i);
+  act(() => renderer!.unmount());
+});

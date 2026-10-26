@@ -5,6 +5,7 @@ import {
   type ShippingBoxPreset,
   type ShippingPurchaseDefaults,
 } from "@/typings/types";
+import { normalizeCountryCode } from "@/lib/shipping-labels/purchase-request";
 
 // Rates are read-only and can be retried; label creation buys a real label, so
 // it gets more time before we give up and tell the user to check FedEx history.
@@ -171,7 +172,7 @@ function formatAddress(
       city: address.city,
       stateOrProvinceCode: address.state,
       postalCode: address.postalCode,
-      countryCode: address.country,
+      countryCode: normalizeCountryCode(address.country),
       residential: address.residential ?? options.residentialDefault,
     },
   };

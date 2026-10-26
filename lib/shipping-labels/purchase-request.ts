@@ -27,8 +27,17 @@ function isPositiveNumber(value: unknown): boolean {
   return value !== null && value !== "" && Number.isFinite(number) && number > 0;
 }
 
+// Saved addresses may carry the full country name instead of the ISO code.
+const US_COUNTRY_ALIASES = new Set(["US", "USA", "UNITED STATES", "UNITED STATES OF AMERICA"]);
+
+/** ISO country code for FedEx: US name variants become "US"; others are trimmed. */
+export function normalizeCountryCode(country: string | null | undefined): string {
+  const trimmed = (country || "").trim();
+  return US_COUNTRY_ALIASES.has(trimmed.toUpperCase()) ? SUPPORTED_DESTINATION_COUNTRY : trimmed;
+}
+
 export function isDomesticDestination(address: Pick<ShippingAddressInput, "country">): boolean {
-  return (address.country || "").trim().toUpperCase() === SUPPORTED_DESTINATION_COUNTRY;
+  return normalizeCountryCode(address.country) === SUPPORTED_DESTINATION_COUNTRY;
 }
 
 function parseAddress(

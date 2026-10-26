@@ -14,6 +14,7 @@ import {
 import { motion } from "framer-motion";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { OrderShippingAddressDialog } from "@/components/orders/OrderShippingAddressDialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -63,6 +64,7 @@ import {
   INTERNATIONAL_NOT_SUPPORTED_MESSAGE,
   isDomesticDestination,
 } from "@/lib/shipping-labels/purchase-request";
+import { resolveShippingRecipientDraft } from "@/lib/shipping-recipient-prefill";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { useShippingSettingsStore } from "@/stores/useShippingSettingsStore";
 import { useShippingStore } from "@/stores/useShippingStore";
@@ -107,9 +109,9 @@ const ADDRESS_FIELD_ROWS: [keyof ShippingAddressInput, string][] = [
   ["line1", "Address Line 1"],
   ["line2", "Address Line 2"],
   ["city", "City"],
-  ["state", "State"],
+  ["state", "State / Province"],
   ["postalCode", "Postal Code"],
-  ["country", "Country"],
+  ["country", "Country code"],
 ];
 
 const RECIPIENT_FIELD_ROWS: [keyof RecipientAddress, string][] =
@@ -143,7 +145,7 @@ function emptyAddress(): ShippingAddressInput {
     city: "",
     state: "",
     postalCode: "",
-    country: "US",
+    country: "",
     residential: true,
   };
 }
@@ -156,29 +158,6 @@ function createPackage(index: number): ShippingBoxPreset {
     width: 0,
     height: 0,
     weight: 0,
-  };
-}
-
-function mapShippingDetailsToAddress(item: Item): RecipientAddress {
-  const shippingDetails = item.shippingDetails;
-  if (!shippingDetails) {
-    return emptyAddress();
-  }
-
-  return {
-    name: shippingDetails.name || item.customerName || "",
-    company: shippingDetails.company || "",
-    phone: shippingDetails.phone || "",
-    email: shippingDetails.buyer_email || "",
-    line1: shippingDetails.street1 || "",
-    line2: shippingDetails.street2 || "",
-    line3: shippingDetails.street3 || "",
-    city: shippingDetails.city || "",
-    state: shippingDetails.state?.slice(0, 2).toUpperCase() || "",
-    postalCode: shippingDetails.postalCode || "",
-    country: shippingDetails.country?.slice(0, 2).toUpperCase() || "US",
-    // Etsy imports carry no flag; most buyers are homes (FedEx Home Delivery).
-    residential: shippingDetails.residential ?? true,
   };
 }
 
@@ -195,7 +174,7 @@ function initializeDraft(item: Item, settings: ReturnType<typeof normalizeShippi
 
   return {
     shipFrom: { ...settings.shipFrom },
-    shipTo: mapShippingDetailsToAddress(item),
+    shipTo: emptyAddress(),
     packages,
     purchaseDefaults: { ...settings.purchaseDefaults },
   };
@@ -298,6 +277,7 @@ function AddressCard({ address }: { address: ShippingAddressInput }) {
 
 export function FedExBuyLabelDialog({ item }: { item: Item }) {
   const [open, setOpen] = useState(false);
+  const [editingSavedAddress, setEditingSavedAddress] = useState(false);
   const [draft, setDraft] = useState<ShipmentDraft | null>(null);
   const [rates, setRates] = useState<FedExRateQuote[]>([]);
   const [unpricedServiceTypes, setUnpricedServiceTypes] = useState<string[]>([]);
@@ -345,7 +325,10 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
     () => (draft ? recipientAddressWarnings(draft.shipTo) : []),
     [draft]
   );
-  const isInternational = draft ? !isDomesticDestination(draft.shipTo) : false;
+  // A blank country is incomplete, not international.
+  const isInternational = draft
+    ? Boolean(draft.shipTo.country?.trim()) && !isDomesticDestination(draft.shipTo)
+    : false;
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen && existingPurchase) {
@@ -426,15 +409,17 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
       settingsUpdatedAt: shippingSettings.updatedAt,
     });
     draftSourceHashRef.current = sourceHash;
-    // A saved draft only wins while the order address and settings are unchanged.
+    // A saved draft only survives while the order address and settings are
+    // unchanged; the saved recipient always wins over a draft's recipient.
     const cached = loadFedExShipmentDraft(item.id) as StoredShipmentDraft | null;
-    let nextDraft: ShipmentDraft = base;
+    let cachedDraft: ShipmentDraft | null = null;
     if (cached?.sourceHash === sourceHash) {
-      const { sourceHash: _savedHash, ...cachedDraft } = cached;
-      nextDraft = cachedDraft;
+      const { sourceHash: _savedHash, ...rest } = cached;
+      cachedDraft = rest;
     } else if (cached) {
       clearFedExShipmentDraft(item.id);
     }
+    const nextDraft: ShipmentDraft = resolveShippingRecipientDraft(item, base, cachedDraft);
     setDraft(nextDraft);
     const shipFromOk = isShipFromSectionComplete(nextDraft.shipFrom);
     const recipientOk = isRecipientSectionComplete(nextDraft.shipTo);
@@ -691,6 +676,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
@@ -748,8 +734,8 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                   Recipient address is incomplete
                 </AlertTitle>
                 <AlertDescription className="!text-amber-900 dark:!text-amber-100/95">
-                  This item does not have imported shipping details yet. Enter them manually
-                  below before requesting rates.
+                  This order has no saved shipping details. Enter the recipient below
+                  before requesting rates, or save an address in the order details.
                 </AlertDescription>
               </Alert>
             ) : null}
@@ -854,7 +840,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                           Recipient
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Prefilled from the item and fully editable before rate lookup.
+                          Recipient comes from saved order details. Changes here apply to this label only.
                         </p>
                         {!addressSectionsOpen &&
                         isRecipientSectionComplete(draft.shipTo) ? (
@@ -869,6 +855,16 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                         aria-hidden
                       />
                     </button>
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="mb-2 h-auto px-0 py-1 text-blue-600 dark:text-blue-400"
+                      disabled={isFetchingRates || isPurchasing}
+                      onClick={() => setEditingSavedAddress(true)}
+                    >
+                      Edit saved address
+                    </Button>
                     <label className="mt-3 flex w-fit cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                       <Checkbox
                         checked={draft.shipTo.residential ?? true}
@@ -1210,5 +1206,22 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
         </ScrollArea>
       </DialogContent>
     </Dialog>
+    {editingSavedAddress ? (
+      <OrderShippingAddressDialog
+        item={item}
+        onClose={() => setEditingSavedAddress(false)}
+        onSaved={(savedItem) => {
+          setDraft((current) =>
+            current
+              ? resolveShippingRecipientDraft(savedItem, current, current)
+              : current
+          );
+          setRates([]);
+          setSelectedServiceType("");
+          setError(null);
+        }}
+      />
+    ) : null}
+    </>
   );
 }

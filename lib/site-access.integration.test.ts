@@ -5,6 +5,7 @@ import { middleware } from "../middleware";
 import { createAccessToken, SITE_ACCESS_COOKIE } from "./site-access";
 import { POST } from "../app/api/site-access/route";
 import { SITE_ACCESS_MAX_FAILURES_PER_CLIENT } from "./site-access-rate-limit";
+import { DEFAULT_SITE_ACCESS_PASSWORD } from "./site-access-config";
 
 const TEST_SECRET = "integration-test-signing-secret";
 const TEST_PASSWORD = "example-test-password";
@@ -71,20 +72,33 @@ test("repeated wrong passwords from one client are rate limited", async () => {
   assert.equal((await attempt(TEST_PASSWORD, "203.0.113.8")).status, 200);
 });
 
-test("site access fails closed when deployment environment values are absent", async () => {
+test("without deployment values the default code and database-derived signing key still work", async () => {
   delete process.env.SITE_ACCESS_PASSWORD;
   delete process.env.SITE_ACCESS_SECRET;
   process.env.MONGODB_URI = "mongodb://test-only";
 
+  const wrong = await POST(new NextRequest("http://localhost:3000/api/site-access", {
+    method: "POST", body: JSON.stringify({ password: "anything" }), headers: { "x-forwarded-for": "198.51.100.9" },
+  }));
+  assert.equal(wrong.status, 401);
   const login = await POST(new NextRequest("http://localhost:3000/api/site-access", {
-    method: "POST", body: JSON.stringify({ password: "anything" }),
+    method: "POST", body: JSON.stringify({ password: DEFAULT_SITE_ACCESS_PASSWORD }), headers: { "x-forwarded-for": "198.51.100.9" },
+  }));
+  assert.equal(login.status, 200);
+
+  const token = await createAccessToken("mongodb://test-only");
+  const allowed = await middleware(new NextRequest("http://localhost:3000/api/items", {
+    headers: { cookie: `${SITE_ACCESS_COOKIE}=${token}` },
+  }));
+  assert.notEqual(allowed.status, 401);
+});
+
+test("site access fails closed when no signing key is available", async () => {
+  delete process.env.SITE_ACCESS_SECRET;
+  delete process.env.MONGODB_URI;
+  const login = await POST(new NextRequest("http://localhost:3000/api/site-access", {
+    method: "POST", body: JSON.stringify({ password: DEFAULT_SITE_ACCESS_PASSWORD }),
   }));
   assert.equal(login.status, 503);
   assert.equal(login.headers.get("set-cookie"), null);
-
-  const token = await createAccessToken("mongodb://test-only");
-  const denied = await middleware(new NextRequest("http://localhost:3000/api/items", {
-    headers: { cookie: `${SITE_ACCESS_COOKIE}=${token}` },
-  }));
-  assert.equal(denied.status, 401);
 });

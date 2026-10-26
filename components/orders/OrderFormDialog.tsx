@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { OrderShippingFields } from "./OrderShippingFields";
+import type { ShippingDetails, EtsyOrderLink } from "@/typings/types";
 import { cn } from "@/utils/functions";
 import { boardConfig } from "@/config/boardconfig";
 import {
@@ -251,6 +253,8 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shippingPatch, setShippingPatch] = useState<Partial<ShippingDetails>>({});
+  const [etsyPatch, setEtsyPatch] = useState<EtsyOrderLink>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   // Synchronous guard: blocks a second submit before React re-renders, and
@@ -280,7 +284,9 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
     size !== (initialItem?.size ?? "") ||
     design !== (initialItem?.design ?? "") ||
     vertical !== (initialItem?.tags?.isVertical ?? false) ||
-    (dueDate?.getTime() ?? null) !== (initialDueDate?.getTime() ?? null);
+    (dueDate?.getTime() ?? null) !== (initialDueDate?.getTime() ?? null) ||
+    Object.keys(shippingPatch).length > 0 ||
+    Object.keys(etsyPatch).length > 0;
 
   const [sizeOpen, setSizeOpen] = useState(false);
   const [sizeQuery, setSizeQuery] = useState("");
@@ -391,6 +397,9 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
           dueDate: values.dueDate,
           tags: { isVertical: vertical },
         };
+    // Send only explicitly edited keys so partial corrections retain saved manual fields.
+    if (Object.keys(shippingPatch).length) order.shippingDetails = shippingPatch as ShippingDetails;
+    if (Object.keys(etsyPatch).length) order.etsyOrder = etsyPatch;
     // Nothing edited: nothing to save.
     if (initialItem && Object.keys(order).length === 0) {
       onClose();
@@ -409,8 +418,8 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
       submitLockRef.current = false;
       setFormError(
         isEditing
-          ? "Couldn't save the order. Try again."
-          : "Couldn't create the order. Try again."
+          ? "Couldn't save the order. Your changes are still here; try again."
+          : "Couldn't create the order. Your changes are still here; try again."
       );
       return;
     } finally {
@@ -461,6 +470,8 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
     setFormError(null);
     setConfirmingDiscard(false);
     submitLockRef.current = false;
+    setShippingPatch({});
+    setEtsyPatch({});
   };
 
   return (
@@ -820,6 +831,18 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
                 </Popover>
               </Field>
             </div>
+            <details className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2">
+              <summary className="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-200">
+                Shipping address <span className="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+                  {Object.keys(shippingPatch).length || Object.keys(etsyPatch).length ? "· Unsaved changes" : initialItem?.shippingDetails?.street1 ? "· Saved" : "· Not added"}
+                </span>
+              </summary>
+              <div className="mt-3"><OrderShippingFields
+                address={{ ...initialItem?.shippingDetails, ...shippingPatch }} etsyOrder={{ ...initialItem?.etsyOrder, ...etsyPatch }}
+                disabled={isSubmitting} onAddressChange={patch => setShippingPatch(previous => ({ ...previous, ...patch }))}
+                onEtsyChange={patch => setEtsyPatch(previous => ({ ...previous, ...patch }))} />
+              </div>
+            </details>
           </motion.div>
 
           {/*╔═══╗ ═════════════════════════════════════════════ ╔═══╗

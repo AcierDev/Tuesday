@@ -500,6 +500,14 @@ export const useOrderStore = create<OrderState>()(
           scheduledItems.find((item) => item.id === updatedItem.id);
         if (currentItem) {
           itemToUpdate = { ...itemToUpdate, ...normalizeOrderWipPatch(currentItem, itemToUpdate) };
+          for (const field of ["shippingDetails", "etsyOrder"] as const) {
+            const incoming = itemToUpdate[field];
+            if (!incoming) continue;
+            const previous = currentItem[field] as Record<string, unknown> | undefined;
+            const changed = Object.fromEntries(Object.entries(incoming).filter(([key, value]) => value !== previous?.[key]));
+            if (Object.keys(changed).length) Object.assign(itemToUpdate, { [field]: changed });
+            else delete itemToUpdate[field];
+          }
         }
         const dueDateChanged =
           changedField === ColumnTitles.Due ||
@@ -581,6 +589,15 @@ export const useOrderStore = create<OrderState>()(
           }
           if (!response.ok) throw new Error("Failed to update item");
           const saved = await response.json().catch(() => null);
+          if (!saved?.item) {
+            // Older servers return only the merged shipping/Etsy fields.
+            itemToUpdate = {
+              ...currentItem,
+              ...itemToUpdate,
+              ...(saved?.shippingDetails !== undefined ? { shippingDetails: saved.shippingDetails } : {}),
+              ...(saved?.etsyOrder !== undefined ? { etsyOrder: saved.etsyOrder } : {}),
+            };
+          }
 
           // Flush stats caches so glued/health badges re-fetch.
           invalidateStatsCaches();

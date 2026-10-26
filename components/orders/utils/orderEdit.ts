@@ -33,16 +33,18 @@ export function buildOrderEditChanges(
   return changes;
 }
 
-// Apply dialog changes on top of the latest copy of the order. Tags merge so
-// an edited flag doesn't drop the others.
+// Apply dialog changes on top of the latest copy of the order. Tags and the
+// partial address/Etsy corrections merge so an edit doesn't drop other keys.
 export function applyOrderEditChanges(
   latest: Item,
   changes: Partial<Item>
 ): Item {
-  const { tags, ...rest } = changes;
+  const { tags, shippingDetails, etsyOrder, ...rest } = changes;
   return {
     ...latest,
     ...rest,
     ...(tags ? { tags: { ...latest.tags, ...tags } } : {}),
-  };
+    ...(shippingDetails ? { shippingDetails: { ...latest.shippingDetails, ...shippingDetails } } : {}),
+    ...(etsyOrder ? { etsyOrder: { ...latest.etsyOrder, ...etsyOrder } } : {}),
+  } as Item;
 }
