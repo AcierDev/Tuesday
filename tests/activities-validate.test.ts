@@ -6,6 +6,7 @@ import {
   ACTIVITY_MAX_CHANGES,
   ACTIVITY_MAX_VALUE_LENGTH,
   clampedInteger,
+  isActivityType,
   parseActivityInput,
 } from "../app/api/activities/validate";
 
@@ -47,4 +48,9 @@ test("list paging values are clamped and malformed values use defaults", () => {
   assert.equal(clampedInteger("5000", ACTIVITIES_DEFAULT_LIMIT, 1, ACTIVITIES_MAX_LIMIT), 5000);
   assert.equal(clampedInteger("-3", 0, 0, 100), 0);
   assert.equal(clampedInteger("2.5", 0, 0, 100), 0);
+});
+
+test("the feed's type filter accepts only known activity types", () => {
+  for (const type of ["update", "create", "delete", "status_change", "restore"]) assert.equal(isActivityType(type), true, type);
+  for (const type of ["", "Status_Change", "status", "toString", "__proto__"]) assert.equal(isActivityType(type), false, type);
 });

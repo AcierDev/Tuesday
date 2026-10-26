@@ -5,6 +5,7 @@ import { test } from "node:test";
 
 const PROJECT_DIRECTORY = fileURLToPath(new URL("../", import.meta.url));
 const STORE_URL = new URL("../stores/useShippingStore.ts", import.meta.url).href;
+const DEFERRED_BOOT_URL = new URL("../lib/deferred-boot.ts", import.meta.url).href;
 const CHILD_TIMEOUT_MS = 10_000;
 const SUCCESS_EXIT_CODE = 0;
 const NO_REQUESTS = 0;
@@ -16,6 +17,8 @@ const SHIPPING_ENDPOINTS = [
 ];
 
 interface StartupResult {
+  requestsBeforeBoard: string[];
+  loadingBeforeBoard: boolean;
   initialRequests: string[];
   intervalCount: number;
   pollDelay?: number;
@@ -52,11 +55,20 @@ function importShippingStore(browser: boolean): StartupResult {
       return handle;
     };
     globalThis.clearInterval = (handle) => intervals.delete(handle);
+    globalThis.requestIdleCallback = (callback) => { callback(); return 0; };
     const module = await import(${JSON.stringify(STORE_URL)});
     const { useShippingStore } = module.default ?? module;
+    const bootModule = await import(${JSON.stringify(DEFERRED_BOOT_URL)});
+    const { markBoardBootSettled } = bootModule.default ?? bootModule;
+    await new Promise((resolve) => setImmediate(resolve));
+    const requestsBeforeBoard = [...requests];
+    const loadingBeforeBoard = useShippingStore.getState().isLoading;
+    markBoardBootSettled();
     await new Promise((resolve) => setImmediate(resolve));
     const poll = intervals.values().next().value;
     const result = {
+      requestsBeforeBoard,
+      loadingBeforeBoard,
       initialRequests: [...requests],
       intervalCount: intervals.size,
       pollDelay: poll?.delay,
@@ -96,8 +108,11 @@ test("SSR store import makes no shipping requests or polling timers", () => {
   assert.deepEqual(result.initialLabels, {});
 });
 
-test("browser store import loads labels immediately and keeps polling", () => {
+test("browser store import waits for the board's first load, then loads labels and keeps polling", () => {
   const result = importShippingStore(true);
+  // Nothing competes with the board's critical request; rows show loading.
+  assert.deepEqual(result.requestsBeforeBoard, []);
+  assert.equal(result.loadingBeforeBoard, true);
   assert.deepEqual(result.initialRequests, SHIPPING_ENDPOINTS);
   assert.equal(result.intervalCount, ONE_INTERVAL);
   assert.ok(result.pollDelay && result.pollDelay > NO_REQUESTS);

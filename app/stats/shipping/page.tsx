@@ -2,12 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { laDayKey } from "@/lib/debt-metrics";
-import {
-  bucketShippingSpendByDay,
-  shipmentCost,
-  summarizeShippingSpend,
-} from "@/lib/production-metrics";
+import type { ShippingView } from "@/lib/server/stats-views/shipping";
 import {
   ChartPoint,
   DEFAULT_RANGE,
@@ -16,7 +11,7 @@ import {
   StatTile,
   TimeSeriesChart,
   resolveRangeKey,
-  useAllItemsRich,
+  useStatsView,
 } from "@/lib/stats-shared";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -24,47 +19,22 @@ import {
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 const SHIPPING_COLOR = "rgb(244 114 182)";
-const TOP_SERVICE_LIMIT = 8;
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🧩 PAGE                                                              ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function ShippingPage() {
-  const { items, loading, error } = useAllItemsRich();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
   const { start, end, days, label: rangeLabel } = resolveRangeKey(range);
 
-  const data = useMemo(() => {
-    if (!items) return null;
-    const buckets = bucketShippingSpendByDay(items, start, end);
-    const summary = summarizeShippingSpend(buckets);
-
-    // Service-type breakdown
-    const byService = new Map<string, { count: number; cost: number }>();
-    for (const item of items) {
-      const ship = item.purchasedShipment;
-      if (!ship?.purchasedAt) continue;
-      const key = laDayKey(new Date(ship.purchasedAt));
-      if (key < start || key > end) continue;
-      // Same rule as the spend totals: unpriced (uploaded / $0) labels don't
-      // count toward spend or per-shipment averages.
-      const cost = shipmentCost(ship);
-      if (cost === null) continue;
-      const svc = ship.serviceName || ship.serviceType || "Unknown";
-      const cur = byService.get(svc) ?? { count: 0, cost: 0 };
-      cur.count += 1;
-      cur.cost += cost;
-      byService.set(svc, cur);
-    }
-    const serviceRows = Array.from(byService.entries())
-      .map(([service, v]) => ({ service, count: v.count, cost: v.cost }))
-      .sort((a, b) => b.cost - a.cost)
-      .slice(0, TOP_SERVICE_LIMIT);
-
-    return { buckets, summary, serviceRows };
-  }, [items, start, end]);
+  // Server-computed (lib/server/stats-views/shipping): label spend per day,
+  // totals and the top services for labels bought in range.
+  const { data, loading, error } = useStatsView<ShippingView>("shipping", {
+    start,
+    end,
+  });
 
   const chartSeries = useMemo<ChartPoint[]>(
     () =>

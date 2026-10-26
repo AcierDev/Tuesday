@@ -1,12 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { ItemDesigns } from "@/typings/types";
 import { DESIGN_COLORS } from "@/typings/constants";
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
-import { computeDesignTrend } from "@/lib/production-metrics";
-import { StatTile, useAllItems } from "@/lib/stats-shared";
+import type { TrendingView } from "@/lib/server/stats-views/history";
+import { StatTile, useStatsView } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -19,7 +18,6 @@ const WINDOW_OPTIONS = [
 ] as const;
 type WindowKey = (typeof WINDOW_OPTIONS)[number]["key"];
 
-const TOP_ROWS = 12;
 const SWATCH_MAX_COLORS = 8;
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -27,39 +25,15 @@ const SWATCH_MAX_COLORS = 8;
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function TrendingPage() {
-  const { items, loading, error } = useAllItems();
   const [windowKey, setWindowKey] = useState<WindowKey>("30d");
 
   const days = WINDOW_OPTIONS.find((w) => w.key === windowKey)?.days ?? 30;
 
-  const data = useMemo(() => {
-    if (!items) return null;
-    const today = laDayKey();
-    const recentEnd = today;
-    const recentStart = shiftDayKey(today, -(days - 1));
-    const priorEnd = shiftDayKey(recentStart, -1);
-    const priorStart = shiftDayKey(priorEnd, -(days - 1));
-    const all = computeDesignTrend(
-      items,
-      recentStart,
-      recentEnd,
-      priorStart,
-      priorEnd
-    );
-    const rising = [...all]
-      .filter((r) => r.delta > 0)
-      .sort((a, b) => b.delta - a.delta)
-      .slice(0, TOP_ROWS);
-    const falling = [...all]
-      .filter((r) => r.delta < 0)
-      .sort((a, b) => a.delta - b.delta)
-      .slice(0, TOP_ROWS);
-    const dying = [...all]
-      .filter((r) => r.recent === 0 && r.prior > 0)
-      .sort((a, b) => b.prior - a.prior)
-      .slice(0, TOP_ROWS);
-    return { all, rising, falling, dying };
-  }, [items, days]);
+  // Server-computed (lib/server/stats-views/history): designs created in the
+  // last `days` vs the `days` before — rising, falling and went-silent rows.
+  const { data, loading, error } = useStatsView<TrendingView>("trending", {
+    days,
+  });
 
   return (
     <>

@@ -1,71 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
-
-import { ItemStatus } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
-import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
-import { computeLeadTimeStats } from "@/lib/production-metrics";
-import { StatTile, useAllItems } from "@/lib/stats-shared";
+import type { ForecastView } from "@/lib/server/stats-views/active";
+import { StatTile, useStatsView } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
-
-//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ ⚙️ CONFIG                                                            ║
-//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-
-const FALLBACK_LEAD_DAYS = 14;
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🧩 PAGE                                                              ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function ForecastPage() {
-  const { items, loading, error } = useAllItems();
-
-  const data = useMemo(() => {
-    if (!items) return null;
-    const stats = computeLeadTimeStats(items);
-    const designAvg = new Map<string, number>();
-    for (const r of stats.byDesign) designAvg.set(r.key, r.avgDays);
-    const sizeAvg = new Map<string, number>();
-    for (const r of stats.bySize) sizeAvg.set(r.key, r.avgDays);
-    const overall = stats.avgDays || FALLBACK_LEAD_DAYS;
-
-    const today = laDayKey();
-    const active = items.filter(
-      (i) =>
-        i.status !== ItemStatus.Done &&
-        i.status !== ItemStatus.Hidden &&
-        !i.onHold
-    );
-
-    const rows = active
-      .map((item) => {
-        const designLead = item.design ? designAvg.get(item.design) : undefined;
-        const sizeLead = item.size ? sizeAvg.get(item.size) : undefined;
-        // A design/size with no usable history averages to NaN; fall through.
-        const baseAvg =
-          [designLead, sizeLead].find((d) => d !== undefined && Number.isFinite(d)) ?? overall;
-        const ageDays = Number.isFinite(item.createdAt)
-          ? (Date.now() - item.createdAt) / MS_PER_DAY
-          : 0;
-        const remainingDays = Math.max(1, baseAvg - ageDays);
-        const projectedDate = shiftDayKey(today, Math.ceil(remainingDays));
-        return {
-          item,
-          remainingDays,
-          projectedDate,
-        };
-      })
-      .sort((a, b) => a.remainingDays - b.remainingDays);
-
-    // Group by week count
-    const within7 = rows.filter((r) => r.remainingDays <= 7).length;
-    const within14 = rows.filter((r) => r.remainingDays <= 14).length;
-    const within30 = rows.filter((r) => r.remainingDays <= 30).length;
-    return { rows, within7, within14, within30, overallLead: overall };
-  }, [items]);
+  // Server-computed (lib/server/stats-views/active): projected completion =
+  // avg lead time for the design/size − age so far, per open order.
+  const { data, loading, error } = useStatsView<ForecastView>("forecast");
 
   return (
     <>

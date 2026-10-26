@@ -3,14 +3,14 @@
 import { useMemo, useState } from "react";
 
 import { shiftDayKey } from "@/lib/debt-metrics";
-import { bucketCompletionsByDay, summarizeDayBuckets } from "@/lib/production-metrics";
+import { bucketDayCounts, summarizeDayBuckets } from "@/lib/production-metrics";
 import {
   ChartPoint,
   RangeSelector,
   StatTile,
   TimeSeriesChart,
   resolveRangeKey,
-  useAllItems,
+  useStatsSummary,
 } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
@@ -40,7 +40,7 @@ type YoYRange = (typeof YOY_RANGE_OPTIONS)[number]["key"];
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function YearOverYearPage() {
-  const { items, loading, error } = useAllItems();
+  const { data: summary, loading, error } = useStatsSummary();
   const [range, setRange] = useState<YoYRange>("30d");
 
   const { start, end, label: rangeLabel } = resolveRangeKey(
@@ -49,15 +49,15 @@ export default function YearOverYearPage() {
   );
 
   const data = useMemo(() => {
-    if (!items) return null;
+    if (!summary) return null;
     const lastYearStart = shiftDayKey(start, -365);
     const lastYearEnd = shiftDayKey(end, -365);
-    const recent = bucketCompletionsByDay(items, start, end);
-    const prior = bucketCompletionsByDay(items, lastYearStart, lastYearEnd);
+    const recent = bucketDayCounts(summary.completions, start, end);
+    const prior = bucketDayCounts(summary.completions, lastYearStart, lastYearEnd);
     const recentSummary = summarizeDayBuckets(recent);
     const priorSummary = summarizeDayBuckets(prior);
     return { recent, prior, recentSummary, priorSummary };
-  }, [items, start, end]);
+  }, [summary, start, end]);
 
   // Overlay both series in chart by indexing prior bucket dates as recent ones.
   const recentSeries = useMemo<ChartPoint[]>(

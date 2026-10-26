@@ -8,6 +8,7 @@ import {
   ACTIVITIES_MAX_SKIP,
   ACTIVITY_MAX_BODY_BYTES,
   clampedInteger,
+  isActivityType,
   parseActivityInput,
 } from "./validate";
 
@@ -67,8 +68,16 @@ export async function GET(request: Request) {
     const limit = clampedInteger(searchParams.get("limit"), ACTIVITIES_DEFAULT_LIMIT, MIN_LIMIT, ACTIVITIES_MAX_LIMIT);
     const skip = clampedInteger(searchParams.get("skip"), MIN_SKIP, MIN_SKIP, ACTIVITIES_MAX_SKIP);
 
+    const type = searchParams.get("type");
+    if (type !== null && !isActivityType(type)) {
+      return NextResponse.json({ error: "Invalid activity type" }, { status: HTTP_BAD_REQUEST });
+    }
+    // ?includeTotal=1 adds the full match count (the stats feed pages through
+    // all history instead of loading a capped batch).
+    const includeTotal = searchParams.get("includeTotal") === "1";
+
     const collection = await getCollection();
-    const query = itemId ? { itemId } : {};
+    const query = { ...(itemId ? { itemId } : {}), ...(type ? { type } : {}) };
 
     const pipeline = [
       { $match: query },
@@ -77,8 +86,11 @@ export async function GET(request: Request) {
       { $limit: limit },
     ];
 
-    const activities = await collection.aggregate(pipeline).toArray();
-    return NextResponse.json({ activities });
+    const [activities, total] = await Promise.all([
+      collection.aggregate(pipeline).toArray(),
+      includeTotal ? collection.countDocuments(query) : Promise.resolve(undefined),
+    ]);
+    return NextResponse.json(includeTotal ? { activities, total } : { activities });
   } catch (error) {
     console.error("Failed to fetch activities:", error);
     const errorMessage =

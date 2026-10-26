@@ -4,22 +4,13 @@ import Link from "next/link";
 import { DeliveryBriefing } from "@/app/stats/components/DeliveryBriefing";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { ItemStatus } from "@/typings/types";
+import { dayDiffKeys, shiftDayKey } from "@/lib/debt-metrics";
 import {
-  computeDebtBreakdown,
-  dayDiffKeys,
-  laDayKey,
-  shiftDayKey,
-} from "@/lib/debt-metrics";
-import {
-  bucketCompletionsByDay,
-  bucketOnTimeByWeek,
-  completedAtIfDone,
-  computeCurrentlyLate,
-  computeHealthScore,
-  computeOnTimeStats,
-  parseSquareSize,
+  bucketDayCounts,
+  bucketOnTimeDaysByWeek,
+  onTimeStatsFromDays,
   recentGluedWindow,
+  sumDayCounts,
   summarizeDayBuckets,
   summarizeGluedForecast,
 } from "@/lib/production-metrics";
@@ -27,12 +18,14 @@ import {
   DEFAULT_RANGE,
   RangeKey,
   RangeSelector,
+  fetchSharedJson,
   smoothPath,
   StatTile,
   resolveRangeKey,
-  useAllItems,
   useGluedStats,
+  useHealthScore,
   useLaToday,
+  useStatsSummary,
 } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
@@ -52,14 +45,6 @@ const COMBINED_CHART_HEIGHT = 280;
 const COMBINED_PADDING_X = 16;
 const COMBINED_PADDING_TOP = 16;
 const COMBINED_PADDING_BOTTOM = 28;
-
-// Backlog = work that still needs gluing. Post-Wip squares are already done,
-// so they don't pull on glue capacity.
-const BACKLOG_STATUSES: ReadonlySet<ItemStatus> = new Set([
-  ItemStatus.New,
-  ItemStatus.OnDeck,
-  ItemStatus.Wip,
-]);
 
 // Default Mon–Thu in production-planning's auto-plan defaults — this is the
 // shop's typical week. Keep in sync with AUTO_PLAN_DEFAULTS over there.
@@ -82,7 +67,12 @@ type BacklogSnapshot = {
 };
 
 export default function OverviewPage() {
-  const { items, loading, error } = useAllItems();
+  // One server summary: all-history per-day totals (windowed below, so range
+  // switches are instant) plus the range-independent open-order totals.
+  // Health is the nav badge's shared request.
+  const { data: statsSummary, loading, error } = useStatsSummary();
+  const openOrders = statsSummary?.openOrders ?? null;
+  const { data: healthScore } = useHealthScore();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
   const [debtByRange, setDebtByRange] = useState<
     Partial<Record<RangeKey, DebtSnapshot[]>>
@@ -109,11 +99,10 @@ export default function OverviewPage() {
     if (!debtSeries) {
       (async () => {
         try {
-          const res = await fetch(
+          // Shared with the debt page's request for the same window.
+          const json = await fetchSharedJson<{ series: DebtSnapshot[] }>(
             `/api/debt-snapshots?start=${start}&end=${end}`
           );
-          if (!res.ok) return;
-          const json = (await res.json()) as { series: DebtSnapshot[] };
           if (!cancelled)
             setDebtByRange((prev) => ({ ...prev, [range]: json.series }));
         } catch (err) {
@@ -124,11 +113,10 @@ export default function OverviewPage() {
     if (!backlogSeries) {
       (async () => {
         try {
-          const res = await fetch(
+          // Shared with the backlog page's request for the same window.
+          const json = await fetchSharedJson<{ series: BacklogSnapshot[] }>(
             `/api/backlog-snapshots?start=${start}&end=${end}`
           );
-          if (!res.ok) return;
-          const json = (await res.json()) as { series: BacklogSnapshot[] };
           if (!cancelled)
             setBacklogByRange((prev) => ({ ...prev, [range]: json.series }));
         } catch (err) {
@@ -142,32 +130,15 @@ export default function OverviewPage() {
   }, [start, end, range, debtSeries, backlogSeries]);
 
   const summary = useMemo(() => {
-    if (!items) return null;
-    const active = items.filter(
-      (i) => i.status !== ItemStatus.Done && i.status !== ItemStatus.Hidden
-    );
-    const backlogItems = active.filter((i) => BACKLOG_STATUSES.has(i.status));
-    const debt = computeDebtBreakdown(active);
-    const lateNow = computeCurrentlyLate(active);
-    const buckets = bucketCompletionsByDay(items, start, end);
+    if (!statsSummary || !openOrders) return null;
+    // Open-order totals (debt, late, WIP, backlog = New / On Deck / WIP
+    // squares) come from the server; shipped/on-time are windowed here.
+    const { backlogSquares } = openOrders;
+    const buckets = bucketDayCounts(statsSummary.completions, start, end);
     const throughput = summarizeDayBuckets(buckets);
-    const onTime = computeOnTimeStats(items, start, end);
-
-    const sumSquares = (list: typeof items) =>
-      list.reduce(
-        (acc, i) => acc + (parseSquareSize(i.size)?.squares ?? 0),
-        0
-      );
-    const shippedInRange = items.filter((i) => {
-      const completedAt = completedAtIfDone(i);
-      if (completedAt === null) return false;
-      const key = laDayKey(new Date(completedAt));
-      return key >= start && key <= end;
-    });
-    const shippedSquares = sumSquares(shippedInRange);
-    const wipSquares = sumSquares(active);
-    const backlogSquares = sumSquares(backlogItems);
-    const health = computeHealthScore(items).total;
+    const onTime = onTimeStatsFromDays(statsSummary.onTime, start, end);
+    const shippedSquares = sumDayCounts(statsSummary.shippedSquares, start, end);
+    const health = healthScore?.total ?? null;
 
     // Pace = recency-weighted squares glued per active (working) day, same
     // model as the sidebar's Forecast badge (and the planner header's mobile
@@ -185,24 +156,24 @@ export default function OverviewPage() {
     }
 
     return {
-      debt: debt.total,
-      lateNow: lateNow.length,
+      debt: openOrders.debt,
+      lateNow: openOrders.lateNow,
       throughputTotal: throughput.total,
       throughputAvg: throughput.average,
       onTimePct: onTime.onTimePct,
       onTimeTotal: onTime.total,
-      wipTotal: active.length,
+      wipTotal: openOrders.wipTotal,
       shippedSquares,
-      wipSquares,
+      wipSquares: openOrders.wipSquares,
       backlogSquares,
       weeksToClear,
       glueRatePerWorkingDay,
       health,
     };
-  }, [items, start, end, gluedRecent, today]);
+  }, [statsSummary, openOrders, healthScore, start, end, gluedRecent, today]);
 
   const combinedChart = useMemo(() => {
-    if (!items) return null;
+    if (!statsSummary) return null;
     const totalDays = dayDiffKeys(start, end) + 1;
     const dates = Array.from({ length: totalDays }, (_, i) =>
       shiftDayKey(start, i)
@@ -220,14 +191,14 @@ export default function OverviewPage() {
     );
     const backlogValues = dates.map((d) => backlogByDate.get(d) ?? null);
 
-    // Shipped — completions per day from items.
-    const shipBuckets = bucketCompletionsByDay(items, start, end);
+    // Shipped — Done completions per day (server summary).
+    const shipBuckets = bucketDayCounts(statsSummary.completions, start, end);
     const shipByDate = new Map(shipBuckets.map((b) => [b.date, b.value]));
     const shippedValues = dates.map((d) => shipByDate.get(d) ?? 0);
 
     // On-time % — weekly. Anchor each week's value at the last day of that
     // week so the line steps along with the data.
-    const weekly = bucketOnTimeByWeek(items, start, end);
+    const weekly = bucketOnTimeDaysByWeek(statsSummary.onTime, start, end);
     const onTimeByDate = new Map(weekly.map((w) => [w.date, w.value]));
     const onTimeValues = dates.map((d) => onTimeByDate.get(d) ?? null);
 
@@ -282,7 +253,7 @@ export default function OverviewPage() {
         },
       ],
     };
-  }, [items, start, end, debtSeries, backlogSeries, gluedRange]);
+  }, [statsSummary, start, end, debtSeries, backlogSeries, gluedRange]);
 
   return (
     <>
@@ -374,10 +345,10 @@ export default function OverviewPage() {
         <KPILink href="/stats/health" tile={
           <StatTile
             label="Health"
-            value={summary ? `${summary.health}` : "—"}
+            value={summary?.health != null ? `${summary.health}` : "—"}
             sublabel="/ 100"
             tone={
-              summary
+              summary?.health != null
                 ? summary.health >= 85
                   ? "good"
                   : summary.health < 60

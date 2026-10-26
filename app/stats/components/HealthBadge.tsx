@@ -1,9 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
-
-import { computeHealthScore } from "@/lib/production-metrics";
-import { useAllItems } from "@/lib/stats-shared";
+import { useHealthScore } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
 import { BadgeCard } from "./BadgeCard";
@@ -12,11 +9,9 @@ const HEALTH_GOOD_THRESHOLD = 85;
 const HEALTH_BAD_THRESHOLD = 60;
 
 export function HealthBadge({ active }: { active: boolean }) {
-  const { items, loading } = useAllItems();
-  const score = useMemo(
-    () => (items ? computeHealthScore(items).total : null),
-    [items]
-  );
+  // Server-computed; the same shared request as the nav Health badge.
+  const { data, loading } = useHealthScore();
+  const score = data?.total ?? null;
 
   const tone =
     score === null

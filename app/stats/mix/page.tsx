@@ -1,17 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { ItemDesigns } from "@/typings/types";
 import { DESIGN_COLORS } from "@/typings/constants";
-import { computeMix, MixRow } from "@/lib/production-metrics";
+import type { MixRow } from "@/lib/production-metrics";
+import type { MixView } from "@/lib/server/stats-views/history";
 import {
   DEFAULT_RANGE,
   RangeKey,
   RangeSelector,
   StatTile,
   resolveRangeKey,
-  useAllItems,
+  useStatsView,
 } from "@/lib/stats-shared";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -19,15 +20,16 @@ import {
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function MixPage() {
-  const { items, loading, error } = useAllItems();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
   const { start, end, label: rangeLabel } = resolveRangeKey(range);
 
-  const mix = useMemo(() => {
-    if (!items) return null;
-    return computeMix(items, start, end);
-  }, [items, start, end]);
+  // Server-computed (lib/server/stats-views/history): items created in range.
+  const {
+    data: mix,
+    loading,
+    error,
+  } = useStatsView<MixView>("mix", { start, end });
 
   const topDesign = mix?.designs[0];
   const topSize = mix?.sizes[0];

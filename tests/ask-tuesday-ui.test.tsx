@@ -8,6 +8,7 @@ import { ASK_TUESDAY } from "../config/ask-tuesday";
 import { ItemStatus } from "../typings/types";
 
 const require = createRequire(import.meta.url);
+const IDLE_HANDLE = 0;
 const EXTRA_MATCH_COUNT = 1;
 const originalFetch = globalThis.fetch;
 let AskTuesday: typeof import("../components/ask-tuesday/AskTuesday").AskTuesday;
@@ -105,6 +106,13 @@ before(async () => {
   };
   require.cache[storePath] = storeModule;
   (globalThis as typeof globalThis & { React: typeof React }).React = React;
+  // The scan starts once the board's first load settles and the browser is
+  // idle; model a loaded, idle board so each render polls straight away.
+  (globalThis as { requestIdleCallback?: (callback: () => void) => number }).requestIdleCallback = (callback) => {
+    callback();
+    return IDLE_HANDLE;
+  };
+  (await import("../lib/deferred-boot")).markBoardBootSettled();
   ({ AskTuesday } = await import("../components/ask-tuesday/AskTuesday"));
   ({ AskTuesdayResults } = await import("../components/ask-tuesday/AskTuesdayResults"));
   ({ TuesdayScanProvider } = await import("../components/ask-tuesday/TuesdayScanProvider"));
@@ -113,7 +121,10 @@ before(async () => {
   ({ OrderAttentionIcons } = await import("../components/ask-tuesday/OrderAttentionIcons"));
 });
 
-after(() => { globalThis.fetch = originalFetch; });
+after(() => {
+  globalThis.fetch = originalFetch;
+  delete (globalThis as { requestIdleCallback?: unknown }).requestIdleCallback;
+});
 
 function renderPopup() {
   return TestRenderer.create(<TuesdayScanProvider><AskTuesday /></TuesdayScanProvider>, {
@@ -857,4 +868,21 @@ test("a stale background monitor is flagged in the badge and issues view", async
     assert.equal(renderer!.root.findAllByProps({ "data-monitor-stale": true }).length, 0);
     assert.doesNotMatch(renderer!.root.findByProps({ "aria-label": "Automatic check status" }).props.className, /amber/);
   } finally { act(() => renderer!.unmount()); fresh.restore(); }
+});
+
+test("automatic checks wait for the board's first load and show as checking until then", async () => {
+  const boot = await import("../lib/deferred-boot");
+  const browser = installVisibleWindow();
+  let scanCalls = 0;
+  globalThis.fetch = async () => { scanCalls += 1; return Response.json(automaticScan); };
+  boot.resetDeferredBootForTests();
+  let renderer: ReactTestRenderer;
+  await act(async () => { renderer = renderPopup(); });
+  try {
+    assert.equal(scanCalls, 0);
+    assert.equal(renderer!.root.findByProps({ "aria-label": "Automatic check status" }).children.join(""), "…");
+    await act(async () => { boot.markBoardBootSettled(); });
+    assert.equal(scanCalls, 1);
+    assert.equal(renderer!.root.findByProps({ "aria-label": "Automatic check status" }).children.join(""), "1");
+  } finally { act(() => renderer!.unmount()); browser.restore(); boot.markBoardBootSettled(); }
 });

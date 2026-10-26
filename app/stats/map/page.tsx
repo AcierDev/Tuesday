@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
 import dynamic from "next/dynamic";
 
-import { computeStateMix } from "@/lib/production-metrics";
-import { StatTile, useAllItemsRich } from "@/lib/stats-shared";
+import type { MapView } from "@/lib/server/stats-views/shipping";
+import { StatTile, useStatsView } from "@/lib/stats-shared";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🗺️ MAP CLIENT (no SSR — leaflet touches window)                      ║
@@ -24,20 +23,9 @@ const MapClient = dynamic(() => import("./MapClient"), {
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function MapPage() {
-  const { items, loading, error } = useAllItemsRich();
-
-  const data = useMemo(() => {
-    if (!items) return null;
-    const stateRows = computeStateMix(items);
-    const totalShipped = stateRows.reduce((s, r) => s + r.count, 0);
-    const top = stateRows[0];
-    return {
-      stateRows,
-      totalShipped,
-      top,
-      distinctStates: stateRows.length,
-    };
-  }, [items]);
+  // Server-computed (lib/server/stats-views/shipping): orders per
+  // destination state.
+  const { data, loading, error } = useStatsView<MapView>("map");
 
   return (
     <>

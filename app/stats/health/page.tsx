@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 
-import { computeHealthScore, HealthBreakdownRow } from "@/lib/production-metrics";
-import { useAllItems } from "@/lib/stats-shared";
+import { HealthBreakdownRow } from "@/lib/production-metrics";
+import { useHealthScore } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -62,12 +62,8 @@ const COMPONENT_FILL: Record<string, string> = {
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function HealthPage() {
-  const { items, loading, error } = useAllItems();
-
-  const score = useMemo(
-    () => (items ? computeHealthScore(items) : null),
-    [items]
-  );
+  // Server-computed; the same shared request as the nav Health badge.
+  const { data: score, loading, error } = useHealthScore();
 
   const tone: Tone = score ? scoreTone(score.total) : "neutral";
 

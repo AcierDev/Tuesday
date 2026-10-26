@@ -17,10 +17,11 @@ import {
   RangeSelector,
   StatTile,
   TimeSeriesChart,
+  fetchSharedJson,
   resolveRangeKey,
-  useAllItems,
+  useStatsView,
 } from "@/lib/stats-shared";
-import { computeHealthScore } from "@/lib/production-metrics";
+import type { HealthWhatIfView } from "@/lib/server/stats-views/active";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -191,11 +192,10 @@ export default function DebtPage() {
     const { start, end } = resolveRangeKey(range);
     (async () => {
       try {
-        const res = await fetch(
+        // Shared with the overview page's request for the same window.
+        const json = await fetchSharedJson<{ series: SeriesPoint[] }>(
           `/api/debt-snapshots?start=${start}&end=${end}`
         );
-        if (!res.ok) return;
-        const json = (await res.json()) as { series: SeriesPoint[] };
         if (cancelled) return;
         setSeriesByRange((prev) => ({ ...prev, [range]: json.series }));
       } catch (err) {
@@ -247,34 +247,13 @@ export default function DebtPage() {
     return rows;
   }, [activeItems]);
 
-  // Health-score what-if. We need all items (including Done/Hidden) so the
-  // on-time rate component reflects historical shipments.
-  const { items: allItems } = useAllItems();
-  const healthCurrent = useMemo(
-    () => (allItems ? computeHealthScore(allItems) : null),
-    [allItems]
-  );
-  const healthIfDebtCleared = useMemo(
-    () =>
-      allItems
-        ? computeHealthScore(allItems, { simulateDebtCleared: true })
-        : null,
-    [allItems]
-  );
-  const healthIf1Week = useMemo(
-    () =>
-      allItems
-        ? computeHealthScore(allItems, { sustainedDebtFreeDays: 7 })
-        : null,
-    [allItems]
-  );
-  const healthIf2Weeks = useMemo(
-    () =>
-      allItems
-        ? computeHealthScore(allItems, { sustainedDebtFreeDays: 14 })
-        : null,
-    [allItems]
-  );
+  // Health-score what-if. Server-computed over all items (including
+  // Done/Hidden) so the on-time rate component reflects historical shipments.
+  const { data: healthWhatIf } = useStatsView<HealthWhatIfView>("health-whatif");
+  const healthCurrent = healthWhatIf?.current ?? null;
+  const healthIfDebtCleared = healthWhatIf?.ifDebtCleared ?? null;
+  const healthIf1Week = healthWhatIf?.ifOneWeek ?? null;
+  const healthIf2Weeks = healthWhatIf?.ifTwoWeeks ?? null;
   const healthDelta =
     healthCurrent && healthIfDebtCleared
       ? healthIfDebtCleared.total - healthCurrent.total

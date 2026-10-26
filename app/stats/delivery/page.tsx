@@ -1,78 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
-
-import {
-  buildDeliveryByOrder,
-  computeDeliverySpeeds,
-} from "@/lib/production-metrics";
-import {
-  StatTile,
-  useAllItemsRich,
-  useTrackingInfos,
-} from "@/lib/stats-shared";
+import type { DeliveryView } from "@/lib/server/stats-views/shipping";
+import { StatTile, useStatsView } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
-
-//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ ⚙️ CONFIG                                                            ║
-//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-
-const RECENT_LIMIT = 30;
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🧩 PAGE                                                              ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function DeliveryPage() {
-  const { items, loading: il, error: ie } = useAllItemsRich();
-  const { trackingInfos, loading: tl, error: te } = useTrackingInfos();
-
-  const data = useMemo(() => {
-    if (!items || !trackingInfos) return null;
-    const deliveryByOrder = buildDeliveryByOrder(trackingInfos);
-    const rows = computeDeliverySpeeds(items, deliveryByOrder);
-    if (rows.length === 0) {
-      return {
-        rows: [],
-        avg: 0,
-        median: 0,
-        fastest: 0,
-        slowest: 0,
-        byService: [] as { service: string; count: number; avg: number }[],
-      };
-    }
-    const sorted = [...rows].map((r) => r.transitDays).sort((a, b) => a - b);
-    const sum = sorted.reduce((s, v) => s + v, 0);
-    const mid = Math.floor(sorted.length / 2);
-    const median =
-      sorted.length % 2 === 0
-        ? ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2
-        : sorted[mid] ?? 0;
-
-    const byService = new Map<string, number[]>();
-    for (const r of rows) {
-      const svc = r.serviceType ?? "Unknown";
-      const list = byService.get(svc) ?? [];
-      list.push(r.transitDays);
-      byService.set(svc, list);
-    }
-    const serviceRows = Array.from(byService.entries())
-      .map(([service, vs]) => ({
-        service,
-        count: vs.length,
-        avg: vs.reduce((s, v) => s + v, 0) / vs.length,
-      }))
-      .sort((a, b) => a.avg - b.avg);
-
-    return {
-      rows,
-      avg: sum / sorted.length,
-      median,
-      fastest: sorted[0] ?? 0,
-      slowest: sorted[sorted.length - 1] ?? 0,
-      byService: serviceRows,
-    };
-  }, [items, trackingInfos]);
+  // Server-computed (lib/server/stats-views/shipping) from items + tracker
+  // delivered scans: purchase → delivered transit times.
+  const { data, loading, error } = useStatsView<DeliveryView>("delivery");
 
   return (
     <>
@@ -84,13 +23,13 @@ export default function DeliveryPage() {
           {data ? `${data.avg.toFixed(1)} days avg` : "—"}
         </h2>
         <p className="mt-1 text-xs text-slate-400">
-          Purchase → delivered, across {data?.rows.length ?? 0} delivered shipments
+          Purchase → delivered, across {data?.count ?? 0} delivered shipments
         </p>
       </header>
 
-      {(il || tl || ie || te) && (
+      {(loading || error) && (
         <p className="text-xs text-slate-400 mb-4">
-          {il || tl ? "Loading…" : "Failed to load."}
+          {loading ? "Loading…" : "Failed to load."}
         </p>
       )}
 
@@ -159,7 +98,7 @@ export default function DeliveryPage() {
         <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
           Recent shipments
         </h3>
-        {!data || data.rows.length === 0 ? (
+        {!data || data.count === 0 ? (
           <p className="text-sm text-slate-400">—</p>
         ) : (
           <div className="overflow-x-auto">
@@ -173,7 +112,7 @@ export default function DeliveryPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.rows.slice(0, RECENT_LIMIT).map((r) => (
+                {data.recent.map((r) => (
                   <tr
                     key={r.itemId}
                     className="border-t border-white/5 hover:bg-white/5 transition"

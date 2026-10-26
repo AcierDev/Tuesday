@@ -3,24 +3,23 @@
 import { useMemo } from "react";
 
 import { laDayKey } from "@/lib/debt-metrics";
-import { bucketCompletionsByDay } from "@/lib/production-metrics";
-import { StatTile, useAllItems } from "@/lib/stats-shared";
+import { bucketDayCounts } from "@/lib/production-metrics";
+import { StatTile, useStatsSummary } from "@/lib/stats-shared";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🧩 PAGE                                                              ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function RecordsPage() {
-  const { items, loading, error } = useAllItems();
+  const { data: summary, loading, error } = useStatsSummary();
 
   const records = useMemo(() => {
-    if (!items) return null;
+    if (!summary) return null;
 
-    const completed = items
-      .filter((i) => i.completedAt)
-      .map((i) => i.completedAt!)
-      .sort((a, b) => a - b);
-    if (completed.length === 0) {
+    // Lifetime count and first day cover every item carrying a completedAt;
+    // the day buckets count Done items only (server summary).
+    const firstDate = summary.firstCompletedKey;
+    if (summary.lifetimeCompleted === 0 || firstDate === null) {
       return {
         total: 0,
         bestDay: null as null | { date: string; count: number },
@@ -32,9 +31,8 @@ export default function RecordsPage() {
       };
     }
 
-    const firstDate = laDayKey(new Date(completed[0]!));
     const today = laDayKey();
-    const buckets = bucketCompletionsByDay(items, firstDate, today);
+    const buckets = bucketDayCounts(summary.completions, firstDate, today);
 
     const bestDay = buckets.reduce(
       (best, b) => (b.value > (best?.count ?? 0) ? { date: b.date, count: b.value } : best),
@@ -80,7 +78,7 @@ export default function RecordsPage() {
     }
 
     return {
-      total: completed.length,
+      total: summary.lifetimeCompleted,
       bestDay,
       bestWeek,
       bestMonth,
@@ -88,7 +86,7 @@ export default function RecordsPage() {
       longestStreak,
       firstShipped: firstDate,
     };
-  }, [items]);
+  }, [summary]);
 
   return (
     <>

@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 
 import { STATUS_COLORS } from "@/typings/constants";
-import { computeWipAging } from "@/lib/production-metrics";
-import { StatTile, useActivities, useAllItems } from "@/lib/stats-shared";
+import type { WipView } from "@/lib/server/stats-views/history";
+import { StatTile, useStatsView } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -18,13 +18,10 @@ const STALE_DAYS = 7;
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function WipPage() {
-  const { items, loading: itemsLoading, error: itemsError } = useAllItems();
-  const { activities, loading: actLoading, error: actError } = useActivities();
-
-  const rows = useMemo(() => {
-    if (!items || !activities) return null;
-    return computeWipAging(items, activities);
-  }, [items, activities]);
+  // Server-computed (lib/server/stats-views/history) over the full status
+  // history: days each open order has sat in its current status.
+  const { data, loading, error } = useStatsView<WipView>("wip");
+  const rows = data?.rows ?? null;
 
   const stats = useMemo(() => {
     if (!rows) return null;
@@ -52,9 +49,9 @@ export default function WipPage() {
         </p>
       </header>
 
-      {(itemsLoading || actLoading || itemsError || actError) && (
+      {(loading || error) && (
         <p className="text-xs text-slate-400 mb-4">
-          {itemsLoading || actLoading ? "Loading…" : "Failed to load."}
+          {loading ? "Loading…" : "Failed to load."}
         </p>
       )}
 

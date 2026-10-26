@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { Activity, Item, OrderTrackingInfo } from "@/typings/types";
 import { dayDiffKeys, laDayKey, shiftDayKey } from "@/lib/debt-metrics";
+import type { StatsSummaryView } from "@/lib/server/stats-views/summary";
 import {
   DayBucket,
   GluedEvent,
@@ -119,6 +119,10 @@ let statsRevalidationVersion = 0;
 // Bumped by schedule edits, which only move glue attribution — they must not
 // trigger a full items/activities refetch.
 let gluedRevalidationVersion = 0;
+// When this tab last saw a write. Stats endpoints cache their all-history
+// sources per server process; reads within STATS_SERVER_CACHE_TTL_MS of a
+// write ask the server for fresh data so the edit shows up immediately.
+let lastStatsInvalidationAt = Number.NEGATIVE_INFINITY;
 const statsRevalidationListeners = new Set<() => void>();
 let statsNotifyTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -154,18 +158,10 @@ function clearGluedStatsCaches(): void {
 // debounce window fetches committed state.
 export function invalidateStatsCaches(): void {
   statsRevalidationVersion += 1;
+  lastStatsInvalidationAt = Date.now();
   // A mutation invalidates fresh TTL entries too. Detach older requests so
   // subscribers fetch the committed state instead of joining a stale request.
-  itemsCache = null;
-  richCache = null;
-  activitiesCache = null;
-  trackingCache = null;
-  healthCache = null;
-  inflight = null;
-  richInflight = null;
-  activitiesInflight = null;
-  trackingInflight = null;
-  healthInflight = null;
+  sharedJson.clear();
   clearGluedStatsCaches();
   scheduleStatsNotify();
 }
@@ -200,6 +196,174 @@ const readGluedVersion = () =>
 // standalone widgets (e.g. the mobile glued badge) can also refetch on the same bus.
 export function useStatsRevalidationVersion(): number {
   return useRevalidationValue(readStatsVersion);
+}
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🔁 SHARED JSON — one request per URL across every mounted consumer   ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+// How long a resolved stats response is reused before the next mount refetches.
+export const SHARED_JSON_TTL_MS = 60_000;
+// Must be at least the server's STATS_DATASET_TTL_MS (lib/server/stats-dataset):
+// a read this soon after a write may otherwise get the server's pre-write copy.
+export const STATS_SERVER_CACHE_TTL_MS = 60_000;
+// Query flags that bypass the server's per-process cache and any HTTP cache.
+const FRESH_QUERY_PARAM = "fresh";
+const CACHE_BUST_QUERY_PARAM = "_";
+
+type SharedJsonEntry = {
+  promise: Promise<unknown>;
+  // null while in flight; set when the response resolves.
+  resolvedAt: number | null;
+  data?: unknown;
+};
+
+const sharedJson = new Map<string, SharedJsonEntry>();
+
+function withFreshParams(url: string): string {
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}${FRESH_QUERY_PARAM}=1&${CACHE_BUST_QUERY_PARAM}=${Date.now()}`;
+}
+
+// True when this tab wrote recently enough that the server's cached copy may
+// predate the write.
+export function statsReadsNeedFresh(now: number = Date.now()): boolean {
+  return now - lastStatsInvalidationAt < STATS_SERVER_CACHE_TTL_MS;
+}
+
+function readSharedJson<T>(url: string, ttlMs: number): T | undefined {
+  const entry = sharedJson.get(url);
+  if (!entry || entry.resolvedAt === null) return undefined;
+  if (Date.now() - entry.resolvedAt >= ttlMs) return undefined;
+  return entry.data as T;
+}
+
+// Concurrent callers of the same URL share one request, and a resolved
+// response is reused for `ttlMs`. invalidateStatsCaches() drops every entry,
+// so anything still here was requested after the latest write and is safe to
+// share even when the caller wants fresh data. Failed requests are dropped so
+// the next caller retries.
+export function fetchSharedJson<T>(
+  url: string,
+  { ttlMs = SHARED_JSON_TTL_MS }: { ttlMs?: number } = {}
+): Promise<T> {
+  const existing = sharedJson.get(url);
+  if (
+    existing &&
+    (existing.resolvedAt === null || Date.now() - existing.resolvedAt < ttlMs)
+  ) {
+    return existing.promise as Promise<T>;
+  }
+  const fresh = statsReadsNeedFresh();
+  const entry: SharedJsonEntry = { promise: Promise.resolve(), resolvedAt: null };
+  entry.promise = (async () => {
+    const res = await fetch(
+      fresh ? withFreshParams(url) : url,
+      fresh ? { cache: "no-store" } : {}
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  })().then(
+    (data) => {
+      if (sharedJson.get(url) === entry) {
+        entry.data = data;
+        entry.resolvedAt = Date.now();
+      }
+      return data;
+    },
+    (err: unknown) => {
+      if (sharedJson.get(url) === entry) sharedJson.delete(url);
+      throw err;
+    }
+  );
+  sharedJson.set(url, entry);
+  return entry.promise as Promise<T>;
+}
+
+export type SharedJsonState<T> = {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+};
+
+// React binding for fetchSharedJson. Refetches after invalidateStatsCaches()
+// (debounced). While a new URL loads (e.g. a range switch) the previous data
+// stays on screen; `loading` is true only when there is nothing to show yet.
+// Pass null to skip fetching.
+export function useSharedJson<T>(
+  url: string | null,
+  { ttlMs = SHARED_JSON_TTL_MS }: { ttlMs?: number } = {}
+): SharedJsonState<T> {
+  const version = useStatsRevalidationVersion();
+  const [state, setState] = useState<SharedJsonState<T>>(() => {
+    const cached = url ? readSharedJson<T>(url, ttlMs) : undefined;
+    return cached !== undefined
+      ? { data: cached, loading: false, error: null }
+      : { data: null, loading: url !== null, error: null };
+  });
+
+  useEffect(() => {
+    if (!url) return;
+    const cached = readSharedJson<T>(url, ttlMs);
+    if (cached !== undefined) {
+      setState({ data: cached, loading: false, error: null });
+      return;
+    }
+    setState((prev) => ({ ...prev, loading: prev.data === null, error: null }));
+    let cancelled = false;
+    fetchSharedJson<T>(url, { ttlMs })
+      .then((data) => {
+        if (!cancelled) setState({ data, loading: false, error: null });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setState((prev) => ({
+          data: prev.data,
+          loading: false,
+          error: err instanceof Error ? err.message : "Failed to load",
+        }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url, ttlMs, version]);
+
+  return state;
+}
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🧮 SERVER STATS VIEWS — pages fetch aggregates, never all items      ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+const STATS_VIEW_BASE_URL = "/api/stats/view";
+
+export type StatsViewParams = Record<string, string | number>;
+
+// Stable URL per (view, params) so equal requests share one fetch and cache.
+export function statsViewUrl(view: string, params: StatsViewParams = {}): string {
+  const query = new URLSearchParams(
+    Object.entries(params)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => [key, String(value)])
+  ).toString();
+  return query
+    ? `${STATS_VIEW_BASE_URL}/${view}?${query}`
+    : `${STATS_VIEW_BASE_URL}/${view}`;
+}
+
+// One server-computed view (lib/server/stats-views). Range views pass
+// { start, end }; the previous range's data stays up while the next loads.
+export function useStatsView<T>(
+  view: string,
+  params?: StatsViewParams
+): SharedJsonState<T> {
+  return useSharedJson<T>(statsViewUrl(view, params));
+}
+
+// All-history per-day totals shared by most pages; window them with the
+// production-metrics day helpers (bucketDayCounts, onTimeStatsFromDays, …).
+export function useStatsSummary(): SharedJsonState<StatsSummaryView> {
+  return useStatsView<StatsSummaryView>("summary");
 }
 
 const LA_DAY_CHECK_INTERVAL_MS = 60_000;
@@ -692,415 +856,21 @@ export function TimeSeriesChart({
 }
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ 🪝 useAllItems — fetches active + done items once for stats pages    ║
-//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-
-type AllItemsState = {
-  items: Item[] | null;
-  loading: boolean;
-  error: string | null;
-};
-
-// Stats pages only read these fields. Trimming the projection slashes payload
-// size by ~70% (notes, blobs, history, label data are the main bulk).
-const STATS_FIELDS = [
-  "dueDate",
-  "status",
-  "completedAt",
-  "createdAt",
-  "design",
-  "size",
-  "customerName",
-  "onHold",
-  "dueDatePauseOffsetDays",
-].join(",");
-const STATS_ITEMS_URL = `/api/items?includeDone=true&includeHidden=true&fields=${STATS_FIELDS}`;
-const ITEMS_CACHE_TTL_MS = 60_000;
-
-let itemsCache: { data: Item[]; ts: number } | null = null;
-let inflight: Promise<Item[]> | null = null;
-
-async function fetchStatsItems(): Promise<Item[]> {
-  if (inflight) return inflight;
-  const requestVersion = statsRevalidationVersion;
-  inflight = (async () => {
-    try {
-      const res = await fetch(STATS_ITEMS_URL);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const raw: Item[] = await res.json();
-      // Held items are paused: drop them here so every forward-looking stat that
-      // reads through useAllItems (backlog, overview, forecast, debt, today…)
-      // excludes them without each page needing its own filter.
-      const data = raw.filter((i) => !i.onHold);
-      if (requestVersion === statsRevalidationVersion) itemsCache = { data, ts: Date.now() };
-      return data;
-    } finally {
-      if (requestVersion === statsRevalidationVersion) inflight = null;
-    }
-  })();
-  return inflight;
-}
-
-export function useAllItems(): AllItemsState {
-  const version = useStatsRevalidationVersion();
-  const [state, setState] = useState<AllItemsState>(() => {
-    if (itemsCache && Date.now() - itemsCache.ts < ITEMS_CACHE_TTL_MS) {
-      return { items: itemsCache.data, loading: false, error: null };
-    }
-    return { items: null, loading: true, error: null };
-  });
-
-  useEffect(() => {
-    if (itemsCache && Date.now() - itemsCache.ts < ITEMS_CACHE_TTL_MS) {
-      setState({ items: itemsCache.data, loading: false, error: null });
-      return;
-    }
-    itemsCache = null;
-    let cancelled = false;
-    fetchStatsItems()
-      .then((data) => {
-        if (cancelled) return;
-        setState({ items: data, loading: false, error: null });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setState({
-          items: null,
-          loading: false,
-          error: err instanceof Error ? err.message : "Failed to load items",
-        });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [version]);
-
-  return state;
-}
-
-//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ 🪝 useAllItemsRich — extra fields for shipping/quality pages         ║
-//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-
-const RICH_FIELDS = `${STATS_FIELDS},purchasedShipment,shippingDetails,rating,tags,prevStatus`;
-const RICH_ITEMS_URL = `/api/items?includeDone=true&includeHidden=true&fields=${RICH_FIELDS}`;
-
-let richCache: { data: Item[]; ts: number } | null = null;
-let richInflight: Promise<Item[]> | null = null;
-
-async function fetchRichItems(): Promise<Item[]> {
-  if (richInflight) return richInflight;
-  const requestVersion = statsRevalidationVersion;
-  richInflight = (async () => {
-    try {
-      const res = await fetch(RICH_ITEMS_URL);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const raw: Item[] = await res.json();
-      // Mirror fetchStatsItems: held items are paused, excluded from every
-      // stats page that reads through useAllItemsRich.
-      const data = raw.filter((i) => !i.onHold);
-      if (requestVersion === statsRevalidationVersion) richCache = { data, ts: Date.now() };
-      return data;
-    } finally {
-      if (requestVersion === statsRevalidationVersion) richInflight = null;
-    }
-  })();
-  return richInflight;
-}
-
-export function useAllItemsRich(): AllItemsState {
-  const version = useStatsRevalidationVersion();
-  const [state, setState] = useState<AllItemsState>(() => {
-    if (richCache && Date.now() - richCache.ts < ITEMS_CACHE_TTL_MS) {
-      return { items: richCache.data, loading: false, error: null };
-    }
-    return { items: null, loading: true, error: null };
-  });
-
-  useEffect(() => {
-    if (richCache && Date.now() - richCache.ts < ITEMS_CACHE_TTL_MS) {
-      setState({ items: richCache.data, loading: false, error: null });
-      return;
-    }
-    richCache = null;
-    let cancelled = false;
-    fetchRichItems()
-      .then((data) => {
-        if (cancelled) return;
-        setState({ items: data, loading: false, error: null });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setState({
-          items: null,
-          loading: false,
-          error: err instanceof Error ? err.message : "Failed to load items",
-        });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [version]);
-
-  return state;
-}
-
-//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ 🪝 useActivities — fetches recent activity log for stats pages        ║
-//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-
-const ACTIVITIES_FETCH_LIMIT = 5000;
-const ACTIVITIES_CACHE_TTL_MS = 60_000;
-
-type ActivitiesState = {
-  activities: Activity[] | null;
-  // Oldest activity timestamp loaded when the fetch hit ACTIVITIES_FETCH_LIMIT
-  // (older history was cut off); null when the full log was returned. Pass it
-  // to history-reconstructing metrics so they skip items it may truncate.
-  historyStartMs: number | null;
-  loading: boolean;
-  error: string | null;
-};
-
-// The capped fetch drops the oldest activities silently; report where the
-// loaded history actually starts.
-export function activityHistoryStartMs(
-  activities: Pick<Activity, "timestamp">[],
-  limit: number = ACTIVITIES_FETCH_LIMIT
-): number | null {
-  if (activities.length < limit) return null;
-  let oldest = Infinity;
-  for (const a of activities) if (a.timestamp < oldest) oldest = a.timestamp;
-  return Number.isFinite(oldest) ? oldest : null;
-}
-
-let activitiesCache: { data: Activity[]; ts: number } | null = null;
-let activitiesInflight: Promise<Activity[]> | null = null;
-
-async function fetchActivities(): Promise<Activity[]> {
-  if (activitiesInflight) return activitiesInflight;
-  const requestVersion = statsRevalidationVersion;
-  activitiesInflight = (async () => {
-    try {
-      const res = await fetch(
-        `/api/activities?limit=${ACTIVITIES_FETCH_LIMIT}`
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as { activities: Activity[] };
-      if (requestVersion === statsRevalidationVersion) activitiesCache = { data: json.activities, ts: Date.now() };
-      return json.activities;
-    } finally {
-      if (requestVersion === statsRevalidationVersion) activitiesInflight = null;
-    }
-  })();
-  return activitiesInflight;
-}
-
-export function useActivities(): ActivitiesState {
-  const version = useStatsRevalidationVersion();
-  const [state, setState] = useState<ActivitiesState>(() => {
-    if (
-      activitiesCache &&
-      Date.now() - activitiesCache.ts < ACTIVITIES_CACHE_TTL_MS
-    ) {
-      return {
-        activities: activitiesCache.data,
-        historyStartMs: activityHistoryStartMs(activitiesCache.data),
-        loading: false,
-        error: null,
-      };
-    }
-    return { activities: null, historyStartMs: null, loading: true, error: null };
-  });
-
-  useEffect(() => {
-    if (
-      activitiesCache &&
-      Date.now() - activitiesCache.ts < ACTIVITIES_CACHE_TTL_MS
-    ) {
-      setState({
-        activities: activitiesCache.data,
-        historyStartMs: activityHistoryStartMs(activitiesCache.data),
-        loading: false,
-        error: null,
-      });
-      return;
-    }
-    activitiesCache = null;
-    let cancelled = false;
-    fetchActivities()
-      .then((data) => {
-        if (cancelled) return;
-        setState({
-          activities: data,
-          historyStartMs: activityHistoryStartMs(data),
-          loading: false,
-          error: null,
-        });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setState({
-          activities: null,
-          historyStartMs: null,
-          loading: false,
-          error:
-            err instanceof Error ? err.message : "Failed to load activities",
-        });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [version]);
-
-  return state;
-}
-
-//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ 🪝 useTrackingInfos — fetches tracker data for delivery speed         ║
-//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
-
-type TrackingState = {
-  trackingInfos: OrderTrackingInfo[] | null;
-  loading: boolean;
-  error: string | null;
-};
-
-let trackingCache: { data: OrderTrackingInfo[]; ts: number } | null = null;
-let trackingInflight: Promise<OrderTrackingInfo[]> | null = null;
-
-async function fetchTrackingInfos(): Promise<OrderTrackingInfo[]> {
-  if (trackingInflight) return trackingInflight;
-  const requestVersion = statsRevalidationVersion;
-  trackingInflight = (async () => {
-    try {
-      const res = await fetch("/api/order-tracking");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: OrderTrackingInfo[] = await res.json();
-      if (requestVersion === statsRevalidationVersion) trackingCache = { data, ts: Date.now() };
-      return data;
-    } finally {
-      if (requestVersion === statsRevalidationVersion) trackingInflight = null;
-    }
-  })();
-  return trackingInflight;
-}
-
-export function useTrackingInfos(): TrackingState {
-  const [state, setState] = useState<TrackingState>(() => {
-    if (trackingCache && Date.now() - trackingCache.ts < ITEMS_CACHE_TTL_MS) {
-      return {
-        trackingInfos: trackingCache.data,
-        loading: false,
-        error: null,
-      };
-    }
-    return { trackingInfos: null, loading: true, error: null };
-  });
-
-  useEffect(() => {
-    if (trackingCache && Date.now() - trackingCache.ts < ITEMS_CACHE_TTL_MS)
-      return;
-    let cancelled = false;
-    fetchTrackingInfos()
-      .then((data) => {
-        if (cancelled) return;
-        setState({ trackingInfos: data, loading: false, error: null });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setState({
-          trackingInfos: null,
-          loading: false,
-          error:
-            err instanceof Error ? err.message : "Failed to load tracking",
-        });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return state;
-}
-
-//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🪝 useHealthScore — server-computed health score (nav badge)         ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 // The nav badge renders on every page; computing health client-side meant
 // shipping every item ever (Done included) to each tab. The server computes
-// the same computeHealthScore and returns ~1 KB.
+// the same computeHealthScore and returns ~1 KB, shared by every consumer.
 const HEALTH_SCORE_URL = "/api/stats/health";
-const HEALTH_CACHE_TTL_MS = 60_000;
 
 export type HealthScorePayload = {
   total: number;
   breakdown: HealthBreakdownRow[];
 };
 
-type HealthScoreState = {
-  data: HealthScorePayload | null;
-  loading: boolean;
-  error: string | null;
-};
-
-let healthCache: { data: HealthScorePayload; ts: number } | null = null;
-let healthInflight: Promise<HealthScorePayload> | null = null;
-
-async function fetchHealthScore(bypassCache: boolean): Promise<HealthScorePayload> {
-  if (healthInflight) return healthInflight;
-  const requestVersion = statsRevalidationVersion;
-  healthInflight = (async () => {
-    try {
-      const url = bypassCache
-        ? `${HEALTH_SCORE_URL}?_=${Date.now()}`
-        : HEALTH_SCORE_URL;
-      const res = await fetch(url, bypassCache ? { cache: "no-store" } : {});
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as HealthScorePayload;
-      if (requestVersion === statsRevalidationVersion) healthCache = { data, ts: Date.now() };
-      return data;
-    } finally {
-      if (requestVersion === statsRevalidationVersion) healthInflight = null;
-    }
-  })();
-  return healthInflight;
-}
-
-export function useHealthScore(): HealthScoreState {
-  const version = useStatsRevalidationVersion();
-  const [state, setState] = useState<HealthScoreState>(() =>
-    healthCache && Date.now() - healthCache.ts < HEALTH_CACHE_TTL_MS
-      ? { data: healthCache.data, loading: false, error: null }
-      : { data: null, loading: true, error: null }
-  );
-
-  useEffect(() => {
-    if (healthCache && Date.now() - healthCache.ts < HEALTH_CACHE_TTL_MS) {
-      setState({ data: healthCache.data, loading: false, error: null });
-      return;
-    }
-    healthCache = null;
-    let cancelled = false;
-    fetchHealthScore(version > 0)
-      .then((data) => {
-        if (!cancelled) setState({ data, loading: false, error: null });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setState((prev) => ({
-          data: prev.data,
-          loading: false,
-          error: err instanceof Error ? err.message : "Failed to load health",
-        }));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [version]);
-
-  return state;
+export function useHealthScore(): SharedJsonState<HealthScorePayload> {
+  return useSharedJson<HealthScorePayload>(HEALTH_SCORE_URL);
 }
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗

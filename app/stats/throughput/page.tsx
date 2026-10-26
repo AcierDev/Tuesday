@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import {
-  bucketCompletionsByDay,
+  bucketDayCounts,
   summarizeDayBuckets,
 } from "@/lib/production-metrics";
 import {
@@ -14,7 +14,7 @@ import {
   StatTile,
   TimeSeriesChart,
   resolveRangeKey,
-  useAllItems,
+  useStatsSummary,
 } from "@/lib/stats-shared";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -29,15 +29,15 @@ const TOP_DAYS_LIMIT = 10;
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function ThroughputPage() {
-  const { items, loading, error } = useAllItems();
+  const { data: summary, loading, error } = useStatsSummary();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
   const { start, end, days, label: rangeLabel } = resolveRangeKey(range);
 
   const buckets = useMemo(() => {
-    if (!items) return [];
-    return bucketCompletionsByDay(items, start, end);
-  }, [items, start, end]);
+    if (!summary) return [];
+    return bucketDayCounts(summary.completions, start, end);
+  }, [summary, start, end]);
 
   const stats = useMemo(() => summarizeDayBuckets(buckets), [buckets]);
   const chartSeries = useMemo<ChartPoint[]>(

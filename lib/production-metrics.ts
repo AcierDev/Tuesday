@@ -29,6 +29,54 @@ export function completedAtIfDone(
     : null;
 }
 
+// Sparse per-day totals keyed by LA-local YYYY-MM-DD. The stats server ships
+// these (one small object for all history) instead of every item; the window
+// helpers below turn them back into the same buckets the item-based functions
+// produce.
+export type DayCounts = Record<string, number>;
+
+// Done items per LA completion day, over all history.
+export function countCompletionsByDay(
+  items: Pick<Item, "completedAt" | "status">[]
+): DayCounts {
+  const counts: DayCounts = {};
+  for (const item of items) {
+    const completedAt = completedAtIfDone(item);
+    if (completedAt === null) continue;
+    const key = laDayKey(new Date(completedAt));
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
+}
+
+// One entry per day in [startKey, endKey], zero-filled, ordered ascending.
+export function bucketDayCounts(
+  counts: DayCounts,
+  startKey: string,
+  endKey: string
+): DayBucket[] {
+  const span = dayDiffKeys(startKey, endKey);
+  const out: DayBucket[] = [];
+  for (let i = 0; i <= span; i++) {
+    const key = shiftDayKey(startKey, i);
+    out.push({ date: key, value: counts[key] ?? 0 });
+  }
+  return out;
+}
+
+// Sum of the per-day totals whose key falls in [startKey, endKey].
+export function sumDayCounts(
+  counts: DayCounts,
+  startKey: string,
+  endKey: string
+): number {
+  let total = 0;
+  for (const [key, value] of Object.entries(counts)) {
+    if (key >= startKey && key <= endKey) total += value;
+  }
+  return total;
+}
+
 // Bucket Done items by their completion day (LA-local). Returns one entry per
 // day in [startKey, endKey], including zero-completion days, ordered ascending.
 export function bucketCompletionsByDay(
@@ -36,21 +84,21 @@ export function bucketCompletionsByDay(
   startKey: string,
   endKey: string
 ): DayBucket[] {
-  const counts = new Map<string, number>();
+  return bucketDayCounts(countCompletionsByDay(items), startKey, endKey);
+}
+
+// Squares (W×H) of Done items per LA completion day; unparseable sizes add 0.
+export function countShippedSquaresByDay(
+  items: Pick<Item, "completedAt" | "status" | "size">[]
+): DayCounts {
+  const counts: DayCounts = {};
   for (const item of items) {
     const completedAt = completedAtIfDone(item);
     if (completedAt === null) continue;
     const key = laDayKey(new Date(completedAt));
-    if (key < startKey || key > endKey) continue;
-    counts.set(key, (counts.get(key) ?? 0) + 1);
+    counts[key] = (counts[key] ?? 0) + (parseSquareSize(item.size)?.squares ?? 0);
   }
-  const span = dayDiffKeys(startKey, endKey);
-  const out: DayBucket[] = [];
-  for (let i = 0; i <= span; i++) {
-    const key = shiftDayKey(startKey, i);
-    out.push({ date: key, value: counts.get(key) ?? 0 });
-  }
-  return out;
+  return counts;
 }
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -483,9 +531,42 @@ export type OnTimeStats = {
   avgDaysLate: number;
 };
 
-// On-time = a Done item's completedAt LA day key <= item.dueDate.
-export function computeOnTimeStats(
-  items: Pick<Item, "completedAt" | "dueDate" | "status">[],
+// Per LA completion day: dated Done items, how many shipped on time, how many
+// late and their summed days late. Summing days reproduces computeOnTimeStats
+// for any window.
+export type OnTimeDay = {
+  total: number;
+  onTime: number;
+  late: number;
+  lateDays: number;
+};
+export type OnTimeDays = Record<string, OnTimeDay>;
+
+export function countOnTimeByDay(
+  items: Pick<Item, "completedAt" | "dueDate" | "status">[]
+): OnTimeDays {
+  const days: OnTimeDays = {};
+  for (const item of items) {
+    const completedAt = completedAtIfDone(item);
+    if (completedAt === null) continue;
+    const due = item.dueDate?.slice(0, 10);
+    if (!due || due.length !== 10) continue;
+    const completedKey = laDayKey(new Date(completedAt));
+    const day = (days[completedKey] ??= { total: 0, onTime: 0, late: 0, lateDays: 0 });
+    day.total += 1;
+    const diff = dayDiffKeys(due, completedKey);
+    if (diff <= 0) {
+      day.onTime += 1;
+    } else {
+      day.late += 1;
+      day.lateDays += diff;
+    }
+  }
+  return days;
+}
+
+export function onTimeStatsFromDays(
+  days: OnTimeDays,
   startKey: string,
   endKey: string
 ): OnTimeStats {
@@ -493,21 +574,12 @@ export function computeOnTimeStats(
   let onTime = 0;
   let lateDaysSum = 0;
   let lateCount = 0;
-  for (const item of items) {
-    const completedAt = completedAtIfDone(item);
-    if (completedAt === null) continue;
-    const due = item.dueDate?.slice(0, 10);
-    if (!due || due.length !== 10) continue;
-    const completedKey = laDayKey(new Date(completedAt));
-    if (completedKey < startKey || completedKey > endKey) continue;
-    total += 1;
-    const diff = dayDiffKeys(due, completedKey);
-    if (diff <= 0) {
-      onTime += 1;
-    } else {
-      lateCount += 1;
-      lateDaysSum += diff;
-    }
+  for (const [key, day] of Object.entries(days)) {
+    if (key < startKey || key > endKey) continue;
+    total += day.total;
+    onTime += day.onTime;
+    lateCount += day.late;
+    lateDaysSum += day.lateDays;
   }
   return {
     total,
@@ -518,6 +590,15 @@ export function computeOnTimeStats(
   };
 }
 
+// On-time = a Done item's completedAt LA day key <= item.dueDate.
+export function computeOnTimeStats(
+  items: Pick<Item, "completedAt" | "dueDate" | "status">[],
+  startKey: string,
+  endKey: string
+): OnTimeStats {
+  return onTimeStatsFromDays(countOnTimeByDay(items), startKey, endKey);
+}
+
 // Weekly on-time % series. Each bucket is a 7-day window ending on the given
 // day. Skips weeks with zero completions (returns null for value).
 export type OnTimeWeekBucket = {
@@ -526,8 +607,8 @@ export type OnTimeWeekBucket = {
   total: number;
 };
 
-export function bucketOnTimeByWeek(
-  items: Pick<Item, "completedAt" | "dueDate" | "status">[],
+export function bucketOnTimeDaysByWeek(
+  days: OnTimeDays,
   startKey: string,
   endKey: string
 ): OnTimeWeekBucket[] {
@@ -536,7 +617,7 @@ export function bucketOnTimeByWeek(
   for (let i = 6; i <= span; i += 7) {
     const weekEnd = shiftDayKey(startKey, i);
     const weekStart = shiftDayKey(weekEnd, -6);
-    const stats = computeOnTimeStats(items, weekStart, weekEnd);
+    const stats = onTimeStatsFromDays(days, weekStart, weekEnd);
     buckets.push({
       date: weekEnd,
       total: stats.total,
@@ -544,6 +625,14 @@ export function bucketOnTimeByWeek(
     });
   }
   return buckets;
+}
+
+export function bucketOnTimeByWeek(
+  items: Pick<Item, "completedAt" | "dueDate" | "status">[],
+  startKey: string,
+  endKey: string
+): OnTimeWeekBucket[] {
+  return bucketOnTimeDaysByWeek(countOnTimeByDay(items), startKey, endKey);
 }
 
 // Items currently past their due date and not yet completed. Status decides
@@ -824,15 +913,19 @@ export function bucketByDayOfWeek(
   startKey: string,
   endKey: string
 ): DayOfWeekRow[] {
-  // Bucket completions per (calendar-day key) and per (day-of-week index).
-  const perDay = new Map<string, number>();
-  for (const item of items) {
-    const completedAt = completedAtIfDone(item);
-    if (completedAt === null) continue;
-    const key = laDayKey(new Date(completedAt));
-    if (key < startKey || key > endKey) continue;
-    perDay.set(key, (perDay.get(key) ?? 0) + 1);
-  }
+  return bucketDayCountsByDayOfWeek(
+    countCompletionsByDay(items),
+    startKey,
+    endKey
+  );
+}
+
+// Per day-of-week totals of per-day counts across [startKey, endKey].
+export function bucketDayCountsByDayOfWeek(
+  perDay: DayCounts,
+  startKey: string,
+  endKey: string
+): DayOfWeekRow[] {
   const totals = [0, 0, 0, 0, 0, 0, 0];
   const dayCounts = [0, 0, 0, 0, 0, 0, 0];
   const span = dayDiffKeys(startKey, endKey);
@@ -841,7 +934,7 @@ export function bucketByDayOfWeek(
     const [y, m, d] = key.split("-").map(Number);
     if (y === undefined || m === undefined || d === undefined) continue;
     const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-    const v = perDay.get(key) ?? 0;
+    const v = perDay[key] ?? 0;
     totals[dow]! += v;
     dayCounts[dow]! += 1;
   }
@@ -975,7 +1068,11 @@ export function computeDeliverySpeeds(
   for (const item of items) {
     const ship = item.purchasedShipment;
     if (!ship?.purchasedAt) continue;
-    const deliveredAt = deliveryByOrder.get(ship.orderId);
+    // Trackers are stored under the item's id; most saved shipments carry no
+    // (or a stale) orderId of their own.
+    const deliveredAt =
+      deliveryByOrder.get(item.id) ??
+      (ship.orderId ? deliveryByOrder.get(ship.orderId) : undefined);
     if (!deliveredAt) continue;
     const transitDays = (deliveredAt - ship.purchasedAt) / MS_PER_DAY_2;
     if (transitDays < 0) continue;

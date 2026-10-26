@@ -1,17 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
-import { laDayStartMs, shiftDayKey } from "@/lib/debt-metrics";
-import { computeLeadTimeStats, LeadTimeRow } from "@/lib/production-metrics";
-import { ItemStatus } from "@/typings/types";
+import type { LeadTimeRow, LeadTimeStats } from "@/lib/production-metrics";
 import {
   DEFAULT_RANGE,
   RangeKey,
   RangeSelector,
   StatTile,
   resolveRangeKey,
-  useAllItems,
+  useStatsView,
 } from "@/lib/stats-shared";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -25,28 +23,17 @@ const MIN_SAMPLE_COUNT = 1;
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function LeadTimePage() {
-  const { items, loading, error } = useAllItems();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
   const { start, end, label: rangeLabel } = resolveRangeKey(range);
 
-  const stats = useMemo(() => {
-    if (!items) return null;
-    // Half-open LA-day window [00:00 LA on start, 00:00 LA after end), so
-    // the bounds don't shift with the browser's zone or DST.
-    const startMs = laDayStartMs(start);
-    const endExclusiveMs = laDayStartMs(shiftDayKey(end, 1));
-    // Filter by completion date in range. Reopened orders keep a stale
-    // completedAt, so only Done items count as completed.
-    const filtered = items.filter(
-      (i) =>
-        i.status === ItemStatus.Done &&
-        !!i.completedAt &&
-        i.completedAt >= startMs &&
-        i.completedAt < endExclusiveMs
-    );
-    return computeLeadTimeStats(filtered);
-  }, [items, start, end]);
+  // Server-computed (lib/server/stats-views/history): lead times of Done items
+  // completed in the half-open LA-day window [start, end].
+  const {
+    data: stats,
+    loading,
+    error,
+  } = useStatsView<LeadTimeStats>("lead-time", { start, end });
 
   return (
     <>

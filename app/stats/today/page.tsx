@@ -1,59 +1,20 @@
 "use client";
 
-import { useMemo } from "react";
-
 import { ItemStatus } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
-import { dayDiffKeys, laDayKey, laDayRangeMs } from "@/lib/debt-metrics";
-import { StatTile, useAllItems } from "@/lib/stats-shared";
+import type { TodayView } from "@/lib/server/stats-views/active";
+import { StatTile, useStatsView } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🧩 PAGE                                                              ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
-const AT_RISK_DAYS = 3;
 const SHOP_TIME_ZONE = "America/Los_Angeles";
 
 export default function TodayPage() {
-  const { items, loading, error } = useAllItems();
-
-  const data = useMemo(() => {
-    if (!items) return null;
-    const today = laDayKey();
-    // Explicit LA-day bounds (DST-safe), independent of the browser's zone.
-    const { start: startOfToday, end: startOfTomorrow } = laDayRangeMs(today);
-
-    // Reopened orders keep a stale completedAt, so only Done counts.
-    const completedToday = items.filter(
-      (i) =>
-        i.status === ItemStatus.Done &&
-        !!i.completedAt &&
-        i.completedAt >= startOfToday &&
-        i.completedAt < startOfTomorrow
-    );
-    const dueToday = items.filter(
-      (i) =>
-        i.status !== ItemStatus.Done &&
-        i.status !== ItemStatus.Hidden &&
-        i.dueDate?.slice(0, 10) === today
-    );
-    const lateNow: { item: typeof items[number]; daysLate: number }[] = [];
-    const atRisk: { item: typeof items[number]; daysToDue: number }[] = [];
-    for (const item of items) {
-      if (item.status === ItemStatus.Done || item.status === ItemStatus.Hidden)
-        continue;
-      const due = item.dueDate?.slice(0, 10);
-      if (!due || due.length !== 10) continue;
-      const diff = dayDiffKeys(due, today);
-      if (diff > 0) lateNow.push({ item, daysLate: diff });
-      else if (diff < 0 && Math.abs(diff) <= AT_RISK_DAYS)
-        atRisk.push({ item, daysToDue: Math.abs(diff) });
-    }
-    lateNow.sort((a, b) => b.daysLate - a.daysLate);
-    atRisk.sort((a, b) => a.daysToDue - b.daysToDue);
-    return { completedToday, dueToday, lateNow, atRisk };
-  }, [items]);
+  // Server-computed (lib/server/stats-views/active): completed/due/late/at-risk.
+  const { data, loading, error } = useStatsView<TodayView>("today");
 
   return (
     <>
@@ -80,8 +41,8 @@ export default function TodayPage() {
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <StatTile
           label="Completed today"
-          value={data?.completedToday.length ?? 0}
-          tone={(data?.completedToday.length ?? 0) > 0 ? "good" : "neutral"}
+          value={data?.completedToday ?? 0}
+          tone={(data?.completedToday ?? 0) > 0 ? "good" : "neutral"}
         />
         <StatTile
           label="Due today"
@@ -95,7 +56,7 @@ export default function TodayPage() {
         <StatTile
           label="At risk"
           value={data?.atRisk.length ?? 0}
-          sublabel={`due in ≤${AT_RISK_DAYS}d`}
+          sublabel={data ? `due in ≤${data.atRiskDays}d` : undefined}
         />
       </section>
 

@@ -2,10 +2,9 @@
 
 import { useMemo } from "react";
 
-import { ItemStatus } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
-import { computeStatusDurations } from "@/lib/production-metrics";
-import { useActivities, useAllItems } from "@/lib/stats-shared";
+import type { BottlenecksView } from "@/lib/server/stats-views/history";
+import { useStatsView } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -13,22 +12,10 @@ import { cn } from "@/utils/functions";
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function BottlenecksPage() {
-  const { items, loading: il, error: ie } = useAllItems();
-  const {
-    activities,
-    historyStartMs,
-    loading: al,
-    error: ae,
-  } = useActivities();
-
-  // historyStartMs: the activity feed is capped, so items created before the
-  // oldest loaded activity may be missing transitions — they're skipped.
-  const rows = useMemo(() => {
-    if (!items || !activities) return null;
-    return computeStatusDurations(items, activities, historyStartMs).filter(
-      (r) => r.status !== ItemStatus.Hidden
-    );
-  }, [items, activities, historyStartMs]);
+  // Server-computed (lib/server/stats-views/history) over the full status
+  // history, so no item is skipped for a truncated activity feed.
+  const { data, loading, error } = useStatsView<BottlenecksView>("bottlenecks");
+  const rows = data?.rows ?? null;
 
   const maxAvg = useMemo(
     () => (rows ? Math.max(0, ...rows.map((r) => r.avgDays)) : 0),
@@ -51,9 +38,9 @@ export default function BottlenecksPage() {
         </p>
       </header>
 
-      {(il || al || ie || ae) && (
+      {(loading || error) && (
         <p className="text-xs text-slate-400 mb-4">
-          {il || al ? "Loading…" : "Failed to load."}
+          {loading ? "Loading…" : "Failed to load."}
         </p>
       )}
 

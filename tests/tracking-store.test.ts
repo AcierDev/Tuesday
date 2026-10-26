@@ -23,6 +23,8 @@ function tracker(id: string, status: Tracker["status"]): Tracker {
 
 const requests: string[] = [];
 let useTrackingStore: typeof TrackingStoreHook;
+let requestsBeforeBoard: string[] = [];
+let streamsBeforeBoard = 0;
 
 before(async () => {
   (globalThis as { window?: unknown }).window = {};
@@ -38,8 +40,21 @@ before(async () => {
       headers: { "Content-Type": "application/json" },
     });
   }) as typeof fetch;
+  (globalThis as { requestIdleCallback?: (callback: () => void) => number }).requestIdleCallback = (callback) => {
+    callback();
+    return 0;
+  };
   ({ useTrackingStore } = await import("../stores/useTrackingStore"));
   await new Promise<void>((resolve) => setImmediate(resolve));
+  requestsBeforeBoard = [...requests];
+  streamsBeforeBoard = FakeEventSource.instances.length;
+  (await import("../lib/deferred-boot")).markBoardBootSettled();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+});
+
+test("trackers and their live stream wait for the board's first load", () => {
+  assert.deepEqual(requestsBeforeBoard, []);
+  assert.equal(streamsBeforeBoard, 0);
 });
 
 test("live tracking listens on the authenticated changes route, not the webhook", () => {

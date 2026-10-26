@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 
 import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
-import { bucketCompletionsByDay } from "@/lib/production-metrics";
-import { useAllItems } from "@/lib/stats-shared";
+import { bucketDayCounts } from "@/lib/production-metrics";
+import { useStatsSummary } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -20,20 +20,20 @@ const CELL_GAP_PX = 2;
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function CalendarPage() {
-  const { items, loading, error } = useAllItems();
+  const { data: summary, loading, error } = useStatsSummary();
 
   const data = useMemo(() => {
-    if (!items) return null;
+    if (!summary) return null;
     const today = laDayKey();
     // Align start to a Sunday so the calendar grid aligns properly.
     let start = shiftDayKey(today, -(RANGE_DAYS - 1));
     const [y, m, d] = start.split("-").map(Number);
     const dow = new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay();
     if (dow !== 0) start = shiftDayKey(start, -dow);
-    const buckets = bucketCompletionsByDay(items, start, today);
+    const buckets = bucketDayCounts(summary.completions, start, today);
     const max = Math.max(0, ...buckets.map((b) => b.value));
     return { buckets, max, start };
-  }, [items]);
+  }, [summary]);
 
   // Build week columns of 7 day cells each.
   const columns = useMemo(() => {

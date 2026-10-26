@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { type ShippingSettings } from "@/typings/types";
 import { shouldBootAppData } from "@/lib/app-boot";
+import { afterBoardBoot } from "@/lib/deferred-boot";
 
 interface ShippingSettingsState {
   settings: ShippingSettings | null;
@@ -71,11 +72,15 @@ export const useShippingSettingsStore = create<ShippingSettingsState>(
   })
 );
 
+// Prefetch for the setup utility and label dialogs (the FedEx dialog refetches
+// on open anyway) once the board's first load has settled.
 if (shouldBootAppData()) {
-  useShippingSettingsStore
-    .getState()
-    .fetchSettings()
-    .catch((error) => {
-      console.error("Failed to initialize shipping settings store", error);
-    });
+  afterBoardBoot(() => {
+    useShippingSettingsStore
+      .getState()
+      .fetchSettings()
+      .catch((error) => {
+        console.error("Failed to initialize shipping settings store", error);
+      });
+  });
 }

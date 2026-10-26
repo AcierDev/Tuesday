@@ -26,11 +26,13 @@ import {
   summarizeGluedForecast,
 } from "@/lib/production-metrics";
 import {
+  fetchSharedJson,
   invalidateStatsCaches,
   useGluedStats,
   useHealthScore,
   useLaToday,
 } from "@/lib/stats-shared";
+import { afterBoardBoot, useAfterBoardBoot } from "@/lib/deferred-boot";
 import { MiniSparkline } from "@/components/orders/MiniSparkline";
 import { cn } from "@/utils/functions";
 import { orderBoardStatus } from "@/lib/order-wip";
@@ -65,39 +67,26 @@ const BACKLOG_ROUND_TO = 100;
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 // The nav mounts on every page (and remounts on layout changes / StrictMode),
-// which fired each snapshot GET twice per /orders load. Share one promise per
-// URL for a few minutes — the server caches these for 5 minutes anyway.
+// which fired each snapshot GET twice per /orders load. fetchSharedJson shares
+// one request per URL with every other stats consumer and reuses it for a few
+// minutes — the server caches these for 5 minutes anyway.
 const SNAPSHOT_SPARKLINE_TTL_MS = 5 * 60_000;
-const snapshotSeriesRequests = new Map<
-  string,
-  { promise: Promise<(number | null)[]>; ts: number }
->();
+const EMPTY_HISTORY: number[] = [];
 
-function fetchSnapshotSeries(
+type SnapshotSeriesResponse = {
+  series: Record<string, number | null | string | boolean>[];
+};
+
+async function fetchSnapshotSeries(
   url: string,
   field: "totalDebt" | "squares"
 ): Promise<(number | null)[]> {
-  const cached = snapshotSeriesRequests.get(url);
-  if (cached && Date.now() - cached.ts < SNAPSHOT_SPARKLINE_TTL_MS) {
-    return cached.promise;
-  }
-  const promise = (async () => {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = (await res.json()) as {
-      series: Record<string, number | null | string | boolean>[];
-    };
-    return json.series.map((p) =>
-      typeof p[field] === "number" ? (p[field] as number) : null
-    );
-  })();
-  snapshotSeriesRequests.set(url, { promise, ts: Date.now() });
-  promise.catch(() => {
-    if (snapshotSeriesRequests.get(url)?.promise === promise) {
-      snapshotSeriesRequests.delete(url);
-    }
+  const json = await fetchSharedJson<SnapshotSeriesResponse>(url, {
+    ttlMs: SNAPSHOT_SPARKLINE_TTL_MS,
   });
-  return promise;
+  return json.series.map((p) =>
+    typeof p[field] === "number" ? (p[field] as number) : null
+  );
 }
 
 // Days before the first-ever snapshot come back null; the sparkline only
@@ -277,11 +266,16 @@ function FedExPickupBadgeContent() {
         console.error("Failed to load FedEx pickup status", err);
       }
     }
-    load();
-    const interval = setInterval(load, FEDEX_PICKUP_POLL_MS);
+    // First check waits for the board's first load and an idle moment.
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const cancelBoot = afterBoardBoot(() => {
+      load();
+      interval = setInterval(load, FEDEX_PICKUP_POLL_MS);
+    });
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      cancelBoot();
+      if (interval) clearInterval(interval);
     };
   }, []);
 
@@ -473,7 +467,6 @@ export function NavSectionCounters() {
 
 export function NavMetricsBadges() {
   const items = useOrderStore((state) => state.items);
-
   // Held items are paused: excluded from debt and backlog everywhere (stats
   // pages, snapshots, health), so the nav matches them.
   const totalDebt = useMemo(() => {
@@ -487,6 +480,44 @@ export function NavMetricsBadges() {
     return computeTotalDebt(active);
   }, [items]);
 
+  const backlogSquares = useMemo(() => {
+    if (!items) return null;
+    let total = 0;
+    for (const item of items) {
+      if (!BACKLOG_STATUSES.has(item.status) || item.onHold) continue;
+      const parsed = parseSquareSize(item.size);
+      if (!parsed) continue;
+      total += parsed.squares;
+    }
+    return Math.round(total / BACKLOG_ROUND_TO) * BACKLOG_ROUND_TO;
+  }, [items]);
+
+  // Server-backed badges (health, glue pace, snapshot sparklines) wait for
+  // the board's first load and an idle moment; until then they show the same
+  // loading state they always showed while their requests were in flight.
+  const statsReady = useAfterBoardBoot();
+  return statsReady ? (
+    <NavMetricsLiveBadges totalDebt={totalDebt} backlogSquares={backlogSquares} />
+  ) : (
+    <NavMetricsBadgesView
+      healthScore={null}
+      totalDebt={totalDebt}
+      debtHistory={EMPTY_HISTORY}
+      backlogSquares={backlogSquares}
+      backlogHistory={EMPTY_HISTORY}
+      stableForecast={null}
+      gluedToday={null}
+    />
+  );
+}
+
+function NavMetricsLiveBadges({
+  totalDebt,
+  backlogSquares,
+}: {
+  totalDebt: number;
+  backlogSquares: number | null;
+}) {
   // Server-computed: the nav used to pull every item (Done included) plus
   // 5,000 activities on every page and rebuild glue events on each planner
   // drag. Health is one small response; glued shares the planner's cached
@@ -562,18 +593,6 @@ export function NavMetricsBadges() {
     };
   }, []);
 
-  const backlogSquares = useMemo(() => {
-    if (!items) return null;
-    let total = 0;
-    for (const item of items) {
-      if (!BACKLOG_STATUSES.has(item.status) || item.onHold) continue;
-      const parsed = parseSquareSize(item.size);
-      if (!parsed) continue;
-      total += parsed.squares;
-    }
-    return Math.round(total / BACKLOG_ROUND_TO) * BACKLOG_ROUND_TO;
-  }, [items]);
-
   const [debtHistory, setDebtHistory] = useState<number[]>([]);
   const [backlogHistory, setBacklogHistory] = useState<number[]>([]);
   useEffect(() => {
@@ -599,6 +618,38 @@ export function NavMetricsBadges() {
     };
   }, []);
 
+  return (
+    <NavMetricsBadgesView
+      healthScore={healthScore}
+      totalDebt={totalDebt}
+      debtHistory={debtHistory}
+      backlogSquares={backlogSquares}
+      backlogHistory={backlogHistory}
+      stableForecast={stableForecast}
+      gluedToday={gluedToday}
+    />
+  );
+}
+
+type NavMetricsBadgesViewProps = {
+  healthScore: number | null;
+  totalDebt: number;
+  debtHistory: number[];
+  backlogSquares: number | null;
+  backlogHistory: number[];
+  stableForecast: number | null;
+  gluedToday: { squares: number; orders: number } | null;
+};
+
+function NavMetricsBadgesView({
+  healthScore,
+  totalDebt,
+  debtHistory,
+  backlogSquares,
+  backlogHistory,
+  stableForecast,
+  gluedToday,
+}: NavMetricsBadgesViewProps) {
   return (
     <div className="px-1 py-2 flex flex-col items-center gap-1.5">
       <Link

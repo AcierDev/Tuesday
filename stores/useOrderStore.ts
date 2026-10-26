@@ -14,6 +14,7 @@ import {
   stripDerivedItemFields,
 } from "@/lib/order-patch";
 import { shouldBootAppData } from "@/lib/app-boot";
+import { markBoardBootSettled } from "@/lib/deferred-boot";
 
 const SEARCH_DEBOUNCE_MS = 300;
 const DONE_ITEMS_PAGE_SIZE = 25;
@@ -771,7 +772,13 @@ export const useOrderStore = create<OrderState>()(
 
       init: async () => {
         const store = get();
-        await store.loadItems();
+        try {
+          await store.loadItems();
+        } finally {
+          // The board's first load is the critical request; deferred boot
+          // work (labels, trackers, nav stats, scans) starts after it.
+          markBoardBootSettled();
+        }
       },
 
       checkDuplicate: (item: Item): boolean => {

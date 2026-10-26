@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { ActivityType } from "@/typings/types";
-import { useActivities } from "@/lib/stats-shared";
+import { Activity, ActivityType } from "@/typings/types";
+import {
+  fetchSharedJson,
+  useStatsRevalidationVersion,
+} from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -35,22 +38,86 @@ const FILTERS: { key: ActivityType | "all"; label: string }[] = [
 ];
 
 const PAGE_SIZE = 100;
+const ACTIVITIES_URL = "/api/activities";
+
+interface ActivityPage {
+  activities: Activity[];
+  total: number;
+}
+interface Feed {
+  activities: Activity[];
+  total: number;
+  pages: number;
+}
+
+// One server page of the feed (newest first), with the full match count.
+function activityPageUrl(filter: ActivityType | "all", page: number): string {
+  const params = new URLSearchParams({
+    limit: String(PAGE_SIZE),
+    skip: String(page * PAGE_SIZE),
+    includeTotal: "1",
+  });
+  if (filter !== "all") params.set("type", filter);
+  return `${ACTIVITIES_URL}?${params.toString()}`;
+}
+
+// Pages are fetched by offset, so an event logged between two page loads can
+// appear on both; keep its first copy.
+function mergePages(pages: ActivityPage[]): Feed {
+  const seen = new Set<string>();
+  const activities: Activity[] = [];
+  for (const page of pages) {
+    for (const a of page.activities) {
+      if (seen.has(a._id)) continue;
+      seen.add(a._id);
+      activities.push(a);
+    }
+  }
+  return {
+    activities,
+    total: Math.max(0, ...pages.map((p) => p.total)),
+    pages: pages.length,
+  };
+}
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🧩 PAGE                                                              ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function ActivityFeedPage() {
-  const { activities, loading, error } = useActivities();
   const [filter, setFilter] = useState<ActivityType | "all">("all");
-  const [shown, setShown] = useState(PAGE_SIZE);
+  const [pageCount, setPageCount] = useState(1);
+  const [feed, setFeed] = useState<Feed | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const version = useStatsRevalidationVersion();
 
-  const filtered = useMemo(() => {
-    if (!activities) return [];
-    return filter === "all"
-      ? activities
-      : activities.filter((a) => a.type === filter);
-  }, [activities, filter]);
+  // The server pages through the whole log (no 5,000-event cap). Every loaded
+  // page refetches after a write (stats invalidation), keeping the depth the
+  // user scrolled to; requests are shared with any other mounted copy.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(
+      Array.from({ length: pageCount }, (_, page) =>
+        fetchSharedJson<ActivityPage>(activityPageUrl(filter, page))
+      )
+    )
+      .then((pages) => {
+        if (cancelled) return;
+        setFeed(mergePages(pages));
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Failed to load activities");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filter, pageCount, version]);
+
+  const loading = feed === null && error === null;
+  const filtered = feed?.activities ?? [];
+  const remaining = feed ? Math.max(0, feed.total - filtered.length) : 0;
 
   return (
     <>
@@ -60,7 +127,7 @@ export default function ActivityFeedPage() {
             Activity feed
           </p>
           <h2 className="mt-1 heading-page">
-            {activities ? `${filtered.length} events` : "—"}
+            {feed ? `${feed.total} events` : "—"}
           </h2>
         </div>
         <div className="inline-flex rounded-xl glass-surface p-1 gap-1 flex-wrap">
@@ -69,8 +136,11 @@ export default function ActivityFeedPage() {
               key={f.key}
               type="button"
               onClick={() => {
+                if (f.key === filter) return;
                 setFilter(f.key);
-                setShown(PAGE_SIZE);
+                setPageCount(1);
+                setFeed(null);
+                setError(null);
               }}
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap",
@@ -96,7 +166,7 @@ export default function ActivityFeedPage() {
           <p className="text-sm text-slate-400">No activity.</p>
         ) : (
           <div className="space-y-2">
-            {filtered.slice(0, shown).map((a) => {
+            {filtered.map((a) => {
               const colorClass = TYPE_COLORS[a.type];
               const customer = a.metadata?.customerName;
               return (
@@ -144,13 +214,13 @@ export default function ActivityFeedPage() {
                 </div>
               );
             })}
-            {filtered.length > shown && (
+            {remaining > 0 && (
               <div className="pt-3 text-center">
                 <button
-                  onClick={() => setShown((s) => s + PAGE_SIZE)}
+                  onClick={() => setPageCount((feed?.pages ?? 0) + 1)}
                   className="px-4 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg bg-white/10 hover:bg-white/15 text-white transition"
                 >
-                  Show {Math.min(PAGE_SIZE, filtered.length - shown)} more
+                  Show {Math.min(PAGE_SIZE, remaining)} more
                 </button>
               </div>
             )}

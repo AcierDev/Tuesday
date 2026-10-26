@@ -2,14 +2,14 @@
 
 import { useMemo, useState } from "react";
 
-import { bucketCompletionsByDay } from "@/lib/production-metrics";
+import { bucketDayCounts } from "@/lib/production-metrics";
 import {
   DEFAULT_RANGE,
   RangeKey,
   RangeSelector,
   StatTile,
   resolveRangeKey,
-  useAllItems,
+  useStatsSummary,
 } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
@@ -24,14 +24,14 @@ const SIGMA_THRESHOLD = 2;
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function AnomaliesPage() {
-  const { items, loading, error } = useAllItems();
+  const { data: summary, loading, error } = useStatsSummary();
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
   const { start, end } = resolveRangeKey(range);
 
   const data = useMemo(() => {
-    if (!items) return null;
-    const buckets = bucketCompletionsByDay(items, start, end);
+    if (!summary) return null;
+    const buckets = bucketDayCounts(summary.completions, start, end);
     if (buckets.length === 0)
       return { buckets, mean: 0, stddev: 0, anomalies: [] };
     const values = buckets.map((b) => b.value);
@@ -44,7 +44,7 @@ export default function AnomaliesPage() {
       .filter((b) => Math.abs(b.z) >= SIGMA_THRESHOLD)
       .sort((a, b) => Math.abs(b.z) - Math.abs(a.z));
     return { buckets, mean, stddev, anomalies };
-  }, [items, start, end]);
+  }, [summary, start, end]);
 
   return (
     <>

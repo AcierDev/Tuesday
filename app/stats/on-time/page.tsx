@@ -5,10 +5,10 @@ import { useMemo, useState } from "react";
 import { ItemStatus } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
 import {
-  bucketOnTimeByWeek,
-  computeCurrentlyLate,
-  computeOnTimeStats,
+  bucketOnTimeDaysByWeek,
+  onTimeStatsFromDays,
 } from "@/lib/production-metrics";
+import type { LateView } from "@/lib/server/stats-views/active";
 import {
   ChartPoint,
   DEFAULT_RANGE,
@@ -17,7 +17,8 @@ import {
   StatTile,
   TimeSeriesChart,
   resolveRangeKey,
-  useAllItems,
+  useStatsSummary,
+  useStatsView,
 } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
@@ -42,33 +43,32 @@ const STATUS_LABELS: Record<ItemStatus, string> = {
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function OnTimePage() {
-  const { items, loading, error } = useAllItems();
+  const summaryState = useStatsSummary();
+  const lateState = useStatsView<LateView>("late");
+  const summary = summaryState.data;
+  const loading = summaryState.loading || lateState.loading;
+  const error = summaryState.error ?? lateState.error;
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
   const { start, end, label: rangeLabel } = resolveRangeKey(range);
 
   const stats = useMemo(() => {
-    if (!items) return null;
-    return computeOnTimeStats(items, start, end);
-  }, [items, start, end]);
+    if (!summary) return null;
+    return onTimeStatsFromDays(summary.onTime, start, end);
+  }, [summary, start, end]);
 
   const weekly = useMemo(() => {
-    if (!items) return [];
-    return bucketOnTimeByWeek(items, start, end);
-  }, [items, start, end]);
+    if (!summary) return [];
+    return bucketOnTimeDaysByWeek(summary.onTime, start, end);
+  }, [summary, start, end]);
 
   const chartSeries = useMemo<ChartPoint[]>(
     () => weekly.map((b) => ({ date: b.date, value: b.value })),
     [weekly]
   );
 
-  const lateNow = useMemo(() => {
-    if (!items) return [];
-    const activeOnly = items.filter(
-      (i) => i.status !== ItemStatus.Done && i.status !== ItemStatus.Hidden
-    );
-    return computeCurrentlyLate(activeOnly);
-  }, [items]);
+  // Open orders past due, computed on the server over current items.
+  const lateNow = lateState.data?.rows ?? [];
 
   // No dated shipments in range → "—" (neutral), not a red 0%.
   const onTimePct = stats?.onTimePct ?? null;

@@ -8,6 +8,7 @@ import { AskTuesdayResults } from "./AskTuesdayResults";
 import { CustomerChatSummary } from "./CustomerChatSummary";
 import type { CustomerChatOrderReference } from "./OrderCustomerChatIcon";
 import { useTuesdayScanPolling } from "./useTuesdayScanPolling";
+import { useAfterBoardBoot } from "@/lib/deferred-boot";
 
 const EMPTY_COUNT = 0;
 const SINGLE_ISSUE_COUNT = 1;
@@ -63,8 +64,22 @@ function withoutCompleted(scan: TuesdayScanResponse | null, completedIds: Set<st
   };
 }
 
+// Until the deferred polling starts the first check is queued, so show it as
+// checking rather than unknown.
+const QUEUED_SCAN: ScanState = { response: null, pending: true, error: null, refresh: () => undefined };
+
+// Runs the issue-scan polling and hands each state to the provider. Mounted
+// only after the board's first load and an idle moment, so the scan request
+// never competes with the board's critical request.
+function ScanPolling({ onState }: { onState: (scan: ScanState) => void }) {
+  const { response, pending, error, refresh } = useTuesdayScanPolling();
+  useEffect(() => { onState({ response, pending, error, refresh }); }, [response, pending, error, refresh, onState]);
+  return null;
+}
+
 export function TuesdayScanProvider({ children }: { children: React.ReactNode }) {
-  const polledScan = useTuesdayScanPolling();
+  const scanReady = useAfterBoardBoot();
+  const [polledScan, setPolledScan] = useState<ScanState>(QUEUED_SCAN);
   const items = useOrderStore((state) => state.items) ?? EMPTY_ITEMS;
   const doneItems = useOrderStore((state) => state.doneItems) ?? EMPTY_ITEMS;
   const rememberedCompletedIds = useRef(new Set<string>());
@@ -162,6 +177,7 @@ export function TuesdayScanProvider({ children }: { children: React.ReactNode })
   } : null;
 
   return <TuesdayScanContext.Provider value={value}>
+    {scanReady && <ScanPolling onState={setPolledScan} />}
     {children}
     {visible && selectedOrder && result && <section id={dialogId} role="dialog" aria-modal={false}
       aria-label={`Issues for ${selectedOrder.customerName || "order"} ${selectedOrder.id}`}

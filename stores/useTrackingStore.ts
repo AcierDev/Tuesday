@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { OrderTrackingInfo, Tracker } from "@/typings/types";
 import { shouldBootAppData } from "@/lib/app-boot";
+import { afterBoardBoot } from "@/lib/deferred-boot";
 
 const TRACKING_CHANGES_URL = "/api/tracking/changes";
 const ORDER_TRACKING_URL = "/api/order-tracking";
@@ -211,12 +212,15 @@ export function useOrderTracking(orderId: string): OrderTrackingInfo | undefined
   return useTrackingStore((state) => state.trackingByOrderId[orderId]);
 }
 
-// Initialize the store after creation on the client only
+// Initialize on the client once the board's first load has settled: the lean
+// tracker list is large and its live stream holds a connection open.
 if (shouldBootAppData()) {
-  useTrackingStore
-    .getState()
-    .init()
-    .catch((error) => {
-      console.error("Failed to initialize tracking store", error);
-    });
+  afterBoardBoot(() => {
+    useTrackingStore
+      .getState()
+      .init()
+      .catch((error) => {
+        console.error("Failed to initialize tracking store", error);
+      });
+  });
 }

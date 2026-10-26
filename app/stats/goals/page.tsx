@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 
 import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import {
-  bucketCompletionsByDay,
-  computeOnTimeStats,
+  bucketDayCounts,
+  onTimeStatsFromDays,
 } from "@/lib/production-metrics";
-import { useAllItems } from "@/lib/stats-shared";
+import { useStatsSummary } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -34,7 +34,7 @@ const DEFAULT_GOALS: Goals = {
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export default function GoalsPage() {
-  const { items, loading, error } = useAllItems();
+  const { data: summary, loading, error } = useStatsSummary();
   const [goals, setGoals] = useState<Goals>(DEFAULT_GOALS);
 
   useEffect(() => {
@@ -55,18 +55,18 @@ export default function GoalsPage() {
   }, [goals]);
 
   const actuals = useMemo(() => {
-    if (!items) return null;
+    if (!summary) return null;
     const today = laDayKey();
     const start = shiftDayKey(today, -(RANGE_DAYS - 1));
-    const buckets = bucketCompletionsByDay(items, start, today);
+    const buckets = bucketDayCounts(summary.completions, start, today);
     const total = buckets.reduce((s, b) => s + b.value, 0);
     const weeklyAvg = (total / RANGE_DAYS) * 7;
-    const onTime = computeOnTimeStats(items, start, today);
+    const onTime = onTimeStatsFromDays(summary.onTime, start, today);
     return {
       weeklyThroughput: weeklyAvg,
       onTimePct: onTime.onTimePct,
     };
-  }, [items]);
+  }, [summary]);
 
   return (
     <>

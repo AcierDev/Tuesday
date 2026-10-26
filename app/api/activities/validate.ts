@@ -7,11 +7,12 @@ export const ACTIVITY_MAX_FIELD_LENGTH = 100;
 export const ACTIVITY_MAX_VALUE_LENGTH = 2_000;
 export const ACTIVITY_MAX_METADATA_LENGTH = 300;
 export const ACTIVITIES_DEFAULT_LIMIT = 50;
-// The stats pages request up to 5000 records at once.
 export const ACTIVITIES_MAX_LIMIT = 5_000;
 export const ACTIVITIES_MAX_SKIP = 100_000;
 
 const ACTIVITY_TYPES = new Set<ActivityType>(["update", "create", "delete", "status_change", "restore"]);
+
+export const isActivityType = (value: string): value is ActivityType => ACTIVITY_TYPES.has(value as ActivityType);
 const METADATA_FIELDS = ["customerName", "design", "size"] as const;
 
 const record = (value: unknown): Record<string, unknown> | null =>

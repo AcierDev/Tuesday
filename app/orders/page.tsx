@@ -41,6 +41,8 @@ import {
   buildStatusUndo,
 } from "@/components/orders/utils/statusMove";
 import { findScrollContainer } from "@/components/orders/utils/scrollContainer";
+import { afterBoardBoot } from "@/lib/deferred-boot";
+import { laDayKey } from "@/lib/debt-metrics";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🎯 STATUS DROP TARGETS                                               ║
@@ -131,6 +133,10 @@ const DROP_ANIMATION: DropAnimation = {
 
 const SKELETON_ROW_COUNT = 4;
 
+// LA day whose snapshot fill this tab already requested (insert-only server
+// side, so repeating it on every visit to the board only costs requests).
+let snapshotFillDayKey: string | null = null;
+
 function InitialOrdersSkeleton() {
   return (
     <div className="space-y-6">
@@ -180,8 +186,11 @@ export default function OrderManagementPage() {
   const showInitialSkeleton =
     lastFetched === null && isLoading && items.length === 0;
 
+  // The store loads the board when the app boots and keeps it live over SSE;
+  // only retry here if that first load has not succeeded (it shares any
+  // request already in flight).
   useEffect(() => {
-    loadItems();
+    if (useOrderStore.getState().lastFetched === null) loadItems();
   }, [loadItems]);
 
   // One-shot scroll to bottom on initial load. Wait until items are loaded so
@@ -234,10 +243,19 @@ export default function OrderManagementPage() {
     currentType,
   });
 
-  useEffect(() => {
-    fetch("/api/debt-snapshots", { method: "POST" }).catch(() => {});
-    fetch("/api/backlog-snapshots", { method: "POST" }).catch(() => {});
-  }, []);
+  // Fill today's debt/backlog snapshots if the daily job has not yet — once
+  // per LA day per tab, after the board's first load and an idle moment.
+  useEffect(
+    () =>
+      afterBoardBoot(() => {
+        const today = laDayKey();
+        if (snapshotFillDayKey === today) return;
+        snapshotFillDayKey = today;
+        fetch("/api/debt-snapshots", { method: "POST" }).catch(() => {});
+        fetch("/api/backlog-snapshots", { method: "POST" }).catch(() => {});
+      }),
+    []
+  );
 
   const shipItem = useCallback(async (_itemId: string) => {}, []);
 
