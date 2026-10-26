@@ -13,17 +13,15 @@ import {
 } from "@/lib/debt-metrics";
 import {
   bucketCompletionsByDay,
-  bucketGluedSquaresByDay,
   bucketOnTimeByWeek,
-  buildGluedEvents,
-  buildScheduledDayByItemId,
+  completedAtIfDone,
   computeCurrentlyLate,
   computeHealthScore,
   computeOnTimeStats,
   parseSquareSize,
-  RECENCY_WEIGHTED_FORECAST,
+  recentGluedWindow,
   summarizeDayBuckets,
-  summarizeRecencyWeighted,
+  summarizeGluedForecast,
 } from "@/lib/production-metrics";
 import {
   DEFAULT_RANGE,
@@ -32,10 +30,10 @@ import {
   smoothPath,
   StatTile,
   resolveRangeKey,
-  useActivities,
   useAllItems,
+  useGluedStats,
+  useLaToday,
 } from "@/lib/stats-shared";
-import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { cn } from "@/utils/functions";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
@@ -71,13 +69,20 @@ const WORKING_DAYS_PER_WEEK = 4;
 //║ 🧩 PAGE                                                              ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
-type DebtSnapshot = { date: string; totalDebt: number; recorded?: boolean };
-type BacklogSnapshot = { date: string; squares: number; recorded?: boolean };
+// null = before the first-ever snapshot (no history), not zero.
+type DebtSnapshot = {
+  date: string;
+  totalDebt: number | null;
+  recorded?: boolean;
+};
+type BacklogSnapshot = {
+  date: string;
+  squares: number | null;
+  recorded?: boolean;
+};
 
 export default function OverviewPage() {
   const { items, loading, error } = useAllItems();
-  const { activities } = useActivities();
-  const schedules = useWeeklyScheduleStore((s) => s.schedules);
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
   const [debtByRange, setDebtByRange] = useState<
     Partial<Record<RangeKey, DebtSnapshot[]>>
@@ -87,6 +92,13 @@ export default function OverviewPage() {
   >({});
 
   const { start, end, label: rangeLabel } = resolveRangeKey(range);
+
+  // Glued squares come from the server (bounded by window): the client
+  // activity feed is capped at 5,000 rows and silently truncated long ranges.
+  const { data: gluedRange } = useGluedStats({ start, end });
+  // Pace uses the planner's shared forecast window, not the selected range.
+  const today = useLaToday();
+  const { data: gluedRecent } = useGluedStats(recentGluedWindow(today));
 
   const debtSeries = debtByRange[range];
   const backlogSeries = backlogByRange[range];
@@ -131,7 +143,6 @@ export default function OverviewPage() {
 
   const summary = useMemo(() => {
     if (!items) return null;
-    const today = laDayKey();
     const active = items.filter(
       (i) => i.status !== ItemStatus.Done && i.status !== ItemStatus.Hidden
     );
@@ -148,8 +159,9 @@ export default function OverviewPage() {
         0
       );
     const shippedInRange = items.filter((i) => {
-      if (!i.completedAt) return false;
-      const key = laDayKey(new Date(i.completedAt));
+      const completedAt = completedAtIfDone(i);
+      if (completedAt === null) return false;
+      const key = laDayKey(new Date(completedAt));
       return key >= start && key <= end;
     });
     const shippedSquares = sumSquares(shippedInRange);
@@ -163,22 +175,8 @@ export default function OverviewPage() {
     // squares per calendar week.
     let weeksToClear: number | null = null;
     let glueRatePerWorkingDay = 0;
-    if (activities) {
-      const scheduledDay = buildScheduledDayByItemId(schedules);
-      const events = buildGluedEvents(activities, items, scheduledDay);
-      const forecastStart = shiftDayKey(
-        today,
-        -(RECENCY_WEIGHTED_FORECAST.lookbackDays - 1)
-      );
-      const gluedBuckets = bucketGluedSquaresByDay(
-        events,
-        forecastStart,
-        today
-      );
-      const forecast = summarizeRecencyWeighted(
-        gluedBuckets,
-        RECENCY_WEIGHTED_FORECAST
-      );
+    if (gluedRecent) {
+      const forecast = summarizeGluedForecast(gluedRecent.buckets, today);
       glueRatePerWorkingDay = forecast.weightedAvgActive;
       const squaresPerWeek = glueRatePerWorkingDay * WORKING_DAYS_PER_WEEK;
       if (squaresPerWeek > 0) {
@@ -201,7 +199,7 @@ export default function OverviewPage() {
       glueRatePerWorkingDay,
       health,
     };
-  }, [items, start, end, activities, schedules]);
+  }, [items, start, end, gluedRecent, today]);
 
   const combinedChart = useMemo(() => {
     if (!items) return null;
@@ -234,17 +232,12 @@ export default function OverviewPage() {
     const onTimeValues = dates.map((d) => onTimeByDate.get(d) ?? null);
 
     // Glued — squares glued per day, attributed to the planner day each item
-    // sits in (locked once past Wip). Needs activities; until they load we
-    // still render the other series.
+    // sits in (locked once past Wip). Server-computed for the exact window;
+    // until it loads we still render the other series.
     let gluedValues: (number | null)[] = dates.map(() => null);
-    if (activities) {
-      const scheduledDay = buildScheduledDayByItemId(schedules);
-      const events = buildGluedEvents(activities, items, scheduledDay).filter(
-        (e) => e.dayKey >= start && e.dayKey <= end
-      );
-      const gluedBuckets = bucketGluedSquaresByDay(events, start, end);
+    if (gluedRange) {
       const gluedByDate = new Map(
-        gluedBuckets.map((b) => [b.date, b.value])
+        gluedRange.buckets.map((b) => [b.date, b.value])
       );
       gluedValues = dates.map((d) => gluedByDate.get(d) ?? 0);
     }
@@ -289,7 +282,7 @@ export default function OverviewPage() {
         },
       ],
     };
-  }, [items, start, end, debtSeries, backlogSeries, activities, schedules]);
+  }, [items, start, end, debtSeries, backlogSeries, gluedRange]);
 
   return (
     <>
@@ -354,10 +347,14 @@ export default function OverviewPage() {
         <KPILink href="/stats/on-time" tile={
           <StatTile
             label="On-time"
-            value={summary ? `${Math.round(summary.onTimePct)}%` : "—"}
+            value={
+              summary?.onTimePct != null
+                ? `${Math.round(summary.onTimePct)}%`
+                : "—"
+            }
             sublabel={`of ${summary?.onTimeTotal ?? 0} shipped`}
             tone={
-              summary
+              summary?.onTimePct != null
                 ? summary.onTimePct >= 90
                   ? "good"
                   : summary.onTimePct < 70

@@ -1,6 +1,7 @@
 import clientPromise from "../db/connect";
 import { Item, ItemStatus } from "@/typings/types";
 import { computeDebtBreakdown, laDayKey } from "@/lib/debt-metrics";
+import { buildSnapshotUpdate, type SnapshotWriteMode } from "./snapshot-helpers";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ ⚙️ CONFIG                                                            ║
@@ -21,9 +22,20 @@ export type DebtSnapshot = {
 //║ 💾 RECORD                                                            ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
-export async function recordTodayDebtSnapshot(): Promise<DebtSnapshot> {
+// mode "insert-only" (page loads) keeps an already-recorded day untouched and
+// skips the item scan; "overwrite" (cron) always re-records the day.
+export async function recordTodayDebtSnapshot(
+  mode: SnapshotWriteMode = "insert-only"
+): Promise<DebtSnapshot> {
   const client = await clientPromise;
   const db = client.db(DB_NAME);
+  const snapshots = db.collection<DebtSnapshot>(SNAPSHOTS_COLLECTION);
+  const date = laDayKey();
+
+  if (mode === "insert-only") {
+    const existing = await snapshots.findOne({ date }, { projection: { _id: 0 } });
+    if (existing) return existing;
+  }
 
   const items = await db
     .collection<Item>(ITEMS_COLLECTION)
@@ -39,7 +51,6 @@ export async function recordTodayDebtSnapshot(): Promise<DebtSnapshot> {
     .toArray();
 
   const { total, byStatus } = computeDebtBreakdown(items);
-  const date = laDayKey();
   const snapshot: DebtSnapshot = {
     date,
     totalDebt: total,
@@ -47,9 +58,9 @@ export async function recordTodayDebtSnapshot(): Promise<DebtSnapshot> {
     recordedAt: Date.now(),
   };
 
-  await db
-    .collection<DebtSnapshot>(SNAPSHOTS_COLLECTION)
-    .updateOne({ date }, { $set: snapshot }, { upsert: true });
+  await snapshots.updateOne({ date }, buildSnapshotUpdate(snapshot, mode), {
+    upsert: true,
+  });
 
   return snapshot;
 }

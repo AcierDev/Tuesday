@@ -40,7 +40,12 @@ const STATUS_LABELS: Record<ItemStatus, string> = {
   [ItemStatus.Hidden]: "Hidden",
 };
 
-type SeriesPoint = { date: string; totalDebt: number; recorded?: boolean };
+// totalDebt is null for days before the first-ever snapshot.
+type SeriesPoint = {
+  date: string;
+  totalDebt: number | null;
+  recorded?: boolean;
+};
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 📊 STATS                                                             ║
@@ -66,8 +71,11 @@ interface SeriesStats {
 
 function summarizeSeries(series: SeriesPoint[]): SeriesStats {
   // Stats only consider days with real recorded snapshots — carry-forward
-  // gap-fillers don't represent observed state.
-  const recorded = series.filter((p) => p.recorded !== false);
+  // gap-fillers and pre-history nulls don't represent observed state.
+  const recorded = series.filter(
+    (p): p is SeriesPoint & { totalDebt: number } =>
+      p.recorded !== false && p.totalDebt !== null
+  );
   if (recorded.length === 0) {
     return {
       peak: 0,
@@ -207,10 +215,15 @@ export default function DebtPage() {
     [series]
   );
 
+  // Held items are paused: excluded here exactly as in the recorded debt
+  // snapshots, the nav badge and the health score.
   const activeItems = useMemo(
     () =>
       (items ?? []).filter(
-        (i) => i.status !== ItemStatus.Done && i.status !== ItemStatus.Hidden
+        (i) =>
+          i.status !== ItemStatus.Done &&
+          i.status !== ItemStatus.Hidden &&
+          !i.onHold
       ),
     [items]
   );

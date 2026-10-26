@@ -44,8 +44,12 @@ export default function ForecastPage() {
       .map((item) => {
         const designLead = item.design ? designAvg.get(item.design) : undefined;
         const sizeLead = item.size ? sizeAvg.get(item.size) : undefined;
-        const baseAvg = designLead ?? sizeLead ?? overall;
-        const ageDays = (Date.now() - item.createdAt) / MS_PER_DAY;
+        // A design/size with no usable history averages to NaN; fall through.
+        const baseAvg =
+          [designLead, sizeLead].find((d) => d !== undefined && Number.isFinite(d)) ?? overall;
+        const ageDays = Number.isFinite(item.createdAt)
+          ? (Date.now() - item.createdAt) / MS_PER_DAY
+          : 0;
         const remainingDays = Math.max(1, baseAvg - ageDays);
         const projectedDate = shiftDayKey(today, Math.ceil(remainingDays));
         return {

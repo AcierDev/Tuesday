@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 
+import { laDayStartMs, shiftDayKey } from "@/lib/debt-metrics";
 import { computeLeadTimeStats, LeadTimeRow } from "@/lib/production-metrics";
+import { ItemStatus } from "@/typings/types";
 import {
   DEFAULT_RANGE,
   RangeKey,
@@ -30,12 +32,18 @@ export default function LeadTimePage() {
 
   const stats = useMemo(() => {
     if (!items) return null;
-    const startMs = new Date(`${start}T00:00:00`).getTime();
-    const endMs = new Date(`${end}T23:59:59.999`).getTime();
-    // Filter by completion date in range
+    // Half-open LA-day window [00:00 LA on start, 00:00 LA after end), so
+    // the bounds don't shift with the browser's zone or DST.
+    const startMs = laDayStartMs(start);
+    const endExclusiveMs = laDayStartMs(shiftDayKey(end, 1));
+    // Filter by completion date in range. Reopened orders keep a stale
+    // completedAt, so only Done items count as completed.
     const filtered = items.filter(
       (i) =>
-        i.completedAt && i.completedAt >= startMs && i.completedAt <= endMs
+        i.status === ItemStatus.Done &&
+        !!i.completedAt &&
+        i.completedAt >= startMs &&
+        i.completedAt < endExclusiveMs
     );
     return computeLeadTimeStats(filtered);
   }, [items, start, end]);

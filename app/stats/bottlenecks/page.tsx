@@ -14,14 +14,21 @@ import { cn } from "@/utils/functions";
 
 export default function BottlenecksPage() {
   const { items, loading: il, error: ie } = useAllItems();
-  const { activities, loading: al, error: ae } = useActivities();
+  const {
+    activities,
+    historyStartMs,
+    loading: al,
+    error: ae,
+  } = useActivities();
 
+  // historyStartMs: the activity feed is capped, so items created before the
+  // oldest loaded activity may be missing transitions — they're skipped.
   const rows = useMemo(() => {
     if (!items || !activities) return null;
-    return computeStatusDurations(items, activities).filter(
+    return computeStatusDurations(items, activities, historyStartMs).filter(
       (r) => r.status !== ItemStatus.Hidden
     );
-  }, [items, activities]);
+  }, [items, activities, historyStartMs]);
 
   const maxAvg = useMemo(
     () => (rows ? Math.max(0, ...rows.map((r) => r.avgDays)) : 0),

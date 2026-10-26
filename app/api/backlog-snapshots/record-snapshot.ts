@@ -2,6 +2,10 @@ import clientPromise from "../db/connect";
 import { Item, ItemStatus } from "@/typings/types";
 import { laDayKey } from "@/lib/debt-metrics";
 import { parseSquareSize } from "@/lib/production-metrics";
+import {
+  buildSnapshotUpdate,
+  type SnapshotWriteMode,
+} from "../debt-snapshots/snapshot-helpers";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ ⚙️ CONFIG                                                            ║
@@ -28,9 +32,20 @@ export type BacklogSnapshot = {
 //║ 💾 RECORD                                                            ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
-export async function recordTodayBacklogSnapshot(): Promise<BacklogSnapshot> {
+// mode "insert-only" (page loads) keeps an already-recorded day untouched and
+// skips the item scan; "overwrite" (cron) always re-records the day.
+export async function recordTodayBacklogSnapshot(
+  mode: SnapshotWriteMode = "insert-only"
+): Promise<BacklogSnapshot> {
   const client = await clientPromise;
   const db = client.db(DB_NAME);
+  const snapshots = db.collection<BacklogSnapshot>(SNAPSHOTS_COLLECTION);
+  const date = laDayKey();
+
+  if (mode === "insert-only") {
+    const existing = await snapshots.findOne({ date }, { projection: { _id: 0 } });
+    if (existing) return existing;
+  }
 
   const items = await db
     .collection<Item>(ITEMS_COLLECTION)
@@ -55,7 +70,6 @@ export async function recordTodayBacklogSnapshot(): Promise<BacklogSnapshot> {
     byStatus[item.status] = (byStatus[item.status] ?? 0) + parsed.squares;
   }
 
-  const date = laDayKey();
   const snapshot: BacklogSnapshot = {
     date,
     squares: total,
@@ -63,9 +77,9 @@ export async function recordTodayBacklogSnapshot(): Promise<BacklogSnapshot> {
     recordedAt: Date.now(),
   };
 
-  await db
-    .collection<BacklogSnapshot>(SNAPSHOTS_COLLECTION)
-    .updateOne({ date }, { $set: snapshot }, { upsert: true });
+  await snapshots.updateOne({ date }, buildSnapshotUpdate(snapshot, mode), {
+    upsert: true,
+  });
 
   return snapshot;
 }

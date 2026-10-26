@@ -1,82 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 
 import {
   RECENCY_WEIGHTED_FORECAST,
-  summarizeRecencyWeighted,
-  type RecencyWeightedStats,
+  recentGluedWindow,
+  summarizeGluedForecast,
 } from "@/lib/production-metrics";
+import { useGluedStats, useLaToday } from "@/lib/stats-shared";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ ⚙️ CONFIG                                                            ║
+//║ 🧩 COMPONENT                                                         ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
-const STATS_ENDPOINT = `/api/stats/glued?days=${RECENCY_WEIGHTED_FORECAST.lookbackDays}`;
-const MIDNIGHT_TIMEZONE = "America/Los_Angeles";
-const MIDNIGHT_BUFFER_MS = 500;
-
-type GluedBucket = { date: string; value: number };
-
-// Returns the number of ms remaining until the next 00:00 in the shop's
-// local timezone, plus a small buffer so the timer fires just after midnight.
-function msUntilNextLocalMidnight(): number {
-  const now = new Date();
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: MIDNIGHT_TIMEZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    fractionalSecondDigits: 3,
-    hour12: false,
-  }).formatToParts(now);
-  const get = (type: string) =>
-    Number(parts.find((p) => p.type === type)?.value ?? 0);
-  let h = get("hour");
-  if (h === 24) h = 0; // some locales render midnight as "24"
-  const msIntoDay =
-    ((h * 60 + get("minute")) * 60 + get("second")) * 1000 +
-    get("fractionalSecond");
-  const msPerDay = 24 * 60 * 60 * 1000;
-  return msPerDay - msIntoDay + MIDNIGHT_BUFFER_MS;
-}
-
+// Same window (and so the same cached request) as the planner's capacity and
+// the nav Forecast badge; useLaToday advances it at LA midnight.
 export function HistoricalAverageBadge() {
-  const [stats, setStats] = useState<RecencyWeightedStats | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    const load = () => {
-      fetch(STATS_ENDPOINT)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data: { buckets?: GluedBucket[] } | null) => {
-          if (cancelled || !data?.buckets) return;
-          setStats(
-            summarizeRecencyWeighted(data.buckets, RECENCY_WEIGHTED_FORECAST)
-          );
-        })
-        .catch((err) => console.warn("Failed to load glued history", err));
-    };
-
-    const scheduleNextMidnight = () => {
-      timeoutId = setTimeout(() => {
-        if (cancelled) return;
-        load();
-        scheduleNextMidnight();
-      }, msUntilNextLocalMidnight());
-    };
-
-    load();
-    scheduleNextMidnight();
-
-    return () => {
-      cancelled = true;
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, []);
+  const today = useLaToday();
+  const { data } = useGluedStats(recentGluedWindow(today));
+  const stats = useMemo(
+    () => (data ? summarizeGluedForecast(data.buckets, today) : null),
+    [data, today]
+  );
 
   const hasData = stats !== null && stats.weightedAvgActive > 0;
   const tooltip = hasData

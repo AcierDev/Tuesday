@@ -7,6 +7,7 @@ import {
   BACKLOG_SNAPSHOTS_COLLECTION,
   type BacklogSnapshot,
 } from "./record-snapshot";
+import { buildSnapshotSeries } from "../debt-snapshots/snapshot-helpers";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ ⚙️ CONFIG                                                            ║
@@ -17,7 +18,7 @@ const MAX_HISTORY_DAYS = 1825;
 const CACHE_CONTROL = "public, s-maxage=300, stale-while-revalidate=600";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ 📥 POST — record today's snapshot (idempotent)                       ║
+//║ 📥 POST — record today's snapshot if missing (cron overwrites)       ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export async function POST() {
@@ -69,29 +70,25 @@ export async function GET(request: Request) {
 
     const rowsDesc = await db
       .collection<BacklogSnapshot>(BACKLOG_SNAPSHOTS_COLLECTION)
-      .find({ date: { $lte: latestKey } })
+      .find(
+        { date: { $lte: latestKey } },
+        { projection: { _id: 0, date: 1, squares: 1 } }
+      )
       .sort({ date: -1 })
       .limit(days + 1)
       .toArray();
 
-    const byDate = new Map<string, number>();
-    let lastKnown: number | null = null;
-    for (const row of rowsDesc) {
-      if (row.date >= earliestKey) {
-        byDate.set(row.date, row.squares);
-      } else {
-        lastKnown = row.squares;
-        break;
-      }
-    }
-
-    const series: { date: string; squares: number; recorded: boolean }[] = [];
-    for (let i = 0; i < days; i++) {
-      const key = shiftDayKey(earliestKey, i);
-      const recorded = byDate.has(key);
-      if (recorded) lastKnown = byDate.get(key)!;
-      series.push({ date: key, squares: lastKnown ?? 0, recorded });
-    }
+    // Days before the first-ever snapshot come back as squares: null.
+    const series: {
+      date: string;
+      squares: number | null;
+      recorded: boolean;
+    }[] = buildSnapshotSeries(
+      rowsDesc,
+      earliestKey,
+      days,
+      (row) => row.squares
+    ).map(({ date, value, recorded }) => ({ date, squares: value, recorded }));
 
     return NextResponse.json(
       { series },

@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { shiftDayKey } from "@/lib/debt-metrics";
 import {
   DayBucket,
   GluedEvent,
+  planWeekKeyForDay,
   RECENCY_WEIGHTED_FORECAST,
   RecencyWeightedStats,
-  summarizeRecencyWeighted,
+  recentGluedWindow,
+  summarizeGluedForecast,
 } from "@/lib/production-metrics";
 import {
   RANGE_OPTIONS,
@@ -16,6 +19,7 @@ import {
   resolveRangeKey,
   smoothPath,
   useGluedStats,
+  useLaToday,
 } from "@/lib/stats-shared";
 
 const GLUED_RANGE_OPTIONS = [
@@ -121,17 +125,17 @@ export default function GluedPage() {
     [data]
   );
 
-  // Forecast is always anchored to the last 30 days regardless of the chart's
-  // range selector — the planner badge sources this same number, so keeping
-  // the window fixed means the page's breakdown matches what the badge shows.
-  const forecast = useMemo(() => {
-    if (!data) return null;
-    const recentBuckets = data.buckets.slice(
-      -RECENCY_WEIGHTED_FORECAST.lookbackDays
-    );
-    if (recentBuckets.length === 0) return null;
-    return summarizeRecencyWeighted(recentBuckets, RECENCY_WEIGHTED_FORECAST);
-  }, [data]);
+  // Forecast is always the planner's window (last 30 complete days),
+  // regardless of the chart's range selector — slicing the selected range
+  // gave a 7-day "forecast" on the default view and a stale one for calendar
+  // ranges. Same request as the planner badge, so the numbers match.
+  const today = useLaToday();
+  const { data: recentData } = useGluedStats(recentGluedWindow(today));
+  const forecast = useMemo(
+    () =>
+      recentData ? summarizeGluedForecast(recentData.buckets, today) : null,
+    [recentData, today]
+  );
 
   const dayBuckets = useMemo<DayBucket[]>(
     () => data?.buckets ?? [],
@@ -545,32 +549,21 @@ function niceRoundTo(rawMax: number): number {
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 type WeekBucket = {
-  weekStart: string; // YYYY-MM-DD (Monday, LA-local calendar)
+  weekStart: string; // planner week key: the Sunday inside a Sat → Fri week
   total: number;
   activeDays: number; // days with > 0 squares glued
   avgPerActiveDay: number;
 };
 
-// Group day buckets into Monday-start weeks. Empty days don't count toward
-// the per-active-day average — a 4-day work week and a 6-day work week stay
-// directly comparable on the overlay line.
+// Group day buckets into planner weeks (Sat → Fri, keyed by the Sunday, same
+// as the production planner and its week-history popover). Empty days don't
+// count toward the per-active-day average — a 4-day work week and a 6-day
+// work week stay directly comparable on the overlay line.
 function bucketToWeeks(buckets: DayBucket[]): WeekBucket[] {
   const map = new Map<string, { total: number; active: number }>();
   for (const b of buckets) {
-    const [y, m, d] = b.date.split("-").map(Number);
-    if (
-      y === undefined ||
-      m === undefined ||
-      d === undefined ||
-      Number.isNaN(y)
-    )
-      continue;
-    const date = new Date(Date.UTC(y, m - 1, d));
-    const dow = date.getUTCDay(); // 0=Sun..6=Sat
-    const daysSinceMonday = (dow + 6) % 7;
-    const monday = new Date(date);
-    monday.setUTCDate(monday.getUTCDate() - daysSinceMonday);
-    const weekKey = monday.toISOString().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date)) continue;
+    const weekKey = planWeekKeyForDay(b.date);
     const entry = map.get(weekKey) ?? { total: 0, active: 0 };
     entry.total += b.value;
     if (b.value > 0) entry.active += 1;
@@ -600,17 +593,18 @@ function ordinalSuffix(n: number): string {
   }
 }
 
-// Pick the month a Mon-Sun week "belongs to" by looking only at Mon-Thu —
-// whichever month holds the majority of those four days wins, with a 2-2
-// split broken in favor of Thursday's month. Then count how many such
-// majority-this-month weeks precede this one (inclusive) within that month
-// to get the ordinal.
-function weekLabelInfo(weekStartIso: string): {
+// Pick the month a planner week "belongs to" by looking only at its Mon-Thu
+// (the shop's working days) — whichever month holds the majority of those
+// four days wins, with a 2-2 split broken in favor of Thursday's month. Then
+// count how many such majority-this-month weeks precede this one (inclusive)
+// within that month to get the ordinal. `weekKey` is the planner week's
+// Sunday; its Monday is the next day.
+function weekLabelInfo(weekKey: string): {
   ordinal: number;
   monthIndex: number;
   year: number;
 } {
-  const [y, m, d] = weekStartIso.split("-").map(Number);
+  const [y, m, d] = shiftDayKey(weekKey, 1).split("-").map(Number);
   const monday = new Date(Date.UTC(y!, m! - 1, d!));
 
   const counts: Record<string, number> = {};

@@ -20,20 +20,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  bucketGluedSquaresByDay,
-  buildGluedEvents,
-  buildScheduledDayByItemId,
-  computeHealthScore,
   parseSquareSize,
   RECENCY_WEIGHTED_FORECAST,
-  summarizeRecencyWeighted,
+  recentGluedWindow,
+  summarizeGluedForecast,
 } from "@/lib/production-metrics";
 import {
   invalidateStatsCaches,
-  useActivities,
-  useAllItems,
+  useGluedStats,
+  useHealthScore,
+  useLaToday,
 } from "@/lib/stats-shared";
-import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { MiniSparkline } from "@/components/orders/MiniSparkline";
 import { cn } from "@/utils/functions";
 import { orderBoardStatus } from "@/lib/order-wip";
@@ -62,6 +59,52 @@ const BACKLOG_STATUSES: ReadonlySet<string> = new Set([
   ItemStatus.Wip,
 ]);
 const BACKLOG_ROUND_TO = 100;
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 📉 SNAPSHOT SPARKLINES — one shared request per URL                  ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+// The nav mounts on every page (and remounts on layout changes / StrictMode),
+// which fired each snapshot GET twice per /orders load. Share one promise per
+// URL for a few minutes — the server caches these for 5 minutes anyway.
+const SNAPSHOT_SPARKLINE_TTL_MS = 5 * 60_000;
+const snapshotSeriesRequests = new Map<
+  string,
+  { promise: Promise<(number | null)[]>; ts: number }
+>();
+
+function fetchSnapshotSeries(
+  url: string,
+  field: "totalDebt" | "squares"
+): Promise<(number | null)[]> {
+  const cached = snapshotSeriesRequests.get(url);
+  if (cached && Date.now() - cached.ts < SNAPSHOT_SPARKLINE_TTL_MS) {
+    return cached.promise;
+  }
+  const promise = (async () => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = (await res.json()) as {
+      series: Record<string, number | null | string | boolean>[];
+    };
+    return json.series.map((p) =>
+      typeof p[field] === "number" ? (p[field] as number) : null
+    );
+  })();
+  snapshotSeriesRequests.set(url, { promise, ts: Date.now() });
+  promise.catch(() => {
+    if (snapshotSeriesRequests.get(url)?.promise === promise) {
+      snapshotSeriesRequests.delete(url);
+    }
+  });
+  return promise;
+}
+
+// Days before the first-ever snapshot come back null; the sparkline only
+// plots recorded history.
+function recordedValues(series: (number | null)[]): number[] {
+  return series.filter((v): v is number => v !== null);
+}
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🔮 FORECAST DAILY LOCK — held stable until 00:05 LA each day          ║
@@ -431,47 +474,38 @@ export function NavSectionCounters() {
 export function NavMetricsBadges() {
   const items = useOrderStore((state) => state.items);
 
+  // Held items are paused: excluded from debt and backlog everywhere (stats
+  // pages, snapshots, health), so the nav matches them.
   const totalDebt = useMemo(() => {
     if (!items) return 0;
     const active = items.filter(
-      (i) => i.status !== ItemStatus.Done && i.status !== ItemStatus.Hidden
+      (i) =>
+        i.status !== ItemStatus.Done &&
+        i.status !== ItemStatus.Hidden &&
+        !i.onHold
     );
     return computeTotalDebt(active);
   }, [items]);
 
-  const { items: allItems } = useAllItems();
-  const { activities } = useActivities();
-  const schedules = useWeeklyScheduleStore((s) => s.schedules);
-
-  const healthScore = useMemo(
-    () => (allItems ? computeHealthScore(allItems).total : null),
-    [allItems]
-  );
+  // Server-computed: the nav used to pull every item (Done included) plus
+  // 5,000 activities on every page and rebuild glue events on each planner
+  // drag. Health is one small response; glued shares the planner's cached
+  // recent window.
+  const { data: health } = useHealthScore();
+  const healthScore = health?.total ?? null;
+  const today = useLaToday();
+  const { data: gluedRecent } = useGluedStats(recentGluedWindow(today));
 
   const gluedStats = useMemo(() => {
-    if (!allItems || !activities) return null;
-    const today = laDayKey();
-    const scheduledDay = buildScheduledDayByItemId(schedules);
-    const events = buildGluedEvents(activities, allItems, scheduledDay);
-
-    const todayEvents = events.filter((e) => e.dayKey === today);
+    if (!gluedRecent) return null;
+    const todayEvents = gluedRecent.events.filter((e) => e.dayKey === today);
     const todaySquares = todayEvents.reduce((s, e) => s + e.squares, 0);
-
-    const forecastStart = shiftDayKey(
-      today,
-      -(RECENCY_WEIGHTED_FORECAST.lookbackDays - 1)
-    );
-    const buckets = bucketGluedSquaresByDay(events, forecastStart, today);
-    const forecast = summarizeRecencyWeighted(
-      buckets,
-      RECENCY_WEIGHTED_FORECAST
-    );
-
     return {
       today: { squares: todaySquares, orders: todayEvents.length },
-      forecastPerDay: forecast.weightedAvgActive,
+      forecastPerDay: summarizeGluedForecast(gluedRecent.buckets, today)
+        .weightedAvgActive,
     };
-  }, [allItems, activities, schedules]);
+  }, [gluedRecent, today]);
 
   const gluedToday = gluedStats?.today ?? null;
   const liveForecastPerDay = gluedStats?.forecastPerDay ?? null;
@@ -532,7 +566,7 @@ export function NavMetricsBadges() {
     if (!items) return null;
     let total = 0;
     for (const item of items) {
-      if (!BACKLOG_STATUSES.has(item.status)) continue;
+      if (!BACKLOG_STATUSES.has(item.status) || item.onHold) continue;
       const parsed = parseSquareSize(item.size);
       if (!parsed) continue;
       total += parsed.squares;
@@ -544,36 +578,22 @@ export function NavMetricsBadges() {
   const [backlogHistory, setBacklogHistory] = useState<number[]>([]);
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/debt-snapshots?days=${DEBT_HISTORY_DAYS}`
-        );
-        if (!res.ok) return;
-        const json = (await res.json()) as {
-          series: { date: string; totalDebt: number }[];
-        };
-        if (cancelled) return;
-        setDebtHistory(json.series.map((p) => p.totalDebt));
-      } catch (err) {
-        console.error("Failed to load debt snapshots", err);
-      }
-    })();
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/backlog-snapshots?days=${DEBT_HISTORY_DAYS}`
-        );
-        if (!res.ok) return;
-        const json = (await res.json()) as {
-          series: { date: string; squares: number }[];
-        };
-        if (cancelled) return;
-        setBacklogHistory(json.series.map((p) => p.squares));
-      } catch (err) {
-        console.error("Failed to load backlog snapshots", err);
-      }
-    })();
+    fetchSnapshotSeries(
+      `/api/debt-snapshots?days=${DEBT_HISTORY_DAYS}`,
+      "totalDebt"
+    )
+      .then((series) => {
+        if (!cancelled) setDebtHistory(recordedValues(series));
+      })
+      .catch((err) => console.error("Failed to load debt snapshots", err));
+    fetchSnapshotSeries(
+      `/api/backlog-snapshots?days=${DEBT_HISTORY_DAYS}`,
+      "squares"
+    )
+      .then((series) => {
+        if (!cancelled) setBacklogHistory(recordedValues(series));
+      })
+      .catch((err) => console.error("Failed to load backlog snapshots", err));
     return () => {
       cancelled = true;
     };

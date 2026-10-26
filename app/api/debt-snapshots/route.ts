@@ -7,6 +7,7 @@ import {
   DEBT_SNAPSHOTS_COLLECTION,
   type DebtSnapshot,
 } from "./record-snapshot";
+import { buildSnapshotSeries } from "./snapshot-helpers";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ ⚙️ CONFIG                                                            ║
@@ -17,7 +18,7 @@ const MAX_HISTORY_DAYS = 1825;
 const CACHE_CONTROL = "public, s-maxage=300, stale-while-revalidate=600";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
-//║ 📥 POST — record today's snapshot (idempotent)                       ║
+//║ 📥 POST — record today's snapshot if missing (cron overwrites)       ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 export async function POST() {
@@ -73,35 +74,29 @@ export async function GET(request: Request) {
     // since upserts dedupe to one row per date.
     const rowsDesc = await db
       .collection<DebtSnapshot>(DEBT_SNAPSHOTS_COLLECTION)
-      .find({ date: { $lte: latestKey } })
+      .find(
+        { date: { $lte: latestKey } },
+        { projection: { _id: 0, date: 1, totalDebt: 1 } }
+      )
       .sort({ date: -1 })
       .limit(days + 1)
       .toArray();
 
-    const byDate = new Map<string, number>();
-    let lastKnown = 0;
-    for (const row of rowsDesc) {
-      if (row.date >= earliestKey) {
-        byDate.set(row.date, row.totalDebt);
-      } else {
-        // First row strictly before the window is our carry-forward seed —
-        // rows are sorted desc, so the first hit is the most recent.
-        lastKnown = row.totalDebt;
-        break;
-      }
-    }
-
+    // Days before the first-ever snapshot come back as totalDebt: null.
     const series: {
       date: string;
-      totalDebt: number;
+      totalDebt: number | null;
       recorded: boolean;
-    }[] = [];
-    for (let i = 0; i < days; i++) {
-      const key = shiftDayKey(earliestKey, i);
-      const recorded = byDate.has(key);
-      if (recorded) lastKnown = byDate.get(key)!;
-      series.push({ date: key, totalDebt: lastKnown, recorded });
-    }
+    }[] = buildSnapshotSeries(
+      rowsDesc,
+      earliestKey,
+      days,
+      (row) => row.totalDebt
+    ).map(({ date, value, recorded }) => ({
+      date,
+      totalDebt: value,
+      recorded,
+    }));
 
     return NextResponse.json(
       { series },

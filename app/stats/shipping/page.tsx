@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { laDayKey } from "@/lib/debt-metrics";
 import {
   bucketShippingSpendByDay,
+  shipmentCost,
   summarizeShippingSpend,
 } from "@/lib/production-metrics";
 import {
@@ -47,10 +48,14 @@ export default function ShippingPage() {
       if (!ship?.purchasedAt) continue;
       const key = laDayKey(new Date(ship.purchasedAt));
       if (key < start || key > end) continue;
+      // Same rule as the spend totals: unpriced (uploaded / $0) labels don't
+      // count toward spend or per-shipment averages.
+      const cost = shipmentCost(ship);
+      if (cost === null) continue;
       const svc = ship.serviceName || ship.serviceType || "Unknown";
       const cur = byService.get(svc) ?? { count: 0, cost: 0 };
       cur.count += 1;
-      cur.cost += parseFloat(String(ship.totalNetCharge ?? 0)) || 0;
+      cur.cost += cost;
       byService.set(svc, cur);
     }
     const serviceRows = Array.from(byService.entries())

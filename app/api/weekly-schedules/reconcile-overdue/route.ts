@@ -4,6 +4,7 @@ import { getDb } from "@/app/api/db/connect";
 import { laDayKey } from "@/lib/debt-metrics";
 import { getOverdueScheduleRemovals } from "@/lib/overdue-planner-orders";
 import { type Item, type WeeklyScheduleData } from "@/typings/types";
+import { SCHEDULE_VERSION_FIELD } from "../version";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,6 +50,9 @@ export async function POST() {
           $pull: {
             [`schedule.${day}`]: { id: { $in: ids }, done: { $ne: true } },
           },
+          // Bump the optimistic-concurrency version so a stale tab's PATCH is
+          // refused (409) instead of re-adding the entries pulled here.
+          $inc: { [SCHEDULE_VERSION_FIELD]: 1 },
         },
       },
     })));

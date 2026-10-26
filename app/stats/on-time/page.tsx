@@ -70,13 +70,16 @@ export default function OnTimePage() {
     return computeCurrentlyLate(activeOnly);
   }, [items]);
 
-  const onTimeTone: "good" | "bad" | "neutral" = stats
-    ? stats.onTimePct >= 90
-      ? "good"
-      : stats.onTimePct < 70
-        ? "bad"
-        : "neutral"
-    : "neutral";
+  // No dated shipments in range → "—" (neutral), not a red 0%.
+  const onTimePct = stats?.onTimePct ?? null;
+  const onTimeTone: "good" | "bad" | "neutral" =
+    onTimePct !== null
+      ? onTimePct >= 90
+        ? "good"
+        : onTimePct < 70
+          ? "bad"
+          : "neutral"
+      : "neutral";
 
   return (
     <>
@@ -92,7 +95,7 @@ export default function OnTimePage() {
               onTimeTone === "bad" && "text-red-500 dark:text-red-400"
             )}
           >
-            {stats ? `${Math.round(stats.onTimePct)}%` : "—"}
+            {onTimePct !== null ? `${Math.round(onTimePct)}%` : "—"}
           </div>
           <p className="mt-1 text-xs text-slate-400">
             {stats?.onTime ?? 0} on time of {stats?.total ?? 0} shipped

@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 
 import { Activity, Item, OrderTrackingInfo } from "@/typings/types";
 import { dayDiffKeys, laDayKey, shiftDayKey } from "@/lib/debt-metrics";
-import { DayBucket, GluedEvent } from "@/lib/production-metrics";
+import {
+  DayBucket,
+  GluedEvent,
+  HealthBreakdownRow,
+} from "@/lib/production-metrics";
 import {
   Select,
   SelectContent,
@@ -106,12 +110,48 @@ export function resolveRangeKey(
 //║ 🔄 REVALIDATION — call invalidateStatsCaches() to flush + refetch    ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
-let statsRevalidationVersion = 0;
-const statsRevalidationListeners = new Set<(v: number) => void>();
+// Edits arrive in bursts (multi-field saves, bulk status moves, SSE echoes of
+// our own writes). Mounted subscribers refetch once per burst, this long after
+// the last invalidation, instead of once per edit.
+export const STATS_INVALIDATION_DEBOUNCE_MS = 750;
 
-// Bumps the version so all stats hooks re-fetch on their next effect run,
-// and immediately notifies any mounted subscribers. Call this after any
-// mutation that affects items/activities (status changes, new items, etc).
+let statsRevalidationVersion = 0;
+// Bumped by schedule edits, which only move glue attribution — they must not
+// trigger a full items/activities refetch.
+let gluedRevalidationVersion = 0;
+const statsRevalidationListeners = new Set<() => void>();
+let statsNotifyTimer: ReturnType<typeof setTimeout> | null = null;
+
+function notifyStatsListeners(): void {
+  statsNotifyTimer = null;
+  for (const cb of statsRevalidationListeners) cb();
+}
+
+function scheduleStatsNotify(): void {
+  if (statsNotifyTimer) clearTimeout(statsNotifyTimer);
+  statsNotifyTimer = setTimeout(
+    notifyStatsListeners,
+    STATS_INVALIDATION_DEBOUNCE_MS
+  );
+}
+
+// Delivers a pending (debounced) invalidation to subscribers immediately.
+export function flushStatsInvalidation(): void {
+  if (!statsNotifyTimer) return;
+  clearTimeout(statsNotifyTimer);
+  notifyStatsListeners();
+}
+
+function clearGluedStatsCaches(): void {
+  gluedStatsCache.clear();
+  gluedStatsInflight.clear();
+}
+
+// Bumps the version so all stats hooks re-fetch, and notifies mounted
+// subscribers after STATS_INVALIDATION_DEBOUNCE_MS (coalescing bursts). Call
+// this after any mutation that affects items/activities (status changes, new
+// items, etc). Caches are dropped immediately so anything mounting during the
+// debounce window fetches committed state.
 export function invalidateStatsCaches(): void {
   statsRevalidationVersion += 1;
   // A mutation invalidates fresh TTL entries too. Detach older requests so
@@ -120,27 +160,65 @@ export function invalidateStatsCaches(): void {
   richCache = null;
   activitiesCache = null;
   trackingCache = null;
+  healthCache = null;
   inflight = null;
   richInflight = null;
   activitiesInflight = null;
   trackingInflight = null;
-  gluedStatsCache.clear();
-  gluedStatsInflight.clear();
-  for (const cb of statsRevalidationListeners) cb(statsRevalidationVersion);
+  healthInflight = null;
+  clearGluedStatsCaches();
+  scheduleStatsNotify();
 }
 
-// Hook used by every stats data hook below to react to invalidation. Exported so
-// standalone widgets (e.g. the mobile glued badge) can also refetch on the same bus.
-export function useStatsRevalidationVersion(): number {
-  const [v, setV] = useState(statsRevalidationVersion);
+// Narrow invalidation for planner schedule edits: only server glued stats
+// (which attribute glue dates from the planner) refetch.
+export function invalidateGluedStats(): void {
+  gluedRevalidationVersion += 1;
+  clearGluedStatsCaches();
+  scheduleStatsNotify();
+}
+
+function useRevalidationValue(read: () => number): number {
+  const [v, setV] = useState(read);
   useEffect(() => {
-    const cb = (next: number) => setV(next);
+    const cb = () => setV(read());
     statsRevalidationListeners.add(cb);
     return () => {
       statsRevalidationListeners.delete(cb);
     };
+    // `read` is one of the module-level readers below (stable identity).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return v;
+}
+
+const readStatsVersion = () => statsRevalidationVersion;
+const readGluedVersion = () =>
+  statsRevalidationVersion + gluedRevalidationVersion;
+
+// Hook used by every stats data hook below to react to invalidation. Exported so
+// standalone widgets (e.g. the mobile glued badge) can also refetch on the same bus.
+export function useStatsRevalidationVersion(): number {
+  return useRevalidationValue(readStatsVersion);
+}
+
+const LA_DAY_CHECK_INTERVAL_MS = 60_000;
+
+// Current LA calendar day; re-renders when it rolls over (checked on an
+// interval and on window focus) so day-keyed windows advance at midnight.
+export function useLaToday(): string {
+  const [today, setToday] = useState(() => laDayKey());
+  useEffect(() => {
+    const check = () => setToday(laDayKey());
+    check();
+    const timer = window.setInterval(check, LA_DAY_CHECK_INTERVAL_MS);
+    window.addEventListener("focus", check);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", check);
+    };
+  }, []);
+  return today;
 }
 
 const CHART_HEIGHT = 280;
@@ -776,9 +854,25 @@ const ACTIVITIES_CACHE_TTL_MS = 60_000;
 
 type ActivitiesState = {
   activities: Activity[] | null;
+  // Oldest activity timestamp loaded when the fetch hit ACTIVITIES_FETCH_LIMIT
+  // (older history was cut off); null when the full log was returned. Pass it
+  // to history-reconstructing metrics so they skip items it may truncate.
+  historyStartMs: number | null;
   loading: boolean;
   error: string | null;
 };
+
+// The capped fetch drops the oldest activities silently; report where the
+// loaded history actually starts.
+export function activityHistoryStartMs(
+  activities: Pick<Activity, "timestamp">[],
+  limit: number = ACTIVITIES_FETCH_LIMIT
+): number | null {
+  if (activities.length < limit) return null;
+  let oldest = Infinity;
+  for (const a of activities) if (a.timestamp < oldest) oldest = a.timestamp;
+  return Number.isFinite(oldest) ? oldest : null;
+}
 
 let activitiesCache: { data: Activity[]; ts: number } | null = null;
 let activitiesInflight: Promise<Activity[]> | null = null;
@@ -811,11 +905,12 @@ export function useActivities(): ActivitiesState {
     ) {
       return {
         activities: activitiesCache.data,
+        historyStartMs: activityHistoryStartMs(activitiesCache.data),
         loading: false,
         error: null,
       };
     }
-    return { activities: null, loading: true, error: null };
+    return { activities: null, historyStartMs: null, loading: true, error: null };
   });
 
   useEffect(() => {
@@ -825,6 +920,7 @@ export function useActivities(): ActivitiesState {
     ) {
       setState({
         activities: activitiesCache.data,
+        historyStartMs: activityHistoryStartMs(activitiesCache.data),
         loading: false,
         error: null,
       });
@@ -835,12 +931,18 @@ export function useActivities(): ActivitiesState {
     fetchActivities()
       .then((data) => {
         if (cancelled) return;
-        setState({ activities: data, loading: false, error: null });
+        setState({
+          activities: data,
+          historyStartMs: activityHistoryStartMs(data),
+          loading: false,
+          error: null,
+        });
       })
       .catch((err) => {
         if (cancelled) return;
         setState({
           activities: null,
+          historyStartMs: null,
           loading: false,
           error:
             err instanceof Error ? err.message : "Failed to load activities",
@@ -923,6 +1025,85 @@ export function useTrackingInfos(): TrackingState {
 }
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
+//║ 🪝 useHealthScore — server-computed health score (nav badge)         ║
+//╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
+
+// The nav badge renders on every page; computing health client-side meant
+// shipping every item ever (Done included) to each tab. The server computes
+// the same computeHealthScore and returns ~1 KB.
+const HEALTH_SCORE_URL = "/api/stats/health";
+const HEALTH_CACHE_TTL_MS = 60_000;
+
+export type HealthScorePayload = {
+  total: number;
+  breakdown: HealthBreakdownRow[];
+};
+
+type HealthScoreState = {
+  data: HealthScorePayload | null;
+  loading: boolean;
+  error: string | null;
+};
+
+let healthCache: { data: HealthScorePayload; ts: number } | null = null;
+let healthInflight: Promise<HealthScorePayload> | null = null;
+
+async function fetchHealthScore(bypassCache: boolean): Promise<HealthScorePayload> {
+  if (healthInflight) return healthInflight;
+  const requestVersion = statsRevalidationVersion;
+  healthInflight = (async () => {
+    try {
+      const url = bypassCache
+        ? `${HEALTH_SCORE_URL}?_=${Date.now()}`
+        : HEALTH_SCORE_URL;
+      const res = await fetch(url, bypassCache ? { cache: "no-store" } : {});
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as HealthScorePayload;
+      if (requestVersion === statsRevalidationVersion) healthCache = { data, ts: Date.now() };
+      return data;
+    } finally {
+      if (requestVersion === statsRevalidationVersion) healthInflight = null;
+    }
+  })();
+  return healthInflight;
+}
+
+export function useHealthScore(): HealthScoreState {
+  const version = useStatsRevalidationVersion();
+  const [state, setState] = useState<HealthScoreState>(() =>
+    healthCache && Date.now() - healthCache.ts < HEALTH_CACHE_TTL_MS
+      ? { data: healthCache.data, loading: false, error: null }
+      : { data: null, loading: true, error: null }
+  );
+
+  useEffect(() => {
+    if (healthCache && Date.now() - healthCache.ts < HEALTH_CACHE_TTL_MS) {
+      setState({ data: healthCache.data, loading: false, error: null });
+      return;
+    }
+    healthCache = null;
+    let cancelled = false;
+    fetchHealthScore(version > 0)
+      .then((data) => {
+        if (!cancelled) setState({ data, loading: false, error: null });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setState((prev) => ({
+          data: prev.data,
+          loading: false,
+          error: err instanceof Error ? err.message : "Failed to load health",
+        }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [version]);
+
+  return state;
+}
+
+//╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🪝 useGluedStats — server-computed glued events + buckets per range  ║
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
@@ -954,9 +1135,13 @@ async function fetchGluedStats(
   bypassCache = false
 ): Promise<GluedStatsPayload> {
   const cacheKey = `${start}|${end}`;
+  // Invalidation clears this map, so any in-flight request was started after
+  // the latest edit — safe to share even when bypassing the HTTP cache. This
+  // is what collapses the planner's capacity, badge and nav consumers into a
+  // single request.
   const existing = gluedStatsInflight.get(cacheKey);
-  if (existing && !bypassCache) return existing;
-  const requestVersion = statsRevalidationVersion;
+  if (existing) return existing;
+  const requestVersion = readGluedVersion();
   const promise = (async () => {
     try {
       const base = `/api/stats/glued?start=${start}&end=${end}`;
@@ -964,10 +1149,10 @@ async function fetchGluedStats(
       const res = await fetch(url, bypassCache ? { cache: "no-store" } : {});
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as GluedStatsPayload;
-      if (requestVersion === statsRevalidationVersion) gluedStatsCache.set(cacheKey, { data, ts: Date.now() });
+      if (requestVersion === readGluedVersion()) gluedStatsCache.set(cacheKey, { data, ts: Date.now() });
       return data;
     } finally {
-      if (requestVersion === statsRevalidationVersion) gluedStatsInflight.delete(cacheKey);
+      if (requestVersion === readGluedVersion()) gluedStatsInflight.delete(cacheKey);
     }
   })();
   gluedStatsInflight.set(cacheKey, promise);
@@ -980,7 +1165,7 @@ export function useGluedStats(window: {
 }): GluedStatsState {
   const { start, end } = window;
   const cacheKey = `${start}|${end}`;
-  const version = useStatsRevalidationVersion();
+  const version = useRevalidationValue(readGluedVersion);
   const [state, setState] = useState<GluedStatsState>(() => {
     const cached = gluedStatsCache.get(cacheKey);
     if (cached && Date.now() - cached.ts < GLUED_STATS_CACHE_TTL_MS) {

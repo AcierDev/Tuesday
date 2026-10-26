@@ -4,7 +4,7 @@ import { useMemo } from "react";
 
 import { ItemStatus } from "@/typings/types";
 import { STATUS_COLORS } from "@/typings/constants";
-import { dayDiffKeys, laDayKey } from "@/lib/debt-metrics";
+import { dayDiffKeys, laDayKey, laDayRangeMs } from "@/lib/debt-metrics";
 import { StatTile, useAllItems } from "@/lib/stats-shared";
 import { cn } from "@/utils/functions";
 
@@ -13,6 +13,7 @@ import { cn } from "@/utils/functions";
 //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
 
 const AT_RISK_DAYS = 3;
+const SHOP_TIME_ZONE = "America/Los_Angeles";
 
 export default function TodayPage() {
   const { items, loading, error } = useAllItems();
@@ -20,10 +21,16 @@ export default function TodayPage() {
   const data = useMemo(() => {
     if (!items) return null;
     const today = laDayKey();
-    const startOfToday = new Date(`${today}T00:00:00`).getTime();
+    // Explicit LA-day bounds (DST-safe), independent of the browser's zone.
+    const { start: startOfToday, end: startOfTomorrow } = laDayRangeMs(today);
 
+    // Reopened orders keep a stale completedAt, so only Done counts.
     const completedToday = items.filter(
-      (i) => i.completedAt && i.completedAt >= startOfToday
+      (i) =>
+        i.status === ItemStatus.Done &&
+        !!i.completedAt &&
+        i.completedAt >= startOfToday &&
+        i.completedAt < startOfTomorrow
     );
     const dueToday = items.filter(
       (i) =>
@@ -56,6 +63,7 @@ export default function TodayPage() {
         </p>
         <h2 className="mt-1 heading-page">
           {new Date().toLocaleDateString("en-US", {
+            timeZone: SHOP_TIME_ZONE,
             weekday: "long",
             month: "long",
             day: "numeric",

@@ -37,7 +37,8 @@ const STATUS_LABELS: Partial<Record<ItemStatus, string>> = {
   [ItemStatus.Wip]: "WIP",
 };
 
-type SeriesPoint = { date: string; squares: number; recorded?: boolean };
+// squares is null for days before the first-ever snapshot.
+type SeriesPoint = { date: string; squares: number | null; recorded?: boolean };
 
 function formatSquares(n: number): string {
   if (n < 1000) return n.toString();
@@ -64,7 +65,10 @@ interface SeriesStats {
 }
 
 function summarizeSeries(series: SeriesPoint[]): SeriesStats {
-  const recorded = series.filter((p) => p.recorded !== false);
+  const recorded = series.filter(
+    (p): p is SeriesPoint & { squares: number } =>
+      p.recorded !== false && p.squares !== null
+  );
   if (recorded.length === 0) {
     return {
       peak: 0,
@@ -152,9 +156,9 @@ export default function BacklogPage() {
     loadItems();
   }, [loadItems]);
 
-  // Record today's snapshot on mount so the chart reflects live state even
-  // when the user lands directly on /stats/backlog without visiting /orders.
-  // Mirrors the same POST that /orders/page.tsx fires.
+  // Fill today's snapshot on mount if it's missing, so the chart has a point
+  // even when the user lands directly on /stats/backlog without visiting
+  // /orders. Insert-only server-side; only the daily cron overwrites a day.
   useEffect(() => {
     fetch("/api/backlog-snapshots", { method: "POST" }).catch(() => {});
   }, []);
@@ -192,11 +196,13 @@ export default function BacklogPage() {
 
   // Per-item squares for the backlog statuses, computed from current items.
   // Items whose size doesn't parse are excluded from totals (they have no
-  // square count to attribute).
+  // square count to attribute). Held items are paused and excluded, matching
+  // the recorded backlog snapshots and the nav badge.
   const backlogItems = useMemo(() => {
     type Row = { item: Item; squares: number };
     const rows: Row[] = [];
     for (const item of items ?? []) {
+      if (item.onHold) continue;
       if (!BACKLOG_STATUSES.includes(item.status)) continue;
       const parsed = parseSquareSize(item.size);
       if (!parsed) continue;

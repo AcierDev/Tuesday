@@ -2,33 +2,23 @@
 
 import { useMemo } from "react";
 
-import { laDayKey } from "@/lib/debt-metrics";
-import {
-  buildGluedEvents,
-  buildScheduledDayByItemId,
-} from "@/lib/production-metrics";
-import { useActivities, useAllItems } from "@/lib/stats-shared";
-import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
+import { recentGluedWindow } from "@/lib/production-metrics";
+import { useGluedStats, useLaToday } from "@/lib/stats-shared";
 
 import { BadgeCard } from "./BadgeCard";
 
+// Server-computed (shares the nav/planner recent-window request) instead of
+// rebuilding glue events from every item + the capped activity feed.
 export function GluedTodayBadge({ active }: { active: boolean }) {
-  const { items, loading: itemsLoading } = useAllItems();
-  const { activities, loading: actLoading } = useActivities();
-  const schedules = useWeeklyScheduleStore((s) => s.schedules);
+  const today = useLaToday();
+  const { data, loading } = useGluedStats(recentGluedWindow(today));
 
   const todayStats = useMemo(() => {
-    if (!items || !activities) return null;
-    const today = laDayKey();
-    const scheduledDay = buildScheduledDayByItemId(schedules);
-    const events = buildGluedEvents(activities, items, scheduledDay).filter(
-      (e) => e.dayKey === today
-    );
+    if (!data) return null;
+    const events = data.events.filter((e) => e.dayKey === today);
     const squares = events.reduce((s, e) => s + e.squares, 0);
     return { squares, orders: events.length };
-  }, [items, activities, schedules]);
-
-  const loading = itemsLoading || actLoading;
+  }, [data, today]);
 
   return (
     <BadgeCard href="/stats/glued" label="Glued today" active={active}>

@@ -42,7 +42,10 @@ import {
   PRE_WIP_STATUSES,
 } from "@/components/production-planning/constants";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
+import {
+  ScheduleConflictError,
+  useWeeklyScheduleStore,
+} from "@/stores/useWeeklyScheduleStore";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import {
   DayName,
@@ -53,12 +56,21 @@ import {
 } from "@/typings/types";
 import {
   parseSquareSize,
-  RECENCY_WEIGHTED_FORECAST,
-  summarizeRecencyWeighted,
+  recentGluedWindow,
+  summarizeGluedForecast,
 } from "@/lib/production-metrics";
 import { getDesignFamily } from "@/components/production-planning/design-family";
+import {
+  autoPlanStartDayKey,
+  dayKeyToLocalDate,
+  parseDueDay,
+  planWeekStart,
+  type AutoPlanTrigger,
+} from "@/components/production-planning/planner-dates";
 import { parseNameTokens } from "@/components/orders/name-tokens";
-import { laDayKey } from "@/lib/debt-metrics";
+import { laDayKey, msUntilNextLaHour } from "@/lib/debt-metrics";
+import { useGluedStats, useLaToday } from "@/lib/stats-shared";
+import { scheduleVersion } from "@/app/api/weekly-schedules/version";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🚫 NO-DRAG WHILE MODAL OPEN                                          ║
@@ -127,7 +139,6 @@ const CAPACITY_ROUND_STEP = 50;
 // Day total turns green once it crosses this fraction of the day's capacity.
 // 0.85 matches the previous static 850/1000 ratio.
 const DAILY_GREEN_THRESHOLD_RATIO = 0.85;
-const FORECAST_ENDPOINT = `/api/stats/glued?days=${RECENCY_WEIGHTED_FORECAST.lookbackDays}`;
 
 // Auto-plan lateness penalty. Each day a slot sits past an item's due date
 // adds this many "negative squares" to its score, so anchor-grouping can
@@ -137,38 +148,19 @@ const FORECAST_ENDPOINT = `/api/stats/glued?days=${RECENCY_WEIGHTED_FORECAST.loo
 const AUTO_PLAN_LATE_PENALTY_PER_DAY = 375;
 
 // Nightly auto-plan: re-runs handleAutoFill at 8pm America/Los_Angeles every
-// day so anything not glued today gets pulled forward and any over-production
-// rebalances the rest of the week. Client-side only — fires only when a
-// planner tab happens to be open at the trigger time.
-const NIGHTLY_AUTO_PLAN_TIMEZONE = "America/Los_Angeles";
-const NIGHTLY_AUTO_PLAN_HOUR = 20; // 8pm local
+// day so anything not glued today gets pulled forward (onto tomorrow onward)
+// and any over-production rebalances the rest of the week. Client-side only —
+// fires only when a planner tab is open at the trigger time; a server lease
+// (/api/production-planning/nightly-auto-plan) lets exactly one tab run it.
+const NIGHTLY_AUTO_PLAN_HOUR = 20; // 8pm LA
 const NIGHTLY_AUTO_PLAN_BUFFER_MS = 500;
+const NIGHTLY_AUTO_PLAN_LEASE_ENDPOINT =
+  "/api/production-planning/nightly-auto-plan";
+// Tabs that lose the lease reload schedules after the winner has had time to
+// save, so every open planner shows tonight's plan.
+const NIGHTLY_FOLLOWER_REFRESH_MS = 60_000;
 const PLANNER_DAY_CHECK_INTERVAL_MS = 60_000;
-
-// Returns ms until the next occurrence of `hour:00:00` in the given IANA tz.
-// Reads wall-clock time in the target zone via Intl rather than the browser's
-// local time so the trigger lands at 8pm PT regardless of where the user is.
-function msUntilNextZonedHour(hour: number, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    fractionalSecondDigits: 3,
-    hour12: false,
-  }).formatToParts(new Date());
-  const get = (type: string) =>
-    Number(parts.find((p) => p.type === type)?.value ?? 0);
-  let h = get("hour");
-  if (h === 24) h = 0;
-  const msIntoDay =
-    ((h * 60 + get("minute")) * 60 + get("second")) * 1000 +
-    get("fractionalSecond");
-  const targetMs = hour * 60 * 60 * 1000;
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const delta = targetMs - msIntoDay;
-  return (delta > 0 ? delta : delta + msPerDay) + NIGHTLY_AUTO_PLAN_BUFFER_MS;
-}
+const AUTO_PLAN_FLASH_MS = 1600;
 
 const DAYS: DayName[] = [
   "Monday",
@@ -191,17 +183,6 @@ const DAY_OFFSET_FROM_WEEK_START: Record<DayName, number> = {
 
 // Sat/Sun work folds into Monday's column for display.
 const DAYS_FOLDED_INTO_MONDAY: DayName[] = ["Saturday", "Sunday"];
-
-// Week boundary: a new planning week starts Saturday morning. We still key
-// schedules by the Sunday inside the week (DB-backwards compat with all
-// pre-existing weekKey docs), so the helper just nudges the input one day
-// forward and falls through to the standard Sunday-led startOfWeek.
-//   today = Fri 5/1 → Sun 4/26 (current week)
-//   today = Sat 5/2 → Sun 5/3  (rolled over to next week)
-//   today = Sun 5/3 → Sun 5/3
-function planWeekStart(date: Date): Date {
-  return startOfWeek(addDays(date, 1), { weekStartsOn: 0 });
-}
 
 // Per-day opt-in for the auto-plan run. Stored in localStorage so the user's
 // pick sticks across reloads. Defaults match the original Mon–Thu target set.
@@ -229,11 +210,8 @@ function classifyDueBucket(
   nextWeekStart: Date,
   nextWeekEnd: Date
 ): { dueDate: Date | null; bucket: OrderMeta["bucket"] } {
-  if (!dueValue) return { dueDate: null, bucket: "noDue" };
-  const parsed = new Date(dueValue);
-  if (Number.isNaN(parsed.getTime())) return { dueDate: null, bucket: "noDue" };
-
-  const dueDate = startOfDay(parsed);
+  const dueDate = parseDueDay(dueValue);
+  if (!dueDate) return { dueDate: null, bucket: "noDue" };
   if (isBefore(dueDate, today)) return { dueDate, bucket: "overdue" };
   if (isWithinInterval(dueDate, { start: today, end: thisWeekEnd }))
     return { dueDate, bucket: "thisWeek" };
@@ -292,7 +270,7 @@ export default function ProductionPlanningPage() {
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [currentWeekKey, setCurrentWeekKey] = useState(() =>
-    format(planWeekStart(new Date()), "yyyy-MM-dd")
+    format(planWeekStart(dayKeyToLocalDate(laDayKey())), "yyyy-MM-dd")
   );
 
   // Right-click context menu for changing an order's status from the planner.
@@ -472,25 +450,23 @@ export default function ProductionPlanningPage() {
 
   // Live daily capacity = recency-weighted gluing forecast rounded UP to the
   // nearest CAPACITY_ROUND_STEP. Falls back to DAILY_CAPACITY_FALLBACK_SQUARES
-  // until the forecast endpoint resolves.
-  const [forecastPerDay, setForecastPerDay] = useState<number | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    fetch(FORECAST_ENDPOINT)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { buckets?: { date: string; value: number }[] } | null) => {
-        if (cancelled || !data?.buckets) return;
-        const stats = summarizeRecencyWeighted(
-          data.buckets,
-          RECENCY_WEIGHTED_FORECAST
-        );
-        setForecastPerDay(stats.weightedAvgActive);
-      })
-      .catch((err) => console.warn("Failed to load gluing forecast", err));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // until the forecast resolves. Shares one cached request with the header
+  // badge and nav badges (same window), and averages complete days only.
+  const laTodayKey = useLaToday();
+  const { start: forecastStart, end: forecastEnd } =
+    recentGluedWindow(laTodayKey);
+  const { data: gluedRecent } = useGluedStats({
+    start: forecastStart,
+    end: forecastEnd,
+  });
+  const forecastPerDay = useMemo(
+    () =>
+      gluedRecent
+        ? summarizeGluedForecast(gluedRecent.buckets, laTodayKey)
+            .weightedAvgActive
+        : null,
+    [gluedRecent, laTodayKey]
+  );
   const dailyCapacitySquares = useMemo(() => {
     if (!forecastPerDay || forecastPerDay <= 0) {
       return DAILY_CAPACITY_FALLBACK_SQUARES;
@@ -589,7 +565,10 @@ export default function ProductionPlanningPage() {
     current: currentSchedule?.schedule,
     apply: (next) => {
       if (!next || !currentSchedule) return;
-      updateSchedule(currentWeekKey, { ...currentSchedule, schedule: next });
+      updateSchedule(currentWeekKey, {
+        ...currentSchedule,
+        schedule: next,
+      }).catch((err) => console.warn("Undo/redo not saved", err));
     },
     isEqual: (a, b) => a === b,
     historyKey: currentWeekKey,
@@ -600,21 +579,22 @@ export default function ProductionPlanningPage() {
   // between them doesn't block on a fetch (the store dedups by ID, so this is
   // cheap when most items are already loaded). Also covers any past week the
   // user navigates to via the history popover.
+  const thisWeekKey = format(
+    planWeekStart(dayKeyToLocalDate(laTodayKey)),
+    "yyyy-MM-dd"
+  );
+  const nextWeekKey = format(
+    addWeeks(planWeekStart(dayKeyToLocalDate(laTodayKey)), 1),
+    "yyyy-MM-dd"
+  );
+
   useEffect(() => {
     if (schedules.length === 0) return;
-    const thisWk = format(
-      startOfWeek(new Date(), { weekStartsOn: 0 }),
-      "yyyy-MM-dd"
-    );
-    const nextWk = format(
-      addWeeks(startOfWeek(new Date(), { weekStartsOn: 0 }), 1),
-      "yyyy-MM-dd"
-    );
     const ids = new Set<string>();
     for (const s of schedules) {
       if (
-        s.weekKey === thisWk ||
-        s.weekKey === nextWk ||
+        s.weekKey === thisWeekKey ||
+        s.weekKey === nextWeekKey ||
         s.weekKey === currentWeekKey
       ) {
         Object.values(s.schedule)
@@ -623,7 +603,7 @@ export default function ProductionPlanningPage() {
       }
     }
     if (ids.size > 0) fetchItemsByIds(Array.from(ids));
-  }, [schedules, currentWeekKey, fetchItemsByIds]);
+  }, [schedules, currentWeekKey, thisWeekKey, nextWeekKey, fetchItemsByIds]);
 
   // Combine all known items for looking up scheduled items (which might be done)
   const allKnownItems = useMemo(() => {
@@ -786,11 +766,16 @@ export default function ProductionPlanningPage() {
     // 1. Drop on Unscheduled (Sidebar)
     if (overContainer === "unscheduled") {
       if (activeContainer !== "unscheduled") {
-        await removeItemFromDay(
-          currentWeekKey,
-          activeContainer as DayName,
-          activeId
-        );
+        try {
+          await removeItemFromDay(
+            currentWeekKey,
+            activeContainer as DayName,
+            activeId
+          );
+        } catch (err) {
+          // Conflicts reload the week; nothing else to undo here.
+          console.warn("Planner change not saved", err);
+        }
       }
       setActiveId(null);
       return;
@@ -820,6 +805,7 @@ export default function ProductionPlanningPage() {
         await createWeek(currentWeekKey);
       } catch (e) {
         console.error("Failed to create week", e);
+        setActiveId(null);
         return;
       }
     } else {
@@ -906,7 +892,13 @@ export default function ProductionPlanningPage() {
       }
     }
 
-    await updateSchedule(currentWeekKey, newScheduleData);
+    try {
+      await updateSchedule(currentWeekKey, newScheduleData);
+    } catch (err) {
+      // A 409 means another tab / reconcile changed this week first; the
+      // store already reloaded it, so the drop is simply not applied.
+      console.warn("Planner change not saved", err);
+    }
 
     setActiveId(null);
   };
@@ -960,7 +952,13 @@ export default function ProductionPlanningPage() {
   // "consolidate similar work" intent). Singletons keep the legacy earliest-
   // valid behavior so the planner doesn't suddenly cram every item against
   // its due date. Sat/Sun fold into Monday's capacity bucket.
-  const handleAutoFill = async () => {
+  // `trigger` "nightly" = the 8pm run: today's shop day is over, so slots
+  // start tomorrow and leftover work rolls forward instead of back onto today.
+  const handleAutoFill = async (trigger: AutoPlanTrigger = "manual") => {
+    // Read schedules from the store, not this render's closure — the nightly
+    // run refreshes them right before calling in, and a stale copy would
+    // replan over (and conflict with) newer server state.
+    const schedules = useWeeklyScheduleStore.getState().schedules;
     type SlotKey = string; // `${weekKey}|${day}`
     type Slot = {
       weekKey: string;
@@ -972,6 +970,7 @@ export default function ProductionPlanningPage() {
     type WeekPlan = {
       weekKey: string;
       weekStart: Date;
+      baseVersion: number;
       lockedByDay: Record<
         DayName,
         { id: string; done: boolean; pinned?: boolean }[]
@@ -1023,7 +1022,12 @@ export default function ProductionPlanningPage() {
 
       plans.push({
         weekKey,
-        weekStart: startOfDay(parseISO(weekKey)),
+        weekStart: dayKeyToLocalDate(weekKey),
+        baseVersion: scheduleVersion(
+          useWeeklyScheduleStore
+            .getState()
+            .schedules.find((s) => s.weekKey === weekKey)
+        ),
         lockedByDay,
       });
     }
@@ -1037,8 +1041,11 @@ export default function ProductionPlanningPage() {
 
     // Skip days that have already passed — placing new pre-WIP work into a
     // past day is meaningless (e.g. running auto-plan on Tuesday should never
-    // fill Monday's leftover capacity).
-    const todayMs = startOfDay(new Date()).getTime();
+    // fill Monday's leftover capacity). LA calendar day, and tomorrow for
+    // the nightly run.
+    const firstSlotMs = dayKeyToLocalDate(
+      autoPlanStartDayKey(laDayKey(), trigger)
+    ).getTime();
 
     const slots: Slot[] = [];
     const slotByKey = new Map<SlotKey, Slot>();
@@ -1047,7 +1054,7 @@ export default function ProductionPlanningPage() {
         const date = startOfDay(
           addDays(plan.weekStart, DAY_OFFSET_FROM_WEEK_START[day])
         );
-        if (date.getTime() < todayMs) continue;
+        if (date.getTime() < firstSlotMs) continue;
         // Sat/Sun locked work folds into Monday's remaining capacity (matches
         // the column display rule — those items show on Monday).
         let lockedSquares = 0;
@@ -1135,14 +1142,13 @@ export default function ProductionPlanningPage() {
       rushed: boolean;
     };
     const parseDueMs = (raw: string | undefined): number => {
-      if (!raw) return Infinity;
-      const t = startOfDay(new Date(raw)).getTime();
-      // Invalid date strings → "no due" (no constraint).
-      if (!Number.isFinite(t)) return Infinity;
+      // Missing/invalid → "no due" (no constraint). Parsed as a calendar day
+      // (same local-midnight frame as slot dates), never via new Date(key).
+      const due = parseDueDay(raw);
       // Past dates are returned as-is so the sort can prioritize the
       // most-overdue item first. Eligibility for overdue items is handled
       // via a date-relaxed fallback further down.
-      return t;
+      return due ? due.getTime() : Infinity;
     };
     const pool: PoolEntry[] = availableOrders
       .filter(
@@ -1178,7 +1184,11 @@ export default function ProductionPlanningPage() {
     const MS_PER_DAY = 86400000;
     const dueDateScore = (slot: Slot, refDueMs: number): number => {
       if (!Number.isFinite(refDueMs)) return 0;
-      const bufferDays = (refDueMs - slot.date.getTime()) / MS_PER_DAY;
+      // Rounded: both are local midnights, so a DST day (23/25h) still
+      // counts as one whole calendar day.
+      const bufferDays = Math.round(
+        (refDueMs - slot.date.getTime()) / MS_PER_DAY
+      );
       if (bufferDays < 0) return bufferDays * AUTO_PLAN_LATE_PENALTY_PER_DAY;
       return 0;
     };
@@ -1255,8 +1265,9 @@ export default function ProductionPlanningPage() {
     for (const plan of plans) {
       const dayPlacements = (day: DayName) =>
         placementsBySlot.get(`${plan.weekKey}|${day}`) ?? [];
-      const finalSchedule: WeeklyScheduleData = {
+      const finalSchedule: WeeklyScheduleData & { version: number } = {
         weekKey: plan.weekKey,
+        version: plan.baseVersion,
         schedule: {
           Sunday: plan.lockedByDay.Sunday,
           Monday: [...plan.lockedByDay.Monday, ...dayPlacements("Monday")],
@@ -1279,7 +1290,7 @@ export default function ProductionPlanningPage() {
     // Trigger the placement animation. Clear after the animation has had time
     // to play out so re-running auto-plan re-flashes.
     setRecentlyPlacedIds(new Set(placements.map((p) => p.entry.id)));
-    setTimeout(() => setRecentlyPlacedIds(new Set()), 1600);
+    setTimeout(() => setRecentlyPlacedIds(new Set()), AUTO_PLAN_FLASH_MS);
   };
 
   // Latest handleAutoFill in a ref so the nightly scheduler can call the
@@ -1290,53 +1301,79 @@ export default function ProductionPlanningPage() {
     handleAutoFillRef.current = handleAutoFill;
   });
 
-  // Nightly auto-plan tick at 8pm PT. Recursive setTimeout so each fire
-  // recomputes the next interval (and absorbs DST shifts cleanly).
+  // Nightly auto-plan tick at 8pm LA. Recursive setTimeout so each fire
+  // recomputes the next 20:00 LA as a zoned instant (DST-safe). Every open
+  // tab arms a timer, but only the tab that claims the day's server lease
+  // runs; the rest reload schedules a minute later to show the result.
   useEffect(() => {
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let followerRefreshId: ReturnType<typeof setTimeout> | null = null;
+
+    const runNightly = async () => {
+      const res = await fetch(NIGHTLY_AUTO_PLAN_LEASE_ENDPOINT, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(`Lease HTTP ${res.status}`);
+      const { claimed } = (await res.json()) as { claimed?: boolean };
+      if (cancelled) return;
+      if (!claimed) {
+        followerRefreshId = setTimeout(() => {
+          if (!cancelled) void useWeeklyScheduleStore.getState().fetchSchedules();
+        }, NIGHTLY_FOLLOWER_REFRESH_MS);
+        return;
+      }
+      await useWeeklyScheduleStore.getState().fetchSchedules();
+      if (cancelled) return;
+      try {
+        await handleAutoFillRef.current("nightly");
+      } catch (err) {
+        // A week changed under us mid-run (another tab saved). The store has
+        // reloaded it; replan once on the fresh state.
+        if (!(err instanceof ScheduleConflictError) || cancelled) throw err;
+        await useWeeklyScheduleStore.getState().fetchSchedules();
+        await handleAutoFillRef.current("nightly");
+      }
+    };
+
     const schedule = () => {
-      timeoutId = setTimeout(
-        () => {
-          if (cancelled) return;
-          Promise.resolve(handleAutoFillRef.current()).catch((err) =>
+      const delay =
+        msUntilNextLaHour(NIGHTLY_AUTO_PLAN_HOUR) + NIGHTLY_AUTO_PLAN_BUFFER_MS;
+      // The LA day this timer is for. A suspended laptop can fire it hours
+      // late; past that day, planning "from tomorrow" would skip a real day.
+      const targetDayKey = laDayKey(new Date(Date.now() + delay));
+      timeoutId = setTimeout(() => {
+        if (cancelled) return;
+        if (laDayKey() === targetDayKey) {
+          runNightly().catch((err) =>
             console.warn("Nightly auto-plan failed", err)
           );
-          schedule();
-        },
-        msUntilNextZonedHour(
-          NIGHTLY_AUTO_PLAN_HOUR,
-          NIGHTLY_AUTO_PLAN_TIMEZONE
-        )
-      );
+        }
+        schedule();
+      }, delay);
     };
     schedule();
     return () => {
       cancelled = true;
       if (timeoutId) clearTimeout(timeoutId);
+      if (followerRefreshId) clearTimeout(followerRefreshId);
     };
   }, []);
 
-  const thisWeekKey = format(planWeekStart(new Date()), "yyyy-MM-dd");
-  const nextWeekKey = format(
-    addWeeks(planWeekStart(new Date()), 1),
-    "yyyy-MM-dd"
-  );
   const viewingNextWeek = currentWeekKey === nextWeekKey;
   const viewingPastWeek = currentWeekKey < thisWeekKey;
 
   // Today's column gets centered on mount in the mobile snap-scroller. Sat/Sun
   // fold into Monday's column to match the display rule. Computed in
-  // useEffect (not useMemo) so it always uses the *browser's* local day —
-  // SSR runs on Vercel in UTC, which after ~5pm PT already reads as the next
-  // day, and a hydration mismatch on the highlighted column was sticking.
+  // useEffect (not useMemo) so the highlighted column is only set after
+  // hydration; the weekday is the LA day's, and follows midnight rollover.
   const [todayColumnDay, setTodayColumnDay] = useState<DayName | null>(null);
   useEffect(() => {
-    const dayName = format(new Date(), "EEEE") as DayName;
+    const dayName = format(dayKeyToLocalDate(laTodayKey), "EEEE") as DayName;
     setTodayColumnDay(
       DAYS_FOLDED_INTO_MONDAY.includes(dayName) ? "Monday" : dayName
     );
-  }, []);
+  }, [laTodayKey]);
 
   // Scroller node — driven by a ref callback so the IntersectionObserver
   // effect below + the centering effect can both react to mount/unmount.
@@ -1449,7 +1486,11 @@ export default function ProductionPlanningPage() {
             setCurrentWeekKey(viewingNextWeek ? thisWeekKey : nextWeekKey)
           }
           onSelectWeek={(weekKey) => setCurrentWeekKey(weekKey)}
-          onAutoFill={() => handleAutoFill()}
+          onAutoFill={() =>
+            handleAutoFill().catch((err) =>
+              console.warn("Auto-plan not saved", err)
+            )
+          }
           onClearWeek={() => {
             if (currentSchedule) {
               const clearedSchedule = {
@@ -1464,7 +1505,9 @@ export default function ProductionPlanningPage() {
                   Saturday: [],
                 },
               };
-              updateSchedule(currentWeekKey, clearedSchedule);
+              updateSchedule(currentWeekKey, clearedSchedule).catch((err) =>
+                console.warn("Clear week not saved", err)
+              );
             }
           }}
         />
@@ -1526,7 +1569,9 @@ export default function ProductionPlanningPage() {
                         capacity={dailyCapacitySquares}
                         greenThreshold={dailyGreenThresholdSquares}
                         onTogglePin={(id, actualDay) =>
-                          toggleItemPinned(currentWeekKey, actualDay, id)
+                          toggleItemPinned(currentWeekKey, actualDay, id).catch(
+                            (err) => console.warn("Pin not saved", err)
+                          )
                         }
                         date={date}
                         autoPlanEnabled={autoPlanDays[day]}

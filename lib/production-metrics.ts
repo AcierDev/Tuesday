@@ -1,5 +1,10 @@
 import { Activity, DayName, Item, ItemStatus, WeeklyScheduleData } from "@/typings/types";
 import { dayDiffKeys, laDayKey, shiftDayKey } from "@/lib/debt-metrics";
+import {
+  orderPurchaseFields,
+  purchaseHistory,
+  type StoredPurchase,
+} from "@/lib/shipping-labels/purchase-records";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ ⚙️ CONFIG                                                            ║
@@ -13,17 +18,29 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 export type DayBucket = { date: string; value: number };
 
-// Bucket items by their completion day (LA-local). Returns one entry per day
-// in [startKey, endKey], including zero-completion days, ordered ascending.
+// An item counts as completed only while its status is Done. Reopened orders
+// keep their old completedAt, so the timestamp alone is not proof of shipping.
+export function completedAtIfDone(
+  item: Pick<Item, "completedAt" | "status">
+): number | null {
+  if (item.status !== ItemStatus.Done) return null;
+  return typeof item.completedAt === "number" && Number.isFinite(item.completedAt)
+    ? item.completedAt
+    : null;
+}
+
+// Bucket Done items by their completion day (LA-local). Returns one entry per
+// day in [startKey, endKey], including zero-completion days, ordered ascending.
 export function bucketCompletionsByDay(
-  items: Pick<Item, "completedAt">[],
+  items: Pick<Item, "completedAt" | "status">[],
   startKey: string,
   endKey: string
 ): DayBucket[] {
   const counts = new Map<string, number>();
   for (const item of items) {
-    if (!item.completedAt) continue;
-    const key = laDayKey(new Date(item.completedAt));
+    const completedAt = completedAtIfDone(item);
+    if (completedAt === null) continue;
+    const key = laDayKey(new Date(completedAt));
     if (key < startKey || key > endKey) continue;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
@@ -82,23 +99,46 @@ export type GluedEvent = {
   design: string;
 };
 
-// Day-of-week offsets from Sunday (week start). Mirrors the production-
-// planning calendar so a (weekKey, day) pair resolves to the same calendar
-// date the planner shows.
-const DAY_OFFSET_FROM_WEEK_START: Record<DayName, number> = {
+// Planner week: a planning week runs Saturday → Friday and is keyed by the
+// Sunday inside it (DB-compatible with every existing weekKey doc). So week
+// key Sun X covers Sat X-1 … Fri X+5, and its Saturday slot is Sat X-1.
+export const PLAN_WEEK_DAY_OFFSETS: Record<DayName, number> = {
+  Saturday: -1,
   Sunday: 0,
   Monday: 1,
   Tuesday: 2,
   Wednesday: 3,
   Thursday: 4,
   Friday: 5,
-  Saturday: 6,
 };
+const PLAN_WEEK_FIRST_OFFSET = PLAN_WEEK_DAY_OFFSETS.Saturday;
+const DAYS_PER_WEEK = 7;
+const SATURDAY_UTC_DAY = 6;
 
-// Resolve a (weekKey, day) calendar slot to its YYYY-MM-DD date. weekKey is
-// the Sunday of the week (LA-local).
+function utcWeekday(dayKey: string): number {
+  const [y = Number.NaN, m = Number.NaN, d = Number.NaN] = dayKey.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+// Sunday week key of the planner week containing `dayKey` (Saturday rolls
+// forward into the next week, matching the production planner).
+export function planWeekKeyForDay(dayKey: string): string {
+  const dow = utcWeekday(dayKey);
+  return dow === SATURDAY_UTC_DAY
+    ? shiftDayKey(dayKey, 1)
+    : shiftDayKey(dayKey, -dow);
+}
+
+// The seven calendar days (Sat → Fri) of the planner week keyed `weekKey`.
+export function planWeekDayKeys(weekKey: string): string[] {
+  return Array.from({ length: DAYS_PER_WEEK }, (_, i) =>
+    shiftDayKey(weekKey, PLAN_WEEK_FIRST_OFFSET + i)
+  );
+}
+
+// Resolve a (weekKey, day) planner slot to its YYYY-MM-DD date.
 export function dayKeyFromWeekSlot(weekKey: string, day: DayName): string {
-  return shiftDayKey(weekKey, DAY_OFFSET_FROM_WEEK_START[day]);
+  return shiftDayKey(weekKey, PLAN_WEEK_DAY_OFFSETS[day]);
 }
 
 // Flatten weekly schedule docs into itemId → calendar dayKey. If an item
@@ -219,6 +259,33 @@ export const RECENCY_WEIGHTED_FORECAST = {
   olderWeight: 1,
 } as const;
 
+// One shared glued-stats window for every forecast consumer (planner capacity,
+// planner badge, nav Forecast/Glued badges, overview, glued page): the last
+// `lookbackDays` complete LA days plus today. Using the same window lets the
+// client dedupe them into one request; today is included only for "glued
+// today" and is dropped from the forecast via summarizeGluedForecast.
+export function recentGluedWindow(today: string = laDayKey()): {
+  start: string;
+  end: string;
+} {
+  return {
+    start: shiftDayKey(today, -RECENCY_WEIGHTED_FORECAST.lookbackDays),
+    end: today,
+  };
+}
+
+// Recency-weighted forecast over complete days only — today's partial bucket
+// would drag the average down until the shop finishes for the day.
+export function summarizeGluedForecast(
+  buckets: DayBucket[],
+  today: string = laDayKey()
+): RecencyWeightedStats {
+  const complete = buckets
+    .filter((b) => b.date < today)
+    .slice(-RECENCY_WEIGHTED_FORECAST.lookbackDays);
+  return summarizeRecencyWeighted(complete, RECENCY_WEIGHTED_FORECAST);
+}
+
 // Per-active-day average, biased toward the most recent window. The newest
 // `recentWindowDays` buckets are weighted `recentWeight`x; the rest weight
 // `olderWeight`x. Active = days with value > 0 (matches the planner's
@@ -314,9 +381,12 @@ export type LeadTimeStats = {
   bySize: LeadTimeRow[];
 };
 
-function leadDays(item: Pick<Item, "createdAt" | "completedAt">): number | null {
-  if (!item.completedAt || !item.createdAt) return null;
-  const ms = item.completedAt - item.createdAt;
+function leadDays(
+  item: Pick<Item, "createdAt" | "completedAt" | "status">
+): number | null {
+  const completedAt = completedAtIfDone(item);
+  if (completedAt === null || !item.createdAt) return null;
+  const ms = completedAt - item.createdAt;
   if (ms < 0) return null;
   return ms / MS_PER_DAY;
 }
@@ -355,7 +425,7 @@ function summarize(values: number[]): {
 }
 
 export function computeLeadTimeStats(
-  items: Pick<Item, "createdAt" | "completedAt" | "design" | "size">[]
+  items: Pick<Item, "createdAt" | "completedAt" | "design" | "size" | "status">[]
 ): LeadTimeStats {
   const all: number[] = [];
   const byDesign = new Map<string, number[]>();
@@ -407,13 +477,15 @@ export type OnTimeStats = {
   total: number;
   onTime: number;
   late: number;
-  onTimePct: number;
+  // null when nothing with a due date shipped in the window — callers show
+  // "—" instead of a misleading red 0%.
+  onTimePct: number | null;
   avgDaysLate: number;
 };
 
-// On-time = item.completedAt's LA day key <= item.dueDate.
+// On-time = a Done item's completedAt LA day key <= item.dueDate.
 export function computeOnTimeStats(
-  items: Pick<Item, "completedAt" | "dueDate">[],
+  items: Pick<Item, "completedAt" | "dueDate" | "status">[],
   startKey: string,
   endKey: string
 ): OnTimeStats {
@@ -422,10 +494,11 @@ export function computeOnTimeStats(
   let lateDaysSum = 0;
   let lateCount = 0;
   for (const item of items) {
-    if (!item.completedAt) continue;
+    const completedAt = completedAtIfDone(item);
+    if (completedAt === null) continue;
     const due = item.dueDate?.slice(0, 10);
     if (!due || due.length !== 10) continue;
-    const completedKey = laDayKey(new Date(item.completedAt));
+    const completedKey = laDayKey(new Date(completedAt));
     if (completedKey < startKey || completedKey > endKey) continue;
     total += 1;
     const diff = dayDiffKeys(due, completedKey);
@@ -440,7 +513,7 @@ export function computeOnTimeStats(
     total,
     onTime,
     late: lateCount,
-    onTimePct: total === 0 ? 0 : (onTime / total) * 100,
+    onTimePct: total === 0 ? null : (onTime / total) * 100,
     avgDaysLate: lateCount === 0 ? 0 : lateDaysSum / lateCount,
   };
 }
@@ -454,7 +527,7 @@ export type OnTimeWeekBucket = {
 };
 
 export function bucketOnTimeByWeek(
-  items: Pick<Item, "completedAt" | "dueDate">[],
+  items: Pick<Item, "completedAt" | "dueDate" | "status">[],
   startKey: string,
   endKey: string
 ): OnTimeWeekBucket[] {
@@ -473,14 +546,15 @@ export function bucketOnTimeByWeek(
   return buckets;
 }
 
-// Items currently past their due date and not yet completed.
+// Items currently past their due date and not yet completed. Status decides
+// completion: reopened orders keep a stale completedAt but are late again.
 export function computeCurrentlyLate(
   items: Item[]
 ): { item: Item; daysLate: number }[] {
   const today = laDayKey();
   const rows: { item: Item; daysLate: number }[] = [];
   for (const item of items) {
-    if (item.completedAt) continue;
+    if (item.status === ItemStatus.Done) continue;
     const due = item.dueDate?.slice(0, 10);
     if (!due || due.length !== 10) continue;
     const diff = dayDiffKeys(due, today);
@@ -617,9 +691,16 @@ export type StatusDurationRow = {
 // Each status_change activity tells us the item left oldValue at that
 // timestamp. We pair consecutive transitions and treat the first transition
 // as the end of an "initial" segment (status before first transition).
+//
+// Items with incomplete history are skipped rather than guessed: no
+// status_change at all (a Done item would otherwise log completedAt −
+// createdAt as time "in Done"), or created before `historyStartMs` — the
+// oldest activity the caller loaded when its fetch was capped, so earlier
+// transitions may be missing.
 export function computeStatusDurations(
   items: Item[],
-  activities: Activity[]
+  activities: Activity[],
+  historyStartMs: number | null = null
 ): StatusDurationRow[] {
   const byItem = new Map<string, Activity[]>();
   for (const a of activities) {
@@ -640,9 +721,11 @@ export function computeStatusDurations(
   };
 
   for (const item of items) {
+    if (historyStartMs !== null && item.createdAt < historyStartMs) continue;
     const transitions = (byItem.get(item.id) ?? [])
       .slice()
       .sort((a, b) => a.timestamp - b.timestamp);
+    if (transitions.length === 0) continue;
 
     let prevStatus: ItemStatus | null = null;
     let prevTime = item.createdAt;
@@ -655,10 +738,12 @@ export function computeStatusDurations(
       prevStatus = change.newValue as ItemStatus;
       prevTime = t.timestamp;
     }
-    // Final open-ended segment: from last transition to now (or completedAt).
-    const endTime = item.completedAt ?? Date.now();
+    // Final open-ended segment: time in the current status so far. Done is
+    // terminal, so it never accrues a bottleneck segment.
     const finalStatus = prevStatus ?? item.status;
-    add(finalStatus, (endTime - prevTime) / MS_PER_DAY_2);
+    if (finalStatus !== ItemStatus.Done && item.status !== ItemStatus.Done) {
+      add(finalStatus, (Date.now() - prevTime) / MS_PER_DAY_2);
+    }
   }
 
   const rows: StatusDurationRow[] = [];
@@ -735,15 +820,16 @@ export const DAY_OF_WEEK_LABELS = [
 export type DayOfWeekRow = { day: string; total: number; activeDays: number; avg: number };
 
 export function bucketByDayOfWeek(
-  items: Pick<Item, "completedAt">[],
+  items: Pick<Item, "completedAt" | "status">[],
   startKey: string,
   endKey: string
 ): DayOfWeekRow[] {
   // Bucket completions per (calendar-day key) and per (day-of-week index).
   const perDay = new Map<string, number>();
   for (const item of items) {
-    if (!item.completedAt) continue;
-    const key = laDayKey(new Date(item.completedAt));
+    const completedAt = completedAtIfDone(item);
+    if (completedAt === null) continue;
+    const key = laDayKey(new Date(completedAt));
     if (key < startKey || key > endKey) continue;
     perDay.set(key, (perDay.get(key) ?? 0) + 1);
   }
@@ -773,6 +859,27 @@ export function bucketByDayOfWeek(
 
 export type ShippingSpendRow = { date: string; cost: number; count: number };
 
+// Label sources whose cost was not paid through this app (e.g. a label PDF
+// uploaded from elsewhere). They have no real charge, so they'd drag the
+// per-shipment average toward $0.
+const UNPRICED_SHIPMENT_SOURCES: ReadonlySet<string> = new Set(["uploaded"]);
+
+// Charge for a purchased shipment, or null when it has no real cost (missing
+// / zero / non-numeric charge, or an uploaded label). Null shipments are left
+// out of spend totals and per-shipment averages.
+export function shipmentCost(
+  ship: Item["purchasedShipment"] | StoredPurchase | null | undefined
+): number | null {
+  if (!ship) return null;
+  const source = (ship as { source?: unknown }).source;
+  if (typeof source === "string" && UNPRICED_SHIPMENT_SOURCES.has(source)) {
+    return null;
+  }
+  if ((ship as StoredPurchase).voidedAt) return null;
+  const cost = parseFloat(String(ship.totalNetCharge ?? ""));
+  return Number.isFinite(cost) && cost > 0 ? cost : null;
+}
+
 export function bucketShippingSpendByDay(
   items: Item[],
   startKey: string,
@@ -780,15 +887,19 @@ export function bucketShippingSpendByDay(
 ): ShippingSpendRow[] {
   const byDay = new Map<string, { cost: number; count: number }>();
   for (const item of items) {
-    const ship = item.purchasedShipment;
-    if (!ship?.purchasedAt) continue;
-    const key = laDayKey(new Date(ship.purchasedAt));
-    if (key < startKey || key > endKey) continue;
-    const cost = parseFloat(String(ship.totalNetCharge ?? 0)) || 0;
-    const cur = byDay.get(key) ?? { cost: 0, count: 0 };
-    cur.cost += cost;
-    cur.count += 1;
-    byDay.set(key, cur);
+    // Every recorded purchase counts (a repurchase is a second real charge);
+    // voided and uploaded ones are dropped by shipmentCost.
+    for (const ship of purchaseHistory(orderPurchaseFields(item))) {
+      if (!ship.purchasedAt) continue;
+      const key = laDayKey(new Date(ship.purchasedAt));
+      if (key < startKey || key > endKey) continue;
+      const cost = shipmentCost(ship);
+      if (cost === null) continue;
+      const cur = byDay.get(key) ?? { cost: 0, count: 0 };
+      cur.cost += cost;
+      cur.count += 1;
+      byDay.set(key, cur);
+    }
   }
   const out: ShippingSpendRow[] = [];
   const span = dayDiffKeys(startKey, endKey);
@@ -929,6 +1040,21 @@ const HEALTH_ON_TIME_RECENT_DAYS = 14;
 const HEALTH_ON_TIME_OLD_WEIGHT = 0.5;
 const HEALTH_RANGE_DAYS = 30;
 
+// Consecutive on-time shipments (each counting full weight, as a new recent
+// shipment would) needed to lift a weighted on-time rate to `targetPct`:
+// smallest n with (onTime + n) / (total + n) >= target. 0 when already there;
+// null when the target is unreachable (>= 100%).
+export function onTimeShipmentsToTarget(
+  weightedOnTime: number,
+  weightedTotal: number,
+  targetPct: number
+): number | null {
+  const target = targetPct / 100;
+  if (target >= 1) return null;
+  const needed = (target * weightedTotal - weightedOnTime) / (1 - target);
+  return needed <= 0 ? 0 : Math.ceil(needed - 1e-9);
+}
+
 export type HealthBreakdownRow = {
   label: string;
   earned: number;
@@ -987,7 +1113,14 @@ export function computeHealthScore(
     if (diff > 0) debt += diff;
   }
   const lateNow = computeCurrentlyLate(active).length;
-  const buckets = bucketCompletionsByDay(items, start, today);
+  // Velocity compares complete days only (ending yesterday, like the
+  // delivery briefing) so today's partial count never reads as a slowdown.
+  const yesterday = shiftDayKey(today, -1);
+  const buckets = bucketCompletionsByDay(
+    items,
+    shiftDayKey(yesterday, -(RECENT_VELOCITY_DAYS * 2 - 1)),
+    yesterday
+  );
   const onTime = computeOnTimeStats(items, start, today);
 
   // Recency-weighted on-time pct: shipments older than N days count
@@ -996,10 +1129,11 @@ export function computeHealthScore(
   let weightedOnTime = 0;
   let weightedTotal = 0;
   for (const item of items) {
-    if (!item.completedAt) continue;
+    const completedAt = completedAtIfDone(item);
+    if (completedAt === null) continue;
     const due = item.dueDate?.slice(0, 10);
     if (!due || due.length !== 10) continue;
-    const completedKey = laDayKey(new Date(item.completedAt));
+    const completedKey = laDayKey(new Date(completedAt));
     if (completedKey < start || completedKey > today) continue;
     const weight =
       completedKey >= onTimeRecentCutoff ? 1 : HEALTH_ON_TIME_OLD_WEIGHT;
@@ -1011,6 +1145,11 @@ export function computeHealthScore(
   }
   const weightedOnTimePct =
     weightedTotal === 0 ? 0 : (weightedOnTime / weightedTotal) * 100;
+  const shipmentsToTarget = onTimeShipmentsToTarget(
+    weightedOnTime,
+    weightedTotal,
+    HEALTH_ON_TIME_TARGET
+  );
 
   const leadStats = computeLeadTimeStats(items);
   const designAvg = new Map(leadStats.byDesign.map((r) => [r.key, r.avgDays]));
@@ -1116,14 +1255,14 @@ export function computeHealthScore(
         actual:
           weightedTotal === 0
             ? "no shipments"
-            : `${Math.round(weightedOnTimePct)}% recency-weighted (${Math.round(onTime.onTimePct)}% raw)`,
+            : `${Math.round(weightedOnTimePct)}% recency-weighted (${onTime.onTimePct === null ? "—" : `${Math.round(onTime.onTimePct)}%`} raw)`,
         target: `${HEALTH_ON_TIME_TARGET}% target`,
         hint:
           weightedTotal === 0
             ? "Nothing shipped yet — full credit by default."
             : weightedOnTimePct >= HEALTH_ON_TIME_TARGET
               ? "Hitting your target. Nice."
-              : `Recent shipments count fully; older than ${HEALTH_ON_TIME_RECENT_DAYS} days count ${Math.round(HEALTH_ON_TIME_OLD_WEIGHT * 100)}%. Ship ${onTime.total - onTime.onTime} more on-time of next ${onTime.total} to reach target.`,
+              : `Recent shipments count fully; older than ${HEALTH_ON_TIME_RECENT_DAYS} days count ${Math.round(HEALTH_ON_TIME_OLD_WEIGHT * 100)}%.${shipmentsToTarget === null ? "" : ` Ship the next ${shipmentsToTarget} on time in a row to reach target.`}`,
       },
       {
         label: "Time Debt",
