@@ -58,9 +58,21 @@ function boundedText(value: unknown, limit: number): string | null {
   return parsed && parsed.length <= limit ? parsed : null;
 }
 
+// Generated summary fields are shown to employees as plain advice. Customer
+// messages can steer the model, so links, markup and hidden characters are rejected.
+const CONTROL_CHARACTERS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/;
+const LINE_BREAKS = /[\n\r\u2028\u2029]/;
+const LINKS_OR_MARKUP = /https?:|www\.|<\/?[a-z!]|\]\(/i;
+
+function plainText(value: unknown, limit: number, singleLine: boolean): string | null {
+  const parsed = boundedText(value, limit);
+  return parsed && !CONTROL_CHARACTERS.test(parsed) && !LINKS_OR_MARKUP.test(parsed)
+    && !(singleLine && LINE_BREAKS.test(parsed)) ? parsed : null;
+}
+
 export function parseConversationSummary(value: unknown, messages: VerifiedMessage[], hasMessageHistory: boolean): ConversationSummary | null {
   const input = record(value);
-  const body = boundedText(input?.text, ASK_TUESDAY.maxSummaryLength);
+  const body = plainText(input?.text, ASK_TUESDAY.maxSummaryLength, false);
   if (!input || !body || !Array.isArray(input.evidence) || !input.evidence.length
     || input.evidence.length > ASK_TUESDAY.maxSummaryEvidence
     || (input.highlights !== undefined && !Array.isArray(input.highlights))) return null;
@@ -68,11 +80,11 @@ export function parseConversationSummary(value: unknown, messages: VerifiedMessa
   if (rawHighlights.length > ASK_TUESDAY.maxSummaryHighlights) return null;
   const highlights: string[] = [];
   for (const value of rawHighlights) {
-    const highlight = boundedText(value, ASK_TUESDAY.maxSummaryLength);
+    const highlight = plainText(value, ASK_TUESDAY.maxSummaryLength, true);
     if (!highlight) return null;
     if (!highlights.includes(highlight)) highlights.push(highlight);
   }
-  const nextAction = input.nextAction == null ? null : boundedText(input.nextAction, ASK_TUESDAY.maxSummaryLength);
+  const nextAction = input.nextAction == null ? null : plainText(input.nextAction, ASK_TUESDAY.maxSummaryNextActionLength, true);
   if (input.nextAction != null && !nextAction) return null;
   const evidence: ConversationSummary["evidence"] = [];
   for (const value of input.evidence) {

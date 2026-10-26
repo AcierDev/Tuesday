@@ -4,7 +4,7 @@ import { laDayKey } from "../debt-metrics";
 import { excludedFromAudit, validDueKey } from "./search";
 import { auditName, tuesdayOrderScope } from "./order-scope";
 import { savedFindingNeedsReview } from "./knowledge";
-import type { AskTuesdayRequest, TuesdayIssue, TuesdayScanResponse, TuesdaySnapshot } from "./types";
+import type { AskTuesdayRequest, TuesdayIssue, TuesdayMonitorHealth, TuesdayScanResponse, TuesdaySnapshot } from "./types";
 
 const EMPTY_COUNT = 0;
 const SCAN_REQUEST: AskTuesdayRequest = {question: "What needs attention?", page: "/orders"};
@@ -85,18 +85,41 @@ export function scanTuesdaySnapshot(snapshot: TuesdaySnapshot, now: string): Tue
   };
 }
 
+/**
+ * Shares one result while it is computing and for `ttlMs` after it settles.
+ * Failures are not kept, so the next caller retries.
+ */
+export function sharedResult<T>(ttlMs: number, clock: () => number = Date.now) {
+  let cached: {value: Promise<T>; settledAt: number | null} | null = null;
+  return (compute: () => Promise<T>): Promise<T> => {
+    if (cached && (cached.settledAt === null || clock() - cached.settledAt < ttlMs)) return cached.value;
+    const entry: {value: Promise<T>; settledAt: number | null} = {value: compute(), settledAt: null};
+    cached = entry;
+    entry.value.then(() => {entry.settledAt = clock();}, () => {if (cached === entry) cached = null;});
+    return entry.value;
+  };
+}
+
 type Dependencies = {
   authorize: (request: Request) => Promise<boolean>;
   load: (request: AskTuesdayRequest) => Promise<TuesdaySnapshot>;
   now: () => string;
+  monitor?: () => Promise<TuesdayMonitorHealth | undefined>;
+  shared?: (compute: () => Promise<TuesdayScanResponse>) => Promise<TuesdayScanResponse>;
 };
 
 export async function handleTuesdayScan(request: Request, dependencies: Dependencies): Promise<Response> {
   const json = (data: unknown, status: number) => Response.json(data, {status, headers: ASK_TUESDAY_NO_STORE});
   if (!await dependencies.authorize(request)) return json({error: "Site password required."}, ASK_TUESDAY_HTTP.unauthorized);
+  const compute = async (): Promise<TuesdayScanResponse> => {
+    const [snapshot, monitor] = await Promise.all([dependencies.load(SCAN_REQUEST),
+      // Monitor health is advisory; an unreadable status omits it rather than failing the scan.
+      dependencies.monitor?.().catch(() => undefined)]);
+    const scan = scanTuesdaySnapshot(snapshot, dependencies.now());
+    return monitor ? {...scan, monitor} : scan;
+  };
   try {
-    const snapshot = await dependencies.load(SCAN_REQUEST);
-    return json(scanTuesdaySnapshot(snapshot, dependencies.now()), ASK_TUESDAY_HTTP.ok);
+    return json(await (dependencies.shared ? dependencies.shared(compute) : compute()), ASK_TUESDAY_HTTP.ok);
   } catch {
     return json({error: "Automatic checks are unavailable. Try again shortly."}, ASK_TUESDAY_HTTP.failure);
   }

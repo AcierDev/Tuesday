@@ -135,6 +135,11 @@ export type TuesdayIssue = AskTuesdayResult & {
   severity: "attention" | "review";
 };
 
+export type TuesdayMonitorHealth = {
+  lastSuccessAt: string | null;
+  stale: boolean;
+};
+
 export type TuesdayScanResponse = {
   mode: "issue-scan";
   checkedAt: string;
@@ -146,4 +151,6 @@ export type TuesdayScanResponse = {
   freshness: AskTuesdayResponse["freshness"];
   capabilities: AskTuesdayResponse["capabilities"];
   limitations: string[];
+  /** Background summary monitor; absent where no monitor is expected to run. */
+  monitor?: TuesdayMonitorHealth;
 };

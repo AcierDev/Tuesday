@@ -833,3 +833,28 @@ test("removing the only message indicator closes a pending summary panel", async
     assert.equal(renderer!.root.findAllByType("button").length, 0);
   } finally { act(() => renderer!.unmount()); browser.restore(); }
 });
+
+test("a stale background monitor is flagged in the badge and issues view", async () => {
+  const browser = installVisibleWindow();
+  const lastSuccessAt = "2026-10-06T17:48:00Z";
+  globalThis.fetch = async () => Response.json({ ...automaticScan, monitor: { lastSuccessAt, stale: true } });
+  let renderer: ReactTestRenderer;
+  await act(async () => { renderer = renderPopup(); });
+  try {
+    const badge = renderer!.root.findByProps({ "aria-label": "Automatic check status" });
+    assert.match(badge.props.title, /Background checks last finished 12 min ago/);
+    assert.match(badge.props.className, /amber/);
+    open(renderer!);
+    const notice = renderer!.root.findByProps({ "data-monitor-stale": true });
+    assert.match(contentText(notice), /last finished 12 min ago; message summaries may be out of date/);
+  } finally { act(() => renderer!.unmount()); browser.restore(); }
+
+  const fresh = installVisibleWindow();
+  globalThis.fetch = async () => Response.json({ ...automaticScan, monitor: { lastSuccessAt, stale: false } });
+  await act(async () => { renderer = renderPopup(); });
+  try {
+    open(renderer!);
+    assert.equal(renderer!.root.findAllByProps({ "data-monitor-stale": true }).length, 0);
+    assert.doesNotMatch(renderer!.root.findByProps({ "aria-label": "Automatic check status" }).props.className, /amber/);
+  } finally { act(() => renderer!.unmount()); fresh.restore(); }
+});

@@ -6,6 +6,15 @@ import { AskTuesdayResults } from "./AskTuesdayResults";
 
 const EMPTY_COUNT = 0;
 const SINGLE_ISSUE_COUNT = 1;
+const MILLISECONDS_PER_MINUTE = 60_000;
+
+export function monitorStaleMessage(scan: TuesdayScanResponse | null): string | null {
+  if (!scan?.monitor?.stale) return null;
+  const { lastSuccessAt } = scan.monitor;
+  if (!lastSuccessAt) return "Background checks have not finished recently; message summaries may be out of date.";
+  const minutes = Math.max(SINGLE_ISSUE_COUNT, Math.round((Date.parse(scan.checkedAt) - Date.parse(lastSuccessAt)) / MILLISECONDS_PER_MINUTE));
+  return `Background checks last finished ${minutes} min ago; message summaries may be out of date.`;
+}
 
 export function TuesdayIssues({ scan, pending, error, onRetry, onOpenOrder, referencePrefix }: {
   scan: TuesdayScanResponse | null;
@@ -20,6 +29,7 @@ export function TuesdayIssues({ scan, pending, error, onRetry, onOpenOrder, refe
     : scan.status === "unavailable" ? "Orders could not be checked."
     : scan.totalIssues === EMPTY_COUNT ? "No issues found in the available information."
     : `${scan.totalIssues} item${scan.totalIssues === SINGLE_ISSUE_COUNT ? "" : "s"} to review`;
+  const staleMessage = monitorStaleMessage(scan);
   const results: AskTuesdayResponse | null = scan ? {
     mode: "record-search", page: "/orders", summary, results: scan.issues, totalMatches: scan.totalIssues,
     freshness: scan.freshness, capabilities: scan.capabilities, limitations: scan.limitations,
@@ -27,6 +37,7 @@ export function TuesdayIssues({ scan, pending, error, onRetry, onOpenOrder, refe
 
   return <div aria-label="Automatic issues" className="space-y-3">
     {pending && <p role="status" className="text-xs text-sky-300">{scan ? "Updating automatic checks…" : "Checking for issues…"}</p>}
+    {staleMessage && <p role="status" data-monitor-stale className="text-xs text-amber-200">{staleMessage}</p>}
     {error && <div className="space-y-2 rounded-xl border border-amber-300/20 bg-amber-300/5 p-3">
       <p role="alert" className="text-xs leading-relaxed text-amber-100">{error}</p>
       <button type="button" aria-label="Retry automatic checks" disabled={pending} onClick={onRetry}

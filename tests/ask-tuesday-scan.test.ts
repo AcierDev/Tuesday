@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { scanTuesdaySnapshot, handleTuesdayScan } from "../lib/ask-tuesday/scan";
+import { scanTuesdaySnapshot, handleTuesdayScan, sharedResult } from "../lib/ask-tuesday/scan";
 import { normalizeOperationalReview, parseTuesdayKnowledge } from "../lib/ask-tuesday/knowledge";
 import { ASK_TUESDAY } from "../config/ask-tuesday";
 import { ItemStatus } from "../typings/types";
@@ -267,4 +267,30 @@ test("the automatic scan authenticates before loading data and ignores employee 
   assert.deepEqual(received, {question: "What needs attention?", page: "/orders"});
   assert.equal((await accepted.json()).mode, "issue-scan");
   assert.equal(accepted.headers.get("cache-control"), "private, no-store");
+});
+
+test("one scan result is shared across requests until it expires, and failures are retried", async () => {
+  let clock = Date.parse(now);
+  let computed = 0;
+  const shared = sharedResult<string>(ASK_TUESDAY.scanCacheTtlMs, () => clock);
+  const compute = async () => `scan-${++computed}`;
+  assert.deepEqual(await Promise.all([shared(compute), shared(compute)]), ["scan-1", "scan-1"]);
+  clock += ASK_TUESDAY.scanCacheTtlMs - 1;
+  assert.equal(await shared(compute), "scan-1");
+  clock += 1;
+  assert.equal(await shared(compute), "scan-2");
+  clock += ASK_TUESDAY.scanCacheTtlMs;
+  await assert.rejects(shared(async () => {throw new Error("offline");}));
+  assert.equal(await shared(compute), "scan-3");
+});
+
+test("the scan reports monitor health and survives an unreadable monitor status", async () => {
+  const req = new Request("http://localhost/api/ask-tuesday/scan");
+  const deps = {authorize: async () => true, load: async () => snapshot(), now: () => now};
+  const health = {lastSuccessAt: null, stale: true};
+  const reported = await handleTuesdayScan(req, {...deps, monitor: async () => health});
+  assert.deepEqual((await reported.json()).monitor, health);
+  const unreadable = await handleTuesdayScan(req, {...deps, monitor: async () => {throw new Error("offline");}});
+  assert.equal(unreadable.status, 200);
+  assert.equal((await unreadable.json()).monitor, undefined);
 });

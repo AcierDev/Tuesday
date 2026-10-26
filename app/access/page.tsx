@@ -2,6 +2,19 @@
 
 import { FormEvent, useState } from "react";
 
+const HTTP_TOO_MANY_REQUESTS = 429;
+const HTTP_SERVICE_UNAVAILABLE = 503;
+
+// Error pages from a proxy or a crashed route may be HTML, not JSON.
+async function errorMessage(response: Response): Promise<string> {
+  const result: unknown = await response.json().catch(() => null);
+  const error = result && typeof result === "object" && "error" in result ? result.error : null;
+  if (typeof error === "string" && error) return error;
+  if (response.status === HTTP_TOO_MANY_REQUESTS) return "Too many incorrect attempts. Try again later.";
+  if (response.status === HTTP_SERVICE_UNAVAILABLE) return "Site access is not configured.";
+  return `Could not unlock the site (error ${response.status}). Try again.`;
+}
+
 export default function AccessPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -11,25 +24,26 @@ export default function AccessPage() {
     event.preventDefault();
     setSubmitting(true);
     setError("");
+    let response: Response;
     try {
-      const response = await fetch("/api/site-access", {
+      response = await fetch("/api/site-access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });
-      if (!response.ok) {
-        const result = await response.json();
-        setError(result.error || "Could not unlock the site.");
-        return;
-      }
-      const next = new URLSearchParams(window.location.search).get("next") || "/orders";
-      const destination = new URL(next, window.location.origin);
-      window.location.assign(destination.origin === window.location.origin ? destination.href : "/orders");
     } catch {
       setError("Could not connect. Try again.");
-    } finally {
       setSubmitting(false);
+      return;
     }
+    if (!response.ok) {
+      setError(await errorMessage(response));
+      setSubmitting(false);
+      return;
+    }
+    const next = new URLSearchParams(window.location.search).get("next") || "/orders";
+    const destination = new URL(next, window.location.origin);
+    window.location.assign(destination.origin === window.location.origin ? destination.href : "/orders");
   }
 
   return (

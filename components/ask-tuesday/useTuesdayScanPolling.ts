@@ -28,7 +28,7 @@ function isCustomerChat(value: unknown): boolean {
   return validText(summary.text)
     && Array.isArray(summary.highlights) && summary.highlights.length <= ASK_TUESDAY.maxSummaryHighlights
     && summary.highlights.every(highlight => validText(highlight))
-    && (summary.nextAction === null || validText(summary.nextAction))
+    && (summary.nextAction === null || validText(summary.nextAction, ASK_TUESDAY.maxSummaryNextActionLength))
     && Array.isArray(summary.evidence) && summary.evidence.length <= ASK_TUESDAY.maxSummaryEvidence
     && summary.evidence.every(quote => !!quote && typeof quote === "object"
       && MESSAGE_SENDERS.has(quote.sender) && validText(quote.text, ASK_TUESDAY.maxSummaryQuoteLength));
@@ -45,6 +45,13 @@ function isIssue(value: unknown): boolean {
     && Array.isArray(issue.facts) && Array.isArray(issue.sources) && Array.isArray(issue.uncertainty);
 }
 
+function isMonitorHealth(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const monitor = value as Record<string, unknown>;
+  return typeof monitor.stale === "boolean" && (monitor.lastSuccessAt === null
+    || typeof monitor.lastSuccessAt === "string" && Number.isFinite(Date.parse(monitor.lastSuccessAt)));
+}
+
 function isScanResponse(value: unknown): value is TuesdayScanResponse {
   if (!value || typeof value !== "object") return false;
   const scan = value as Record<string, unknown>;
@@ -57,7 +64,8 @@ function isScanResponse(value: unknown): value is TuesdayScanResponse {
     && scan.issues.every(isIssue)
     && (scan.orderIssues === undefined || Array.isArray(scan.orderIssues) && scan.orderIssues.every(isIssue))
     && (scan.customerChats === undefined || Array.isArray(scan.customerChats)
-      && scan.customerChats.length <= ASK_TUESDAY.maxConversations && scan.customerChats.every(isCustomerChat));
+      && scan.customerChats.length <= ASK_TUESDAY.maxConversations && scan.customerChats.every(isCustomerChat))
+    && (scan.monitor === undefined || isMonitorHealth(scan.monitor));
 }
 
 export function useTuesdayScanPolling() {

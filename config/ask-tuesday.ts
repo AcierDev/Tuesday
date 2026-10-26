@@ -11,6 +11,7 @@ export const ASK_TUESDAY = {
   maxConversations: 100,
   maxMessagesPerConversation: 1000,
   maxSummaryLength: 1600,
+  maxSummaryNextActionLength: 300,
   maxSummaryHighlights: 5,
   maxSummaryEvidence: 6,
   maxSummaryQuoteLength: 600,
@@ -21,6 +22,8 @@ export const ASK_TUESDAY = {
   requestTimeoutMs: 20_000,
   maxChatTurns: 20,
   scanIntervalMs: 60_000,
+  // Every open tab polls; one computed scan is shared per server process.
+  scanCacheTtlMs: 20_000,
   scanEndpoint: "/api/ask-tuesday/scan",
   maxScanIssues: 50,
   resultPriority: { conversation: 0, finding: 1, order: 2, activity: 3 },

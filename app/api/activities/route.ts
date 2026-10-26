@@ -2,6 +2,19 @@ import { NextResponse } from "next/server";
 import { Activity } from "@/typings/types";
 import { ObjectId } from "mongodb";
 import { getDb } from "../db/connect";
+import {
+  ACTIVITIES_DEFAULT_LIMIT,
+  ACTIVITIES_MAX_LIMIT,
+  ACTIVITIES_MAX_SKIP,
+  ACTIVITY_MAX_BODY_BYTES,
+  clampedInteger,
+  parseActivityInput,
+} from "./validate";
+
+const HTTP_BAD_REQUEST = 400;
+const HTTP_PAYLOAD_TOO_LARGE = 413;
+const MIN_LIMIT = 1;
+const MIN_SKIP = 0;
 
 async function getCollection() {
   const db = await getDb();
@@ -12,14 +25,28 @@ async function getCollection() {
 
 export async function POST(request: Request) {
   try {
-    const collection = await getCollection();
-    const activity: Omit<Activity, "id" | "_id"> = await request.json();
+    const tooLarge = Number(request.headers.get("content-length")) > ACTIVITY_MAX_BODY_BYTES;
+    const body = tooLarge ? "" : await request.text();
+    if (tooLarge || new TextEncoder().encode(body).byteLength > ACTIVITY_MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Activity is too large" }, { status: HTTP_PAYLOAD_TOO_LARGE });
+    }
+    let activity: ReturnType<typeof parseActivityInput>;
+    try {
+      activity = parseActivityInput(JSON.parse(body));
+    } catch {
+      activity = null;
+    }
+    if (!activity) {
+      return NextResponse.json({ error: "Invalid activity" }, { status: HTTP_BAD_REQUEST });
+    }
 
+    const collection = await getCollection();
+    // The server sets the time so clients cannot backdate or reorder history.
     const activityWithId = {
       ...activity,
       _id: new ObjectId(),
       id: crypto.randomUUID(),
-      timestamp: activity.timestamp || Date.now(),
+      timestamp: Date.now(),
     };
 
     await collection.insertOne(activityWithId);
@@ -37,8 +64,8 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const itemId = searchParams.get("itemId");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const skip = parseInt(searchParams.get("skip") || "0");
+    const limit = clampedInteger(searchParams.get("limit"), ACTIVITIES_DEFAULT_LIMIT, MIN_LIMIT, ACTIVITIES_MAX_LIMIT);
+    const skip = clampedInteger(searchParams.get("skip"), MIN_SKIP, MIN_SKIP, ACTIVITIES_MAX_SKIP);
 
     const collection = await getCollection();
     const query = itemId ? { itemId } : {};

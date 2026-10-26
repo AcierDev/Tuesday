@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { saveWarehouseIP, getWarehouseIP } from "../lib/warehouseStorage";
+import { saveWarehouseIP, getWarehouseIP, heartbeatIP } from "../lib/warehouseStorage";
+
+const HTTP_BAD_REQUEST = 400;
+const HTTP_SERVER_ERROR = 500;
 
 export async function POST() {
   const headersList = await headers();
-  const ip = headersList.get("x-forwarded-for") || "Unknown IP";
+  // This route is public, so only a literal IP address is stored.
+  const ip = heartbeatIP(headersList.get("x-forwarded-for"));
+  if (!ip) return NextResponse.json({ error: "Invalid request" }, { status: HTTP_BAD_REQUEST });
 
   try {
     // Save the IP server-side
@@ -16,7 +21,8 @@ export async function POST() {
       received: new Date().toISOString(),
     });
   } catch (error) {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    console.error("Failed to save warehouse heartbeat", error instanceof Error ? error.name : "Unknown error");
+    return NextResponse.json({ error: "Could not save heartbeat" }, { status: HTTP_SERVER_ERROR });
   }
 }
 

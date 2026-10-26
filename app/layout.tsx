@@ -1,23 +1,8 @@
-"use client";
-
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { useState } from "react";
-import { usePathname } from "next/navigation";
 
 import "./globals.css";
-import { Navbar } from "@/components/ui/Navbar";
-import {
-  OrderSettingsProvider,
-  useOrderSettings,
-} from "@/contexts/OrderSettingsContext";
-import { SettingsPanel } from "@/components/settings/SettingsPanel";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { UploadProgressToast } from "@/components/shipping/UploadProgress";
-import { MorningBriefing } from "@/components/orders/MorningBriefing";
-import { MobilePageSwitcher } from "@/components/ui/MobilePageSwitcher";
-import { AskTuesday } from "@/components/ask-tuesday/AskTuesday";
-import { TuesdayScanProvider } from "@/components/ask-tuesday/TuesdayScanProvider";
+import { RootShell } from "./root-shell";
 
 // Load custom fonts
 const geistSans = localFont({
@@ -32,61 +17,10 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-const metadata: Metadata = {
+export const metadata: Metadata = {
   title: "Tuesday",
   description: "Replacing Monday",
 };
-
-// Create a wrapper component that uses the context
-function LayoutContent({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsInitialTab, setSettingsInitialTab] = useState<
-    string | undefined
-  >(undefined);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { settings, updateSettings } = useOrderSettings();
-
-  if (pathname === "/access") return <>{children}</>;
-
-  const handleOpenSettings = (tab?: string) => {
-    setSettingsInitialTab(tab);
-    setIsSettingsOpen(true);
-  };
-  const handleCloseSettings = () => setIsSettingsOpen(false);
-
-  return (
-    <TuesdayScanProvider>
-    <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
-      <Navbar
-        onOpenSettings={handleOpenSettings}
-        sidebarOpen={sidebarOpen}
-        onSidebarOpenChange={setSidebarOpen}
-      />
-      <div className="flex-1 overflow-auto no-scrollbar border-t border-sky-400/40">
-        <div
-          className={`${
-            sidebarOpen ? "lg:ml-64" : "lg:ml-[4.25rem]"
-          } transition-[margin] duration-300`}
-        >
-          <main className="w-full">{children}</main>
-        </div>
-      </div>
-      <MobilePageSwitcher />
-      <MorningBriefing />
-      <AskTuesday />
-      {isSettingsOpen && (
-        <SettingsPanel
-          onClose={handleCloseSettings}
-          settings={settings}
-          updateSettings={updateSettings}
-          initialTab={settingsInitialTab}
-        />
-      )}
-    </div>
-    </TuesdayScanProvider>
-  );
-}
 
 // Root layout component
 export default function RootLayout({
@@ -117,12 +51,7 @@ export default function RootLayout({
         className="bg-gray-900 text-gray-100"
         style={{ forcedColorAdjust: "none", color: "rgb(243 244 246)" }}
       >
-        <TooltipProvider>
-          <OrderSettingsProvider>
-            <LayoutContent>{children}</LayoutContent>
-            <UploadProgressToast />
-          </OrderSettingsProvider>
-        </TooltipProvider>
+        <RootShell>{children}</RootShell>
       </body>
     </html>
   );

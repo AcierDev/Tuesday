@@ -5,6 +5,7 @@ import { ASK_TUESDAY } from "../../config/ask-tuesday";
 import { ItemStatus } from "../../typings/types";
 import { planTuesdaySearch } from "./search";
 import { parseTuesdayKnowledge } from "./knowledge";
+import { referencedOrderLookups } from "./order-scope";
 import { readTuesdaySummaryCache } from "../server/tuesday-summaries";
 import type { AskActivity, AskOrder, AskOrderState, AskTuesdayRequest, TuesdayKnowledge, TuesdaySnapshot } from "./types";
 
@@ -32,10 +33,14 @@ for (const [start, end] of LATIN_SEARCH_CODE_POINT_RANGES) {
 }
 // Mongo regex does not use accent-insensitive collation. Match canonical Latin
 // equivalents and optional combining marks without interpreting search text as regex.
-const literalRegex = (term: string) => ({$regex: [...term].map(character => {
+const literalPattern = (term: string) => [...term].map(character => {
   const variants = latinVariants.get(character);
   return `${variants ? `[${[...variants].map(escapeRegex).join("")}]` : escapeRegex(character)}\\p{M}*`;
-}).join(""), $options: "i"});
+}).join("");
+const literalRegex = (term: string) => ({$regex: literalPattern(term), $options: "i"});
+// A normalized audit name matches stored names that contain its words in order,
+// a superset of exact audit-name matches; order-scope applies the exact check.
+const customerNameRegex = (name: string) => ({$regex: name.split(" ").map(literalPattern).join(".*"), $options: "i"});
 
 async function knowledgeFromFile(dependencies: Dependencies): Promise<TuesdayKnowledge | null> {
   try {return parseTuesdayKnowledge(JSON.parse(await dependencies.readKnowledge()), dependencies.now());}
@@ -76,15 +81,8 @@ export async function loadTuesdaySnapshot(request: AskTuesdayRequest, dependenci
     db.collection<AskActivity>(`activities-${dependencies.mode}`).find(activityFilter, {projection: projection(ACTIVITY_FIELDS)})
       .sort({timestamp: SORT_DESCENDING}).limit(ASK_TUESDAY.maxLoadedActivities + LOOKAHEAD_RECORDS).toArray(),
     db.collection(`${ASK_TUESDAY.knowledgeCollection}-${dependencies.mode}`).findOne({id: ASK_TUESDAY.knowledgeDocumentId}),
-    db.collection<AskOrderState>(`items-${dependencies.mode}`).find({deleted: {$ne: true},
-      $or: [{visible: {$ne: false}}, {status: ItemStatus.Done}]}, {projection: projection(ORDER_STATE_FIELDS)})
-      .sort({id: LOOKAHEAD_RECORDS}).limit(ASK_TUESDAY.maxLoadedOrderStates + LOOKAHEAD_RECORDS).toArray(),
   ]);
-  const [orders, activities, knowledge, orderStates] = reads;
-  if (orderStates?.status === "fulfilled") snapshot.orderScope = {
-    orders: orderStates.value.slice(EMPTY_COUNT, ASK_TUESDAY.maxLoadedOrderStates),
-    checkedAt: dependencies.now(), truncated: orderStates.value.length > ASK_TUESDAY.maxLoadedOrderStates,
-  };
+  const [orders, activities, knowledge] = reads;
   if (orders?.status === "fulfilled") {
     snapshot.orders = orders.value.slice(EMPTY_COUNT, ASK_TUESDAY.maxLoadedOrders);
     snapshot.ordersTruncated = orders.value.length > ASK_TUESDAY.maxLoadedOrders;
@@ -99,6 +97,23 @@ export async function loadTuesdaySnapshot(request: AskTuesdayRequest, dependenci
     try {snapshot.knowledge = parseTuesdayKnowledge(knowledge.value, dependencies.now());} catch { /* Invalid imported evidence is unavailable. */ }
   }
   if (!snapshot.knowledge) snapshot.knowledge = await knowledgeFromFile(dependencies);
+  // Read status only for orders the saved evidence or loaded activity refers
+  // to, so a long Done history cannot exhaust the status limit.
+  const {ids, names} = referencedOrderLookups(snapshot);
+  if (!ids.length && !names.length) snapshot.orderScope = {orders: [], checkedAt: dependencies.now(), truncated: false};
+  else {
+    try {
+      const orderStates = await db.collection<AskOrderState>(`items-${dependencies.mode}`).find({deleted: {$ne: true}, $and: [
+        {$or: [{visible: {$ne: false}}, {status: ItemStatus.Done}]},
+        {$or: [...(ids.length ? [{id: {$in: ids}}] : []), ...names.map(name => ({customerName: customerNameRegex(name)}))]},
+      ]}, {projection: projection(ORDER_STATE_FIELDS)})
+        .sort({id: LOOKAHEAD_RECORDS}).limit(ASK_TUESDAY.maxLoadedOrderStates + LOOKAHEAD_RECORDS).toArray();
+      snapshot.orderScope = {
+        orders: orderStates.slice(EMPTY_COUNT, ASK_TUESDAY.maxLoadedOrderStates),
+        checkedAt: dependencies.now(), truncated: orderStates.length > ASK_TUESDAY.maxLoadedOrderStates,
+      };
+    } catch { /* Unchecked status withholds saved evidence; order-scope reports the limitation. */ }
+  }
   snapshot.knowledge = await readTuesdaySummaryCache(snapshot, db, dependencies.mode, dependencies.now());
   if (!snapshot.knowledge) snapshot.limitations.push("Saved review findings and message snapshots are unavailable.");
   return snapshot;

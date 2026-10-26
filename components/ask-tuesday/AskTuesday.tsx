@@ -6,7 +6,7 @@ import { ASK_TUESDAY, ASK_TUESDAY_HTTP } from "@/config/ask-tuesday";
 import type { AskTuesdayResponse } from "@/lib/ask-tuesday/types";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { AskTuesdayResults } from "./AskTuesdayResults";
-import { TuesdayIssues } from "./TuesdayIssues";
+import { monitorStaleMessage, TuesdayIssues } from "./TuesdayIssues";
 import { useTuesdayScan } from "./useTuesdayScan";
 
 const TEXTAREA_ROWS = 2;
@@ -50,9 +50,10 @@ export function AskTuesday() {
   const scanUnknown = !!scan.error || !scan.response || scan.response.status === "unavailable";
   const scanBadge = scanUnknown ? scan.pending && !scan.response ? "…" : "?"
     : scan.response!.status === "partial" && scan.response!.totalIssues === EMPTY_COUNT ? "?" : String(scan.response!.totalIssues);
-  const scanDescription = scanUnknown ? scan.pending && !scan.response ? "Checking for issues" : "Current issue status is unknown"
+  const monitorStale = monitorStaleMessage(scan.response);
+  const scanDescription = [scanUnknown ? scan.pending && !scan.response ? "Checking for issues" : "Current issue status is unknown"
     : scan.response!.status === "partial" ? `${scan.response!.totalIssues} issues in checked sources; coverage is incomplete`
-      : `${scan.response!.totalIssues} issues detected in checked sources`;
+      : `${scan.response!.totalIssues} issues detected in checked sources`, monitorStale].filter(Boolean).join(". ");
 
   useEffect(() => {
     isMounted.current = true;
@@ -219,7 +220,7 @@ export function AskTuesday() {
         className="pointer-events-auto rounded-full border border-sky-200/25 bg-slate-950/95 px-4 py-3 text-sm font-medium text-sky-100 shadow-lg shadow-black/40 backdrop-blur-md hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">
         Ask Tuesday
         <span aria-label="Automatic check status" title={scanDescription}
-          className={`ml-2 inline-flex min-w-[1.5rem] justify-center rounded-full px-1.5 py-0.5 text-xs ${scanUnknown || scan.response?.status === "partial" ? "bg-amber-300/15 text-amber-100" : "bg-sky-300/15 text-sky-100"}`}>{scanBadge}</span>
+          className={`ml-2 inline-flex min-w-[1.5rem] justify-center rounded-full px-1.5 py-0.5 text-xs ${scanUnknown || scan.response?.status === "partial" || monitorStale ? "bg-amber-300/15 text-amber-100" : "bg-sky-300/15 text-sky-100"}`}>{scanBadge}</span>
       </button>
     </div>
   );

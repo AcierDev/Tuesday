@@ -1,6 +1,6 @@
 import type { Collection } from "mongodb";
 import { TUESDAY_MONITOR } from "../../config/tuesday-monitor";
-import type { TuesdayScanResponse } from "./types";
+import type { TuesdayMonitorHealth, TuesdayScanResponse } from "./types";
 
 const EMPTY_COUNT = 0;
 const DISABLED_VALUES = new Set(["false", "0", "off", "no"]);
@@ -32,11 +32,26 @@ export function shouldStartTuesdayMonitor(environment: Record<string, string | u
     && !environment.FUNCTION_TARGET && !environment.K_SERVICE;
 }
 
+/** Error kind for logs. Messages are omitted: driver and API errors can include connection strings or keys. */
+export function describeMonitorError(error: unknown): string {
+  if (!error || typeof error !== "object") return "Unknown error";
+  const {name, code} = error as {name?: unknown; code?: unknown};
+  const kind = typeof name === "string" && name ? name : "Error";
+  return typeof code === "string" || typeof code === "number" ? `${kind} (code ${code})` : kind;
+}
+
+export function tuesdayMonitorHealth(document: Pick<TuesdayMonitorDocument, "lastSuccessAt"> | null, now: string): TuesdayMonitorHealth {
+  const lastSuccessAt = typeof document?.lastSuccessAt === "string" && Number.isFinite(Date.parse(document.lastSuccessAt))
+    ? document.lastSuccessAt : null;
+  return {lastSuccessAt, stale: !lastSuccessAt || Date.parse(now) - Date.parse(lastSuccessAt) > TUESDAY_MONITOR.staleAfterMs};
+}
+
 type RunDependencies = {
   collection: Collection<TuesdayMonitorDocument>;
   now: () => string;
   makeToken: () => string;
   work: () => Promise<{scan: TuesdayScanResponse; generated: number; failed: number}>;
+  reportError?: (error: unknown) => void;
 };
 export type TuesdayMonitorRunResult = "saved" | "skipped" | "lost-lease" | "failed";
 
@@ -56,6 +71,7 @@ export async function runTuesdayMonitor(dependencies: RunDependencies): Promise<
     if (lease?.leaseToken !== leaseToken) return "skipped";
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === TUESDAY_MONITOR.duplicateKeyError) return "skipped";
+    dependencies.reportError?.(error);
     throw new Error(TUESDAY_MONITOR.failureMessage);
   }
 
@@ -77,14 +93,16 @@ export async function runTuesdayMonitor(dependencies: RunDependencies): Promise<
       ...(summariesFailed ? {lastFailureAt: finishedAt} : {}),
     }});
     return saved.matchedCount > EMPTY_COUNT ? "saved" : "lost-lease";
-  } catch {
+  } catch (error) {
+    dependencies.reportError?.(error);
     const finishedAt = dependencies.now();
     try {
       const saved = await collection.updateOne(owned(finishedAt), {$set: {
         status: "failed", lastFailureAt: finishedAt, error: TUESDAY_MONITOR.failureMessage,
       }});
       return saved.matchedCount > EMPTY_COUNT ? "failed" : "lost-lease";
-    } catch {
+    } catch (error) {
+      dependencies.reportError?.(error);
       throw new Error(TUESDAY_MONITOR.failureMessage);
     }
   } finally {
@@ -96,7 +114,7 @@ export async function runTuesdayMonitor(dependencies: RunDependencies): Promise<
 
 type MonitorLoop = {stop: () => void};
 type MonitorGlobal = typeof globalThis & {__tuesdayMonitorLoop?: MonitorLoop};
-type LoopDependencies = {tick: () => Promise<unknown>; reportFailure?: () => void};
+type LoopDependencies = {tick: () => Promise<unknown>; reportFailure?: (error: unknown) => void};
 
 export function startTuesdayMonitor(dependencies: LoopDependencies): MonitorLoop {
   const state = globalThis as MonitorGlobal;
@@ -107,7 +125,7 @@ export function startTuesdayMonitor(dependencies: LoopDependencies): MonitorLoop
     if (busy || stopped) return;
     busy = true;
     try {await dependencies.tick();}
-    catch {dependencies.reportFailure?.();}
+    catch (error) {dependencies.reportFailure?.(error);}
     finally {busy = false;}
   };
   const interval = setInterval(() => {void tick();}, TUESDAY_MONITOR.intervalMs);

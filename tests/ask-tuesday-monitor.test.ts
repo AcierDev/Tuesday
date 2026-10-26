@@ -307,3 +307,27 @@ test("a worst-case active board persists only compact scan counts while preservi
   assert.equal(source.orderIssues?.length, LARGE_EXPECTED_ISSUE_COUNT);
   assert.deepEqual(source.orderIssues?.[EMPTY_COUNT]?.facts, employeeFacts);
 });
+
+test("failures are reported by error kind and code without the private message", async () => {
+  const {runTuesdayMonitor, describeMonitorError} = await implementation();
+  const {collection} = memoryCollection();
+  const reported: string[] = [];
+  const failure = Object.assign(new Error(SENSITIVE_ERROR), {name: "MongoServerSelectionError", code: "ECONNREFUSED"});
+  const result = await runTuesdayMonitor(runOptions(collection, {work: async () => {throw failure;},
+    reportError: (error: unknown) => reported.push(describeMonitorError(error))}));
+  assert.equal(result, "failed");
+  assert.deepEqual(reported, ["MongoServerSelectionError (code ECONNREFUSED)"]);
+  assert.equal(describeMonitorError(new Error(SENSITIVE_ERROR)), "Error");
+  assert.equal(describeMonitorError("text"), "Unknown error");
+});
+
+test("monitor health is stale without a recent successful run", async () => {
+  const {tuesdayMonitorHealth, TUESDAY_MONITOR} = await implementation();
+  const now = new Date(BASE_TIME).toISOString();
+  const recent = new Date(BASE_TIME - TUESDAY_MONITOR.staleAfterMs).toISOString();
+  const old = new Date(BASE_TIME - TUESDAY_MONITOR.staleAfterMs - ONE_RECORD).toISOString();
+  assert.deepEqual(tuesdayMonitorHealth({lastSuccessAt: recent}, now), {lastSuccessAt: recent, stale: false});
+  assert.deepEqual(tuesdayMonitorHealth({lastSuccessAt: old}, now), {lastSuccessAt: old, stale: true});
+  assert.deepEqual(tuesdayMonitorHealth(null, now), {lastSuccessAt: null, stale: true});
+  assert.deepEqual(tuesdayMonitorHealth({lastSuccessAt: "not a date"}, now), {lastSuccessAt: null, stale: true});
+});

@@ -2,8 +2,9 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { NextRequest } from "next/server";
 import { middleware } from "../middleware";
+import { createAccessToken, SITE_ACCESS_COOKIE } from "./site-access";
 import { POST } from "../app/api/site-access/route";
-import { DEFAULT_SITE_ACCESS_PASSWORD } from "./site-access-config";
+import { SITE_ACCESS_MAX_FAILURES_PER_CLIENT } from "./site-access-rate-limit";
 
 const TEST_SECRET = "integration-test-signing-secret";
 const TEST_PASSWORD = "example-test-password";
@@ -44,18 +45,46 @@ test("password entry grants remembered access to pages and APIs", async () => {
   assert.equal(authorized.status, 200);
 });
 
-test("site access works when deployment environment overrides are absent", async () => {
+test("only the scheduled cron paths bypass the site password", async () => {
+  process.env.SITE_ACCESS_SECRET = TEST_SECRET;
+  for (const path of ["/api/debt-snapshots/cron", "/api/stats/delivery-briefing/cron"]) {
+    assert.equal((await middleware(new NextRequest(`http://localhost:3000${path}`))).status, 200);
+  }
+  for (const path of ["/api/shipping/pdfs/cron", "/api/items/cron", "/api/debt-snapshots/cron/extra"]) {
+    assert.equal((await middleware(new NextRequest(`http://localhost:3000${path}`))).status, 401);
+  }
+});
+
+test("repeated wrong passwords from one client are rate limited", async () => {
+  process.env.SITE_ACCESS_SECRET = TEST_SECRET;
+  process.env.SITE_ACCESS_PASSWORD = TEST_PASSWORD;
+  const attempt = (password: string, client: string) => POST(new NextRequest("http://localhost:3000/api/site-access", {
+    method: "POST", body: JSON.stringify({ password }), headers: { "x-forwarded-for": `${client}, 10.0.0.1` },
+  }));
+  for (let index = 0; index < SITE_ACCESS_MAX_FAILURES_PER_CLIENT; index++) {
+    assert.equal((await attempt("wrong", "203.0.113.7")).status, 401);
+  }
+  const limited = await attempt(TEST_PASSWORD, "203.0.113.7");
+  assert.equal(limited.status, 429);
+  assert.match((await limited.json()).error, /Too many incorrect attempts/);
+  assert.ok(Number(limited.headers.get("retry-after")) > 0);
+  assert.equal((await attempt(TEST_PASSWORD, "203.0.113.8")).status, 200);
+});
+
+test("site access fails closed when deployment environment values are absent", async () => {
   delete process.env.SITE_ACCESS_PASSWORD;
   delete process.env.SITE_ACCESS_SECRET;
   process.env.MONGODB_URI = "mongodb://test-only";
 
   const login = await POST(new NextRequest("http://localhost:3000/api/site-access", {
-    method: "POST", body: JSON.stringify({ password: DEFAULT_SITE_ACCESS_PASSWORD }),
+    method: "POST", body: JSON.stringify({ password: "anything" }),
   }));
-  assert.equal(login.status, 200);
+  assert.equal(login.status, 503);
+  assert.equal(login.headers.get("set-cookie"), null);
 
-  const authorized = await middleware(new NextRequest("http://localhost:3000/orders", {
-    headers: { cookie: login.headers.get("set-cookie") || "" },
+  const token = await createAccessToken("mongodb://test-only");
+  const denied = await middleware(new NextRequest("http://localhost:3000/api/items", {
+    headers: { cookie: `${SITE_ACCESS_COOKIE}=${token}` },
   }));
-  assert.equal(authorized.status, 200);
+  assert.equal(denied.status, 401);
 });

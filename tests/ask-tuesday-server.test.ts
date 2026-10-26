@@ -104,8 +104,47 @@ test("a separate status-only read excludes Done findings even when the active qu
   assert.deepEqual(itemQueries[0]?.filter.status, {$nin: ["Done", "Hidden"]});
   assert.equal(itemQueries.length, 2);
   const statusRead = itemQueries.find(query => !query.projection.notes)!;
-  assert.equal(statusRead.filter.$and, undefined);
+  const [visibility, referenced] = statusRead.filter.$and as [unknown, {$or: {customerName?: {$regex: string}}[]}];
+  assert.deepEqual(visibility, {$or: [{visible: {$ne: false}}, {status: "Done"}]});
+  assert.equal(referenced.$or.length, 1);
+  const pattern = new RegExp(referenced.$or[0]!.customerName!.$regex, "iu");
+  assert.equal(pattern.test("[EW] Harrison (Rushed) Winn"), true);
+  assert.equal(pattern.test("Harrison Smith"), false);
   assert.deepEqual(Object.keys(statusRead.projection).sort(), ["_id", "customerName", "id", "status"]);
+});
+
+test("status reads cover only referenced orders, so a long Done history cannot withhold evidence", async () => {
+  const statusFilters: Record<string, unknown>[] = [];
+  const history = Array.from({length: ASK_TUESDAY.maxLoadedOrderStates + 1}, (_, index) =>
+    ({id: `done-${index}`, customerName: `Old Buyer ${index}`, status: "Done"}));
+  const linked = {id: "linked", customerName: "Linked Buyer", status: "New"};
+  const db = {collection(name: string) {return {
+    find(filter: Record<string, unknown>, options: {projection: Record<string, unknown>}) {
+      const isStatusRead = name.startsWith("items-") && !options.projection.notes;
+      if (isStatusRead) statusFilters.push(filter);
+      return {sort() {return this;}, limit() {return this;}, async toArray() {
+        if (isStatusRead) {
+          const [, referenced] = filter.$and as [unknown, {$or: {id?: {$in: string[]}}[]}];
+          const ids = referenced.$or.flatMap(clause => clause.id?.$in ?? []);
+          return [...history, linked].filter(order => ids.includes(order.id));
+        }
+        if (name.startsWith("activities-")) return [{id: "a1", itemId: "done-7", timestamp: Date.parse(now), type: "update", changes: []}];
+        return name.startsWith("items-") ? [{...linked, visible: true, deleted: false}] : [];
+      }};
+    }, async findOne() {return null;},
+  };}} as unknown as Db;
+  const saved = JSON.stringify({schemaVersion: 1, importedAt: now, limitations: [], findings: [], conversations: [{
+    threadId: "1700000009", buyerName: "Linked Buyer", checkedAt: now, historyComplete: true, orderIds: ["linked"], agreements: [],
+    messages: [{id: "m1", sentAt: now, sender: "buyer", text: "Please add my name."}]}]});
+  const result = await loadTuesdaySnapshot({question: "What needs attention?", page: "/orders"}, {
+    getDb: async () => db, readKnowledge: async () => saved, now: () => now, mode: "test",
+  });
+  assert.equal(statusFilters.length, 1);
+  assert.equal(result.orderScope?.truncated, false);
+  assert.deepEqual(result.orderScope?.orders.map(order => order.id).sort(), ["done-7", "linked"]);
+  const scan = scanTuesdaySnapshot(result, now);
+  assert.deepEqual(scan.customerChats?.map(chat => chat.orderIds), [["linked"]]);
+  assert.doesNotMatch(scan.limitations.join(" "), /order status coverage is incomplete/i);
 });
 
 test("failed or capped status reads cannot expose saved issues or crowd out active alerts", async () => {

@@ -1,4 +1,5 @@
 import { MongoClient } from "mongodb";
+import { lazyPromise, retryingConnection, type PromiseSlot } from "./retrying-connection";
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Invalid/Missing environment variable: "MONGODB_URI"');
@@ -11,23 +12,26 @@ const options = {
   socketTimeoutMS: 10000,
 };
 
-let client: MongoClient;
-let clientPromise: Promise<MongoClient>;
+// Development keeps the attempt on `global` so hot reloads reuse one client.
+const globalWithMongo = global as typeof globalThis & {
+  _mongoClientPromise?: Promise<MongoClient>;
+};
+let processClientPromise: Promise<MongoClient> | undefined;
+const slot: PromiseSlot<MongoClient> = process.env.NODE_ENV === "development"
+  ? { get: () => globalWithMongo._mongoClientPromise, set: (promise) => { globalWithMongo._mongoClientPromise = promise; } }
+  : { get: () => processClientPromise, set: (promise) => { processClientPromise = promise; } };
 
-if (process.env.NODE_ENV === "development") {
-  let globalWithMongo = global as typeof globalThis & {
-    _mongoClientPromise?: Promise<MongoClient>;
-  };
+const getClientPromise = retryingConnection(() => {
+  const client = new MongoClient(uri, options);
+  const connecting = client.connect();
+  connecting.catch(() => client.close().catch(() => undefined));
+  return connecting;
+}, slot);
 
-  if (!globalWithMongo._mongoClientPromise) {
-    client = new MongoClient(uri, options);
-    globalWithMongo._mongoClientPromise = client.connect();
-  }
-  clientPromise = globalWithMongo._mongoClientPromise;
-} else {
-  client = new MongoClient(uri, options);
-  clientPromise = client.connect();
-}
+// Start connecting at load, as before; a failure here is retried on next use.
+void getClientPromise().catch(() => undefined);
+
+const clientPromise: Promise<MongoClient> = lazyPromise(getClientPromise);
 
 // Add connection management functions
 export async function closeConnection() {

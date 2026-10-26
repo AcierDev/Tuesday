@@ -10,6 +10,18 @@ export function auditName(value: string): string {
     .replace(/\((rushed|semi-rushed|custom|local|vertical|center fade)\)/g, "").replace(/\s+/g, " ").trim();
 }
 
+const nameAliases = (name: string) => name.split(/\s+\/\s+/).map(auditName).filter(Boolean);
+
+/** Order IDs and audit names whose current status the saved evidence and loaded activity depend on. */
+export function referencedOrderLookups(snapshot: Pick<TuesdaySnapshot, "knowledge" | "activities">): {ids: string[]; names: string[]} {
+  const conversations = snapshot.knowledge?.conversations ?? [];
+  const ids = [...conversations.flatMap(conversation => conversation.orderIds), ...snapshot.activities.map(activity => activity.itemId)]
+    .filter(id => typeof id === "string" && !!id);
+  const names = [...conversations.map(conversation => conversation.buyerName),
+    ...(snapshot.knowledge?.findings ?? []).map(finding => finding.customer)].flatMap(nameAliases);
+  return {ids: [...new Set(ids)], names: [...new Set(names)]};
+}
+
 export function tuesdayOrderScope(snapshot: TuesdaySnapshot) {
   const scope = snapshot.orderScope ?? {orders: snapshot.orders, checkedAt: snapshot.ordersCheckedAt, truncated: snapshot.ordersTruncated};
   const verified = !!scope.checkedAt && !scope.truncated;
@@ -22,8 +34,8 @@ export function tuesdayOrderScope(snapshot: TuesdaySnapshot) {
     orders.push(order);
     byCustomer.set(name, orders);
   }
-  const customerOrders = (name: string) => [...new Map(name.split(/\s+\/\s+/)
-    .flatMap(alias => byCustomer.get(auditName(alias)) ?? []).map(order => [order.id, order])).values()];
+  const customerOrders = (name: string) => [...new Map(nameAliases(name)
+    .flatMap(alias => byCustomer.get(alias) ?? []).map(order => [order.id, order])).values()];
   const orderIsDone = (orderId: string) => byId.get(orderId)?.status === ItemStatus.Done;
   const knownIds = (ids: string[]) => ids.filter(id => byId.has(id));
   const onlyDone = (ids: string[]) => ids.length > EMPTY_COUNT && ids.every(id => byId.get(id)?.status === ItemStatus.Done);
