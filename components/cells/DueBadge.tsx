@@ -29,6 +29,9 @@ import {
   updatePausedDueDate,
 } from "@/lib/due-date-pause";
 import { isWithinDueBadgeWarningWindow } from "@/config/due-badge";
+import { useLaTodayKey } from "@/hooks/useLaClock";
+import { showErrorToast } from "@/components/ui/app-toast";
+import { TOUCH_HIT_AREA } from "@/components/ui/touch-target";
 
 interface DueBadgeProps {
   item: Item;
@@ -53,15 +56,18 @@ export const DueBadge = ({
   interactive = true,
 }: DueBadgeProps) => {
   const [open, setOpen] = useState(false);
-  const { updateItem } = useOrderStore();
+  const updateItem = useOrderStore((state) => state.updateItem);
+  // Count days against the LA calendar day; re-renders at LA midnight so an
+  // open tab's badges don't go stale overnight.
+  const todayKey = useLaTodayKey();
 
-  const dueDateString = getEffectiveDueDateKey(item);
+  const dueDateString = getEffectiveDueDateKey(item, todayKey);
   if (!dueDateString) return null;
 
   const parsed = parseISO(dueDateString);
   if (!isValid(parsed)) return null;
 
-  const ref = referenceDate ?? new Date();
+  const ref = referenceDate ?? parseISO(todayKey);
   const delta = differenceInCalendarDays(parsed, ref);
 
   const { primary, suffix } = formatDueDelta(delta);
@@ -153,6 +159,7 @@ export const DueBadge = ({
       setOpen(false);
     } catch (err) {
       console.error("Failed to update due date", err);
+      showErrorToast("Couldn't save the due date. Try again.");
     }
   };
 
@@ -175,6 +182,9 @@ export const DueBadge = ({
       setOpen(false);
     } catch (err) {
       console.error("Failed to toggle hold", err);
+      showErrorToast(
+        onHold ? "Couldn't resume the due date." : "Couldn't pause the due date."
+      );
     }
   };
 
@@ -182,7 +192,7 @@ export const DueBadge = ({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div
-          className={slotClasses}
+          className={cn(slotClasses, TOUCH_HIT_AREA)}
           // Stop propagation here (not on the Badge inside) so PopoverTrigger's
           // own click handler — attached to this div via asChild — still fires
           // while the click doesn't bubble to NameCell's row-edit handler.

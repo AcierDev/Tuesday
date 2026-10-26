@@ -11,6 +11,7 @@ import { StarIcon } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { showErrorToast } from "@/components/ui/app-toast";
 
 export const NumberCell = ({
   item,
@@ -21,7 +22,7 @@ export const NumberCell = ({
 }) => {
   const [ratingValue, setRatingValue] = useState(Number(columnValue.text) || 0);
 
-  const { updateItem } = useOrderStore();
+  const updateItem = useOrderStore((state) => state.updateItem);
 
   const handleUpdate = async (newRating: number) => {
     setRatingValue(newRating);
@@ -33,6 +34,7 @@ export const NumberCell = ({
       await updateItem(updatedItem, columnValue.columnName);
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
+      showErrorToast("Couldn't save the change. Try again.");
     }
   };
 

@@ -48,6 +48,7 @@ import {
 } from "@/typings/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { showErrorToast } from "@/components/ui/app-toast";
 import { LoadMoreSentinel } from "./LoadMoreSentinel";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
 import { useTrackingStore } from "@/stores/useTrackingStore";
@@ -136,6 +137,11 @@ export const ItemGroupSection = memo(function ItemGroupSection({
       setIsCollapsed(true);
     }
   }, [isSearchAutoExpandable, searchQuery, group.items.length, isCollapsed]);
+
+  // Stable so LoadMoreSentinel keeps one IntersectionObserver across renders.
+  const handleLoadMoreDone = useCallback(() => {
+    void loadDoneItems(false);
+  }, [loadDoneItems]);
 
   const handleScheduleUpdate = useCallback(() => {
     const event = new CustomEvent("weeklyScheduleUpdate");
@@ -331,6 +337,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
         await updateItem(updatedItem);
       } catch (error) {
         console.error("Failed to update due date:", error);
+        showErrorToast("Couldn't save the due date. Try again.");
       }
     },
     [sortedItems, updateItem]
@@ -611,7 +618,7 @@ export const ItemGroupSection = memo(function ItemGroupSection({
             <LoadMoreSentinel
               hasMore={hasMoreDoneItems}
               isLoading={isDoneLoading}
-              onLoadMore={() => loadDoneItems(false)}
+              onLoadMore={handleLoadMoreDone}
             />
           )}
         </div>

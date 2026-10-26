@@ -17,6 +17,7 @@ import { StickyNoteIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { showErrorToast } from "@/components/ui/app-toast";
 
 export const NotesCell = ({
   item,
@@ -27,7 +28,7 @@ export const NotesCell = ({
 }) => {
   const [notesValue, setNotesValue] = useState(columnValue.text || "");
 
-  const { updateItem } = useOrderStore();
+  const updateItem = useOrderStore((state) => state.updateItem);
 
   const handleUpdate = async () => {
     try {
@@ -38,6 +39,7 @@ export const NotesCell = ({
       await updateItem(updatedItem, columnValue.columnName);
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
+      showErrorToast("Couldn't save the notes. Try again.");
     }
   };
 

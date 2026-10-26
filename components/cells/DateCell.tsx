@@ -13,6 +13,7 @@ import { format, parseISO, isValid } from "date-fns";
 import { cn } from "../../utils/functions";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { showErrorToast } from "@/components/ui/app-toast";
 
 interface DateCellProps {
   item: Item;
@@ -21,7 +22,7 @@ interface DateCellProps {
 
 export const DateCell = ({ item, columnValue }: DateCellProps) => {
   const [date, setDate] = useState<Date | null>(null);
-  const { updateItem } = useOrderStore();
+  const updateItem = useOrderStore((state) => state.updateItem);
 
   useEffect(() => {
     if (columnValue.text) {
@@ -50,6 +51,7 @@ export const DateCell = ({ item, columnValue }: DateCellProps) => {
       await updateItem(updatedItem, columnValue.columnName);
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
+      showErrorToast("Couldn't save the date. Try again.");
     }
   };
 

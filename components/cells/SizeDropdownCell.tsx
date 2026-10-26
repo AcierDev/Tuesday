@@ -10,6 +10,12 @@ import { Button } from "@/components/ui/button";
 import { boardConfig } from "@/config/boardconfig";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { showErrorToast } from "@/components/ui/app-toast";
+import { TOUCH_HIT_AREA } from "@/components/ui/touch-target";
+import {
+  customOptionHint,
+  normalizeCustomOption,
+} from "@/components/orders/utils/customOption";
 import {
   PILL_INTERACTIVE,
   PILL_SELECTED_RING,
@@ -99,7 +105,7 @@ export const SizeDropdownCell = ({
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const { updateItem } = useOrderStore();
+  const updateItem = useOrderStore((state) => state.updateItem);
 
   const options = boardConfig.columns[columnValue.columnName].options ?? [];
 
@@ -111,7 +117,8 @@ export const SizeDropdownCell = ({
 
   const grouped = useMemo(() => groupByHeight(filtered), [filtered]);
 
-  const trimmed = query.trim();
+  const trimmed = normalizeCustomOption(query) ?? "";
+  const customHint = customOptionHint(query);
   const exactMatch = options.some(
     (o) => o.toLowerCase() === trimmed.toLowerCase()
   );
@@ -131,6 +138,7 @@ export const SizeDropdownCell = ({
       await updateItem(updatedItem as Item, columnValue.columnName);
     } catch (err) {
       console.error("Failed to update size", err);
+      showErrorToast("Couldn't save the size. Try again.");
     }
   };
 
@@ -144,7 +152,9 @@ export const SizeDropdownCell = ({
       <PopoverTrigger asChild>
         <Button
           disabled={disabled}
-          className={`${sizePillTriggerClass(columnValue.text)} ${PILL_INTERACTIVE}`}
+          // !overflow-visible keeps the touch hit area un-clipped; the label
+          // span inside SizePillContent still truncates.
+          className={`${sizePillTriggerClass(columnValue.text)} ${PILL_INTERACTIVE} ${TOUCH_HIT_AREA} !overflow-visible`}
         >
           <SizePillContent size={columnValue.text} />
         </Button>
@@ -203,7 +213,12 @@ export const SizeDropdownCell = ({
               </button>
             </div>
           )}
-          {filtered.length === 0 && !showCustomOption && (
+          {customHint && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 py-1 px-1">
+              {customHint}
+            </p>
+          )}
+          {filtered.length === 0 && !showCustomOption && !customHint && (
             <p className="text-xs text-gray-500 dark:text-gray-400 py-1 px-1">
               No matches.
             </p>

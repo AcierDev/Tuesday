@@ -3,12 +3,19 @@ import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Calendar, Info } from "lucide-react";
 import { useState, useEffect } from "react";
-import { addWeeks, format, startOfWeek } from "date-fns";
+import { addDays, addWeeks, format, parseISO } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { isSameDay, addDays } from "date-fns";
 import { cn } from "@/utils/functions";
 import { DayName, Item } from "@/typings/types";
 import { useWeeklyScheduleStore } from "@/stores/useWeeklyScheduleStore";
+import { useLaTodayKey } from "@/hooks/useLaClock";
+import {
+  dayKeyToLocalDate,
+  planWeekStart,
+} from "@/components/production-planning/planner-dates";
+
+// Schedules are keyed by the yyyy-MM-dd of the planner week's Sunday.
+const WEEK_KEY_FORMAT = "yyyy-MM-dd";
 
 interface DueDateTooltipProps {
   onSelectDay: (date: Date) => void;
@@ -41,9 +48,13 @@ export function DueDateTooltip({
 }: DueDateTooltipProps) {
   const schedules = useWeeklyScheduleStore((s) => s.schedules);
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
+  // LA calendar day, so "this week" and the today ring match the planner.
+  const todayKey = useLaTodayKey();
 
   useEffect(() => {
-    setSelectedWeekStart(startOfWeek(new Date()));
+    setSelectedWeekStart(planWeekStart(dayKeyToLocalDate(todayKey)));
+    // Initial week only; the user pages weeks from here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleWeekChange = (direction: "prev" | "next") => {
@@ -67,7 +78,8 @@ export function DueDateTooltip({
         ) {
           return {
             day,
-            week: format(new Date(schedule.weekKey), "MMM d"),
+            // parseISO keeps the key's calendar day; new Date() reads UTC.
+            week: format(parseISO(schedule.weekKey), "MMM d"),
           };
         }
       }
@@ -80,7 +92,7 @@ export function DueDateTooltip({
 
     try {
       await onAddToSchedule(
-        format(selectedWeekStart, "YYYY-MM-DD"),
+        format(selectedWeekStart, WEEK_KEY_FORMAT),
         day as DayName,
         item.id
       );
@@ -161,7 +173,8 @@ export function DueDateTooltip({
             <div className="grid grid-cols-1 gap-1">
               {DAYS.map((day, index) => {
                 const date = addDays(selectedWeekStart, index);
-                const isToday = isSameDay(new Date(), date);
+                const isToday =
+                  format(date, WEEK_KEY_FORMAT) === todayKey;
 
                 return (
                   <Button

@@ -17,7 +17,6 @@ import { OrderAttentionCell } from "./OrderAttentionCell";
 import { ItemActions } from "./ItemActions";
 import { cn } from "@/utils/functions";
 import {
-  Activity,
   ColumnTitles,
   Item,
   ItemStatus,
@@ -25,48 +24,13 @@ import {
   DayName,
 } from "@/typings/types";
 import { boardConfig } from "@/config/boardconfig";
-import { useActivities } from "@/lib/stats-shared";
-import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { isOrderWip, orderBoardStatus } from "@/lib/order-wip";
 import { ORDER_WIP_STYLES } from "@/config/order-wip";
+import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
+import { useRecentlyMovedIds } from "@/hooks/useRecentlyMovedIds";
 
 // Rows whose item is in today's planner lane get a small TODAY tag above
 // the DueBadge inside NameCell — no row-level border treatment.
-
-// Item ids whose most recent status_change activity falls inside the
-// `recentEditHours` window. Computed once per (activities, hours) pair and
-// shared across every row via the module-level cache so that mounting N
-// rows doesn't recompute N times.
-let recentlyMovedCache: {
-  activities: Activity[];
-  hours: number;
-  set: Set<string>;
-} | null = null;
-
-function useRecentlyMovedIds(): Set<string> {
-  const { activities } = useActivities();
-  const { settings } = useOrderSettings();
-  const hours = settings.recentEditHours;
-
-  return useMemo(() => {
-    if (!activities || hours === undefined) return new Set<string>();
-    if (
-      recentlyMovedCache &&
-      recentlyMovedCache.activities === activities &&
-      recentlyMovedCache.hours === hours
-    ) {
-      return recentlyMovedCache.set;
-    }
-    const cutoff = Date.now() - hours * 60 * 60 * 1000;
-    const set = new Set<string>();
-    for (const a of activities) {
-      if (a.type !== "status_change") continue;
-      if (a.timestamp >= cutoff) set.add(a.itemId);
-    }
-    recentlyMovedCache = { activities, hours, set };
-    return set;
-  }, [activities, hours]);
-}
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 📲 SWIPE-TO-MOVE GESTURE                                             ║
@@ -163,19 +127,6 @@ const STATUS_PANEL_LABEL: Record<ItemStatus, string> = {
   [ItemStatus.At_The_Door]: "Door",
   [ItemStatus.Done]: "Done",
 };
-
-function useIsTouchDevice() {
-  const [isTouch, setIsTouch] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mql = window.matchMedia("(hover: none) and (pointer: coarse)");
-    setIsTouch(mql.matches);
-    const onChange = (e: MediaQueryListEvent) => setIsTouch(e.matches);
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-  return isTouch;
-}
 
 // Mobile↔desktop UI divider — mirrors the Tailwind `lg` breakpoint
 // (overridden to 768px in tailwind.config.ts so tablets get the desktop UI).
@@ -290,10 +241,9 @@ export const ItemTableRow = memo(function ItemTableRow({
   const rightPanelX = useTransform(x, (v) => Math.min(0, v));
   // Row picks up rounded corners while it's swiped — matches the radius
   // of the status pills behind it.
+  // No clip at rest so touch hit areas on the row's badges can extend past it.
   const rowClipPath = useTransform(x, (v) =>
-    Math.abs(v) > 0.5
-      ? `inset(0 round ${ROW_OPEN_RADIUS_PX}px)`
-      : `inset(0)`
+    Math.abs(v) > 0.5 ? `inset(0 round ${ROW_OPEN_RADIUS_PX}px)` : "none"
   );
 
   const { backward, forward } = useMemo(() => {
@@ -500,6 +450,9 @@ export const ItemTableRow = memo(function ItemTableRow({
           }
         }}
         onContextMenu={(e) => {
+          // React bubbles events from portaled dialogs/popovers through the
+          // row; leave right-clicks that didn't happen on the row itself.
+          if (!e.currentTarget.contains(e.target as Node)) return;
           if (clickToAddTarget) {
             e.preventDefault();
             return;

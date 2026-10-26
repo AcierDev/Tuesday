@@ -16,6 +16,7 @@ const SEMI_RUSHED_TOKEN = /\(semi-rushed\)/i;
 const SEMI_RUSHED_ICON_STROKE_WIDTH = 2.75;
 const LOCAL_TOKEN = /\(local\)/i;
 const VERTICAL_TOKEN = /\(vertical\)/i;
+const VERTICAL_TOKENS = /\(vertical\)/gi;
 const CUSTOM_TOKEN = /\(custom\)/i;
 const CENTER_FADE_TOKEN = /\(center fade\)/i;
 const CENTER_FADE_ICON_STROKE_WIDTH = 2.75;
@@ -36,19 +37,19 @@ export type NameTokens = {
 // Strips inline tokens like "(rushed)" and "[EW]" from the customer name and
 // surfaces them as structured data, so any view that renders the name (orders
 // board, planner card, etc.) can show the same set of badges.
-export function parseNameTokens(rawName: string): NameTokens {
+export function parseNameTokens(rawName: string, savedIsVertical?: boolean): NameTokens {
   const trimmed = rawName ?? "";
   const isRushed = RUSHED_TOKEN.test(trimmed);
   const isSemiRushed = SEMI_RUSHED_TOKEN.test(trimmed);
   const isLocal = LOCAL_TOKEN.test(trimmed);
-  const isVertical = VERTICAL_TOKEN.test(trimmed);
+  const isVertical = savedIsVertical ?? VERTICAL_TOKEN.test(trimmed);
   const isCustom = CUSTOM_TOKEN.test(trimmed);
   const isCenterFade = CENTER_FADE_TOKEN.test(trimmed);
   const stripped = trimmed
     .replace(RUSHED_TOKEN, "")
     .replace(SEMI_RUSHED_TOKEN, "")
     .replace(LOCAL_TOKEN, "")
-    .replace(VERTICAL_TOKEN, "")
+    .replace(VERTICAL_TOKENS, "")
     .replace(CUSTOM_TOKEN, "")
     .replace(CENTER_FADE_TOKEN, "")
     .replace(/\s{2,}/g, " ")
@@ -257,10 +258,11 @@ export function CenterFadeTag() {
 // token-derived badges inline. Both the orders board (NameCell) and the
 // planner (OrderCard) call this, so any badge added here automatically
 // appears on every surface.
-export function OrderNameDisplay({ rawName, compact = false, extraBadge }: {
+export function OrderNameDisplay({ rawName, compact = false, extraBadge, isVertical: savedIsVertical }: {
   rawName: string;
   compact?: boolean;
   extraBadge?: ReactNode;
+  isVertical?: boolean;
 }) {
   const {
     displayName,
@@ -272,7 +274,7 @@ export function OrderNameDisplay({ rawName, compact = false, extraBadge }: {
     isCenterFade,
     brandPrefix,
     isPrintMarker,
-  } = parseNameTokens(rawName);
+  } = parseNameTokens(rawName, savedIsVertical);
   const [firstTwoWords, restOfName] = splitFirstTwoWords(displayName);
   const name = isPrintMarker ? (
     <PrintMarkerTag />

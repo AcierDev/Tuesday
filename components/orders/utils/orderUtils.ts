@@ -1,4 +1,5 @@
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+import { dayDiffKeys, laDayKey } from "@/lib/debt-metrics";
 import { ItemStatus } from "@/typings/types";
 
 // Define the order of statuses for grouping
@@ -13,10 +14,17 @@ export const STATUS_ORDER: ItemStatus[] = [
 ];
 
 // Helper functions
+// Date-only values (YYYY-MM-DD) are calendar days: parse them as local dates.
+// new Date("YYYY-MM-DD") reads UTC midnight, which is the previous day in LA.
+const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}/;
+const DAY_KEY_LENGTH = "YYYY-MM-DD".length;
+
 export function formatDate(dateString: string): string {
   if (!dateString) return "No date";
   try {
-    const date = new Date(dateString);
+    const date = DAY_KEY_PATTERN.test(dateString)
+      ? parseISO(dateString.slice(0, DAY_KEY_LENGTH))
+      : new Date(dateString);
     // Check if date is valid
     if (isNaN(date.getTime())) {
       return "Invalid date";
@@ -28,23 +36,14 @@ export function formatDate(dateString: string): string {
   }
 }
 
-export function getDaysRemaining(dueDate: string): number {
-  if (!dueDate) return 0;
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const due = new Date(dueDate);
-    // Check if date is valid
-    if (isNaN(due.getTime())) {
-      return 0;
-    }
-    due.setHours(0, 0, 0, 0);
-
-    return Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  } catch (error) {
-    console.error("Error calculating days remaining:", error);
-    return 0;
-  }
+// Calendar days from today (America/Los_Angeles) until the due date.
+export function getDaysRemaining(
+  dueDate: string,
+  todayKey: string = laDayKey()
+): number {
+  if (!dueDate || !DAY_KEY_PATTERN.test(dueDate)) return 0;
+  const days = dayDiffKeys(todayKey, dueDate.slice(0, DAY_KEY_LENGTH));
+  return Number.isFinite(days) ? days : 0;
 }
 
 // Add createBackground helper function

@@ -15,7 +15,7 @@ import {
   createBackground,
 } from "../utils/orderUtils";
 
-import { parseMinecraftColors } from "@/parseMinecraftColors";
+import { parseMinecraftColors } from "@/utils/parseMinecraftColors";
 import { OrderAttentionIcons } from "@/components/ask-tuesday/OrderAttentionIcons";
 
 interface OrderCardProps {

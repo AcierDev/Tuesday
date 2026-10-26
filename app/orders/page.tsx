@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
@@ -8,10 +7,12 @@ import {
   KeyboardSensor,
   MouseSensor,
   TouchSensor,
+  closestCenter,
   defaultDropAnimationSideEffects,
   pointerWithin,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
   type DropAnimation,
@@ -21,8 +22,8 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Header } from "@/components/orders/Header";
 import { NewItemModal } from "@/components/orders/NewItemModal";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { showErrorToast, showToast } from "@/components/ui/app-toast";
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { isAnyModalDialogOpen } from "@/utils/dnd-modal-guard";
 import {
@@ -31,12 +32,15 @@ import {
   ColumnTitles,
 } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { ShippingDashboard } from "@/components/shipping/ShippingDashboard";
 import { useOrderFiltering } from "@/hooks/useOrderFiltering";
 import { useOrderStats } from "@/hooks/useOrderStats";
 import { useAutoPromoteByDueDate } from "@/hooks/useAutoPromoteByDueDate";
 import { ResponsiveOrdersView } from "@/components/orders/ResponsiveOrdersView";
-import { canPauseDueDate, resumeDueDate } from "@/lib/due-date-pause";
+import {
+  buildStatusMove,
+  buildStatusUndo,
+} from "@/components/orders/utils/statusMove";
+import { findScrollContainer } from "@/components/orders/utils/scrollContainer";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🎯 STATUS DROP TARGETS                                               ║
@@ -69,38 +73,55 @@ const NO_DRAG_TAGS = new Set([
   "LABEL",
 ]);
 
+// Walks from the pressed element up to the row (the activator node).
+function startsOnNoDragTarget(target: EventTarget | null, row: EventTarget) {
+  let node = target as HTMLElement | null;
+  while (node && node !== row) {
+    if (NO_DRAG_TAGS.has(node.tagName)) return true;
+    if (node.dataset?.noDnd !== undefined) return true;
+    node = node.parentElement;
+  }
+  return false;
+}
+
 class RowMouseSensor extends MouseSensor {
   static activators = [
     {
       eventName: "onMouseDown" as const,
-      handler: ({ nativeEvent: event }: React.MouseEvent) => {
+      handler: ({ nativeEvent: event, currentTarget }: React.MouseEvent) => {
         if (event.button !== 0) return false;
         if (isAnyModalDialogOpen()) return false;
-        let node = event.target as HTMLElement | null;
-        const stop = event.currentTarget as HTMLElement;
-        while (node && node !== stop) {
-          if (NO_DRAG_TAGS.has(node.tagName)) return false;
-          if (node.dataset?.noDnd !== undefined) return false;
-          node = node.parentElement;
-        }
-        return true;
+        return !startsOnNoDragTarget(event.target, currentTarget);
       },
     },
   ];
 }
 
+// Same no-drag zones as the mouse, so tapping a badge, the ⋮ menu or an input
+// on a tablet never starts a drag.
 class GuardedTouchSensor extends TouchSensor {
   static activators = [
     {
       eventName: "onTouchStart" as const,
-      handler: ({ nativeEvent: event }: React.TouchEvent) => {
+      handler: ({ nativeEvent: event, currentTarget }: React.TouchEvent) => {
         if (isAnyModalDialogOpen()) return false;
         if (event.touches.length > 1) return false;
-        return true;
+        return !startsOnNoDragTarget(event.target, currentTarget);
       },
     },
   ];
 }
+
+// Pointer drags drop on the section under the pointer. Keyboard drags have no
+// pointer, so fall back to the section header nearest the dragged overlay.
+const statusCollisionDetection: CollisionDetection = (args) =>
+  args.pointerCoordinates ? pointerWithin(args) : closestCenter(args);
+
+const MOUSE_DRAG_DISTANCE_PX = 6;
+// Press-and-hold before a touch drag starts: long enough that taps and
+// scroll flicks never pick a row up.
+const TOUCH_DRAG_DELAY_MS = 275;
+const TOUCH_DRAG_TOLERANCE_PX = 5;
 
 const DROP_ANIMATION: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
@@ -109,7 +130,6 @@ const DROP_ANIMATION: DropAnimation = {
 };
 
 const SKELETON_ROW_COUNT = 4;
-const DELETED_TOAST_MS = 4_000;
 
 function InitialOrdersSkeleton() {
   return (
@@ -137,12 +157,7 @@ export default function OrderManagementPage() {
   const [currentType, setCurrentType] = useState("all");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false);
-  const [isShippingDashboardOpen, setIsShippingDashboardOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [deletedToast, setDeletedToast] = useState<string | null>(null);
-  const deletedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
+  const pageRef = useRef<HTMLDivElement>(null);
 
   const orderSettingsContext = useOrderSettings();
   const settings = orderSettingsContext.settings || {};
@@ -170,14 +185,16 @@ export default function OrderManagementPage() {
   }, [loadItems]);
 
   // One-shot scroll to bottom on initial load. Wait until items are loaded so
-  // the document has its full height; rAF ensures layout is committed first.
+  // the page has its full height; rAF ensures layout is committed first. The
+  // app shell scrolls an inner container, not the window.
   const didInitialScrollRef = useRef(false);
   useEffect(() => {
     if (didInitialScrollRef.current) return;
     if (items.length === 0) return;
     didInitialScrollRef.current = true;
     requestAnimationFrame(() => {
-      window.scrollTo({ top: document.documentElement.scrollHeight });
+      const scroller = findScrollContainer(pageRef.current);
+      scroller?.scrollTo({ top: scroller.scrollHeight });
     });
   }, [items.length]);
 
@@ -224,10 +241,24 @@ export default function OrderManagementPage() {
 
   const shipItem = useCallback(async (_itemId: string) => {}, []);
 
-  const onGetLabel = useCallback((item: Item) => {
-    setSelectedItem(item);
-    setIsShippingDashboardOpen(true);
-  }, []);
+  // Undo puts the moved fields back on the latest copy of the order.
+  const undoStatusMove = useCallback(
+    async (original: Item) => {
+      const { items: liveItems, doneItems: liveDone } =
+        useOrderStore.getState();
+      const current =
+        liveItems.find((i) => i.id === original.id) ??
+        liveDone.find((i) => i.id === original.id) ??
+        original;
+      try {
+        await updateItem(buildStatusUndo(current, original));
+      } catch (error) {
+        console.error("Failed to undo status move:", error);
+        showErrorToast("Couldn't undo the move. Try again.");
+      }
+    },
+    [updateItem]
+  );
 
   const handleStatusChange = useCallback(
     async (itemId: string, newStatus: ItemStatus) => {
@@ -239,26 +270,18 @@ export default function OrderManagementPage() {
       if (item.status === newStatus) return;
 
       try {
-        const movedItem: Item = {
-          ...item,
-          status: newStatus,
-          prevStatus: null,
-          completedAt: newStatus === ItemStatus.Done ? Date.now() : undefined,
-        };
-        // Keep a pause while moving between supported sections (including
-        // Packaging → At The Door). Leaving those sections resumes the due date
-        // at its current effective value.
-        const updatedItem =
-          item.onHold && !canPauseDueDate(newStatus)
-            ? resumeDueDate(movedItem)
-            : movedItem;
-
-        await updateItem(updatedItem);
+        await updateItem(buildStatusMove(item, newStatus));
       } catch (error) {
         console.error("Failed to update status:", error);
+        showErrorToast(`Couldn't move to ${newStatus}. Try again.`);
+        return;
       }
+      showToast({
+        message: `Moved to ${newStatus}`,
+        action: { label: "Undo", onClick: () => void undoStatusMove(item) },
+      });
     },
-    [items, doneItems, updateItem]
+    [items, doneItems, updateItem, undoStatusMove]
   );
 
   const handleDeleteItem = useCallback(
@@ -269,45 +292,55 @@ export default function OrderManagementPage() {
         "Order";
       try {
         await deleteItem(itemId);
-        if (deletedToastTimerRef.current) {
-          clearTimeout(deletedToastTimerRef.current);
+        // A delete that silently failed leaves the order in the store.
+        const { items: liveItems, doneItems: liveDone } =
+          useOrderStore.getState();
+        if (
+          liveItems.some((i) => i.id === itemId) ||
+          liveDone.some((i) => i.id === itemId)
+        ) {
+          throw new Error("Order is still listed after delete");
         }
-        setDeletedToast(name);
-        deletedToastTimerRef.current = setTimeout(() => {
-          setDeletedToast(null);
-          deletedToastTimerRef.current = null;
-        }, DELETED_TOAST_MS);
       } catch (error) {
         console.error("Failed to delete item:", error);
+        showErrorToast(`Couldn't delete "${name}". Try again.`);
+        return;
       }
+      showToast({
+        message: `"${name}" moved to deleted`,
+        action: { label: "View", href: "/deleted" },
+      });
     },
     [deleteItem, items, doneItems]
   );
 
-  useEffect(() => {
-    return () => {
-      if (deletedToastTimerRef.current) {
-        clearTimeout(deletedToastTimerRef.current);
+  // Rethrow so OrderFormDialog keeps the form open, shows the error, and only
+  // notifies the team after a confirmed create.
+  const handleAddNewItem = useCallback(
+    async (newItem: Partial<Item>) => {
+      try {
+        await addNewItem(newItem);
+      } catch (error) {
+        console.error("Failed to add new item:", error);
+        throw error;
       }
-    };
-  }, []);
-
-  const handleAddNewItem = async (newItem: Partial<Item>) => {
-    try {
-      await addNewItem(newItem);
-    } catch (error) {
-      console.error("Failed to add new item:", error);
-    }
-  };
+    },
+    [addNewItem]
+  );
 
   //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
   //║ 🤚 DRAG-AND-DROP STATUS REASSIGNMENT                                 ║
   //╚═══╝ ════════════════════════════════════════════════════════════════ ╚═══╝
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const sensors = useSensors(
-    useSensor(RowMouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(RowMouseSensor, {
+      activationConstraint: { distance: MOUSE_DRAG_DISTANCE_PX },
+    }),
     useSensor(GuardedTouchSensor, {
-      activationConstraint: { delay: 150, tolerance: 5 },
+      activationConstraint: {
+        delay: TOUCH_DRAG_DELAY_MS,
+        tolerance: TOUCH_DRAG_TOLERANCE_PX,
+      },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -347,7 +380,10 @@ export default function OrderManagementPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-black dark:text-white">
+    <div
+      ref={pageRef}
+      className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-black dark:text-white"
+    >
       <Header
         searchTerm={searchTerm}
         onNewOrder={() => setIsNewItemModalOpen(true)}
@@ -358,7 +394,7 @@ export default function OrderManagementPage() {
       />
       <DndContext
         sensors={sensors}
-        collisionDetection={pointerWithin}
+        collisionDetection={statusCollisionDetection}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveDragId(null)}
@@ -377,7 +413,6 @@ export default function OrderManagementPage() {
                     groups={sortedGroups}
                     onDelete={handleDeleteItem}
                     onStatusChange={handleStatusChange}
-                    onGetLabel={onGetLabel}
                     onShip={shipItem}
                     doneItems={doneItems}
                     loadDoneItems={loadDoneItems}
@@ -422,39 +457,6 @@ export default function OrderManagementPage() {
         onClose={() => setIsNewItemModalOpen(false)}
         onSubmit={handleAddNewItem}
       />
-      <Dialog
-        open={isShippingDashboardOpen}
-        onOpenChange={setIsShippingDashboardOpen}
-      >
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          {selectedItem && (
-            <ShippingDashboard
-              item={selectedItem}
-              onClose={() => {
-                setIsShippingDashboardOpen(false);
-                setSelectedItem(null);
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-      {deletedToast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2 text-sm shadow-lg animate-in fade-in slide-in-from-bottom-2"
-        >
-          <span className="truncate max-w-[14rem]">
-            "{deletedToast}" moved to deleted
-          </span>
-          <Link
-            href="/deleted"
-            className="font-semibold underline-offset-2 hover:underline"
-          >
-            View
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

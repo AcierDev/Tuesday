@@ -21,6 +21,8 @@ import { OrderNameDisplay } from "@/components/orders/name-tokens";
 import { ORDER_ROW_LAYOUT } from "@/config/order-attention-layout";
 import { OrderWipBadge } from "@/components/orders/OrderWipBadge";
 import { isOrderWip } from "@/lib/order-wip";
+import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
+import { showErrorToast } from "@/components/ui/app-toast";
 
 // // Add this style block right after imports
 // const pulseKeyframes = `
@@ -66,7 +68,7 @@ export const NameCell: React.FC<NameCellProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const previousValueRef = useRef(columnValue.text);
 
-  const { updateItem } = useOrderStore();
+  const updateItem = useOrderStore((state) => state.updateItem);
 
   useEffect(() => {
     if (columnValue.text !== previousValueRef.current) {
@@ -90,6 +92,7 @@ export const NameCell: React.FC<NameCellProps> = ({
     } catch (err) {
       console.error("Failed to update ColumnValue", err);
       setInputValue(columnValue.text || "");
+      showErrorToast("Couldn't save the name. Try again.");
     }
   }, [inputValue, columnValue.text, item, updateItem]);
 
@@ -137,6 +140,10 @@ export const NameCell: React.FC<NameCellProps> = ({
   const handleFocus = useCallback(() => {
     setIsEditing(true);
   }, []);
+
+  // On touch screens a tap shouldn't pop the keyboard while scrolling or
+  // swiping rows; names are edited via the row's ⋮ → Edit instead.
+  const isTouch = useIsTouchDevice();
 
   const isToday = useTodayScheduledIds().has(item.id);
   const isTomorrowRaw = useTomorrowScheduledIds().has(item.id);
@@ -207,7 +214,7 @@ export const NameCell: React.FC<NameCellProps> = ({
               "rounded-md",
               "flex items-center justify-start gap-2"
             )}
-            onClick={handleFocus}
+            onClick={isTouch ? undefined : handleFocus}
           >
             <OrderNameDisplay rawName={inputValue} compact extraBadge={
               scheduleBadge || isOrderWip(item) ? <>{scheduleBadge}<OrderWipBadge item={item} /></> : null

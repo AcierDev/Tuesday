@@ -29,13 +29,19 @@ export function MobilePageSwitcher() {
   const [viewportWidth, setViewportWidth] = useState(0);
   const [toggleWidth, setToggleWidth] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const toggleRef = useRef<HTMLDivElement>(null);
+  // Callback ref: the toggle only mounts on switcher routes, which may be
+  // well after this component mounts (e.g. the app opened on /stats).
+  const [toggleNode, setToggleNode] = useState<HTMLDivElement | null>(null);
 
   useLayoutEffect(() => {
-    if (toggleRef.current) {
-      setToggleWidth(toggleRef.current.offsetWidth);
-    }
-  }, []);
+    if (!toggleNode) return;
+    const measure = () => setToggleWidth(toggleNode.offsetWidth);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(toggleNode);
+    return () => observer.disconnect();
+  }, [toggleNode]);
 
   useEffect(() => {
     if (searching) inputRef.current?.focus();
@@ -128,7 +134,7 @@ export function MobilePageSwitcher() {
           transform on the inner motion.div doesn't clobber it. */}
       <div className="absolute left-1/2 bottom-0 -translate-x-1/2">
         <motion.div
-          ref={toggleRef}
+          ref={setToggleNode}
           animate={{
             y: searching ? -TOGGLE_LIFT_PX : 0,
             opacity: searching ? 0 : 1,

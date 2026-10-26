@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { showErrorToast } from "@/components/ui/app-toast";
 import { Item } from "@/typings/types";
 import { ItemUtil } from "@/utils/ItemUtil";
 import { useOrderStore } from "@/stores/useOrderStore";
@@ -68,12 +69,14 @@ function DeletedRow({ item, restoringId, onRestore }: DeletedRowProps) {
 export default function DeletedOrdersPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [showOlder, setShowOlder] = useState(false);
   const loadItems = useOrderStore((state) => state.loadItems);
 
   const loadDeleted = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const res = await fetch("/api/items?deletedOnly=true");
       if (!res.ok) throw new Error("Failed to load deleted items");
@@ -83,6 +86,8 @@ export default function DeletedOrdersPage() {
       setItems(processed);
     } catch (err) {
       console.error("Failed to load deleted items", err);
+      // Don't present a failed load as "No deleted orders."
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -107,11 +112,17 @@ export default function DeletedOrdersPage() {
         loadItems();
       } catch (err) {
         console.error("Failed to restore item", err);
+        const name = items.find((i) => i.id === id)?.customerName;
+        showErrorToast(
+          name
+            ? `Couldn't restore "${name}". Try again.`
+            : "Couldn't restore the order. Try again."
+        );
       } finally {
         setRestoringId(null);
       }
     },
-    [loadItems]
+    [items, loadItems]
   );
 
   const { recent, older } = useMemo(() => {
@@ -135,7 +146,7 @@ export default function DeletedOrdersPage() {
           <div className="flex items-center gap-2">
             <Trash2 className="h-5 w-5 text-slate-500 dark:text-slate-400" />
             <h1 className="text-2xl font-semibold">Deleted Orders</h1>
-            {!isLoading && (
+            {!isLoading && !loadError && (
               <span className="text-sm text-slate-500 dark:text-slate-400">
                 ({items.length})
               </span>
@@ -154,6 +165,17 @@ export default function DeletedOrdersPage() {
             {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
               <Skeleton key={i} className="h-14 w-full rounded-md" />
             ))}
+          </div>
+        ) : loadError ? (
+          <div
+            role="alert"
+            className="flex flex-col items-center gap-3 py-16 text-center text-slate-500 dark:text-slate-400 border border-dashed border-red-300 dark:border-red-900 rounded-md"
+          >
+            <span>Couldn&apos;t load deleted orders.</span>
+            <Button size="sm" variant="outline" onClick={() => void loadDeleted()}>
+              <RotateCcw className="h-3.5 w-3.5 mr-1" />
+              Retry
+            </Button>
           </div>
         ) : items.length === 0 ? (
           <div className="text-center text-slate-500 dark:text-slate-400 py-16 border border-dashed border-slate-300 dark:border-slate-700 rounded-md">

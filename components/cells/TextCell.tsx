@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { ColumnValue, Item, ColumnTitles } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { showErrorToast } from "@/components/ui/app-toast";
 
 // Helper to map column name to property
 const getPropertyKey = (columnName: string): keyof Item | undefined => {
@@ -22,7 +23,7 @@ export const TextCell = ({
   columnValue: ColumnValue;
 }) => {
   const [inputValue, setInputValue] = useState(columnValue.text || "");
-  const { updateItem } = useOrderStore();
+  const updateItem = useOrderStore((state) => state.updateItem);
 
   useEffect(() => {
     setInputValue(columnValue.text || "");
@@ -46,6 +47,7 @@ export const TextCell = ({
         }
       } catch (err) {
         console.error("Failed to update ColumnValue", err);
+        showErrorToast("Couldn't save the change. Try again.");
       }
     }
   };

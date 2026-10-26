@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/utils/functions";
+import { TOUCH_HIT_AREA } from "@/components/ui/touch-target";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { canMarkOrderWip, isOrderWip, orderWipToggle } from "@/lib/order-wip";
 
@@ -164,6 +165,8 @@ function ItemActionsTrigger({ children, open, onOpenChange }: {
         <Button
           className={cn(
             "h-7 w-[1.2775rem] p-0 mx-auto rounded-lg border border-transparent",
+            // Compact kebab, finger-sized hit area on touch screens.
+            TOUCH_HIT_AREA,
             "text-slate-500 dark:text-slate-400",
             "hover:bg-white/40 hover:border-white/30 hover:text-slate-900",
             "dark:hover:bg-white/10 dark:hover:border-white/15 dark:hover:text-white",

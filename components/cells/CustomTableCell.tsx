@@ -14,6 +14,7 @@ import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import React, { useEffect } from "react";
 import { ShippingCell } from "./ShippingCell";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { isDuplicateName } from "./duplicate-names";
 
 export const CustomTableCell = ({
   item,
@@ -29,7 +30,10 @@ export const CustomTableCell = ({
     boolean | null
   >(null);
 
-  const { checkDuplicate } = useOrderStore();
+  // Boolean selector: the cell re-renders only when its own flag flips.
+  const isDuplicate = useOrderStore(
+    (state) => isNameColumn && isDuplicateName(item, state.items)
+  );
 
   useEffect(() => {
     const checkModification = () => {
@@ -99,8 +103,6 @@ export const CustomTableCell = ({
           );
         }
         if (isNameColumn) {
-          const isDuplicate = checkDuplicate(item);
-
           return (
             <NameCell
               item={item}

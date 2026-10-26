@@ -8,8 +8,16 @@ import { invalidateStatsCaches } from "@/lib/stats-shared";
 import { laDayKey } from "@/lib/debt-metrics";
 import { updatePausedDueDate } from "@/lib/due-date-pause";
 import { normalizeOrderWipPatch } from "@/lib/order-wip";
+import {
+  buildItemPatch,
+  itemValuesEqual,
+  stripDerivedItemFields,
+} from "@/lib/order-patch";
+import { shouldBootAppData } from "@/lib/app-boot";
 
 const SEARCH_DEBOUNCE_MS = 300;
+const DONE_ITEMS_PAGE_SIZE = 25;
+const ITEM_CONFLICT_STATUS = 409;
 
 const SSE_RECONNECT_BASE_MS = 2_000;
 const SSE_RECONNECT_MAX_MS = 60_000;
@@ -31,6 +39,18 @@ let sseReconnectAttempts = 0;
 let sseReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let pausedDueDateClock: ReturnType<typeof setInterval> | null = null;
 let pausedDueDateClockDayKey: string | null = null;
+let loadItemsInFlight: Promise<void> | null = null;
+// Set when the live stream drops; the next successful connection reloads the
+// board so changes made while disconnected are not missed.
+let sseNeedsCatchUp = false;
+// Only the newest Done-list request may write its result; older ones are
+// aborted and their responses dropped.
+let doneItemsRequestId = 0;
+let doneItemsAbort: AbortController | null = null;
+// Field values this tab has sent but the server has not confirmed yet. A quick
+// second edit expects the first edit's value, not the one shown before it.
+const pendingItemWrites = new Map<string, Map<string, { value: unknown; requestId: number }>>();
+let itemWriteRequestId = 0;
 
 // Coalesces search keystrokes into a single API call. Lodash.debounce keeps the
 // latest args, so the trailing fire uses the most recent query.
@@ -57,6 +77,8 @@ interface OrderState {
   searchResults: Item[];
   // Actions
   loadItems: () => Promise<void>;
+  /** Unshared fetch behind loadItems; call loadItems instead. */
+  loadItemsOnce: () => Promise<void>;
   updateItem: (updatedItem: Item, changedField?: ColumnTitles) => Promise<Item>;
   addNewItem: (newItem: Partial<Item>) => Promise<Item>;
   deleteItem: (itemId: string) => Promise<Item>;
@@ -90,6 +112,86 @@ interface OrderState {
     columns?: ColumnTitles[] | ColumnTitles,
     searchAllItems?: boolean
   ) => void;
+}
+
+type ItemLists = Pick<OrderState, "items" | "doneItems" | "scheduledItems">;
+
+// Puts a saved order in the list for its status: Done orders move to the Done
+// list, Hidden orders leave the board, active orders update in place (or are
+// positioned by `placeActive`, else appended).
+function routeSavedItem(
+  state: ItemLists,
+  item: Item,
+  placeActive?: (items: Item[], item: Item) => Item[]
+): ItemLists {
+  const without = (list: Item[]) => list.filter((existing) => existing.id !== item.id);
+  const replace = (list: Item[]) =>
+    list.map((existing) => (existing.id === item.id ? item : existing));
+  const has = (list: Item[]) => list.some((existing) => existing.id === item.id);
+
+  // scheduledItems is a flat cache of items referenced by the planner
+  // schedule (any status). Keep it in sync so consumers reading from
+  // it — like the planner's lock-by-status check — see fresh data.
+  const scheduledItems = item.status === ItemStatus.Hidden
+    ? without(state.scheduledItems)
+    : replace(state.scheduledItems);
+
+  if (item.status === ItemStatus.Done) {
+    return {
+      items: without(state.items),
+      doneItems: has(state.doneItems) ? replace(state.doneItems) : [item, ...state.doneItems],
+      scheduledItems,
+    };
+  }
+  if (item.status === ItemStatus.Hidden) {
+    return { items: without(state.items), doneItems: without(state.doneItems), scheduledItems };
+  }
+  return {
+    items: placeActive
+      ? placeActive(without(state.items), item)
+      : has(state.items) ? replace(state.items) : [...state.items, item],
+    doneItems: without(state.doneItems),
+    scheduledItems,
+  };
+}
+
+// Inserts a dragged order at `index` within its destination status group.
+function insertAtStatusPosition(
+  items: Item[],
+  item: Item,
+  status: ItemStatus,
+  index: number
+): Item[] {
+  let insertAt = 0;
+  let statusCount = 0;
+  for (const existing of items) {
+    if (existing.status === status) {
+      statusCount++;
+      if (statusCount === index) break;
+    }
+    insertAt++;
+  }
+  // Adding to the end of a status group
+  if (statusCount < index) {
+    while (insertAt < items.length && items[insertAt]?.status === status) {
+      insertAt++;
+    }
+  }
+  return [...items.slice(0, insertAt), item, ...items.slice(insertAt)];
+}
+
+// Planner membership is computed in the browser and never stored, so a server
+// copy of an order keeps the flag the board already had.
+function keepScheduleFlag(state: ItemLists, item: Item): Item {
+  const known = [...state.items, ...state.doneItems, ...state.scheduledItems]
+    .find((existing) => existing.id === item.id);
+  return { ...item, isScheduled: known?.isScheduled };
+}
+
+// The live stream identifies hard-deleted documents by Mongo _id only.
+function documentIdOf(item: Item): string | undefined {
+  const documentId = (item as Item & { _id?: unknown })._id;
+  return documentId == null ? undefined : String(documentId);
 }
 
 // Helper function to get the customer name from an item's values
@@ -132,6 +234,22 @@ function hasDuplicateFirstValue(item: Item, items: Item[]): boolean {
 
 export const useOrderStore = create<OrderState>()(
   devtools((set, get) => {
+    // Replaces one order with its stored version (after a rejected save).
+    const refreshItem = async (itemId: string, storedItem?: Item) => {
+      let latest = storedItem;
+      if (!latest) {
+        try {
+          const response = await fetch(`/api/items?ids=${encodeURIComponent(itemId)}`);
+          if (response.ok) latest = (await response.json())[0];
+        } catch (err) {
+          console.error("Failed to reload item", err);
+        }
+      }
+      if (!latest) return;
+      const processed = ItemUtil.processItem(latest);
+      set((state) => routeSavedItem(state, keepScheduleFlag(state, processed)));
+    };
+
     return {
       allItems: [],
       items: [],
@@ -148,7 +266,17 @@ export const useOrderStore = create<OrderState>()(
       searchQuery: "",
       searchResults: [],
 
-      loadItems: async () => {
+      loadItems: () => {
+        // Store boot and the orders page both ask on first load; share one request.
+        if (!loadItemsInFlight) {
+          loadItemsInFlight = get().loadItemsOnce().finally(() => {
+            loadItemsInFlight = null;
+          });
+        }
+        return loadItemsInFlight;
+      },
+
+      loadItemsOnce: async () => {
         try {
           // Avoid running this on the server where relative fetch URLs break
           if (typeof window === "undefined") {
@@ -193,8 +321,9 @@ export const useOrderStore = create<OrderState>()(
             }, PAUSED_DUE_DATE_CLOCK_CHECK_MS);
           }
 
-          // Start watching for changes after initial load
-          get().startWatchingChanges();
+          // Start watching for changes after initial load. A reload (for
+          // example the catch-up after a reconnect) keeps the open stream.
+          if (!get().eventSource) get().startWatchingChanges();
 
           // Recalculate `isScheduled` if schedules are loaded
           const { schedules } = useWeeklyScheduleStore.getState();
@@ -264,7 +393,6 @@ export const useOrderStore = create<OrderState>()(
         eventSource.onmessage = (event) => {
           try {
             const change = JSON.parse(event.data);
-            const { items, doneItems, scheduledItems } = get();
 
             // Any live item change can affect stats (glued count, throughput, etc).
             // Refresh the stats caches so open stats views update without a refresh.
@@ -272,81 +400,49 @@ export const useOrderStore = create<OrderState>()(
 
             // Soft deletions arrive as updates. Remove them before normal status
             // routing can put the order back into an active or completed list.
+            // Hard deletions only carry the Mongo document id.
             if (change.item?.deleted || change.type === "delete") {
-              const deletedId = change.item?.id ?? change.itemId;
-              if (!deletedId) return;
+              const deletedId: string | undefined = change.item?.id ?? change.itemId;
+              const deletedDocumentId: string | undefined = change.documentId;
+              if (!deletedId && !deletedDocumentId) return;
+              const keep = (item: Item) =>
+                item.id !== deletedId &&
+                (!deletedDocumentId || documentIdOf(item) !== deletedDocumentId);
               set((state) => ({
-                items: state.items.filter((item) => item.id !== deletedId),
-                doneItems: state.doneItems.filter((item) => item.id !== deletedId),
-                scheduledItems: state.scheduledItems.filter((item) => item.id !== deletedId),
-                allItems: state.allItems.filter((item) => item.id !== deletedId),
-                searchResults: state.searchResults.filter((item) => item.id !== deletedId),
+                items: state.items.filter(keep),
+                doneItems: state.doneItems.filter(keep),
+                scheduledItems: state.scheduledItems.filter(keep),
+                allItems: state.allItems.filter(keep),
+                searchResults: state.searchResults.filter(keep),
               }));
               return;
             }
 
-            if (change.type === "update") {
+            if ((change.type === "update" || change.type === "insert") && change.item) {
               const updatedItem = ItemUtil.processItem(change.item);
-              
-              let newItems = [...items];
-              let newDoneItems = [...doneItems];
-              let newScheduledItems = [...scheduledItems];
-              
-              const isDone = updatedItem.status === ItemStatus.Done;
-              const isHidden = updatedItem.status === ItemStatus.Hidden;
-              
-              // Update scheduledItems if present
-              const scheduledIdx = newScheduledItems.findIndex(i => i.id === updatedItem.id);
-              if (scheduledIdx !== -1) {
-                  newScheduledItems[scheduledIdx] = updatedItem;
-              }
-
-              // Remove from old locations if status changed (or just ensure it's not in wrong list)
-              // If it's Done, it shouldn't be in items.
-              if (isDone) {
-                  newItems = newItems.filter(i => i.id !== updatedItem.id);
-                  // Update or Add to doneItems
-                  const idx = newDoneItems.findIndex(i => i.id === updatedItem.id);
-                  if (idx !== -1) {
-                      newDoneItems[idx] = updatedItem;
-                  } else {
-                      newDoneItems.unshift(updatedItem);
-                  }
-              } 
-              else if (isHidden) {
-                  newItems = newItems.filter(i => i.id !== updatedItem.id);
-                  newDoneItems = newDoneItems.filter(i => i.id !== updatedItem.id);
-                  // If hidden items are loaded, we might update them, but let's ignore for now as per plan focus.
-              }
-              else {
-                  // Active
-                  newDoneItems = newDoneItems.filter(i => i.id !== updatedItem.id);
-                  
-                  const idx = newItems.findIndex(i => i.id === updatedItem.id);
-                  if (idx !== -1) {
-                      newItems[idx] = updatedItem;
-                  } else {
-                      // New active item or moved from Done/Hidden
-                      newItems.push(updatedItem);
-                  }
-              }
-
-              set({ items: newItems, doneItems: newDoneItems, scheduledItems: newScheduledItems });
+              set((state) => routeSavedItem(state, keepScheduleFlag(state, updatedItem)));
             }
           } catch (error) {
             console.error("Failed to process change:", error);
           }
         };
 
-
         eventSource.onopen = () => {
           // Successful (re)connection — reset backoff
           sseReconnectAttempts = 0;
+          if (!sseNeedsCatchUp) return;
+          // Changes made while disconnected were never delivered: reload.
+          sseNeedsCatchUp = false;
+          const reloadDoneItems = get().doneItemsLoaded;
+          void get().loadItems().then(() => {
+            if (reloadDoneItems) return get().loadDoneItems(true);
+          });
         };
 
         eventSource.onerror = () => {
           // The error event from EventSource carries no useful info, so we don't log it.
           // Browser auto-reconnect can fire repeatedly; we close and back off ourselves.
+          sseNeedsCatchUp = true;
           get().stopWatchingChanges();
 
           const delay = Math.min(
@@ -429,84 +525,83 @@ export const useOrderStore = create<OrderState>()(
         //   );
         // }
 
+        // Send only the fields that changed from what this tab last saw, so a
+        // save never overwrites someone else's edit to another field. Cells
+        // name the column they edited; anything else in their copy is ignored.
+        const editedKey = changedField ? fieldMap[changedField] : undefined;
+        const editedFields = editedKey
+          ? new Set([
+            editedKey as string,
+            ...Object.keys(itemToUpdate).filter(
+              (key) =>
+                !itemValuesEqual(
+                  (itemToUpdate as Record<string, unknown>)[key],
+                  (updatedItem as Record<string, unknown>)[key]
+                )
+            ),
+          ])
+          : undefined;
+        const patch = currentItem
+          ? buildItemPatch(currentItem, itemToUpdate, editedFields)
+          : { updates: stripDerivedItemFields(itemToUpdate), expected: undefined };
+
+        // Fields this tab is still saving are expected to hold the value sent.
+        const pendingForItem = pendingItemWrites.get(updatedItem.id) ?? new Map();
+        const expected = patch.expected && { ...patch.expected } as Record<string, unknown>;
+        if (expected) {
+          for (const key of Object.keys(expected)) {
+            const pending = pendingForItem.get(key);
+            if (pending) expected[key] = pending.value ?? null;
+          }
+        }
+        const requestId = ++itemWriteRequestId;
+        for (const [key, value] of Object.entries(patch.updates)) {
+          pendingForItem.set(key, { value, requestId });
+        }
+        pendingItemWrites.set(updatedItem.id, pendingForItem);
+
         try {
           const response = await fetch("/api/items", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               id: updatedItem.id,
-              updates: itemToUpdate,
+              updates: patch.updates,
+              ...(expected ? { expected } : {}),
             }),
           });
 
+          if (response.status === ITEM_CONFLICT_STATUS) {
+            // Someone else changed this field first: show their version.
+            const conflict = await response.json().catch(() => null);
+            await refreshItem(updatedItem.id, conflict?.item);
+            throw new Error(
+              conflict?.error ?? "This order was changed by someone else. Try again."
+            );
+          }
           if (!response.ok) throw new Error("Failed to update item");
+          const saved = await response.json().catch(() => null);
 
           // Flush stats caches so glued/health badges re-fetch.
           invalidateStatsCaches();
 
-          // Update local state
-          const {
-            items: currentItems,
-            doneItems: currentDoneItems,
-            scheduledItems: currentScheduledItems,
-          } = get();
-          const processedUpdate = ItemUtil.processItem(itemToUpdate);
+          // Show exactly what was stored; planner membership stays client-side.
+          const processedUpdate = ItemUtil.processItem(
+            saved?.item
+              ? { ...saved.item, isScheduled: itemToUpdate.isScheduled }
+              : itemToUpdate
+          );
+          set((state) => routeSavedItem(state, processedUpdate));
 
-          let newItems = [...currentItems];
-          let newDoneItems = [...currentDoneItems];
-          let newScheduledItems = [...currentScheduledItems];
-
-          const isDone = processedUpdate.status === ItemStatus.Done;
-          const isHidden = processedUpdate.status === ItemStatus.Hidden;
-
-          // Remove from all lists first (simplest way to handle moves)
-          // But we want to preserve order if staying in same list.
-
-          const inItemsIndex = newItems.findIndex(i => i.id === processedUpdate.id);
-          const inDoneIndex = newDoneItems.findIndex(i => i.id === processedUpdate.id);
-          const inScheduledIndex = newScheduledItems.findIndex(i => i.id === processedUpdate.id);
-
-          // scheduledItems is a flat cache of items referenced by the planner
-          // schedule (any status). Keep it in sync so consumers reading from
-          // it — like the planner's lock-by-status check — see fresh data.
-          if (inScheduledIndex !== -1) {
-            if (isHidden) {
-              newScheduledItems.splice(inScheduledIndex, 1);
-            } else {
-              newScheduledItems[inScheduledIndex] = processedUpdate;
-            }
-          }
-
-          if (isDone) {
-              if (inItemsIndex !== -1) newItems.splice(inItemsIndex, 1);
-              if (inDoneIndex !== -1) {
-                  newDoneItems[inDoneIndex] = processedUpdate;
-              } else {
-                  newDoneItems.unshift(processedUpdate);
-              }
-          } else if (isHidden) {
-              if (inItemsIndex !== -1) newItems.splice(inItemsIndex, 1);
-              if (inDoneIndex !== -1) newDoneItems.splice(inDoneIndex, 1);
-          } else {
-              // Active
-              if (inDoneIndex !== -1) newDoneItems.splice(inDoneIndex, 1);
-              if (inItemsIndex !== -1) {
-                  newItems[inItemsIndex] = processedUpdate;
-              } else {
-                  newItems.push(processedUpdate);
-              }
-          }
-
-          set({
-            items: newItems,
-            doneItems: newDoneItems,
-            scheduledItems: newScheduledItems,
-          });
-          
           return processedUpdate;
         } catch (err) {
           console.error("Failed to update item", err);
           throw err;
+        } finally {
+          for (const [key, pending] of [...pendingForItem]) {
+            if (pending.requestId === requestId) pendingForItem.delete(key);
+          }
+          if (pendingForItem.size === 0) pendingItemWrites.delete(updatedItem.id);
         }
       },
 
@@ -553,11 +648,18 @@ export const useOrderStore = create<OrderState>()(
           });
 
           if (!response.ok) throw new Error("Failed to add item");
+          const saved = await response.json().catch(() => null);
 
           invalidateStatsCaches();
 
-          set({ items: [...items, ItemUtil.processItem(fullNewItem)] });
-          return fullNewItem;
+          // The live stream may already have added the stored copy.
+          const created = ItemUtil.processItem(saved?.id ? saved : fullNewItem);
+          set((state) => ({
+            items: state.items.some((item) => item.id === created.id)
+              ? state.items
+              : [...state.items, created],
+          }));
+          return created;
         } catch (err) {
           console.error("Failed to add new item", err);
           throw err;
@@ -593,6 +695,7 @@ export const useOrderStore = create<OrderState>()(
           }));
         } catch (err) {
           console.error("Failed to mark item as deleted", err);
+          throw err;
         }
       },
 
@@ -615,51 +718,11 @@ export const useOrderStore = create<OrderState>()(
           return;
         }
 
-        // Remove the item from its current position
-        const currentIndex = items.findIndex((item) => item.id === itemId);
-        console.log(`Current index of moved item: ${currentIndex}`);
-        const updatedItems = [...items];
-        updatedItems.splice(currentIndex, 1);
-
-        // Calculate the new position
-        let insertAt = 0;
-        let currentStatusCount = 0;
-
-        // Count items until we reach the destination status
-        for (const item of updatedItems) {
-          if (item.status === destinationStatus) {
-            currentStatusCount++;
-            console.log(
-              `Found item with status ${destinationStatus}: count = ${currentStatusCount}`
-            );
-            if (currentStatusCount === destinationIndex) {
-              console.log(`Target index for insertion reached: ${insertAt}`);
-              break;
-            }
-          }
-          insertAt++;
-        }
-
-        // If we're adding to the end of a status group
-        if (currentStatusCount < destinationIndex) {
-          while (
-            insertAt < updatedItems.length &&
-            updatedItems[insertAt]?.status === destinationStatus
-          ) {
-            insertAt++;
-          }
-        }
-
-        console.log(`Inserting item at index: ${insertAt}`);
-
-        // Insert the item at the new position
         const movePatch = normalizeOrderWipPatch(movedItem, {
           status: destinationStatus,
           completedAt:
             destinationStatus === ItemStatus.Done ? Date.now() : undefined,
         });
-        const updatedItem = { ...movedItem, ...movePatch };
-        updatedItems.splice(insertAt, 0, updatedItem);
 
         try {
           const response = await fetch("/api/items", {
@@ -675,8 +738,14 @@ export const useOrderStore = create<OrderState>()(
 
           invalidateStatsCaches();
 
-          set({ items: updatedItems });
-          console.log("Items reordered successfully.");
+          // Position against the board as it is now, not as it was before the
+          // save; a drop into Done moves the order to the Done list.
+          set((state) => {
+            const latest = state.items.find((item) => item.id === itemId) ?? movedItem;
+            return routeSavedItem(state, { ...latest, ...movePatch }, (rest, item) =>
+              insertAtStatusPosition(rest, item, destinationStatus, destinationIndex)
+            );
+          });
         } catch (err) {
           console.error("Failed to reorder items:", err);
           throw err;
@@ -698,14 +767,22 @@ export const useOrderStore = create<OrderState>()(
       },
 
       loadDoneItems: async (reset = false) => {
-        const { doneItems, doneItemsPage, searchQuery } = get();
+        // One page at a time; a reset (new search, reopen) supersedes anything
+        // in flight instead of racing it.
+        if (!reset && get().isDoneLoading) return;
+        doneItemsAbort?.abort();
+        const controller = new AbortController();
+        doneItemsAbort = controller;
+        const requestId = ++doneItemsRequestId;
+
+        const { doneItemsPage, searchQuery } = get();
 
         if (reset) {
           set({ doneItems: [], doneItemsPage: 0, hasMoreDoneItems: true });
         }
 
         const currentPage = reset ? 0 : doneItemsPage;
-        const limit = 25;
+        const limit = DONE_ITEMS_PAGE_SIZE;
         const offset = currentPage * limit;
 
         try {
@@ -715,25 +792,33 @@ export const useOrderStore = create<OrderState>()(
              url += `&search=${encodeURIComponent(searchQuery)}`;
           }
           
-          const response = await fetch(url);
+          const response = await fetch(url, { signal: controller.signal });
           if (!response.ok) throw new Error("Failed to fetch done items");
 
           const newItems: Item[] = await response.json();
+          if (requestId !== doneItemsRequestId) return;
           const processedItems = newItems.map(ItemUtil.processItem);
-          console.log("Loaded done items page:", currentPage, "Count:", newItems.length);
 
-          set((state) => ({
-            doneItems: reset
-              ? processedItems
-              : [...state.doneItems, ...processedItems],
-            doneItemsPage: currentPage + 1,
-            hasMoreDoneItems: newItems.length === limit,
-            doneItemsLoaded: true,
-            isDoneLoading: false,
-          }));
+          set((state) => {
+            // Orders completed live shift the pages; skip ones already shown.
+            const shown = new Set(state.doneItems.map((item) => item.id));
+            return {
+              doneItems: reset
+                ? processedItems
+                : [...state.doneItems, ...processedItems.filter((item) => !shown.has(item.id))],
+              doneItemsPage: currentPage + 1,
+              hasMoreDoneItems: newItems.length === limit,
+              doneItemsLoaded: true,
+              isDoneLoading: false,
+            };
+          });
         } catch (err) {
+          // A newer request replaced this one; it owns the loading state.
+          if (requestId !== doneItemsRequestId) return;
           console.error("Failed to load done items", err);
           set({ isDoneLoading: false });
+        } finally {
+          if (doneItemsAbort === controller) doneItemsAbort = null;
         }
       },
 
@@ -742,7 +827,10 @@ export const useOrderStore = create<OrderState>()(
       },
 
       removeDoneItems: () => {
-        set({ doneItems: [], doneItemsLoaded: false });
+        // Drop any page still loading so it cannot refill the closed list.
+        doneItemsAbort?.abort();
+        doneItemsRequestId++;
+        set({ doneItems: [], doneItemsLoaded: false, isDoneLoading: false });
       },
 
       updateItemScheduleStatus: async (
@@ -845,7 +933,7 @@ export const useOrderStore = create<OrderState>()(
 );
 
 // Initialize the store after creation on the client only
-if (typeof window !== "undefined") {
+if (shouldBootAppData()) {
   useOrderStore
     .getState()
     .init()

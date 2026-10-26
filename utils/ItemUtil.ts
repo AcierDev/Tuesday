@@ -13,17 +13,14 @@ type BoxDetails = Pick<(typeof BOX_COLORS)[ItemSizes], "count" | "hardwareBag" |
 
 export class ItemUtil {
   static processItem(item: Item): Item {
-    // Since items are now flat, this method is largely redundant but kept for compatibility
-    // or if we need to calculate derived fields in the future.
-    // We ensure searching works by pre-computing searchText if not present.
+    // Derives display fields. searchText is always rebuilt from the current
+    // fields: a stored or cached copy goes stale as soon as the order changes.
 
     const effectiveDueDate = getEffectiveDueDateKey(item);
     const normalizedItem =
       effectiveDueDate && effectiveDueDate !== item.dueDate
         ? { ...item, dueDate: effectiveDueDate }
         : item;
-
-    if (normalizedItem.searchText) return normalizedItem;
 
     const searchableFields = [
       normalizedItem.customerName,

@@ -8,6 +8,12 @@ import { Button } from "@/components/ui/button";
 import { boardConfig } from "../../config/boardconfig";
 import { ColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { showErrorToast } from "@/components/ui/app-toast";
+import { TOUCH_HIT_AREA } from "@/components/ui/touch-target";
+import {
+  customOptionHint,
+  normalizeCustomOption,
+} from "@/components/orders/utils/customOption";
 import {
   CUSTOM_DESIGN_GRADIENT,
   DESIGN_PILL_FULL,
@@ -19,7 +25,9 @@ import {
 } from "@/components/ui/order-pills";
 
 const PILL_BASE_CLASSES = `${DESIGN_PILL_FULL} ${PILL_INTERACTIVE}`;
-const PILL_TRIGGER_CLASSES = `${DESIGN_PILL_TRIGGER} ${PILL_INTERACTIVE}`;
+// !overflow-visible keeps the touch hit area un-clipped; the inner label span
+// truncates instead.
+const PILL_TRIGGER_CLASSES = `${DESIGN_PILL_TRIGGER} ${PILL_INTERACTIVE} ${TOUCH_HIT_AREA} !overflow-visible`;
 
 const WOODFORM_DESIGNS = new Set(["Mint", "Brisket", "Nevada"]);
 
@@ -89,7 +97,7 @@ export const DesignDropdownCell = ({
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const { updateItem } = useOrderStore();
+  const updateItem = useOrderStore((state) => state.updateItem);
 
   const options = boardConfig.columns[columnValue.columnName].options ?? [];
 
@@ -101,7 +109,8 @@ export const DesignDropdownCell = ({
 
   const grouped = useMemo(() => splitByCompany(filtered), [filtered]);
 
-  const trimmed = query.trim();
+  const trimmed = normalizeCustomOption(query) ?? "";
+  const customHint = customOptionHint(query);
   const exactMatch = options.some(
     (o) => o.toLowerCase() === trimmed.toLowerCase()
   );
@@ -120,7 +129,8 @@ export const DesignDropdownCell = ({
       };
       await updateItem(updatedItem, columnValue.columnName);
     } catch (err) {
-      console.error("Failed to update ColumnValue", err);
+      console.error("Failed to update design", err);
+      showErrorToast("Couldn't save the design. Try again.");
     }
   };
 
@@ -142,7 +152,7 @@ export const DesignDropdownCell = ({
           className={PILL_TRIGGER_CLASSES}
           style={{ background: backgroundStyle }}
         >
-          {columnValue.text || "Select Design"}
+          <span className="truncate">{columnValue.text || "Select Design"}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -210,7 +220,12 @@ export const DesignDropdownCell = ({
               </button>
             </div>
           )}
-          {filtered.length === 0 && !showCustomOption && (
+          {customHint && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 py-1 px-1">
+              {customHint}
+            </p>
+          )}
+          {filtered.length === 0 && !showCustomOption && !customHint && (
             <p className="text-xs text-gray-500 dark:text-gray-400 py-1 px-1">
               No matches.
             </p>

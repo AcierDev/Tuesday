@@ -53,7 +53,8 @@ import { SliderSettingPopover } from "@/components/settings/SliderSettingPopover
 import { useOrderSettings } from "@/contexts/OrderSettingsContext";
 import { useOrderStore } from "@/stores/useOrderStore";
 import { ItemSizes, ItemStatus, type Item } from "@/typings/types";
-import { addWeeks, startOfDay, endOfDay, isWithinInterval } from "date-fns";
+import { parseISO } from "date-fns";
+import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 
 //╔═══╗ ════════════════════════════════════════════════════════════════ ╔═══╗
 //║ 🔌 ESP32 DASHBOARD                                                   ║
@@ -224,22 +225,30 @@ const fitRowFont = (rowCount: number): number =>
 // Count active items, grouped by standard size, whose due date falls within the
 // next `weeks` weeks (today → today + N weeks). Returns smallest → largest,
 // nonzero rows only.
+const DAYS_PER_WEEK = 7;
+const DUE_DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+// Last calendar day (LA) covered by an N-week due report.
+const dueReportEndKey = (weeks: number, todayKey: string = laDayKey()) =>
+  shiftDayKey(todayKey, weeks * DAYS_PER_WEEK);
+
 const computeDueBySize = (
   items: Item[],
   weeks: number
 ): { size: string; count: number }[] => {
-  const start = startOfDay(new Date());
-  const end = endOfDay(addWeeks(start, weeks));
+  // Compare LA calendar-day keys: new Date("YYYY-MM-DD") is UTC midnight,
+  // which lands on the previous day in LA.
+  const startKey = laDayKey();
+  const endKey = dueReportEndKey(weeks, startKey);
   const counts = new Map<string, number>();
 
   for (const item of items) {
     if (item.deleted || item.visible === false) continue;
     if (DUE_REPORT_EXCLUDED_STATUSES.has(item.status)) continue;
     if (!item.size || !STANDARD_SIZES.has(item.size)) continue;
-    if (!item.dueDate) continue;
-    const due = new Date(item.dueDate);
-    if (Number.isNaN(due.getTime())) continue;
-    if (!isWithinInterval(startOfDay(due), { start, end })) continue;
+    const dueKey = item.dueDate?.slice(0, "YYYY-MM-DD".length);
+    if (!dueKey || !DUE_DAY_KEY_PATTERN.test(dueKey)) continue;
+    if (dueKey < startKey || dueKey > endKey) continue;
     counts.set(item.size, (counts.get(item.size) ?? 0) + 1);
   }
 
@@ -383,8 +392,10 @@ const printDueReport = (weeks: number) => {
     year: "numeric",
   });
   const weekLabel = `${weeks} Week${weeks > 1 ? "s" : ""}`;
-  const dueByLabel = endOfDay(addWeeks(startOfDay(new Date()), weeks))
-    .toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  const dueByLabel = parseISO(dueReportEndKey(weeks)).toLocaleDateString(
+    "en-US",
+    { month: "long", day: "numeric" }
+  );
 
   // 24 x 12 and larger art pieces need two boxes each, so their box count is
   // double the order count.

@@ -8,6 +8,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { showErrorToast } from "@/components/ui/app-toast";
 import { Item, ItemStatus, DayName } from "@/typings/types";
 import { DeleteConfirmationDialog } from "@/components/ui/DeleteConfirmationDialog";
 import { EditItemDialog } from "../EditItemDialog";
@@ -20,6 +21,8 @@ import { OrderCard } from "./OrderCard";
 import { OrderDetailView } from "./OrderDetailView";
 import { LoadMoreSentinel } from "../LoadMoreSentinel";
 import { OrderFilterSheet, type OrderFilters } from "./OrderFilterSheet";
+
+const DAY_KEY_LENGTH = "YYYY-MM-DD".length;
 
 const EMPTY_FILTERS: OrderFilters = {
   status: [],
@@ -60,13 +63,16 @@ export const MobileOrderView = ({
   const [filters, setFilters] = useState<OrderFilters>(EMPTY_FILTERS);
 
   // Get data from stores
-  const storeData = useOrderStore();
+  const storeItems = useOrderStore((state) => state.items);
+  const doneItemsLoaded = useOrderStore((state) => state.doneItemsLoaded);
+  const updateItem = useOrderStore((state) => state.updateItem);
+  const deleteItem = useOrderStore((state) => state.deleteItem);
 
   // Use either external items or fallback to store items, merged with doneItems
   const allItems = useMemo(() => {
-    const active = externalItems || storeData.items || [];
+    const active = externalItems || storeItems || [];
     return [...active, ...(doneItems || [])];
-  }, [externalItems, storeData.items, doneItems]);
+  }, [externalItems, storeItems, doneItems]);
 
   // FRONTEND-ONLY HIDE: Painted, Backboard, Glued, Boxes, Notes, and Rating
   // are force-hidden in the mobile view to match the desktop behavior driven
@@ -96,11 +102,11 @@ export const MobileOrderView = ({
     if (
       activeTab === ItemStatus.Done &&
       loadDoneItems &&
-      !storeData.doneItemsLoaded
+      !doneItemsLoaded
     ) {
       loadDoneItems(true);
     }
-  }, [activeTab, storeData.doneItemsLoaded, loadDoneItems]);
+  }, [activeTab, doneItemsLoaded, loadDoneItems]);
 
   // Filter items based on active tab and search query
   const filteredItems = useMemo(() => {
@@ -125,38 +131,16 @@ export const MobileOrderView = ({
         }
       }
 
-      // 3. Filter by due date range
-      if (filters.dueDateFrom && item.dueDate) {
-        try {
-          const fromDate = new Date(filters.dueDateFrom);
-          const itemDate = new Date(item.dueDate);
-          // Normalize dates to compare day only
-          fromDate.setHours(0, 0, 0, 0);
-          itemDate.setHours(0, 0, 0, 0);
-          if (itemDate < fromDate) {
-            return false;
-          }
-        } catch (e) {
-          console.error("Error parsing dueDateFrom:", e);
-          // Ignore filter if date is invalid
-        }
+      // 3. Filter by due date range. Due dates and filter bounds are both
+      // YYYY-MM-DD calendar keys, so compare them as strings; parsing them
+      // with new Date() reads UTC midnight and shifts the day in LA.
+      const dueKey = item.dueDate ? item.dueDate.slice(0, DAY_KEY_LENGTH) : "";
+      if (filters.dueDateFrom && dueKey && dueKey < filters.dueDateFrom) {
+        return false;
       }
-
-      if (filters.dueDateTo && item.dueDate) {
-        try {
-          const toDate = new Date(filters.dueDateTo);
-          const itemDate = new Date(item.dueDate);
-          // Normalize dates
-          toDate.setHours(0, 0, 0, 0);
-          itemDate.setHours(0, 0, 0, 0);
-          // Make the 'to' date inclusive: check if itemDate is on or before toDate
-          if (itemDate > toDate) {
-            return false;
-          }
-        } catch (e) {
-          console.error("Error parsing dueDateTo:", e);
-          // Ignore filter if date is invalid
-        }
+      // Inclusive upper bound.
+      if (filters.dueDateTo && dueKey && dueKey > filters.dueDateTo) {
+        return false;
       }
 
       // 4. Filter by search query
@@ -211,10 +195,10 @@ export const MobileOrderView = ({
   const handleSaveEdit = useCallback(
     async (updatedItem: Item) => {
       if (!updatedItem) return;
-      await storeData.updateItem(updatedItem);
+      await updateItem(updatedItem);
       setEditingItem(null);
     },
-    [storeData.updateItem]
+    [updateItem]
   );
 
   // Handle deleting item
@@ -230,14 +214,15 @@ export const MobileOrderView = ({
         if (externalHandleDelete) {
           await externalHandleDelete(deletingItem.id);
         } else {
-          await storeData.deleteItem(deletingItem.id);
+          await deleteItem(deletingItem.id);
         }
         setDeletingItem(null);
       } catch (error) {
         console.error("Failed to delete item:", error);
+        showErrorToast("Couldn't delete the order. Try again.");
       }
     }
-  }, [deletingItem, externalHandleDelete, storeData]);
+  }, [deletingItem, externalHandleDelete, deleteItem]);
 
   // Handle shipping item
   const handleShip = useCallback(
@@ -435,7 +420,7 @@ export const MobileOrderView = ({
                   </div>
 
                   {/* Items within the section */}
-                  {status === ItemStatus.Done && !storeData.doneItemsLoaded ? (
+                  {status === ItemStatus.Done && !doneItemsLoaded ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400 p-2">
                       Loading done items...
                     </p>

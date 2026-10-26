@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useId } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useId } from "react";
 import { addMonths, endOfMonth, format, startOfMonth, parseISO, isValid } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -51,10 +51,16 @@ import {
   ItemStatus,
   Item,
 } from "../../typings/types";
+import {
+  customOptionHint,
+  normalizeCustomOption,
+} from "./utils/customOption";
+import { buildOrderEditChanges } from "./utils/orderEdit";
 
 interface OrderFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  // Create: the full new order. Edit: only the fields the user changed.
   onSubmit: (order: Partial<Item>) => Promise<void>;
   initialItem?: Item;
 }
@@ -245,6 +251,36 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  // Synchronous guard: blocks a second submit before React re-renders, and
+  // stays held through the success animation until the dialog closes.
+  const submitLockRef = useRef(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  }, []);
+
+  useEffect(() => clearCloseTimer, [clearCloseTimer]);
+
+  // A reopened dialog starts fresh even if a success close was still pending.
+  useEffect(() => {
+    if (!isOpen) return;
+    clearCloseTimer();
+    setShowSuccess(false);
+    submitLockRef.current = false;
+  }, [isOpen, clearCloseTimer]);
+
+  const isBusy = isSubmitting || showSuccess;
+  const isDirty =
+    company !== initialCompany ||
+    customerName !== initialName ||
+    size !== (initialItem?.size ?? "") ||
+    design !== (initialItem?.design ?? "") ||
+    vertical !== (initialItem?.tags?.isVertical ?? false) ||
+    (dueDate?.getTime() ?? null) !== (initialDueDate?.getTime() ?? null);
 
   const [sizeOpen, setSizeOpen] = useState(false);
   const [sizeQuery, setSizeQuery] = useState("");
@@ -266,7 +302,8 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
 
   const sizeGrouped = useMemo(() => groupByHeight(sizeFiltered), [sizeFiltered]);
 
-  const sizeTrimmed = sizeQuery.trim();
+  const sizeTrimmed = normalizeCustomOption(sizeQuery) ?? "";
+  const sizeHint = customOptionHint(sizeQuery);
   const sizeExact = sizeOptions.some(
     (o) => o.toLowerCase() === sizeTrimmed.toLowerCase()
   );
@@ -283,7 +320,8 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
     [designFiltered]
   );
 
-  const designTrimmed = designQuery.trim();
+  const designTrimmed = normalizeCustomOption(designQuery) ?? "";
+  const designHint = customOptionHint(designQuery);
   const designExact = designOptions.some(
     (o) => o.toLowerCase() === designTrimmed.toLowerCase()
   );
@@ -319,50 +357,92 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (isSubmitting) return;
-    if (!customerName || !size || !design || !dueDate) {
-      alert("Please fill in all required fields, including a due date");
+    if (submitLockRef.current) return;
+    const trimmedName = customerName.trim();
+    const missing = [
+      !trimmedName && "customer",
+      !size && "size",
+      !design && "design",
+      !dueDate && "due date",
+    ].filter(Boolean);
+    if (missing.length > 0 || !dueDate) {
+      setFormError(`Missing ${missing.join(", ")}`);
       return;
     }
 
-    setIsSubmitting(true);
-
-    const prefix = COMPANY_PREFIX[company];
-
-    const order: Partial<Item> = {
-      ...(initialItem ?? {
-        status: ItemStatus.New,
-        createdAt: Date.now(),
-        visible: true,
-        deleted: false,
-        isScheduled: false,
-      }),
-      customerName: `${prefix}${customerName}`,
+    const values = {
+      customerName: `${COMPANY_PREFIX[company]}${trimmedName}`,
       size,
       design,
-      dueDate: dueDate ? format(dueDate, "yyyy-MM-dd") : "",
-      tags: { ...initialItem?.tags, isVertical: vertical },
+      dueDate: format(dueDate, "yyyy-MM-dd"),
+      isVertical: vertical,
     };
+    const order: Partial<Item> = initialItem
+      ? buildOrderEditChanges(initialItem, values)
+      : {
+          status: ItemStatus.New,
+          createdAt: Date.now(),
+          visible: true,
+          deleted: false,
+          isScheduled: false,
+          customerName: values.customerName,
+          size,
+          design,
+          dueDate: values.dueDate,
+          tags: { isVertical: vertical },
+        };
+    // Nothing edited: nothing to save.
+    if (initialItem && Object.keys(order).length === 0) {
+      onClose();
+      return;
+    }
+
+    submitLockRef.current = true;
+    setFormError(null);
+    setConfirmingDiscard(false);
+    setIsSubmitting(true);
 
     try {
       await onSubmit(order);
-      if (isEditing) {
-        onClose();
-        return;
-      }
-      await sendNotification(customerName, size, design);
-      setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-        onClose();
-        resetForm();
-      }, SUCCESS_DISPLAY_MS);
     } catch (error) {
       console.error("Error saving order:", error);
-      alert(isEditing ? "Failed to save order" : "Failed to create order");
+      submitLockRef.current = false;
+      setFormError(
+        isEditing
+          ? "Couldn't save the order. Try again."
+          : "Couldn't create the order. Try again."
+      );
+      return;
     } finally {
       setIsSubmitting(false);
     }
+
+    if (isEditing) {
+      onClose();
+      return;
+    }
+    // Only a confirmed create reaches here, so the team is never told about
+    // an order that failed to save.
+    await sendNotification(trimmedName, size, design);
+    setShowSuccess(true);
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
+      setShowSuccess(false);
+      onClose();
+      resetForm();
+    }, SUCCESS_DISPLAY_MS);
+  };
+
+  // Outside click / Esc: ask before throwing away edits. A second dismiss
+  // while asking discards.
+  const handleOpenChange = (open: boolean) => {
+    if (open || isBusy) return;
+    if (isDirty && !confirmingDiscard) {
+      setConfirmingDiscard(true);
+      return;
+    }
+    onClose();
   };
 
   const resetForm = () => {
@@ -378,13 +458,16 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
     setDesignOpen(false);
     setDesignQuery("");
     setIsSubmitting(false);
+    setFormError(null);
+    setConfirmingDiscard(false);
+    submitLockRef.current = false;
   };
 
   return (
     <>
       <AnimatePresence>{showSuccess && <SuccessAnimation />}</AnimatePresence>
 
-      <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent
           className="sm:max-w-[460px] max-h-[88vh] overflow-y-auto p-0 gap-0 border-gray-200/80 dark:border-gray-800 rounded-2xl bg-white/95 dark:bg-gray-950/95 backdrop-blur-md shadow-xl [&>button]:hidden"
         >
@@ -405,7 +488,7 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
                   whileTap={{ scale: 0.92 }}
                   className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   onClick={resetForm}
-                  disabled={isSubmitting}
+                  disabled={isBusy}
                   aria-label="Reset form"
                 >
                   <RotateCw className="h-4 w-4" />
@@ -415,7 +498,7 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
                   whileTap={{ scale: 0.92 }}
                   className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   onClick={onClose}
-                  disabled={isSubmitting}
+                  disabled={isBusy}
                   aria-label="Close"
                 >
                   <X className="h-4 w-4" />
@@ -547,7 +630,12 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
                         </button>
                       </div>
                     )}
-                    {sizeFiltered.length === 0 && !showCustomSize && (
+                    {sizeHint && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 py-1 px-1">
+                        {sizeHint}
+                      </p>
+                    )}
+                    {sizeFiltered.length === 0 && !showCustomSize && !sizeHint && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 py-1 px-1">
                         No matches.
                       </p>
@@ -643,7 +731,12 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
                         </button>
                       </div>
                     )}
-                    {designFiltered.length === 0 && !showCustomDesign && (
+                    {designHint && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 py-1 px-1">
+                        {designHint}
+                      </p>
+                    )}
+                    {designFiltered.length === 0 && !showCustomDesign && !designHint && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 py-1 px-1">
                         No matches.
                       </p>
@@ -655,11 +748,11 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <Field icon={<ArrowUpDown className="h-3.5 w-3.5" />} label="Vertical">
-                <button
-                  type="button"
-                  onClick={() => setVertical(!vertical)}
+                {/* A label (not a button) around the Switch: no nested buttons, and
+                    a tap anywhere on the row toggles exactly once. */}
+                <label
                   className={cn(
-                    "h-10 w-full px-3 rounded-lg border flex items-center justify-between transition-colors",
+                    "h-10 w-full px-3 rounded-lg border flex items-center justify-between transition-colors cursor-pointer",
                     vertical
                       ? "bg-blue-50 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/40"
                       : "bg-white dark:bg-gray-700/70 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -675,8 +768,12 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
                   >
                     {vertical ? "Yes" : "No"}
                   </span>
-                  <Switch checked={vertical} onCheckedChange={setVertical} />
-                </button>
+                  <Switch
+                    checked={vertical}
+                    onCheckedChange={setVertical}
+                    aria-label="Vertical"
+                  />
+                </label>
               </Field>
 
               <Field icon={<CalendarDays className="h-3.5 w-3.5" />} label="Due Date">
@@ -729,36 +826,66 @@ export const OrderFormDialog: React.FC<OrderFormDialogProps> = ({
               ║ 🚀 FOOTER                                        ║
               ╚═══╝ ═════════════════════════════════════════════ ╚═══╝*/}
           <div className="sticky bottom-0 z-10 px-6 py-4 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-t border-gray-200/80 dark:border-gray-800 rounded-b-2xl">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className={cn(
-                "group h-11 w-full rounded-full bg-blue-500/40 hover:bg-blue-500/55 text-blue-800 dark:text-white text-sm font-semibold",
-                "ring-1 ring-inset ring-blue-500/50 dark:ring-blue-400/40 backdrop-blur-sm",
-                "shadow-sm shadow-blue-500/20 transition-all duration-200 ease-out",
-                "hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-500/30 active:translate-y-0",
-                "dark:bg-blue-500/30 dark:hover:bg-blue-500/45",
-                "flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-              )}
-            >
-              {isSubmitting ? (
-                <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  >
-                    <RotateCw className="h-4 w-4" />
-                  </motion.div>
-                  {isEditing ? "Saving…" : "Creating…"}
-                </>
-              ) : (
-                <>
-                  {isEditing ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  {isEditing ? "Save Changes" : "Create Order"}
-                </>
-              )}
-            </button>
+            {formError && !confirmingDiscard && (
+              <p
+                role="alert"
+                className="mb-2 text-center text-sm text-red-600 dark:text-red-400"
+              >
+                {formError}
+              </p>
+            )}
+            {confirmingDiscard ? (
+              <div className="flex h-11 items-center gap-2">
+                <span className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Discard changes?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDiscard(false)}
+                  className="h-9 px-4 rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  Keep editing
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="h-9 px-4 rounded-full text-sm font-semibold text-red-700 dark:text-red-300 bg-red-500/10 hover:bg-red-500/20 ring-1 ring-inset ring-red-500/30 transition-colors"
+                >
+                  Discard
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isBusy}
+                className={cn(
+                  "group h-11 w-full rounded-full bg-blue-500/40 hover:bg-blue-500/55 text-blue-800 dark:text-white text-sm font-semibold",
+                  "ring-1 ring-inset ring-blue-500/50 dark:ring-blue-400/40 backdrop-blur-sm",
+                  "shadow-sm shadow-blue-500/20 transition-all duration-200 ease-out",
+                  "hover:-translate-y-0.5 hover:shadow-md hover:shadow-blue-500/30 active:translate-y-0",
+                  "dark:bg-blue-500/30 dark:hover:bg-blue-500/45",
+                  "flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                )}
+              >
+                {isSubmitting ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    >
+                      <RotateCw className="h-4 w-4" />
+                    </motion.div>
+                    {isEditing ? "Saving…" : "Creating…"}
+                  </>
+                ) : (
+                  <>
+                    {isEditing ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    {isEditing ? "Save Changes" : "Create Order"}
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </DialogContent>
       </Dialog>

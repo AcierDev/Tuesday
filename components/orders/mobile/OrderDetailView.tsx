@@ -27,7 +27,7 @@ import { useOrderStore } from "@/stores/useOrderStore";
 import { cn } from "@/utils/functions";
 import { getStatusColor } from "../ItemGroup";
 
-import { parseMinecraftColors } from "@/parseMinecraftColors";
+import { parseMinecraftColors } from "@/utils/parseMinecraftColors";
 
 interface OrderDetailViewProps {
   orderId: string;
@@ -45,8 +45,9 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   onDelete,
   onShip,
 }) => {
-  const { items } = useOrderStore();
-  const item = items.find((o) => o.id === orderId);
+  const item = useOrderStore((state) =>
+    state.items.find((o) => o.id === orderId)
+  );
   if (!item) return null;
   const processedItem = processItem(item);
 

@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { prepareNewItemHistory, prepareItemPatchHistory } from "../lib/reporting/item-history";
+import {
+  itemPatchFieldsToClear,
+  prepareNewItemHistory,
+  prepareItemPatchHistory,
+} from "../lib/reporting/item-history";
 import { ItemStatus, type Item } from "../typings/types";
 
 const original: Item = {
@@ -56,4 +60,12 @@ test("completion state and its reporting event are committed in the same transac
   }
   assert.match(eventWriter, /session\??:\s*ClientSession/);
   assert.match(eventWriter, /updateOne\([\s\S]*?\{\s*upsert:\s*true,\s*session\s*\}/);
+});
+
+test("reopening a completed order clears its completion snapshot", () => {
+  const done = { ...original, status: ItemStatus.Done, completedAt: Date.now(), dueDateAtCompletion: "2026-09-20" };
+  assert.deepEqual(itemPatchFieldsToClear(done, { status: ItemStatus.Packaging }), ["completedAt", "dueDateAtCompletion"]);
+  assert.deepEqual(itemPatchFieldsToClear(done, { notes: "still done" }), []);
+  assert.deepEqual(itemPatchFieldsToClear(done, { status: ItemStatus.Done }), []);
+  assert.deepEqual(itemPatchFieldsToClear(original, { status: ItemStatus.Packaging }), []);
 });

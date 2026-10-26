@@ -1,5 +1,4 @@
-import { getDb } from "../../db/connect";
-import { Item } from "@/typings/types";
+import { subscribeToItemChanges } from "./item-change-hub";
 
 const HEARTBEAT_INTERVAL_MS = 25_000;
 
@@ -7,99 +6,56 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const encoder = new TextEncoder();
+  let closeConnection = () => {};
 
-  const stream = new ReadableStream({
-    async start(controller) {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
       let isActive = true;
-      let changeStream: any;
+      let unsubscribe: (() => void) | null = null;
       let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
 
-      const safeEnqueue = (chunk: string): boolean => {
-        if (!isActive) return false;
-        try {
-          controller.enqueue(encoder.encode(chunk));
-          return true;
-        } catch {
-          isActive = false;
-          return false;
-        }
-      };
-
-      const cleanup = async () => {
+      const close = () => {
         if (!isActive) return;
         isActive = false;
         if (heartbeatTimer) clearInterval(heartbeatTimer);
-        if (changeStream) {
-          try {
-            await changeStream.close();
-          } catch {
-            // ignore
-          }
-        }
+        unsubscribe?.();
+        request.signal.removeEventListener("abort", close);
         try {
           controller.close();
         } catch {
-          // ignore
+          // Already closed by the client disconnecting.
+        }
+      };
+      closeConnection = close;
+
+      const send = (chunk: string) => {
+        if (!isActive) return;
+        try {
+          controller.enqueue(encoder.encode(chunk));
+        } catch {
+          close();
         }
       };
 
-      // Close the stream when the client disconnects
-      request.signal.addEventListener("abort", () => {
-        void cleanup();
-      });
-
       // Initial comment so the client knows the stream is open
-      safeEnqueue(`: connected\n\n`);
+      send(`: connected\n\n`);
 
       // Periodic heartbeat keeps the connection alive against proxy/browser idle timeouts
-      heartbeatTimer = setInterval(() => {
-        if (!safeEnqueue(`: heartbeat\n\n`)) {
-          void cleanup();
-        }
-      }, HEARTBEAT_INTERVAL_MS);
+      heartbeatTimer = setInterval(() => send(`: heartbeat\n\n`), HEARTBEAT_INTERVAL_MS);
 
-      try {
-        const db = await getDb();
-        const collection = db.collection<Item>(
-          `items-${process.env.NEXT_PUBLIC_MODE}`
-        );
+      // All connections share one change stream; this one only listens.
+      unsubscribe = subscribeToItemChanges({
+        onChange: (message) => send(`data: ${JSON.stringify(message)}\n\n`),
+        onClose: close,
+      });
+      if (!isActive) unsubscribe();
 
-        changeStream = collection.watch();
-
-        for await (const change of changeStream) {
-          if (!isActive) break;
-
-          if (
-            change.operationType === "update" ||
-            change.operationType === "insert" ||
-            change.operationType === "delete"
-          ) {
-            try {
-              const item = await collection.findOne({
-                _id: change.documentKey._id,
-              });
-
-              const message = JSON.stringify({
-                type: change.operationType,
-                itemId: item?.id,
-                item: item || null,
-              });
-
-              if (!safeEnqueue(`data: ${message}\n\n`)) break;
-            } catch (findError) {
-              console.error("Error fetching updated item:", findError);
-              continue;
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Change stream error:", error);
-      } finally {
-        await cleanup();
-      }
+      request.signal.addEventListener("abort", close);
+      if (request.signal.aborted) close();
     },
-    async cancel() {
-      // Abort handler in start() takes care of cleanup; this is a no-op fallback.
+    // Runs when the client disconnects (a cleanup returned from start() is ignored).
+    cancel() {
+      closeConnection();
     },
   });
 

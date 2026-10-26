@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { AnyBulkWriteOperation, UpdateFilter } from "mongodb";
 import clientPromise from "../db/connect";
 import {
   Item,
@@ -13,35 +14,78 @@ import {
   hasStoredDueDatePauseOffset,
   pauseDueDate,
 } from "@/lib/due-date-pause";
-import { prepareItemPatchHistory, prepareNewItemHistory } from "@/lib/reporting/item-history";
+import {
+  itemPatchFieldsToClear,
+  prepareItemPatchHistory,
+  prepareNewItemHistory,
+} from "@/lib/reporting/item-history";
 import {
   ensureCompletionEventIndex,
   recordCompletionEvent,
 } from "@/lib/reporting/completion-events-server";
+import {
+  findItemPatchConflicts,
+  LEGACY_STORED_DERIVED_FIELDS,
+  stripDerivedItemFields,
+} from "@/lib/order-patch";
+
+// Cross-origin callers of the items API, matched exactly. The Etsy Order Manager
+// extension calls from its background worker; its unpacked ID is not pinned (the
+// manifest has no "key"), so every extension origin stays allowed until
+// ITEMS_API_EXTENSION_IDS lists the real ID(s), comma-separated.
+const CORS_ALLOWED_ORIGINS = ["https://www.etsy.com", "https://etsy.com"];
+const CORS_DEFAULT_ORIGIN = "https://www.etsy.com";
+const CORS_EXTENSION_ORIGIN_PREFIX = "chrome-extension://";
+const CORS_EXTENSION_IDS_ENV = "ITEMS_API_EXTENSION_IDS";
+
+// Longest search text matched against orders; longer input is truncated.
+const SEARCH_MAX_LENGTH = 100;
+
+function isAllowedCorsOrigin(origin: string): boolean {
+  if (CORS_ALLOWED_ORIGINS.includes(origin)) return true;
+  if (!origin.startsWith(CORS_EXTENSION_ORIGIN_PREFIX)) return false;
+  const pinnedIds = (process.env[CORS_EXTENSION_IDS_ENV] ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return pinnedIds.length === 0 ||
+    pinnedIds.includes(origin.slice(CORS_EXTENSION_ORIGIN_PREFIX.length));
+}
 
 // CORS headers helper function
 function getCorsHeaders(requestOrigin?: string) {
   const headers = new Headers();
-  
-  const allowedOrigins = [
-    "https://www.etsy.com",
-    "https://etsy.com",
-    "chrome-extension://", // Allow chrome extensions if needed, though usually they send origin as the page they are on
-  ];
 
-  // Check if the request origin matches any allowed origin
   if (requestOrigin) {
-    if (allowedOrigins.some(origin => requestOrigin.startsWith(origin))) {
+    if (isAllowedCorsOrigin(requestOrigin)) {
       headers.set("Access-Control-Allow-Origin", requestOrigin);
     }
   } else {
     // Fallback default
-    headers.set("Access-Control-Allow-Origin", "https://www.etsy.com");
+    headers.set("Access-Control-Allow-Origin", CORS_DEFAULT_ORIGIN);
   }
 
   headers.set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
   headers.set("Access-Control-Allow-Headers", "Content-Type");
   return headers;
+}
+
+// Search text is matched literally, never as a regular expression.
+function literalSearchRegex(search: string) {
+  return { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// Paused orders are returned with today's effective due date, exactly as the
+// board shows them.
+function withEffectiveDueDate<T extends Item>(item: T): T {
+  const effectiveDueDate = getEffectiveDueDateKey(item);
+  return effectiveDueDate && effectiveDueDate !== item.dueDate
+    ? { ...item, dueDate: effectiveDueDate }
+    : item;
 }
 
 const FIELD_TO_COLUMN_TITLE: Record<string, ColumnTitles> = {
@@ -67,7 +111,7 @@ export async function GET(request: Request) {
     const status = searchParams.get("status") || "";
     const limit = parseInt(searchParams.get("limit") || "0", 10);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
-    const search = searchParams.get("search") || "";
+    const search = (searchParams.get("search") || "").trim().slice(0, SEARCH_MAX_LENGTH);
     const ids = searchParams.get("ids");
     const fields = searchParams.get("fields") || "";
 
@@ -93,7 +137,7 @@ export async function GET(request: Request) {
     } else {
       // Standard filtering logic
       if (search) {
-        const searchRegex = { $regex: search, $options: "i" };
+        const searchRegex = literalSearchRegex(search);
         filter.$or = [
           { customerName: searchRegex },
           { design: searchRegex },
@@ -152,37 +196,42 @@ export async function GET(request: Request) {
     // Lazily initialize the fixed days-remaining offset for held records that
     // predate due-date pausing. This makes an existing hold start behaving as
     // a true pause the first time the upgraded app reads it.
-    const itemsForResponse = await Promise.all(
-      items.map(async (item) => {
-        let normalized = item;
-        if (item.onHold && !hasStoredDueDatePauseOffset(item)) {
-          const migrated = pauseDueDate(item);
-          const migratedOffset = migrated.dueDatePauseOffsetDays;
-          if (
-            typeof migratedOffset === "number" &&
-            Number.isFinite(migratedOffset)
-          ) {
-            await collection.updateOne(
-              { id: item.id, onHold: true },
-              {
-                $set: {
-                  dueDatePauseOffsetDays: migratedOffset,
-                },
-              }
-            );
-            normalized = {
-              ...item,
-              dueDatePauseOffsetDays: migratedOffset,
-            };
-          }
+    const pauseOffsetMigrations: AnyBulkWriteOperation<Item>[] = [];
+    const itemsForResponse = items.map((item) => {
+      let normalized = item;
+      if (item.onHold && !hasStoredDueDatePauseOffset(item)) {
+        const migratedOffset = pauseDueDate(item).dueDatePauseOffsetDays;
+        if (
+          typeof migratedOffset === "number" &&
+          Number.isFinite(migratedOffset)
+        ) {
+          pauseOffsetMigrations.push({
+            updateOne: {
+              // Never overwrite an offset another request saved meanwhile.
+              filter: {
+                id: item.id,
+                onHold: true,
+                dueDatePauseOffsetDays: null,
+              },
+              update: { $set: { dueDatePauseOffsetDays: migratedOffset } },
+            },
+          });
+          normalized = {
+            ...item,
+            dueDatePauseOffsetDays: migratedOffset,
+          };
         }
-
-        const effectiveDueDate = getEffectiveDueDateKey(normalized);
-        return effectiveDueDate && effectiveDueDate !== normalized.dueDate
-          ? { ...normalized, dueDate: effectiveDueDate }
-          : normalized;
-      })
-    );
+      }
+      return withEffectiveDueDate(normalized);
+    });
+    if (pauseOffsetMigrations.length > 0) {
+      try {
+        await collection.bulkWrite(pauseOffsetMigrations, { ordered: false });
+      } catch (migrationError) {
+        // The response is already correct; the next read retries the save.
+        console.error("Failed to save due-date pause offsets:", migrationError);
+      }
+    }
     const origin = request.headers.get("origin") || undefined;
     return NextResponse.json(itemsForResponse, {
       headers: getCorsHeaders(origin),
@@ -204,8 +253,25 @@ export async function PATCH(request: Request) {
       `items-${process.env.NEXT_PUBLIC_MODE}`
     );
 
-    const { id, updates } = await request.json();
-    const { _id, ...updatesWithoutId } = updates;
+    const body = await request.json();
+    const { id } = body ?? {};
+    if (!isPlainObject(body?.updates)) {
+      const origin = request.headers.get("origin") || undefined;
+      return NextResponse.json(
+        { error: "Missing item updates" },
+        { status: 400, headers: getCorsHeaders(origin) }
+      );
+    }
+    // Derived values (search text, planner membership) are never stored, and
+    // the id itself is immutable.
+    const { id: _ignoredId, ...updatesWithoutId } = stripDerivedItemFields(
+      body.updates as Partial<Item>
+    );
+    // Optional: the values the client last saw for each updated field. A
+    // mismatch means someone else changed that field first.
+    const expected = isPlainObject(body.expected)
+      ? stripDerivedItemFields(body.expected as Partial<Item>)
+      : undefined;
 
     // Stamp deletedAt when soft-deleting so the /deleted view can bucket by
     // age. Clear it on restore.
@@ -222,23 +288,46 @@ export async function PATCH(request: Request) {
     const session = client.startSession();
     let transactionResult: {
       currentItem: Item;
-      updatesWithHistory: Partial<Item>;
+      savedItem: Item;
+      conflicts: string[];
     } | null = null;
     try {
       transactionResult = await session.withTransaction(async () => {
         const currentItem = await collection.findOne({ id }, { session });
         if (!currentItem) return null;
 
+        const conflicts = expected
+          ? findItemPatchConflicts(currentItem, expected)
+          : [];
+        if (conflicts.length > 0) {
+          return { currentItem, savedItem: currentItem, conflicts };
+        }
+
         const updatesWithHistory = prepareItemPatchHistory(
           currentItem,
           updatesWithoutId,
           Date.now()
         );
-        await collection.updateOne(
-          { _id: currentItem._id },
-          { $set: updatesWithHistory },
-          { session }
-        );
+        const fieldsToClear = [
+          ...itemPatchFieldsToClear(currentItem, updatesWithHistory),
+          ...LEGACY_STORED_DERIVED_FIELDS.filter((field) => field in currentItem),
+        ].filter((field) => !(field in updatesWithHistory));
+        const update: UpdateFilter<Item> = {};
+        if (Object.keys(updatesWithHistory).length > 0) {
+          update.$set = updatesWithHistory;
+        }
+        if (fieldsToClear.length > 0) {
+          update.$unset = Object.fromEntries(
+            fieldsToClear.map((field) => [field, ""])
+          ) as UpdateFilter<Item>["$unset"];
+        }
+        const savedItem = Object.keys(update).length > 0
+          ? await collection.findOneAndUpdate(
+            { _id: currentItem._id },
+            update,
+            { session, returnDocument: "after" }
+          )
+          : currentItem;
 
         if (currentItem.status !== ItemStatus.Done &&
           updatesWithHistory.status === ItemStatus.Done &&
@@ -253,7 +342,7 @@ export async function PATCH(request: Request) {
           );
         }
 
-        return { currentItem, updatesWithHistory };
+        return { currentItem, savedItem: savedItem ?? currentItem, conflicts: [] };
       });
     } finally {
       await session.endSession();
@@ -267,9 +356,26 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const { currentItem, updatesWithHistory } = transactionResult;
+    const { currentItem, savedItem, conflicts } = transactionResult;
 
-    const result = { matchedCount: 1, modifiedCount: 1 };
+    if (conflicts.length > 0) {
+      const origin = request.headers.get("origin") || undefined;
+      return NextResponse.json(
+        {
+          error: "This order was changed by someone else. Reload it and try again.",
+          conflicts,
+          item: withEffectiveDueDate(currentItem),
+        },
+        { status: 409, headers: getCorsHeaders(origin) }
+      );
+    }
+
+    // `item` is the saved document so the caller can show exactly what is stored.
+    const result = {
+      matchedCount: 1,
+      modifiedCount: 1,
+      item: withEffectiveDueDate(savedItem),
+    };
 
     // Determine changes and log activity
     const changes: ActivityChange[] = [];
@@ -386,7 +492,9 @@ export async function POST(request: Request) {
       `items-${process.env.NEXT_PUBLIC_MODE}`
     );
 
-    const newItem = prepareNewItemHistory((await request.json()) as Item);
+    const newItem = prepareNewItemHistory(
+      stripDerivedItemFields((await request.json()) as Item)
+    );
 
     const result = await collection.insertOne(newItem);
 

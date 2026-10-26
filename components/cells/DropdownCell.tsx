@@ -13,6 +13,7 @@ import { XCircle } from "lucide-react";
 import { boardConfig } from "@/config/boardconfig";
 import { ColumnTitles, GenericColumnValue, Item } from "@/typings/types";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { showErrorToast } from "@/components/ui/app-toast";
 import { SizeDropdownCell } from "./SizeDropdownCell";
 
 interface DropdownCellProps {
@@ -41,7 +42,7 @@ function BaseDropdownCell({
 }: DropdownCellProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const { updateItem } = useOrderStore();
+  const updateItem = useOrderStore((state) => state.updateItem);
 
   const handleUpdate = useCallback(
     async (newValue: string) => {
@@ -72,6 +73,7 @@ function BaseDropdownCell({
         await updateItem(updatedItem, columnValue.columnName);
       } catch (err) {
         console.error("Failed to update ColumnValue", err);
+        showErrorToast("Couldn't save the change. Try again.");
       }
     },
     [item, columnValue.columnName, updateItem]

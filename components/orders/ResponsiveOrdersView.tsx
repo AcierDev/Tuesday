@@ -6,7 +6,9 @@ interface ResponsiveOrdersViewProps {
   groups: Group[];
   onStatusChange: (itemId: string, newStatus: ItemStatus) => Promise<void>;
   onDelete: (itemId: string) => Promise<void>;
-  onGetLabel: (item: Item) => void;
+  // Not wired on /orders (no label flow from the row menu); kept optional
+  // for callers that still pass it.
+  onGetLabel?: (item: Item) => void;
   onShip: (itemId: string) => Promise<void>;
   doneItems: Item[];
   loadDoneItems: (reset?: boolean) => Promise<void>;
@@ -20,11 +22,13 @@ interface ResponsiveOrdersViewProps {
   currentType?: string;
 }
 
+const NOOP_GET_LABEL = () => {};
+
 export const ResponsiveOrdersView: React.FC<ResponsiveOrdersViewProps> = ({
   groups,
   onStatusChange,
   onDelete,
-  onGetLabel,
+  onGetLabel = NOOP_GET_LABEL,
   onShip,
   doneItems,
   loadDoneItems,
