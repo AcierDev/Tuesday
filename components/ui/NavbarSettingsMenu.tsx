@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Edit, Settings, Truck } from "lucide-react";
+import { Edit, Settings, ShoppingBag, Truck } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { SliderSettingPopover } from "@/components/settings/SliderSettingPopover";
@@ -14,6 +14,7 @@ const settingsTabs: {
 }[] = [
   { value: "recent-edits", label: "Recent Edits", icon: Edit },
   { value: "shipping", label: "Shipping", icon: Truck },
+  { value: "etsy", label: "Etsy", icon: ShoppingBag },
 ];
 
 interface NavbarSettingsMenuProps {

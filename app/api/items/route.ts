@@ -17,7 +17,6 @@ import {
 import {
   itemPatchFieldsToClear,
   prepareItemPatchHistory,
-  prepareNewItemHistory,
 } from "@/lib/reporting/item-history";
 import {
   ensureCompletionEventIndex,
@@ -62,12 +61,11 @@ import {
   OrderShippingConflictError,
   type ShippingUpdateMode,
 } from "@/lib/order-shipping-patch";
+import { createOrderItem } from "@/lib/server/create-order";
 
 const BAD_REQUEST_STATUS = 400;
 const CONFLICT_STATUS = 409;
 const MONGO_DUPLICATE_KEY_CODE = 11000;
-const ASCENDING_INDEX_DIRECTION = 1;
-const ETSY_ORDER_UNIQUE_INDEX = "etsy_order_receipt_transaction_quantity_unique";
 const SHIPPING_CONTRACT_HEADER = "X-Order-Shipping-Contract";
 const SHIPPING_CONTRACT_VERSION = "1";
 
@@ -549,106 +547,22 @@ export async function PATCH(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const origin = request.headers.get("origin") || undefined;
   try {
     const body: unknown = await request.json();
-    if (!isPlainRecord(body)) throw new OrderShippingValidationError("An item object is required");
-    const newItem = prepareNewItemHistory(
-      stripDerivedItemFields(normalizeOrderShippingInput(body) as Item) as Item
-    );
-    if (newItem.etsyOrder?.receiptId && newItem.etsyOrder.transactionId && newItem.etsyOrder.quantityIndex === undefined) {
-      newItem.etsyOrder.quantityIndex = DEFAULT_ETSY_QUANTITY_INDEX;
-    }
-
     const client = await clientPromise;
-    const db = client.db("react-web-app");
-    const collection = db.collection<Item>(
-      `items-${process.env.NEXT_PUBLIC_MODE}`
-    );
-
-    const confirmedEtsyIds = newItem.etsyOrder?.receiptId && newItem.etsyOrder?.transactionId
-      ? etsyOrderIdentityFilter(newItem.etsyOrder)
-      : null;
-    if (confirmedEtsyIds) {
-      // Legacy links without an ordinal represent the first quantity unit.
-      const existing = await collection.findOne(confirmedEtsyIds);
-      if (existing) {
-        const origin = request.headers.get("origin") || undefined;
-        return NextResponse.json({ error: "This Etsy quantity unit already belongs to an item", id: existing.id }, {
-          status: CONFLICT_STATUS, headers: getCorsHeaders(origin),
-        });
-      }
-    }
-    let result;
-    let duplicateProtectionReady = false;
-    try {
-      if (confirmedEtsyIds) {
-        // Partial compound uniqueness permits receipt-only legacy orders and multiple items per receipt.
-        await collection.createIndex(
-          { "etsyOrder.receiptId": ASCENDING_INDEX_DIRECTION, "etsyOrder.transactionId": ASCENDING_INDEX_DIRECTION, "etsyOrder.quantityIndex": ASCENDING_INDEX_DIRECTION },
-          {
-            name: ETSY_ORDER_UNIQUE_INDEX,
-            unique: true,
-            partialFilterExpression: {
-              "etsyOrder.receiptId": { $type: "string", $gt: "" },
-              "etsyOrder.transactionId": { $type: "string", $gt: "" },
-              "etsyOrder.quantityIndex": { $type: "number", $gte: DEFAULT_ETSY_QUANTITY_INDEX },
-            },
-          }
-        );
-      }
-      duplicateProtectionReady = true;
-      result = await collection.insertOne(newItem);
-    } catch (error) {
-      if (typeof error === "object" && error !== null && "code" in error && error.code === MONGO_DUPLICATE_KEY_CODE) {
-        const existing = confirmedEtsyIds ? await collection.findOne(confirmedEtsyIds) : null;
-        const origin = request.headers.get("origin") || undefined;
-        return NextResponse.json({
-          error: duplicateProtectionReady
-            ? "This Etsy quantity unit already belongs to an item"
-            : "Existing duplicate Etsy IDs prevent enabling duplicate protection; no item was added",
-          ...(existing ? { id: existing.id } : {}),
-        }, { status: CONFLICT_STATUS, headers: getCorsHeaders(origin) });
-      }
-      throw error;
-    }
-
-    if (!result.acknowledged) {
-      const origin = request.headers.get("origin") || undefined;
-      return NextResponse.json(
-        { error: "Failed to add item" },
-        { status: 500, headers: getCorsHeaders(origin) }
-      );
-    }
-
-    // Log creation activity
-    if (newItem.id) {
-      await logActivity(db, {
-        itemId: newItem.id,
-        type: "create",
-        changes: [
-          {
-            field: "status",
-            oldValue: "",
-            newValue: newItem.status || ItemStatus.New,
-          },
-        ],
-        metadata: {
-          customerName: newItem.customerName,
-          design: newItem.design,
-          size: newItem.size,
-        },
+    const result = await createOrderItem(client.db("react-web-app"), body);
+    if (result.status === "duplicate") {
+      return NextResponse.json({ error: result.error, ...(result.id ? { id: result.id } : {}) }, {
+        status: CONFLICT_STATUS, headers: getCorsHeaders(origin),
       });
     }
-
-    const origin = request.headers.get("origin") || undefined;
-    return NextResponse.json(newItem, { headers: getCorsHeaders(origin) });
+    return NextResponse.json(result.item, { headers: getCorsHeaders(origin) });
   } catch (error) {
     if (error instanceof OrderShippingValidationError || error instanceof SyntaxError) {
-      const origin = request.headers.get("origin") || undefined;
       return NextResponse.json({ error: error.message }, { status: BAD_REQUEST_STATUS, headers: getCorsHeaders(origin) });
     }
     console.error("Error adding item:", error);
-    const origin = request.headers.get("origin") || undefined;
     return NextResponse.json(
       { error: "Failed to add item" },
       { status: 500, headers: getCorsHeaders(origin) }

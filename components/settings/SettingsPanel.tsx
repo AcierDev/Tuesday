@@ -6,6 +6,7 @@ import { useEffect, useState, useRef, useCallback, useId } from "react";
 import { Button } from "@/components/ui/button";
 
 import { ColumnVisibilitySettings } from "./ColumnVisibilitySettings";
+import { EtsySettings } from "./EtsySettings";
 import { RecentEditsSettings } from "./RecentEditsSettings";
 import {
   ShippingSettingsEditor,
@@ -24,6 +25,7 @@ interface SettingsPanelProps {
 const SECTION_TITLES: Record<string, string> = {
   "recent-edits": "Recent Edits",
   shipping: "Shipping",
+  etsy: "Etsy",
   columns: "Column Visibility",
 };
 
@@ -160,8 +162,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             {activeTab === "shipping" && (
               <ShippingSettingsEditor ref={shippingEditorRef} />
             )}
+            {activeTab === "etsy" && <EtsySettings />}
           </div>
-          {activeTab === "shipping" ? (
+          {activeTab === "shipping" || activeTab === "etsy" ? (
             <div className="border-t border-gray-200/80 dark:border-gray-800 mt-auto p-4 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md flex justify-end items-center">
               <Button variant="ghost" onClick={() => void requestClose()}>
                 Close

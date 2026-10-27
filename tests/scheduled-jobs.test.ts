@@ -205,7 +205,7 @@ test("the startup hook starts the scheduler timer only when enabled", () => {
   const marker = "SCHEDULER_TIMER";
   for (const enabled of [true, false]) {
     const environment: NodeJS.ProcessEnv = {...process.env, NODE_ENV: "production", NEXT_RUNTIME: "nodejs",
-      ASK_TUESDAY_MONITOR_ENABLED: "false", SCHEDULED_JOBS_ENABLED: String(enabled)};
+      ASK_TUESDAY_MONITOR_ENABLED: "false", SCHEDULED_JOBS_ENABLED: String(enabled), ETSY_SYNC_ENABLED: "false"};
     delete environment.MONGODB_URI;
     const child = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", `
       globalThis.setInterval = () => {throw new Error(${JSON.stringify(marker)});};

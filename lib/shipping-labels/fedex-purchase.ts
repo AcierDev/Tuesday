@@ -6,6 +6,7 @@ import type {
 } from "@/typings/types";
 import {
   activePurchase,
+  ETSY_PUSH_SKIPPED,
   PURCHASE_SOURCE_FEDEX_API,
   purchaseTrackingNumbers,
   type OrderPurchaseFields,
@@ -54,6 +55,11 @@ export type FedExPurchaseDeps = {
   /** Called after a successful upload (e.g. to stamp the order's `labels`). */
   onLabelUploaded?: (orderId: string, filename: string) => Promise<void>;
   createTracker: (orderId: string, trackingNumber: string) => Promise<void>;
+  /** Sends the tracking number to the order's Etsy receipt ("skipped" when it has none). */
+  pushEtsyTracking?: (
+    orderId: string,
+    purchase: PurchasedShipmentRecord
+  ) => Promise<"done" | typeof ETSY_PUSH_SKIPPED>;
   createId: () => string;
   now: () => number;
 };
@@ -151,6 +157,7 @@ export async function purchaseFedExLabel(
           }),
       trackerStatus: "pending",
       pendingTrackerNumbers: result.trackingNumbers,
+      ...(deps.pushEtsyTracking ? { etsyStatus: "pending" as const } : {}),
     };
 
     try {
@@ -184,7 +191,7 @@ export async function purchaseFedExLabel(
 
 export type FollowUpDeps = Pick<
   FedExPurchaseDeps,
-  "updatePurchase" | "uploadLabel" | "onLabelUploaded" | "createTracker"
+  "updatePurchase" | "uploadLabel" | "onLabelUploaded" | "createTracker" | "pushEtsyTracking"
 >;
 
 /**
@@ -267,6 +274,20 @@ export async function completePurchaseFollowUps(
       });
     } else {
       await apply({ trackerStatus: "done" }, ["trackerError", "pendingTrackerNumbers"]);
+    }
+  }
+
+  if (
+    deps.pushEtsyTracking &&
+    (current.etsyStatus === "pending" || current.etsyStatus === "failed")
+  ) {
+    try {
+      const etsyStatus = await deps.pushEtsyTracking(orderId, current);
+      await apply({ etsyStatus }, ["etsyError"]);
+    } catch (error) {
+      const etsyError = errorMessage(error, "Etsy tracking upload failed.");
+      warnings.push(`Tracking not sent to Etsy (retry from Shipping Labels): ${etsyError}`);
+      await apply({ etsyStatus: "failed", etsyError });
     }
   }
 

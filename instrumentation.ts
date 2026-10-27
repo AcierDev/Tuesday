@@ -1,5 +1,6 @@
 import { shouldStartTuesdayMonitor } from "./lib/ask-tuesday/monitor";
 import { shouldStartScheduledJobs } from "./lib/server/scheduled-jobs";
+import { shouldStartEtsySync } from "./lib/etsy/sync-gate";
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
@@ -12,6 +13,11 @@ export async function register() {
     if (shouldStartScheduledJobs(environment)) {
       const {startServerScheduledJobs} = await import("./lib/server/scheduled-jobs-runner");
       startServerScheduledJobs();
+    }
+    // Imports new Etsy orders once Settings → Etsy is connected; idle until then.
+    if (shouldStartEtsySync(environment)) {
+      const {startServerEtsySync} = await import("./lib/server/etsy-sync-loop");
+      startServerEtsySync();
     }
   }
 }

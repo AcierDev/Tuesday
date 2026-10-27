@@ -227,3 +227,38 @@ test("FedEx purchase errors propagate and release the lock", async () => {
   await assert.rejects(purchaseFedExLabel(input, deps), /FedEx said no/);
   assert.equal(events.at(-1), "unlock");
 });
+
+test("a new purchase sends its tracking to Etsy after the label and trackers", async () => {
+  const { deps, events, saved } = harness();
+  deps.pushEtsyTracking = async (_orderId, purchase) => {
+    events.push(`etsy:${purchase.trackingNumber}`);
+    return "done";
+  };
+  const outcome = await purchaseFedExLabel(input, deps);
+  assert.equal(outcome.status, 200);
+  assert.equal(saved()?.etsyStatus, "pending");
+  assert.equal(events.at(-2), "etsy:794600000001");
+  assert.ok("purchasedShipment" in outcome && outcome.purchasedShipment.etsyStatus === "done");
+});
+
+test("an Etsy tracking failure is a retryable warning; legacy purchases are never sent", async () => {
+  const { deps, patches } = harness();
+  let calls = 0;
+  deps.pushEtsyTracking = async () => {
+    calls++;
+    throw new Error("Etsy error 503");
+  };
+  const base = {
+    id: "purchase-1", orderId: "order-1", trackingNumber: "794600000001", trackingNumbers: ["794600000001"],
+    labelStatus: "done", trackerStatus: "done",
+  } as PurchasedShipmentRecord;
+
+  const failed = await completePurchaseFollowUps("order-1", { ...base, etsyStatus: "pending" }, deps);
+  assert.equal(failed.purchasedShipment.etsyStatus, "failed");
+  assert.equal(failed.purchasedShipment.etsyError, "Etsy error 503");
+  assert.match(failed.warnings.join(" "), /Tracking not sent to Etsy/);
+  assert.deepEqual(patches.at(-1)?.patch, { etsyStatus: "failed", etsyError: "Etsy error 503" });
+
+  await completePurchaseFollowUps("order-1", base, deps);
+  assert.equal(calls, 1);
+});

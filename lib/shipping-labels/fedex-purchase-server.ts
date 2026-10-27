@@ -3,6 +3,7 @@ import type { Db, Document } from "mongodb";
 
 import { getDb } from "@/app/api/db/connect";
 import { createAndStoreTracker } from "@/lib/easypost-tracking";
+import { pushEtsyTrackingForOrder } from "@/lib/etsy/sync-server";
 import { cancelFedExShipment, purchaseFedExShipment } from "@/lib/fedex-api";
 import { deleteLabel, getNextLabelFilename, uploadLabel } from "@/lib/s3-client";
 import type { OrderTrackingInfo } from "@/typings/types";
@@ -63,6 +64,7 @@ function followUpDeps(db: Db): FollowUpDeps {
     createTracker: async (orderId, trackingNumber) => {
       await createAndStoreTracker(orderId, trackingNumber, "FedEx");
     },
+    pushEtsyTracking: (orderId, purchase) => pushEtsyTrackingForOrder(db, orderId, purchase),
   };
 }
 

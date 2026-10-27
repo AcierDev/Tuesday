@@ -8,6 +8,7 @@ export type PurchaseFollowUpStatus = "pending" | "done" | "failed";
 
 export const PURCHASE_SOURCE_FEDEX_API = "fedex-api";
 export const PURCHASE_SOURCE_UPLOADED = "uploaded";
+export const ETSY_PUSH_SKIPPED = "skipped";
 
 export type PurchasedShipmentRecord = Omit<PurchasedShipment, "totalNetCharge"> & {
   id: string;
@@ -25,6 +26,12 @@ export type PurchasedShipmentRecord = Omit<PurchasedShipment, "totalNetCharge"> 
   trackerError?: string;
   /** Tracking numbers whose EasyPost tracker still needs creating. */
   pendingTrackerNumbers?: string[];
+  /**
+   * Tracking sent to the order's Etsy receipt. Absent on purchases made before
+   * the Etsy link existed (those are never sent); "skipped" = not an Etsy order.
+   */
+  etsyStatus?: PurchaseFollowUpStatus | typeof ETSY_PUSH_SKIPPED;
+  etsyError?: string;
   voidedAt?: number;
 };
 
@@ -109,7 +116,8 @@ export function hasPendingFollowUps(purchase: StoredPurchase): boolean {
     (purchase.labelStatus === "failed" ||
       purchase.labelStatus === "pending" ||
       purchase.trackerStatus === "failed" ||
-      purchase.trackerStatus === "pending")
+      purchase.trackerStatus === "pending" ||
+      purchase.etsyStatus === "failed")
   );
 }
 
