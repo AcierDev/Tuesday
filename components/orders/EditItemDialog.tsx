@@ -3,6 +3,7 @@
 import { OrderFormDialog } from "./OrderFormDialog";
 import { applyOrderEditChanges } from "./utils/orderEdit";
 import { useOrderStore } from "@/stores/useOrderStore";
+import { useAcknowledgeEtsyImport } from "./useAcknowledgeEtsyImport";
 import type { Item } from "@/typings/types";
 
 // Latest copy of the order (it may have changed while the dialog was open).
@@ -27,6 +28,7 @@ export function EditItemDialog({
   setEditingItem,
   handleSaveEdit,
 }: EditItemDialogProps) {
+  useAcknowledgeEtsyImport(editingItem);
   if (!editingItem) return null;
   return (
     <OrderFormDialog

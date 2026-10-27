@@ -8,11 +8,14 @@ import {
   isImportableReceipt,
   parseEtsyDesign,
   parseEtsySize,
-  receiptToOrders,
+  manualIntakeReason,
+  planReceiptImport,
+  baseCustomerName,
   shipByDate,
   type EtsyReceipt,
 } from "../lib/etsy/receipt-mapping";
 import { hasPendingFollowUps } from "../lib/shipping-labels/purchase-records";
+import { clearsEtsyImportReview } from "../lib/etsy/import-review";
 
 test("PKCE challenge matches the RFC 7636 example", () => {
   assert.equal(pkceChallenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"), "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
@@ -74,36 +77,70 @@ const receipt: EtsyReceipt = {
     {
       transaction_id: 501, quantity: 2, title: "Coastal Gradient | Geometric Wood Wall Art",
       expected_ship_date: Date.UTC(2026, 10, 5, 12) / 1000,
-      variations: [{ formatted_name: "Size", formatted_value: '30" x 4 feet' }, { formatted_name: "Orientation", formatted_value: "Vertical" }],
+      variations: [
+        { formatted_name: "Size", formatted_value: '30" x 4 feet' },
+        { formatted_name: "Orientation", formatted_value: "Vertical" },
+        { formatted_name: "Personalization", formatted_value: "Kai &amp; Mo" },
+      ],
     },
-    { transaction_id: 502, quantity: 1, title: "Carbon | Geometric Wood Wall Art", variations: [] },
+    {
+      transaction_id: 502, quantity: 1, title: "Carbon | Geometric Wood Wall Art",
+      variations: [{ formatted_name: "Size", formatted_value: '36" x 5 feet' }, { formatted_name: "Style", formatted_value: "Center Fade" }],
+    },
     { transaction_id: 503, quantity: 1, title: "Digital guide", is_digital: true },
   ],
 };
 
-test("a receipt becomes one linked order per physical unit", () => {
+test("a receipt becomes one linked, flagged order per physical unit (SOP name tokens)", () => {
   let next = 0;
-  const orders = receiptToOrders(receipt, 42, () => `id-${++next}`);
-  assert.equal(orders.length, 3);
-  assert.deepEqual(orders.map((order) => order.customerName), ["[SH] Jane Doe (1/3)", "[SH] Jane Doe (2/3)", "Jane Doe (3/3)"]);
+  const { orders, manualReason } = planReceiptImport(receipt, 42, () => `id-${++next}`);
+  assert.equal(manualReason, null);
+  assert.deepEqual(orders.map((order) => order.customerName), [
+    "[SH] Jane Doe (1/3) (vertical)", "[SH] Jane Doe (2/3) (vertical)", "Jane Doe (3/3) (center fade)",
+  ]);
   assert.deepEqual(orders.map((order) => order.etsyOrder), [
     { receiptId: "3001", transactionId: "501", quantityIndex: 1 },
     { receiptId: "3001", transactionId: "501", quantityIndex: 2 },
     { receiptId: "3001", transactionId: "502", quantityIndex: 1 },
   ]);
+  assert.ok(orders.every((order) => order.etsyImportReview === true));
   const [first, , last] = orders;
   assert.equal(first?.size, "16 x 10");
   assert.equal(first?.design, "Coastal Gradient");
   assert.equal(first?.dueDate, "2026-11-05");
   assert.equal(first?.tags?.isVertical, true);
   assert.equal(first?.tags?.hasCustomerMessage, true);
-  assert.equal(first?.notes, "Etsy note: Please hang & love");
+  assert.equal(first?.notes, "Etsy options: Personalization: Kai & Mo\nEtsy note: Please hang & love");
   assert.deepEqual(first?.shippingDetails, {
     name: "jane doe", street1: "10 Main St", city: "Austin", state: "TX", postalCode: "78701", country: "US",
   });
-  assert.equal(last?.size, "");
+  assert.equal(last?.size, "20 x 12");
+  assert.equal(last?.notes, "Etsy options: Style: Center Fade\nEtsy note: Please hang & love");
   assert.equal(last?.tags?.isVertical, false);
   assert.equal(first?.createdAt, 42);
+});
+
+test("fees, samples, framed pieces, rush and unknown sizes are left for manual intake", () => {
+  const artwork = receipt.transactions![1]!;
+  const withOption = (formatted_name: string, formatted_value: string) =>
+    ({ ...artwork, variations: [...artwork.variations!, { formatted_name, formatted_value }] });
+  assert.equal(manualIntakeReason(artwork), null);
+  assert.match(manualIntakeReason({ ...artwork, title: "Custom color fee" }) ?? "", /Not standard artwork/);
+  assert.match(manualIntakeReason({ ...artwork, title: "Samples for Carey" }) ?? "", /Not standard artwork/);
+  assert.match(manualIntakeReason(withOption("Frame", "Framed")) ?? "", /Not standard artwork/);
+  assert.match(manualIntakeReason(withOption("Production time", "Rush 1-3 days")) ?? "", /Rush/);
+  assert.match(manualIntakeReason({ ...artwork, variations: [{ formatted_name: "Size", formatted_value: "Huge" }] }) ?? "", /Unknown size "Huge"/);
+  assert.match(manualIntakeReason({ ...artwork, variations: [] }) ?? "", /Unknown size/);
+
+  const mixed = { ...receipt, transactions: [...receipt.transactions!, { transaction_id: 504, title: "Custom color fee" }] };
+  const plan = planReceiptImport(mixed, 0, () => "x");
+  assert.deepEqual(plan.orders, []);
+  assert.match(plan.manualReason ?? "", /Custom color fee/);
+});
+
+test("base names ignore brand, unit and option tokens", () => {
+  assert.equal(baseCustomerName("[SH] Jane Doe (2/3) (vertical)"), "jane doe");
+  assert.equal(baseCustomerName("Lee Madden (6 unframed panels requested)"), "lee madden");
 });
 
 test("only paid, unshipped, live receipts import", () => {
@@ -124,4 +161,10 @@ test("the Etsy import loop follows the production gating and its own opt-out", a
   assert.equal(shouldStartEtsySync(production), true);
   assert.equal(shouldStartEtsySync({ ...production, ETSY_SYNC_ENABLED: "false" }), false);
   assert.equal(shouldStartEtsySync({ ...production, NODE_ENV: "development" }), false);
+});
+
+test("editing an imported order's content clears its review badge; scheduling doesn't", () => {
+  assert.equal(clearsEtsyImportReview({ etsyImportReview: true }, { design: "Carbon" }), true);
+  assert.equal(clearsEtsyImportReview({ etsyImportReview: true }, { isScheduled: true, index: 3 }), false);
+  assert.equal(clearsEtsyImportReview({}, { design: "Carbon" }), false);
 });

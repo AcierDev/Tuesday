@@ -4,6 +4,7 @@ import {
   ArrowUpRightSquare,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { EtsyImportReviewBadge } from "@/components/orders/EtsyImportReviewBadge";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/utils/functions";
 import { ItemStatus, DayName } from "@/typings/types";
@@ -94,10 +95,11 @@ export const OrderCard: React.FC<OrderCardProps> = React.memo(
 
                 {/* Status Badge & Tags */}
                 <div className="flex justify-between items-end mt-1">
-                    <div className="flex gap-1">
+                    <div className="flex items-center gap-1">
                         {tags.map((tag, i) => (
                             <tag.icon key={i} className={cn("w-4 h-4", tag.color)} />
                         ))}
+                        <EtsyImportReviewBadge item={item} />
                     </div>
                     <Badge
                         className={cn(

@@ -31,7 +31,7 @@ export const ETSY_CONFIG = {
   trackingCarrierName: "fedex",
   // Background order import (lib/server/etsy-sync.ts).
   syncEnabledEnv: "ETSY_SYNC_ENABLED",
-  syncIntervalMs: 10 * MINUTE_MS,
+  syncIntervalMs: 3 * HOUR_MS,
   syncStartupDelayMs: MINUTE_MS,
   syncLeaseMs: 5 * MINUTE_MS,
   receiptsPageSize: 100,
@@ -44,6 +44,14 @@ export const ETSY_CONFIG = {
 // orders look the same as ones added from the Etsy page.
 export const ETSY_ORDER_IMPORT = {
   unparsedSize: "Contact Akiva",
+  // SOP "Dashboard order intake": only standard artwork is added automatically.
+  // Fees, samples, framed pieces, rush production and unknown sizes are left
+  // for manual intake (listed in Settings → Etsy).
+  manualOnlyText: /\bframed?\b|\bfee\b|\bsamples?\b/i,
+  rushOptionText: /\brush|expedit|production time|processing time/i,
+  centerFadeText: /center fade/i,
+  // Recent manual-intake receipts shown in Settings → Etsy.
+  maxManualReceiptsListed: 20,
   sizeVariationName: /^size$/i,
   orientationVariationName: /^orientation$/i,
   verticalValue: /^vertical$/i,

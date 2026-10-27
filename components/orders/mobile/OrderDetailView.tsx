@@ -1,3 +1,4 @@
+import { useAcknowledgeEtsyImport } from "@/components/orders/useAcknowledgeEtsyImport";
 import React from "react";
 import {
   X,
@@ -48,6 +49,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const item = useOrderStore((state) =>
     state.items.find((o) => o.id === orderId)
   );
+  useAcknowledgeEtsyImport(item);
   if (!item) return null;
   const processedItem = processItem(item);
 

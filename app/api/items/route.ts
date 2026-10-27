@@ -62,6 +62,7 @@ import {
   type ShippingUpdateMode,
 } from "@/lib/order-shipping-patch";
 import { createOrderItem } from "@/lib/server/create-order";
+import { clearsEtsyImportReview } from "@/lib/etsy/import-review";
 
 const BAD_REQUEST_STATUS = 400;
 const CONFLICT_STATUS = 409;
@@ -356,6 +357,9 @@ export async function PATCH(request: Request) {
           mergeOrderShippingPatch(currentItem, updatesWithoutId, shippingUpdateMode, requireEtsyLinkMatch),
           Date.now()
         );
+        if (clearsEtsyImportReview(currentItem, updatesWithHistory)) {
+          updatesWithHistory.etsyImportReview = false;
+        }
         const fieldsToClear = [
           ...itemPatchFieldsToClear(currentItem, updatesWithHistory),
           ...LEGACY_STORED_DERIVED_FIELDS.filter((field) => field in currentItem),

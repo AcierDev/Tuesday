@@ -112,23 +112,62 @@ export function isImportableReceipt(receipt: EtsyReceipt): boolean {
     && IMPORTABLE_STATUSES.has((receipt.status ?? "paid").toLowerCase());
 }
 
-/** One new order per physical unit on the receipt, linked by receipt/transaction/unit. */
-export function receiptToOrders(receipt: EtsyReceipt, now: number, createId: () => string): Item[] {
-  const units = (receipt.transactions ?? [])
-    .filter((transaction) => !transaction.is_digital)
-    .flatMap((transaction) =>
-      Array.from({ length: Math.max(FIRST_UNIT, transaction.quantity ?? FIRST_UNIT) }, (_, index) => ({
-        transaction, quantityIndex: index + FIRST_UNIT,
-      })));
+const optionText = (transaction: EtsyTransaction) =>
+  [transaction.title, ...(transaction.variations ?? []).flatMap((v) => [v.formatted_name, v.formatted_value])]
+    .map((text) => decodeEtsyText(text)).join(" ");
+
+/** Every checkout option except the ones already mapped to fields, e.g. "Color: Blue · Personalization: Kai". */
+function extraOptions(transaction: EtsyTransaction): string {
+  return (transaction.variations ?? [])
+    .map((variation) => [decodeEtsyText(variation.formatted_name), decodeEtsyText(variation.formatted_value)] as const)
+    .filter(([name, value]) => value && !ETSY_ORDER_IMPORT.sizeVariationName.test(name)
+      && !ETSY_ORDER_IMPORT.orientationVariationName.test(name))
+    .map(([name, value]) => (name ? `${name}: ${value}` : value))
+    .join(" · ");
+}
+
+/** Why a transaction can't be added automatically (SOP manual intake), or null. */
+export function manualIntakeReason(transaction: EtsyTransaction): string | null {
+  const title = decodeEtsyText(transaction.title);
+  if (!parseEtsyDesign(title) || ETSY_ORDER_IMPORT.manualOnlyText.test(optionText(transaction))) {
+    return `Not standard artwork: ${title || "untitled item"}`;
+  }
+  if (ETSY_ORDER_IMPORT.rushOptionText.test(optionText(transaction))) return `Rush production: ${title}`;
+  const sizeOption = variationValue(transaction, ETSY_ORDER_IMPORT.sizeVariationName);
+  if (!sizeOption || parseEtsySize(sizeOption) === ETSY_ORDER_IMPORT.unparsedSize) {
+    return `Unknown size${sizeOption ? ` "${decodeEtsyText(sizeOption)}"` : ""}: ${title}`;
+  }
+  return null;
+}
+
+export type ReceiptImportPlan = { orders: Item[]; manualReason: string | null };
+
+/**
+ * One new order per physical unit, linked by receipt/transaction/unit and
+ * flagged for review. A receipt with anything non-standard is left whole for
+ * manual intake, since fees and options there usually change the artwork.
+ */
+export function planReceiptImport(receipt: EtsyReceipt, now: number, createId: () => string): ReceiptImportPlan {
+  const physical = (receipt.transactions ?? []).filter((transaction) => !transaction.is_digital);
+  const manualReason = physical.map(manualIntakeReason).find(Boolean) ?? null;
+  if (manualReason || !physical.length) return { orders: [], manualReason: manualReason ?? "No physical items" };
+
+  const units = physical.flatMap((transaction) =>
+    Array.from({ length: Math.max(FIRST_UNIT, transaction.quantity ?? FIRST_UNIT) }, (_, index) => ({
+      transaction, quantityIndex: index + FIRST_UNIT,
+    })));
   const shippingDetails = receiptShippingDetails(receipt);
   const buyerMessage = decodeEtsyText(receipt.message_from_buyer);
   const customer = capitalizeCustomerName(decodeEtsyText(receipt.name));
 
-  return units.map(({ transaction, quantityIndex }, index) => {
+  const orders = units.map(({ transaction, quantityIndex }, index): Item => {
     const design = parseEtsyDesign(transaction.title ?? "");
-    const sizeOption = variationValue(transaction, ETSY_ORDER_IMPORT.sizeVariationName);
     const orientation = decodeEtsyText(variationValue(transaction, ETSY_ORDER_IMPORT.orientationVariationName));
+    const isVertical = ETSY_ORDER_IMPORT.verticalValue.test(orientation);
+    const isCenterFade = ETSY_ORDER_IMPORT.centerFadeText.test(optionText(transaction));
     const suffix = units.length > FIRST_UNIT ? ` (${index + FIRST_UNIT}/${units.length})` : "";
+    const tokens = `${isVertical ? " (vertical)" : ""}${isCenterFade ? " (center fade)" : ""}`;
+    const options = extraOptions(transaction);
     return {
       id: createId(),
       status: ItemStatus.New,
@@ -137,19 +176,19 @@ export function receiptToOrders(receipt: EtsyReceipt, now: number, createId: () 
       deleted: false,
       isScheduled: false,
       index: 0,
-      customerName: `${companyPrefix(design)}${customer}${suffix}`,
+      customerName: `${companyPrefix(design)}${customer}${suffix}${tokens}`,
       design,
-      size: sizeOption ? parseEtsySize(sizeOption) : "",
+      size: parseEtsySize(variationValue(transaction, ETSY_ORDER_IMPORT.sizeVariationName) ?? ""),
       dueDate: shipByDate(transaction.expected_ship_date),
       painted: "",
       backboard: "",
       glued: "",
       packaging: "",
       boxes: "",
-      notes: buyerMessage ? `Etsy note: ${buyerMessage}` : "",
+      notes: [options && `Etsy options: ${options}`, buyerMessage && `Etsy note: ${buyerMessage}`].filter(Boolean).join("\n"),
       labels: "",
       tags: {
-        isVertical: ETSY_ORDER_IMPORT.verticalValue.test(orientation),
+        isVertical,
         ...(buyerMessage ? { hasCustomerMessage: true } : {}),
       },
       ...(shippingDetails ? { shippingDetails: shippingDetails as ShippingDetails } : {}),
@@ -158,8 +197,21 @@ export function receiptToOrders(receipt: EtsyReceipt, now: number, createId: () 
         transactionId: String(transaction.transaction_id),
         quantityIndex,
       },
+      etsyImportReview: true,
     };
   });
+  return { orders, manualReason: null };
+}
+
+/** "[SH] Jane Doe (1/2) (vertical)" → "jane doe", for spotting orders entered by hand. */
+export function baseCustomerName(name: string | undefined): string {
+  return (name ?? "")
+    .replace(/^\[[A-Z]{2}\]\s*/, "")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\b\d+\/\d+\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 }
 
 export function etsyTrackingBody(trackingNumber: string) {

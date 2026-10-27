@@ -20,6 +20,8 @@ import {
 import { OrderNameDisplay } from "@/components/orders/name-tokens";
 import { ORDER_ROW_LAYOUT } from "@/config/order-attention-layout";
 import { OrderWipBadge } from "@/components/orders/OrderWipBadge";
+import { EtsyImportReviewBadge } from "@/components/orders/EtsyImportReviewBadge";
+import { needsEtsyImportReview } from "@/lib/etsy/import-review";
 import { isOrderWip } from "@/lib/order-wip";
 import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
 import { showErrorToast } from "@/components/ui/app-toast";
@@ -224,7 +226,9 @@ export const NameCell: React.FC<NameCellProps> = ({
             onClick={isTouch ? undefined : handleFocus}
           >
             <OrderNameDisplay rawName={inputValue} compact extraBadge={
-              scheduleBadge || isOrderWip(item) ? <>{scheduleBadge}<OrderWipBadge item={item} /></> : null
+              scheduleBadge || isOrderWip(item) || needsEtsyImportReview(item)
+                ? <>{scheduleBadge}<OrderWipBadge item={item} /><EtsyImportReviewBadge item={item} /></>
+                : null
             } />
           </div>
         )}

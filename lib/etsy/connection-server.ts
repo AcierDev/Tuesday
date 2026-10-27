@@ -20,7 +20,15 @@ import {
 // One Mongo document holds the app keys (unless set in env), the OAuth tokens,
 // the shop it is connected to and the import/tracking switches.
 
-export type EtsySyncSummary = { at: number; imported: number; receiptsChecked: number; error: string | null };
+/** A paid receipt the import left for manual intake (SOP "Dashboard order intake"). */
+export type EtsyManualReceipt = { receiptId: string; buyer: string; reason: string };
+export type EtsySyncSummary = {
+  at: number;
+  imported: number;
+  receiptsChecked: number;
+  manual: EtsyManualReceipt[];
+  error: string | null;
+};
 
 export type EtsyConnectionDocument = {
   _id: string;

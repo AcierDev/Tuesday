@@ -105,6 +105,9 @@ export type Item = {
   index: number;
   shippingDetails?: ShippingDetails;
   etsyOrder?: EtsyOrderLink;
+  // Added by the Etsy import; true until someone opens or edits the order,
+  // because Etsy's API can't show message-only details (custom colors etc.).
+  etsyImportReview?: boolean;
   tags?: {
     isVertical?: boolean;
     hasCustomerMessage?: boolean;

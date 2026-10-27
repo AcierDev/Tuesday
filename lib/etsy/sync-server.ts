@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { Db, Document } from "mongodb";
 
-import { ETSY_CONFIG } from "@/config/etsy";
+import { ETSY_CONFIG, ETSY_ORDER_IMPORT } from "@/config/etsy";
 import { createOrderItem } from "@/lib/server/create-order";
 import { ETSY_PUSH_SKIPPED, type StoredPurchase } from "@/lib/shipping-labels/purchase-records";
+import { ItemStatus } from "@/typings/types";
 import {
   etsyConnectionCollection,
   etsyRequest,
@@ -11,10 +12,19 @@ import {
   isEtsyImportEnabled,
   isEtsyTrackingPushEnabled,
   readEtsyConnection,
+  type EtsyManualReceipt,
   type EtsySyncSummary,
 } from "./connection-server";
 import { EtsyApiError } from "./oauth";
-import { etsyTrackingBody, isImportableReceipt, receiptToOrders, type EtsyReceipt } from "./receipt-mapping";
+import {
+  baseCustomerName,
+  capitalizeCustomerName,
+  decodeEtsyText,
+  etsyTrackingBody,
+  isImportableReceipt,
+  planReceiptImport,
+  type EtsyReceipt,
+} from "./receipt-mapping";
 
 const MS_PER_SECOND = 1000;
 const GENERIC_SYNC_ERROR = "Etsy import failed; see the server log.";
@@ -72,9 +82,11 @@ export async function syncEtsyOrders(db: Db): Promise<EtsySyncSummary | null> {
   );
   if (lease?.syncLease?.token !== token) return null;
 
-  const summary: EtsySyncSummary = { at: startedAt, imported: 0, receiptsChecked: 0, error: null };
+  const summary: EtsySyncSummary = { at: startedAt, imported: 0, receiptsChecked: 0, manual: [], error: null };
   try {
-    const minCreated = Math.floor((connection.importSince ?? startedAt) / MS_PER_SECOND);
+    const importSince = connection.importSince ?? startedAt;
+    const minCreated = Math.floor(importSince / MS_PER_SECOND);
+    const board = await boardOrders(db, importSince);
     for (let page = 0; page < ETSY_CONFIG.maxReceiptPagesPerSync; page++) {
       const { results = [] } = await etsyRequest<ReceiptsPage>(`/shops/${connection.shopId}/receipts`, {
         query: {
@@ -89,8 +101,11 @@ export async function syncEtsyOrders(db: Db): Promise<EtsySyncSummary | null> {
         },
       }, db);
       for (const receipt of results) {
+        if (!isImportableReceipt(receipt)) continue;
         summary.receiptsChecked++;
-        summary.imported += await importReceipt(db, receipt);
+        const outcome = await importReceipt(db, receipt, board);
+        if (typeof outcome === "number") summary.imported += outcome;
+        else if (summary.manual.length < ETSY_ORDER_IMPORT.maxManualReceiptsListed) summary.manual.push(outcome);
       }
       if (results.length < ETSY_CONFIG.receiptsPageSize) break;
     }
@@ -106,17 +121,41 @@ export async function syncEtsyOrders(db: Db): Promise<EtsySyncSummary | null> {
   return summary;
 }
 
-async function importReceipt(db: Db, receipt: EtsyReceipt): Promise<number> {
-  if (!isImportableReceipt(receipt)) return 0;
-  // An order linked by hand to this receipt without a transaction ID can't be
-  // matched unit by unit, so leave the whole receipt to whoever entered it.
-  const linked = await itemsCollection(db)
-    .find({ "etsyOrder.receiptId": String(receipt.receipt_id) }, { projection: { _id: 0, etsyOrder: 1 } })
-    .toArray();
-  if (linked.some((item) => !item.etsyOrder?.transactionId)) return 0;
+type BoardOrder = { customerName?: string; etsyOrder?: { receiptId?: string; transactionId?: string } };
+
+/** Orders that could be a hand-entered copy of a new receipt: still open, or added since connecting. */
+async function boardOrders(db: Db, importSince: number): Promise<BoardOrder[]> {
+  return itemsCollection(db).find(
+    {
+      deleted: { $ne: true },
+      $or: [{ status: { $nin: [ItemStatus.Done, ItemStatus.Hidden] } }, { createdAt: { $gte: importSince } }],
+    },
+    { projection: { _id: 0, customerName: 1, etsyOrder: 1 } }
+  ).toArray() as Promise<BoardOrder[]>;
+}
+
+/** Number of orders added, or why the receipt was left for manual intake. */
+async function importReceipt(db: Db, receipt: EtsyReceipt, board: BoardOrder[]): Promise<number | EtsyManualReceipt> {
+  const receiptId = String(receipt.receipt_id);
+  const linked = board.filter((order) => order.etsyOrder?.receiptId === receiptId);
+  // Linked by hand without item IDs: already on the board, can't be matched unit by unit.
+  if (linked.some((order) => !order.etsyOrder?.transactionId)) return 0;
+  const buyer = capitalizeCustomerName(decodeEtsyText(receipt.name));
+  const manual = (reason: string): EtsyManualReceipt => ({ receiptId, buyer, reason });
+
+  const plan = planReceiptImport(receipt, Date.now(), randomUUID);
+  if (plan.manualReason) return manual(plan.manualReason);
+  // Not imported yet, but a board order has this buyer's name: probably added
+  // by hand (or a repeat buyer), so don't risk a duplicate.
+  const name = baseCustomerName(buyer);
+  if (!linked.length && name && board.some((order) => !order.etsyOrder?.receiptId?.length
+    ? baseCustomerName(order.customerName) === name
+    : order.etsyOrder.receiptId !== receiptId && baseCustomerName(order.customerName) === name)) {
+    return manual("An order with this name is already on the board");
+  }
 
   let imported = 0;
-  for (const order of receiptToOrders(receipt, Date.now(), randomUUID)) {
+  for (const order of plan.orders) {
     const result = await createOrderItem(db, order);
     if (result.status === "created") imported++;
   }

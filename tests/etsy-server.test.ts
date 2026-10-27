@@ -34,6 +34,9 @@ function matches(doc: Doc, filter: Doc): boolean {
         if (op === "$exists") return (value !== undefined) === operand;
         if (op === "$lte") return typeof value === "number" && value <= (operand as number);
         if (op === "$lt") return typeof value === "number" && value < (operand as number);
+        if (op === "$gte") return typeof value === "number" && value >= (operand as number);
+        if (op === "$ne") return value !== operand;
+        if (op === "$nin") return !(operand as unknown[]).includes(value);
         throw new Error(`Unsupported operator ${op}`);
       });
     }
@@ -110,6 +113,7 @@ globalThis.fetch = (async (input: string | URL, init: RequestInit = {}) => {
   return json({ error: "not found" }, 404);
 }) as typeof fetch;
 
+const SIZE = [{ formatted_name: "Size", formatted_value: '30" x 4 feet' }];
 const connectionDocs = () => collection("etsy-connection-test").docs;
 const items = () => collection("items-test");
 
@@ -148,17 +152,31 @@ test("import adds each new unit once and skips receipts linked by hand", async (
     {
       receipt_id: 1001, status: "paid", is_paid: true, is_shipped: false, name: "ann lee", first_line: "1 A St",
       city: "Reno", state: "NV", zip: "89501", country_iso: "US",
-      transactions: [{ transaction_id: 11, quantity: 2, title: "Carbon | Geometric Wood Wall Art", variations: [] }],
+      transactions: [{ transaction_id: 11, quantity: 2, title: "Carbon | Geometric Wood Wall Art", variations: SIZE }],
     },
     {
       receipt_id: 1002, status: "paid", is_paid: true, is_shipped: false, name: "bo",
-      transactions: [{ transaction_id: 21, quantity: 1, title: "Carbon | Geometric Wood Wall Art" }],
+      transactions: [{ transaction_id: 21, quantity: 1, title: "Carbon | Geometric Wood Wall Art", variations: SIZE }],
+    },
+    {
+      receipt_id: 1003, status: "paid", is_paid: true, is_shipped: false, name: "cy ray",
+      transactions: [{ transaction_id: 31, quantity: 1, title: "Carbon | Geometric Wood Wall Art", variations: SIZE }],
+    },
+    {
+      receipt_id: 1004, status: "paid", is_paid: true, is_shipped: false, name: "di",
+      transactions: [{ transaction_id: 41, quantity: 1, title: "Custom color fee" }],
     },
   ];
   await items().insertOne({ id: "manual", etsyOrder: { receiptId: "1002" } });
+  // Entered by hand without an Etsy link.
+  await items().insertOne({ id: "typed", customerName: "Cy Ray (vertical)", status: "New", deleted: false, createdAt: 0 });
 
   const first = await sync.syncEtsyOrders(db as never);
-  assert.deepEqual({ imported: first?.imported, checked: first?.receiptsChecked, error: first?.error }, { imported: 2, checked: 2, error: null });
+  assert.deepEqual({ imported: first?.imported, checked: first?.receiptsChecked, error: first?.error }, { imported: 2, checked: 4, error: null });
+  assert.deepEqual(first?.manual, [
+    { receiptId: "1003", buyer: "Cy Ray", reason: "An order with this name is already on the board" },
+    { receiptId: "1004", buyer: "Di", reason: "Not standard artwork: Custom color fee" },
+  ]);
   const receiptsCall = calls.findLast((call) => call.url.pathname.endsWith("/receipts"))!;
   assert.equal(receiptsCall.url.searchParams.get("min_created"), String(Math.floor(importSince / 1000)));
   assert.equal(receiptsCall.url.searchParams.get("was_shipped"), "false");
@@ -166,7 +184,8 @@ test("import adds each new unit once and skips receipts linked by hand", async (
 
   const second = await sync.syncEtsyOrders(db as never);
   assert.equal(second?.imported, 0);
-  assert.deepEqual(items().docs.map((doc) => doc.customerName), [undefined, "Ann Lee (1/2)", "Ann Lee (2/2)"]);
+  assert.deepEqual(items().docs.map((doc) => doc.customerName), [undefined, "Cy Ray (vertical)", "Ann Lee (1/2)", "Ann Lee (2/2)"]);
+  assert.equal(items().docs[2]?.etsyImportReview, true);
   assert.equal(collection("activities-test").docs.length, 2);
   assert.equal(connectionDocs()[0]!.syncLease, undefined);
 });
@@ -182,7 +201,7 @@ test("an expiring access token is refreshed and the new refresh token saved", as
 });
 
 test("tracking goes to the linked receipt; other orders and switched-off pushes are skipped", async () => {
-  const orderId = items().docs[1]!.id as string;
+  const orderId = items().docs[2]!.id as string;
   assert.equal(await sync.pushEtsyTrackingForOrder(db as never, orderId, { trackingNumber: "794600000001" }), "done");
   const push = calls.at(-1)!;
   assert.equal(push.method, "POST");

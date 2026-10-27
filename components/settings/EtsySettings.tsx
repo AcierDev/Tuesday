@@ -14,7 +14,8 @@ import type { EtsyPublicStatus } from "@/lib/etsy/connection-server";
 const STATUS_URL = "/api/etsy/connection";
 const CONNECT_URL = "/api/etsy/oauth/start";
 const SYNC_URL = "/api/etsy/sync";
-const MS_PER_MINUTE = 60_000;
+const ETSY_RECEIPT_URL = "https://www.etsy.com/your/orders/sold?order_id=";
+const MS_PER_HOUR = 3_600_000;
 
 const formatTime = (ms: number | null | undefined) =>
   ms ? new Date(ms).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
@@ -84,11 +85,12 @@ export function EtsySettings() {
 
   const importNow = () =>
     run(async () => {
-      const summary = await readJson<{ imported: number; receiptsChecked: number; error: string | null }>(
+      const summary = await readJson<{ imported: number; receiptsChecked: number; manual: unknown[]; error: string | null }>(
         await fetch(SYNC_URL, { method: "POST" })
       );
       await refresh();
-      return summary.error ?? `Checked ${summary.receiptsChecked} Etsy orders, added ${summary.imported}.`;
+      return summary.error ??
+        `Checked ${summary.receiptsChecked} Etsy orders, added ${summary.imported}${summary.manual.length ? `, ${summary.manual.length} to add by hand` : ""}.`;
     });
 
   if (!status) {
@@ -167,9 +169,9 @@ export function EtsySettings() {
               </div>
               <div className="flex items-center justify-between gap-4">
                 <Label htmlFor="etsy-import" className="text-sm">
-                  Import new Etsy orders every {ETSY_CONFIG.syncIntervalMs / MS_PER_MINUTE} minutes
+                  Import new Etsy orders every {ETSY_CONFIG.syncIntervalMs / MS_PER_HOUR} hours
                   <span className="block text-xs text-slate-400">
-                    Only orders placed after connecting. Last check: {formatTime(status.lastSync?.at)}
+                    Standard artwork placed after connecting; marked to check messages. Last check: {formatTime(status.lastSync?.at)}
                     {status.lastSync && !status.lastSync.error && ` · added ${status.lastSync.imported}`}
                   </span>
                 </Label>
@@ -177,6 +179,23 @@ export function EtsySettings() {
                   onCheckedChange={(checked) => void update({ importEnabled: checked })} />
               </div>
               {status.lastSync?.error && <p className="text-xs text-red-500">{status.lastSync.error}</p>}
+              {status.lastSync?.manual?.length ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                    Add these by hand (SOP intake):
+                  </p>
+                  <ul className="space-y-0.5 text-xs text-slate-500">
+                    {status.lastSync.manual.map((receipt) => (
+                      <li key={receipt.receiptId}>
+                        <a className="underline" href={`${ETSY_RECEIPT_URL}${receipt.receiptId}`} target="_blank" rel="noreferrer">
+                          {receipt.buyer || `Receipt ${receipt.receiptId}`}
+                        </a>{" "}
+                        — {receipt.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           )}
 
