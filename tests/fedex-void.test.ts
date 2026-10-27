@@ -62,8 +62,8 @@ function voidHarness(order: OrderPurchaseFields | null, cancelled = true) {
   let savedPlan: VoidPlan | null = null;
   const deps: FedExVoidDeps = {
     getOrder: async () => order,
-    cancel: async (trackingNumber, country) => {
-      events.push(`cancel:${trackingNumber}:${country}`);
+    cancel: async (trackingNumber, country, accountId) => {
+      events.push(`cancel:${trackingNumber}:${country}${accountId ? `:${accountId}` : ""}`);
       return { cancelled, message: cancelled ? "Shipment is successfully cancelled" : "Already tendered" };
     },
     saveVoid: async (_orderId, plan) => {
@@ -115,4 +115,12 @@ test("unknown orders, unknown labels and repeated voids are rejected before FedE
   const repeated = voidHarness({ purchasedShipments: [purchase("888", { voidedAt: NOW })] });
   assert.equal((await voidFedExLabel({ orderId: "o", trackingNumber: "888" }, repeated.deps)).status, 409);
   assert.deepEqual([...missing.events, ...repeated.events], []);
+});
+
+test("a void is cancelled on the FedEx account that bought the label", async () => {
+  const current = purchase("777", { accountId: "125" });
+  const { deps, events } = voidHarness({ purchasedShipment: current, purchasedShipments: [current] });
+  const outcome = await voidFedExLabel({ orderId: "order-1", trackingNumber: "777" }, deps);
+  assert.equal(outcome.status, 200);
+  assert.equal(events[0], "cancel:777:US:125");
 });

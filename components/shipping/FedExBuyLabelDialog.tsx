@@ -47,7 +47,9 @@ import {
   saveFedExShipmentDraft,
   type FedExShipmentDraft,
 } from "@/utils/fedex-shipment-draft-storage";
-import { normalizeShippingSettings } from "@/config/shipping-defaults";
+import { extraBoxPresetsForSize, normalizeShippingSettings } from "@/config/shipping-defaults";
+import { DEFAULT_RECIPIENT_PHONE, ETSY_LABEL_HINT_SIZES } from "@/config/fedex-accounts";
+import { cheapestRate, groupRatesByService, rateKey } from "@/lib/shipping-labels/rate-groups";
 import {
   chargeMismatchWarning,
   draftSourceHash,
@@ -166,7 +168,7 @@ function initializeDraft(item: Item, settings: ReturnType<typeof normalizeShippi
   const packages =
     (size && settings.boxPresetsBySize[size]?.length
       ? settings.boxPresetsBySize[size]
-      : [createPackage(1)]
+      : extraBoxPresetsForSize(size) ?? [createPackage(1)]
     ).map((pkg, index) => ({
       ...pkg,
       id: `${pkg.id}-${index}`,
@@ -281,7 +283,13 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
   const [draft, setDraft] = useState<ShipmentDraft | null>(null);
   const [rates, setRates] = useState<FedExRateQuote[]>([]);
   const [unpricedServiceTypes, setUnpricedServiceTypes] = useState<string[]>([]);
-  const [selectedServiceType, setSelectedServiceType] = useState("");
+  /** Key of the chosen price: a service on a particular FedEx account. */
+  const [selectedRateKey, setSelectedRateKey] = useState("");
+  const [accountErrors, setAccountErrors] = useState<
+    { accountId: string; accountLabel: string; error: string; unavailable?: boolean }[]
+  >([]);
+  /** What FedEx said about the recipient address when rates were last requested. */
+  const [addressCheck, setAddressCheck] = useState<string | null>(null);
   const [isFetchingRates, setIsFetchingRates] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -308,9 +316,21 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
   const loadItems = useOrderStore((state) => state.loadItems);
 
   const selectedRate = useMemo(
-    () => rates.find((rate) => rate.serviceType === selectedServiceType),
-    [rates, selectedServiceType]
+    () => rates.find((rate) => rateKey(rate) === selectedRateKey),
+    [rates, selectedRateKey]
   );
+  const rateGroups = useMemo(() => groupRatesByService(rates), [rates]);
+  const cheapestKey = useMemo(() => {
+    const cheapest = cheapestRate(rates);
+    return cheapest ? rateKey(cheapest) : "";
+  }, [rates]);
+  const sizeText = item.size?.trim() || "";
+  const hasBoxPreset = Boolean(
+    sizeText &&
+      (shippingSettings?.boxPresetsBySize?.[sizeText as ItemSizes]?.length ||
+        extraBoxPresetsForSize(sizeText))
+  );
+  const suggestsEtsyLabel = ETSY_LABEL_HINT_SIZES.includes(sizeText);
 
   const saveDraft = (value: ShipmentDraft) => {
     const stored: StoredShipmentDraft = {
@@ -349,7 +369,9 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
     setDraft(updater);
     setRates([]);
     setUnpricedServiceTypes([]);
-    setSelectedServiceType("");
+    setAccountErrors([]);
+    setAddressCheck(null);
+    setSelectedRateKey("");
     setPurchaseNotices([]);
   };
 
@@ -426,7 +448,9 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
     setAddressSectionsOpen(!(shipFromOk && recipientOk));
     setRates([]);
     setUnpricedServiceTypes([]);
-    setSelectedServiceType("");
+    setAccountErrors([]);
+    setAddressCheck(null);
+    setSelectedRateKey("");
     setError(null);
     setPurchaseNotices([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- item is current row; keyed by item.id
@@ -559,12 +583,16 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
     setPurchaseNotices([]);
 
     try {
+      // Ask FedEx whether the address is a home or a business first, so the
+      // quotes carry the right delivery surcharge. A failed check never blocks
+      // quoting: the Residential switch as shown is used.
+      const checkedDraft = await applyAddressCheck(draft);
       const response = await fetch("/api/shipping/fedex/rates", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(draft),
+        body: JSON.stringify(checkedDraft),
       });
 
       const data = await response.json();
@@ -577,7 +605,12 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
       const nextRates = (data.rates || []) as FedExRateQuote[];
       setRates(nextRates);
       setUnpricedServiceTypes((data.unpricedServiceTypes || []) as string[]);
-      setSelectedServiceType(nextRates[0]?.serviceType || "");
+      // An account that is not linked to the API key is skipped without a warning.
+      setAccountErrors(
+        ((data.accountErrors || []) as typeof accountErrors).filter((entry) => !entry.unavailable)
+      );
+      const cheapest = cheapestRate(nextRates);
+      setSelectedRateKey(cheapest ? rateKey(cheapest) : "");
     } catch (rateError) {
       setError(
         rateError instanceof Error
@@ -589,6 +622,41 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
     }
   };
 
+  /** Sets the Residential switch from FedEx's classification; returns the draft to quote. */
+  const applyAddressCheck = async (current: ShipmentDraft): Promise<ShipmentDraft> => {
+    try {
+      const response = await fetch("/api/shipping/fedex/validate-address", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shipTo: current.shipTo }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Address check failed");
+
+      const notes: string[] = [];
+      let next = current;
+      if (data.residential === true || data.residential === false) {
+        notes.push(`FedEx classifies this address as ${data.residential ? "residential" : "a business"}.`);
+        if (data.residential !== (current.shipTo.residential ?? true)) {
+          next = { ...current, shipTo: { ...current.shipTo, residential: data.residential } };
+          setDraft(next);
+        }
+      } else {
+        notes.push(
+          `FedEx could not tell if this is a home or a business; keeping "${(current.shipTo.residential ?? true) ? "Residential" : "Business"}".`
+        );
+      }
+      notes.push(...((data.warnings || []) as string[]));
+      setAddressCheck(notes.join(" "));
+      return next;
+    } catch (checkError) {
+      setAddressCheck(
+        `Address check unavailable (${checkError instanceof Error ? checkError.message : "error"}); using the Residential setting shown.`
+      );
+      return current;
+    }
+  };
+
   const requestPurchase = (confirmRepurchase: boolean) =>
     fetch("/api/shipping/fedex/purchase", {
       method: "POST",
@@ -597,7 +665,8 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
       },
       body: JSON.stringify({
         orderId: item.id,
-        serviceType: selectedServiceType,
+        serviceType: selectedRate?.serviceType ?? "",
+        ...(selectedRate?.accountId ? { accountId: selectedRate.accountId } : {}),
         quotedNetCharge: selectedRate?.totalNetCharge ?? null,
         confirmRepurchase,
         ...draft,
@@ -605,7 +674,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
     });
 
   const handlePurchase = async () => {
-    if (!draft || !selectedServiceType || !selectedRate) {
+    if (!draft || !selectedRate) {
       setError("Choose a FedEx service before purchasing.");
       return;
     }
@@ -637,7 +706,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
         throw new Error(data.error || "Failed to purchase FedEx label");
       }
 
-      await Promise.all([fetchAllLabels(), fetchTrackingInfo(), loadItems()]);
+      await Promise.all([fetchAllLabels({ force: true }), fetchTrackingInfo(), loadItems()]);
       clearFedExShipmentDraft(item.id);
 
       const purchased = data.purchasedShipment as StoredPurchase | undefined;
@@ -653,7 +722,9 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
       setDraft(null);
       setRates([]);
       setUnpricedServiceTypes([]);
-      setSelectedServiceType("");
+      setAccountErrors([]);
+      setAddressCheck(null);
+      setSelectedRateKey("");
       if (notices.length) {
         // Keep the dialog open so the price change / follow-up problem is seen.
         setPurchaseNotices([
@@ -890,6 +961,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                             <Input
                               className={ordersInputClassName}
                               value={(draft.shipTo[field] as string) || ""}
+                              placeholder={field === "phone" ? `${DEFAULT_RECIPIENT_PHONE} (used if blank)` : undefined}
                               onChange={(event) =>
                                 updateAddress(
                                   "shipTo",
@@ -1089,6 +1161,26 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                   </Alert>
                 ) : null}
 
+                {!hasBoxPreset && sizeText ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>No box preset for this size</AlertTitle>
+                    <AlertDescription>
+                      "{sizeText}" is a custom or nonstandard size. Enter the boxes yourself before requesting rates.
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+
+                {suggestsEtsyLabel ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Check Etsy's label first</AlertTitle>
+                    <AlertDescription>
+                      Etsy's own label is often much cheaper for {sizeText} (for a 16 x 6, about $34 on Etsy versus ~$80 on FedEx).
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+
                 <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 dark:border-gray-600 dark:bg-gray-800">
                   <Button
                     onClick={handleGetRates}
@@ -1113,8 +1205,16 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                           Live Contract Rates
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Choose the FedEx service to purchase for this shipment.
+                          Choose the price to purchase for this shipment. The cheapest is selected.
                         </p>
+                        {addressCheck ? (
+                          <p className="text-xs text-gray-600 dark:text-gray-400">{addressCheck}</p>
+                        ) : null}
+                        {accountErrors.map((entry) => (
+                          <p key={entry.accountId} className="text-xs text-amber-700 dark:text-amber-300">
+                            {entry.accountLabel} could not be quoted: {entry.error}
+                          </p>
+                        ))}
                         {unpricedServiceTypes.length ? (
                           <p className="text-xs text-amber-700 dark:text-amber-300">
                             FedEx returned no price for{" "}
@@ -1123,11 +1223,11 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                         ) : null}
                       </div>
                       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                        {rates.map((rate) => {
-                          const isSelected = rate.serviceType === selectedServiceType;
+                        {rateGroups.map((group) => {
+                          const isSelected = group.quotes.some((quote) => rateKey(quote) === selectedRateKey);
                           return (
                             <div
-                              key={rate.serviceType}
+                              key={group.serviceType}
                               className={cn(
                                 "overflow-hidden rounded-xl border-2 bg-white text-left text-gray-900 transition dark:bg-gray-800 dark:text-gray-100",
                                 isSelected
@@ -1135,40 +1235,52 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                                   : "border-gray-200 dark:border-gray-700"
                               )}
                             >
-                              <div
-                                role="button"
-                                tabIndex={0}
-                                className={cn(
-                                  "cursor-pointer p-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400",
-                                  isSelected ? "rounded-t-xl" : "rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/40"
-                                )}
-                                onClick={() => setSelectedServiceType(rate.serviceType)}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter" || event.key === " ") {
-                                    event.preventDefault();
-                                    setSelectedServiceType(rate.serviceType);
-                                  }
-                                }}
-                              >
-                                <div className="flex items-start justify-between gap-4">
-                                  <div>
-                                    <div className="font-semibold">{rate.serviceName}</div>
-                                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                                      {rate.estimatedDeliveryDate || rate.transitTime || "Delivery estimate unavailable"}
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="font-semibold tabular-nums">
-                                      {new Intl.NumberFormat("en-US", {
-                                        style: "currency",
-                                        currency: rate.currency || "USD",
-                                      }).format(rate.totalNetCharge)}
-                                    </div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      {rate.serviceType}
-                                    </div>
-                                  </div>
+                              <div className="p-4">
+                                <div className="font-semibold">{group.serviceName}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">
+                                  {group.estimatedDeliveryDate || group.transitTime || "Delivery estimate unavailable"}
                                 </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">{group.serviceType}</div>
+                              </div>
+                              <div
+                                className={cn(
+                                  "grid gap-2 border-t border-gray-200 p-3 dark:border-gray-600",
+                                  group.quotes.length > 1 ? "grid-cols-2" : "grid-cols-1"
+                                )}
+                              >
+                                {group.quotes.map((quote) => {
+                                  const key = rateKey(quote);
+                                  const quoteSelected = key === selectedRateKey;
+                                  return (
+                                    <button
+                                      key={key}
+                                      type="button"
+                                      aria-pressed={quoteSelected}
+                                      onClick={() => setSelectedRateKey(key)}
+                                      className={cn(
+                                        "rounded-lg border-2 px-3 py-2 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-blue-500",
+                                        quoteSelected
+                                          ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/40"
+                                          : "border-gray-200 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700/40"
+                                      )}
+                                    >
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        {quote.accountLabel || "FedEx account"}
+                                        {key === cheapestKey ? (
+                                          <span className="ml-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                            · Cheapest
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <div className="font-semibold tabular-nums">
+                                        {new Intl.NumberFormat("en-US", {
+                                          style: "currency",
+                                          currency: quote.currency || "USD",
+                                        }).format(quote.totalNetCharge)}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
                               </div>
                               {isSelected ? (
                                 <div className="rounded-b-xl border-t border-gray-200 bg-gray-50/80 p-4 pt-3 dark:border-gray-600 dark:bg-gray-900/40">
@@ -1189,7 +1301,7 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
                                     ) : (
                                       <CheckCircle2 className="mr-2 h-4 w-4" />
                                     )}
-                                    Buy label
+                                    Buy label{selectedRate?.accountLabel ? ` · ${selectedRate.accountLabel}` : ""}
                                   </Button>
                                 </div>
                               ) : null}
@@ -1217,7 +1329,9 @@ export function FedExBuyLabelDialog({ item }: { item: Item }) {
               : current
           );
           setRates([]);
-          setSelectedServiceType("");
+          setAccountErrors([]);
+          setAddressCheck(null);
+          setSelectedRateKey("");
           setError(null);
         }}
       />

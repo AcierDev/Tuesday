@@ -29,6 +29,8 @@ export type FedExPurchaseInput = {
   shipTo: ShippingAddressInput;
   packages: ShippingBoxPreset[];
   purchaseDefaults: ShippingPurchaseDefaults;
+  /** FedEx account to bill, as chosen from the quotes. */
+  accountId?: string;
   /** The user confirmed buying another label although one already exists. */
   confirmRepurchase: boolean;
   quotedNetCharge: number | null;
@@ -136,6 +138,7 @@ export async function purchaseFedExLabel(
       carrier: "FedEx",
       serviceType: result.serviceType,
       serviceName: result.serviceName,
+      ...(result.accountId ? { accountId: result.accountId, accountLabel: result.accountLabel } : {}),
       trackingNumber: result.trackingNumber,
       trackingNumbers: result.trackingNumbers,
       labelFilename,

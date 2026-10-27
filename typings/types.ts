@@ -183,6 +183,9 @@ export type ShippingSettings = {
 };
 
 export type FedExRateQuote = {
+  /** Which FedEx account this price is for (set when several accounts are quoted). */
+  accountId?: string;
+  accountLabel?: string;
   serviceType: string;
   serviceName: string;
   totalNetCharge: number;
@@ -201,6 +204,9 @@ export type PurchasedShipment = {
   labelUrl: string;
   totalNetCharge: number;
   currency: string;
+  /** FedEx account the label was bought on (absent on labels bought before accounts were tracked). */
+  accountId?: string;
+  accountLabel?: string;
   packages: ShippingBoxPreset[];
   shipFrom: ShippingAddressInput;
   shipTo: ShippingAddressInput;

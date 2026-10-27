@@ -269,7 +269,7 @@ test("a created shipment without a readable label or charge still returns its tr
   assert.equal(result.totalNetCharge, null);
 });
 
-test("recipients default to residential, keep street line 3, and use the env phone", async () => {
+test("recipients default to residential, keep street line 3, and use the default contact phone", async () => {
   process.env.SHIP_FROM_PHONE = "7025550199";
   handler = async (call) =>
     call.url.endsWith("/oauth/token")
@@ -287,16 +287,17 @@ test("recipients default to residential, keep street line 3, and use the env pho
     .requestedShipment.recipients[0];
   assert.equal(recipient.address.residential, true);
   assert.deepEqual(recipient.address.streetLines, ["10 Main St", "Apt 2", "Building C"]);
-  assert.equal(recipient.contact.phoneNumber, "7025550199");
+  // Etsy gives no buyer phone, so a blank recipient phone uses the shop's fixed contact number.
+  assert.equal(recipient.contact.phoneNumber, "9293277420");
 });
 
-test("a purchase without any phone fails clearly instead of sending zeros", async () => {
+test("a purchase without any shipper phone fails clearly instead of sending zeros", async () => {
   handler = (call) =>
     call.url.endsWith("/oauth/token") ? tokenResponse() : json(shipmentPayload([]));
 
   await assert.rejects(
     api.purchaseFedExShipment({
-      shipFrom,
+      shipFrom: { ...shipFrom, phone: "" },
       shipTo,
       packages: [packages[0]!],
       purchaseDefaults: signatureDefaults,

@@ -6,6 +6,17 @@ import {
   type ShippingPurchaseDefaults,
 } from "@/typings/types";
 import { normalizeCountryCode } from "@/lib/shipping-labels/purchase-request";
+import {
+  ACCOUNT_UNAVAILABLE_ERROR,
+  DEFAULT_RECIPIENT_PHONE,
+  FEDEX_ACCOUNTS,
+  FEDEX_ADDRESS_VALIDATION_PATH,
+  FEDEX_ADDRESS_VALIDATION_TIMEOUT_MS,
+  FEDEX_ENV,
+  FEDEX_PRODUCTION_URL,
+  FEDEX_SANDBOX_URL,
+  LEGACY_FEDEX_ACCOUNT,
+} from "@/config/fedex-accounts";
 
 // Rates are read-only and can be retried; label creation buys a real label, so
 // it gets more time before we give up and tell the user to check FedEx history.
@@ -35,11 +46,13 @@ export type FedExAddressInput = ShippingAddressInput & { line3?: string };
 type FedExCredentials = {
   clientId: string;
   clientSecret: string;
-  accountNumber: string;
   childKey?: string;
   childSecret?: string;
   baseUrl: string;
 };
+
+/** A FedEx account a label can be rated or billed on. */
+export type FedExAccount = { id: string; label: string; accountNumber: string };
 
 type FedExRateRequest = {
   shipFrom: FedExAddressInput;
@@ -50,9 +63,14 @@ type FedExRateRequest = {
 
 type FedExPurchaseRequest = FedExRateRequest & {
   serviceType: string;
+  /** Account to bill; the first configured account when omitted. */
+  accountId?: string;
 };
 
 export type FedExPurchaseResult = {
+  /** Account the shipment was created (and billed) on. */
+  accountId?: string;
+  accountLabel?: string;
   serviceType: string;
   serviceName: string;
   /** Master tracking number (first box). */
@@ -74,6 +92,28 @@ export type FedExRatesResult = {
   quotes: FedExRateQuote[];
   /** Services FedEx returned without a parseable price (never offered for purchase). */
   unpricedServiceTypes: string[];
+};
+
+/** Quotes from every configured account; an account that fails is listed, not fatal. */
+export type FedExAccountRatesResult = FedExRatesResult & {
+  accountErrors: {
+    accountId: string;
+    accountLabel: string;
+    error: string;
+    /** The account is not linked to the API key; callers can skip it quietly. */
+    unavailable: boolean;
+  }[];
+};
+
+export type FedExAddressClassification = "RESIDENTIAL" | "BUSINESS" | "MIXED" | "UNKNOWN";
+
+export type FedExAddressValidation = {
+  classification: FedExAddressClassification;
+  /** True/false when FedEx is sure; null when mixed or unknown (keep the current setting). */
+  residential: boolean | null;
+  /** The address FedEx matched, when it returned one. */
+  resolved: { line1: string; line2: string; city: string; state: string; postalCode: string } | null;
+  warnings: string[];
 };
 
 export type FedExCancelResult = {
@@ -108,32 +148,65 @@ let cachedToken:
     }
   | undefined;
 
+const firstEnv = (names: readonly string[]) =>
+  names.map((name) => process.env[name]?.trim()).find(Boolean) || "";
+
 function getFedExCredentials(): FedExCredentials {
-  const clientId = process.env.FEDEX_CLIENT_ID || "";
-  const clientSecret = process.env.FEDEX_CLIENT_SECRET || "";
-  const accountNumber = process.env.FEDEX_ACCOUNT_NUMBER || "";
+  const clientId = firstEnv(FEDEX_ENV.apiKey);
+  const clientSecret = firstEnv(FEDEX_ENV.secretKey);
   const childKey = process.env.FEDEX_CHILD_KEY || undefined;
   const childSecret = process.env.FEDEX_CHILD_SECRET || undefined;
   const baseUrl =
-    process.env.FEDEX_BASE_URL ||
-    (process.env.FEDEX_USE_SANDBOX === "true"
-      ? "https://apis-sandbox.fedex.com"
-      : "https://apis.fedex.com");
+    process.env[FEDEX_ENV.baseUrl] ||
+    (process.env[FEDEX_ENV.useSandbox] === "true"
+      ? FEDEX_SANDBOX_URL
+      : FEDEX_PRODUCTION_URL);
 
-  if (!clientId || !clientSecret || !accountNumber) {
+  if (!clientId || !clientSecret) {
     throw new Error(
-      "Missing FedEx credentials. Set FEDEX_CLIENT_ID, FEDEX_CLIENT_SECRET, and FEDEX_ACCOUNT_NUMBER."
+      `Missing FedEx credentials. Set ${FEDEX_ENV.apiKey[0]} and ${FEDEX_ENV.secretKey[0]} on the server.`
     );
   }
 
-  return {
-    clientId,
-    clientSecret,
-    accountNumber,
-    childKey,
-    childSecret,
-    baseUrl,
-  };
+  return { clientId, clientSecret, childKey, childSecret, baseUrl };
+}
+
+/** Accounts with a number set on the server; the pre-multi-account variable is the fallback. */
+export function listFedExAccounts(): FedExAccount[] {
+  const accounts = FEDEX_ACCOUNTS.flatMap(({ id, label, env }) => {
+    const accountNumber = process.env[env]?.trim();
+    return accountNumber ? [{ id, label, accountNumber }] : [];
+  });
+  if (accounts.length) return accounts;
+  const legacy = process.env[LEGACY_FEDEX_ACCOUNT.env]?.trim();
+  return legacy
+    ? [{ id: LEGACY_FEDEX_ACCOUNT.id, label: LEGACY_FEDEX_ACCOUNT.label, accountNumber: legacy }]
+    : [];
+}
+
+/**
+ * The account to bill. An id must name a configured account; without one the
+ * pre-multi-account number is used (labels bought before accounts were tracked),
+ * else the first configured account.
+ */
+export function getFedExAccount(accountId?: string): FedExAccount {
+  const accounts = listFedExAccounts();
+  if (accountId) {
+    const account = accounts.find((candidate) => candidate.id === accountId);
+    if (!account) throw new Error(`FedEx account "${accountId}" is not set up on the server.`);
+    return account;
+  }
+  const legacy = process.env[LEGACY_FEDEX_ACCOUNT.env]?.trim();
+  if (legacy) {
+    return { id: LEGACY_FEDEX_ACCOUNT.id, label: LEGACY_FEDEX_ACCOUNT.label, accountNumber: legacy };
+  }
+  const [first] = accounts;
+  if (!first) {
+    throw new Error(
+      `Missing FedEx account number. Set ${FEDEX_ACCOUNTS.map((account) => account.env).join(" and ")} on the server.`
+    );
+  }
+  return first;
 }
 
 export function resetFedExAuthCache() {
@@ -142,10 +215,10 @@ export function resetFedExAuthCache() {
 
 function resolveContactPhone(
   address: FedExAddressInput,
-  required: boolean
+  required: boolean,
+  fallbackPhone: string | undefined = process.env[SHIP_FROM_PHONE_ENV]
 ): string | undefined {
-  const phone =
-    address.phone?.trim() || process.env[SHIP_FROM_PHONE_ENV]?.trim() || "";
+  const phone = address.phone?.trim() || fallbackPhone?.trim() || "";
   if (!phone && required) {
     throw new Error(
       `A phone number is required for ${address.name || "this address"}. Enter one in the dialog or set ${SHIP_FROM_PHONE_ENV} on the server.`
@@ -156,13 +229,13 @@ function resolveContactPhone(
 
 function formatAddress(
   address: FedExAddressInput,
-  options: { residentialDefault: boolean; requirePhone: boolean }
+  options: { residentialDefault: boolean; requirePhone: boolean; fallbackPhone?: string }
 ) {
   return {
     contact: {
       personName: address.name,
       companyName: address.company || address.name,
-      phoneNumber: resolveContactPhone(address, options.requirePhone),
+      phoneNumber: resolveContactPhone(address, options.requirePhone, options.fallbackPhone),
       emailAddress: address.email || undefined,
     },
     address: {
@@ -186,6 +259,7 @@ function formatRecipient(address: FedExAddressInput, requirePhone: boolean) {
   return formatAddress(address, {
     residentialDefault: DEFAULT_RECIPIENT_RESIDENTIAL,
     requirePhone,
+    fallbackPhone: DEFAULT_RECIPIENT_PHONE,
   });
 }
 
@@ -367,11 +441,20 @@ function formatFedExApiFailure(path: string, status: number, errorText: string):
   return `FedEx request failed (${status}): ${errorText}`;
 }
 
-async function getAccessToken() {
+// Parallel requests (one rate quote per account) share a single token request.
+let tokenRequest: Promise<string> | undefined;
+
+async function getAccessToken(): Promise<string> {
   if (cachedToken && cachedToken.expiresAt > Date.now() + TOKEN_REFRESH_MARGIN_MS) {
     return cachedToken.accessToken;
   }
+  tokenRequest ??= requestAccessToken().finally(() => {
+    tokenRequest = undefined;
+  });
+  return tokenRequest;
+}
 
+async function requestAccessToken(): Promise<string> {
   const credentials = getFedExCredentials();
   const body = new URLSearchParams({
     grant_type:
@@ -594,13 +677,14 @@ export async function resolveLabelBuffer(payload: any): Promise<Buffer> {
 }
 
 export async function fetchFedExRates(
-  request: FedExRateRequest
+  request: FedExRateRequest,
+  accountId?: string
 ): Promise<FedExRatesResult> {
-  const credentials = getFedExCredentials();
+  const account = getFedExAccount(accountId);
   const payload = await fedexFetch<any>(
     "/rate/v1/rates/quotes",
     {
-      accountNumber: { value: credentials.accountNumber },
+      accountNumber: { value: account.accountNumber },
       rateRequestControlParameters: {
         returnTransitTimes: true,
       },
@@ -624,7 +708,7 @@ export async function fetchFedExRates(
   for (const detail of payload?.output?.rateReplyDetails || []) {
     const parsed = parseRateQuote(detail);
     if (!parsed) continue;
-    if (parsed.priced) quotes.push(parsed.quote);
+    if (parsed.priced) quotes.push({ ...parsed.quote, accountId: account.id, accountLabel: account.label });
     else unpricedServiceTypes.push(parsed.serviceType);
   }
 
@@ -634,13 +718,62 @@ export async function fetchFedExRates(
   };
 }
 
+/**
+ * Rates on every configured account at once, cheapest first. One account
+ * failing (not linked yet, bad number) leaves the other's quotes usable.
+ */
+export async function fetchFedExRatesForAccounts(
+  request: FedExRateRequest
+): Promise<FedExAccountRatesResult> {
+  const accounts = listFedExAccounts();
+  if (!accounts.length) getFedExAccount(); // throws the "set the account number" message
+  const settled = await Promise.allSettled(
+    accounts.map((account) => fetchFedExRates(request, account.id))
+  );
+  const quotes: FedExRateQuote[] = [];
+  const unpriced = new Set<string>();
+  const accountErrors: FedExAccountRatesResult["accountErrors"] = [];
+  settled.forEach((result, index) => {
+    const account = accounts[index]!;
+    if (result.status === "fulfilled") {
+      quotes.push(...result.value.quotes);
+      result.value.unpricedServiceTypes.forEach((type) => unpriced.add(type));
+    } else {
+      const error = result.reason instanceof Error ? result.reason.message : "FedEx rates failed.";
+      accountErrors.push({
+        accountId: account.id,
+        accountLabel: account.label,
+        error,
+        unavailable: ACCOUNT_UNAVAILABLE_ERROR.test(error),
+      });
+    }
+  });
+  if (!quotes.length && accountErrors.length === accounts.length) {
+    const [first] = accountErrors;
+    throw new Error(
+      accountErrors.length === 1
+        ? first!.error
+        : accountErrors.map((entry) => `${entry.accountLabel}: ${entry.error}`).join(" | ")
+    );
+  }
+  return {
+    quotes: quotes.sort((a, b) => a.totalNetCharge - b.totalNetCharge),
+    unpricedServiceTypes: [...unpriced],
+    accountErrors,
+  };
+}
+
 /** The charge FedEx reports for a created shipment, or null when it can't be read. */
 export function extractShipmentCharge(payload: any): {
   totalNetCharge: number | null;
   currency: string;
 } {
+  // FedEx nests the rating under completedShipmentDetail (confirmed against the
+  // sandbox); the shorter path is kept for older or simplified replies.
+  const shipment = transactionShipment(payload);
   const rateDetailsList =
-    transactionShipment(payload)?.shipmentRating?.shipmentRateDetails;
+    shipment?.completedShipmentDetail?.shipmentRating?.shipmentRateDetails ??
+    shipment?.shipmentRating?.shipmentRateDetails;
   const rateDetail =
     rateDetailsList?.find(
       (detail: any) =>
@@ -660,12 +793,12 @@ export function extractShipmentCharge(payload: any): {
 export async function purchaseFedExShipment(
   request: FedExPurchaseRequest
 ): Promise<FedExPurchaseResult> {
-  const credentials = getFedExCredentials();
+  const account = getFedExAccount(request.accountId);
   const payload = await fedexFetch<any>(
     "/ship/v1/shipments",
     {
       labelResponseOptions: "LABEL",
-      accountNumber: { value: credentials.accountNumber },
+      accountNumber: { value: account.accountNumber },
       requestedShipment: {
         shipDatestamp: new Date().toISOString().slice(0, 10),
         pickupType: request.purchaseDefaults.pickupType,
@@ -709,6 +842,8 @@ export async function purchaseFedExShipment(
   }
 
   return {
+    accountId: account.id,
+    accountLabel: account.label,
     serviceType: request.serviceType,
     serviceName: humanizeServiceType(request.serviceType),
     trackingNumber,
@@ -722,13 +857,14 @@ export async function purchaseFedExShipment(
 /** Voids a label that FedEx has not yet received (FedEx Ship API Cancel Shipment). */
 export async function cancelFedExShipment(
   trackingNumber: string,
-  senderCountryCode: string
+  senderCountryCode: string,
+  accountId?: string
 ): Promise<FedExCancelResult> {
-  const credentials = getFedExCredentials();
+  const account = getFedExAccount(accountId);
   const payload = await fedexFetch<any>(
     FEDEX_CANCEL_PATH,
     {
-      accountNumber: { value: credentials.accountNumber },
+      accountNumber: { value: account.accountNumber },
       emailShipment: false,
       senderCountryCode,
       deletionControl: FEDEX_CANCEL_DELETION_CONTROL,
@@ -746,5 +882,72 @@ export async function cancelFedExShipment(
       output?.successMessage ||
       alertMessage ||
       (output?.cancelledShipment ? "Shipment cancelled." : "FedEx did not cancel the shipment."),
+  };
+}
+
+const RESOLVED_ADDRESS_CLASSIFICATIONS = new Set(["RESIDENTIAL", "BUSINESS", "MIXED"]);
+
+/**
+ * Asks FedEx whether a recipient address is a home or a business, so the label
+ * is rated and billed with the right delivery surcharge. Mixed or unknown
+ * results return `residential: null`: the caller keeps its current choice (a
+ * residential address is never switched to business on a guess).
+ */
+export async function validateFedExAddress(
+  address: FedExAddressInput
+): Promise<FedExAddressValidation> {
+  const payload = await fedexFetch<any>(
+    FEDEX_ADDRESS_VALIDATION_PATH,
+    {
+      validateAddressControlParameters: { includeResolutionTokens: true },
+      addressesToValidate: [
+        {
+          address: {
+            streetLines: [address.line1, address.line2, address.line3].filter(
+              (line): line is string => Boolean(line?.trim())
+            ),
+            city: address.city,
+            stateOrProvinceCode: address.state,
+            postalCode: address.postalCode,
+            countryCode: normalizeCountryCode(address.country),
+          },
+        },
+      ],
+    },
+    { timeoutMs: FEDEX_ADDRESS_VALIDATION_TIMEOUT_MS }
+  );
+
+  const resolvedAddress = payload?.output?.resolvedAddresses?.[0];
+  const rawClassification = String(resolvedAddress?.classification ?? "").toUpperCase();
+  const classification = (
+    RESOLVED_ADDRESS_CLASSIFICATIONS.has(rawClassification) ? rawClassification : "UNKNOWN"
+  ) as FedExAddressClassification;
+  const attributes = resolvedAddress?.attributes ?? {};
+  const warnings = nonEmptyStrings(
+    (resolvedAddress?.customerMessages ?? []).map((entry: any) => entry?.message)
+  );
+  if (resolvedAddress && String(attributes.Resolved).toLowerCase() === "false") {
+    warnings.push("FedEx could not confirm this address.");
+  }
+  if (String(attributes.SuiteRequiredButMissing).toLowerCase() === "true") {
+    warnings.push("FedEx says a suite or apartment number is missing.");
+  }
+
+  const [line1 = "", line2 = ""] = resolvedAddress?.streetLinesToken ?? [];
+  // FedEx returns the standardized city and ZIP+4 as tokens ({ value, changed }).
+  return {
+    classification,
+    residential:
+      classification === "RESIDENTIAL" ? true : classification === "BUSINESS" ? false : null,
+    resolved: resolvedAddress
+      ? {
+          line1,
+          line2,
+          city: resolvedAddress.cityToken?.[0]?.value ?? resolvedAddress.city ?? "",
+          state: resolvedAddress.stateOrProvinceCode ?? "",
+          postalCode: resolvedAddress.postalCodeToken?.value ?? resolvedAddress.postalCode ?? "",
+        }
+      : null,
+    warnings,
   };
 }

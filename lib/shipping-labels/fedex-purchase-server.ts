@@ -93,6 +93,7 @@ export async function createFedExPurchaseDeps(): Promise<FedExPurchaseDeps> {
     },
     purchase: (input) =>
       purchaseFedExShipment({
+        accountId: input.accountId,
         shipFrom: input.shipFrom,
         shipTo: input.shipTo,
         packages: input.packages,

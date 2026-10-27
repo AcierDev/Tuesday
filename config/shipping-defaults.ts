@@ -101,8 +101,8 @@ export const DEFAULT_SHIPPING_PURCHASE_DEFAULTS: ShippingPurchaseDefaults = {
 };
 
 // Matches the "Standard sizes and packages" chart in the Everwood SOP manual
-// (inches; pounds per box). The SOP chart also lists 32×12 (2 × 41×27×6 at
-// 42 lb), which has no ItemSizes entry yet.
+// (inches; pounds per box). 32×12 has no ItemSizes entry; see
+// EXTRA_BOX_PRESETS_BY_SIZE below.
 export const DEFAULT_BOX_PRESETS_BY_SIZE: Record<
   ItemSizes,
   ShippingBoxPreset[]
@@ -152,6 +152,25 @@ export const DEFAULT_BOX_PRESETS_BY_SIZE: Record<
     { id: "pkg-3", label: "Box 3", length: 54, width: 25, height: 6, weight: 38 },
   ],
 };
+
+/**
+ * SOP chart sizes with no ItemSizes entry: orders carry them as custom size
+ * text ("32 x 12"), so they are looked up by normalized text instead.
+ */
+export const EXTRA_BOX_PRESETS_BY_SIZE: Record<string, ShippingBoxPreset[]> = {
+  "32x12": [
+    { id: "pkg-1", label: "Box 1", length: 41, width: 27, height: 6, weight: 42 },
+    { id: "pkg-2", label: "Box 2", length: 41, width: 27, height: 6, weight: 42 },
+  ],
+};
+
+const normalizeSizeText = (size: string) => size.toLowerCase().replace(/[\s"]/g, "").replace(/×/g, "x");
+
+/** The chart preset for a size outside ItemSizes (null for sizes without one). */
+export function extraBoxPresetsForSize(size: string | undefined): ShippingBoxPreset[] | null {
+  const presets = size ? EXTRA_BOX_PRESETS_BY_SIZE[normalizeSizeText(size)] : undefined;
+  return presets ? presets.map(cloneBoxPreset) : null;
+}
 
 function cloneBoxPreset(
   preset: ShippingBoxPreset,

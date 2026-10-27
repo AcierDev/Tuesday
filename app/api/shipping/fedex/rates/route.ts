@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchFedExRates, FedExTimeoutError } from "@/lib/fedex-api";
+import { fetchFedExRatesForAccounts, FedExTimeoutError } from "@/lib/fedex-api";
 import { normalizeShippingSettings } from "@/config/shipping-defaults";
 import { parseFedExRateRequest } from "@/lib/shipping-labels/purchase-request";
 
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: parsed.error }, { status: HTTP_BAD_REQUEST });
     }
 
-    const { quotes, unpricedServiceTypes } = await fetchFedExRates({
+    const { quotes, unpricedServiceTypes, accountErrors } = await fetchFedExRatesForAccounts({
       ...parsed.value,
       purchaseDefaults: normalizeShippingSettings({
         purchaseDefaults: parsed.value
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       }).purchaseDefaults,
     });
 
-    return NextResponse.json({ rates: quotes, unpricedServiceTypes });
+    return NextResponse.json({ rates: quotes, unpricedServiceTypes, accountErrors });
   } catch (error) {
     console.error("Failed to fetch FedEx rates:", error);
     return NextResponse.json(

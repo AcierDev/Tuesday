@@ -15,7 +15,11 @@ const DEFAULT_SENDER_COUNTRY = "US";
 
 export type FedExVoidDeps = {
   getOrder: (orderId: string) => Promise<OrderPurchaseFields | null>;
-  cancel: (trackingNumber: string, senderCountryCode: string) => Promise<FedExCancelResult>;
+  cancel: (
+    trackingNumber: string,
+    senderCountryCode: string,
+    accountId?: string
+  ) => Promise<FedExCancelResult>;
   saveVoid: (orderId: string, plan: VoidPlan) => Promise<void>;
   /** Drops the voided boxes' trackers so they no longer affect order status. */
   removeTrackers: (orderId: string, trackingNumbers: string[]) => Promise<void>;
@@ -47,9 +51,11 @@ export async function voidFedExLabel(
   }
 
   const masterTrackingNumber = plan.voided.trackingNumber ?? input.trackingNumber;
+  // Cancel on the account that was billed; older labels carry no account.
   const result = await deps.cancel(
     masterTrackingNumber,
-    plan.voided.shipFrom?.country || DEFAULT_SENDER_COUNTRY
+    plan.voided.shipFrom?.country || DEFAULT_SENDER_COUNTRY,
+    plan.voided.accountId
   );
   if (!result.cancelled) {
     return {

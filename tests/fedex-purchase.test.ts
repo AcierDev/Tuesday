@@ -117,6 +117,15 @@ test("records tracking and charge before uploading the label or creating tracker
   }
 });
 
+test("the purchase record keeps the FedEx account it was bought on", async () => {
+  const { deps, saved } = harness();
+  deps.purchase = async () => purchaseResult({ accountId: "125", accountLabel: "ben@everwood.com-125" });
+  const outcome = await purchaseFedExLabel({ ...input, accountId: "125" }, deps);
+  assert.equal(outcome.status, 200);
+  assert.equal(saved()?.accountId, "125");
+  assert.equal(saved()?.accountLabel, "ben@everwood.com-125");
+});
+
 test("an existing purchase needs explicit confirmation (409, nothing bought)", async () => {
   const { deps, events } = harness({ purchasedShipment: existingPurchase });
   const outcome = await purchaseFedExLabel(input, deps);

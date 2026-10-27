@@ -11,6 +11,7 @@ import type { StoredPurchase } from "./purchase-records";
 export const SUPPORTED_DESTINATION_COUNTRY = "US";
 export const INTERNATIONAL_NOT_SUPPORTED_MESSAGE =
   "International shipments need customs details, which this dialog doesn't support. Create this label in FedEx Ship Manager instead.";
+const ACCOUNT_ID_PATTERN = /^[\w-]{1,32}$/;
 // Order ids become S3 label filenames, so they must be plain names.
 const SAFE_ORDER_ID_PATTERN = /^[\w.-]+$/;
 const ADDRESS_REQUIRED_FIELDS = ["postalCode", "country"] as const;
@@ -53,6 +54,11 @@ function parseAddress(
     }
   }
   return { ok: true, value: value as FedExAddressInput };
+}
+
+/** A recipient address on its own (address validation has no ship-from or boxes). */
+export function parseFedExRecipientAddress(value: unknown): ParseResult<FedExAddressInput> {
+  return parseAddress(value, "Recipient", [...ADDRESS_REQUIRED_FIELDS, ...RECIPIENT_REQUIRED_FIELDS]);
 }
 
 function parsePackages(value: unknown): ParseResult<ShippingBoxPreset[]> {
@@ -125,12 +131,17 @@ export function parseFedExShipmentRequest(
   }
   const quoted = Number(body.quotedNetCharge);
 
+  if (body.accountId !== undefined && !(typeof body.accountId === "string" && ACCOUNT_ID_PATTERN.test(body.accountId))) {
+    return { ok: false, error: "Choose a valid FedEx account." };
+  }
+
   return {
     ok: true,
     value: {
       ...rateRequest.value,
       orderId: body.orderId,
       serviceType: body.serviceType,
+      ...(typeof body.accountId === "string" ? { accountId: body.accountId } : {}),
       confirmRepurchase: body.confirmRepurchase === true,
       quotedNetCharge:
         body.quotedNetCharge !== null &&
