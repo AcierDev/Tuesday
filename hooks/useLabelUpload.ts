@@ -194,7 +194,7 @@ export function useLabelUpload() {
             })
           );
         } finally {
-          await Promise.all([fetchAllLabels(), fetchTrackingInfo()]);
+          await Promise.all([fetchAllLabels({ force: true }), fetchTrackingInfo()]);
         }
       }
 

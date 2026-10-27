@@ -25,7 +25,20 @@ export function shippingLabelCollection(db: Db) {
   return db.collection<ShippingLabelRecord>(collectionName());
 }
 
-export async function ensureShippingLabelIndexes(db: Db): Promise<void> {
+// Index creation is idempotent but costs a database round trip per request, so
+// it runs once per process. A failure is logged and retried on a later request
+// instead of failing label reads (the indexes only speed up lookups).
+let indexesReady: Promise<void> | null = null;
+
+export function ensureShippingLabelIndexes(db: Db): Promise<void> {
+  indexesReady ??= createShippingLabelIndexes(db).catch((error) => {
+    indexesReady = null;
+    console.error("Could not ensure shipping-label indexes", error);
+  });
+  return indexesReady;
+}
+
+async function createShippingLabelIndexes(db: Db): Promise<void> {
   const collection = shippingLabelCollection(db);
   await Promise.all([
     collection.createIndex(

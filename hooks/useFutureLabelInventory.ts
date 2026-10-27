@@ -55,8 +55,10 @@ export function useFutureLabelInventory(orderId: string) {
     });
   }, [labels, orderTrackers]);
 
+  // Opening the dialog reuses the board's recent listing; after a rescan, delete
+  // or correction the counts and file list are fetched again.
   const load = useCallback(
-    async () => {
+    async (options?: { force?: boolean }) => {
       const sequence = ++requestSequence.current;
       setIsLoading(true);
       setError(null);
@@ -64,7 +66,8 @@ export function useFutureLabelInventory(orderId: string) {
         // Viewing labels only reads saved records; scanning requires an explicit action.
         const nextLabels = await listFutureLabels(orderId);
         if (sequence === requestSequence.current) setLabels(nextLabels);
-        await fetchAllLabels();
+        // The labels are already on screen; the board-wide listing refreshes behind them.
+        void fetchAllLabels(options);
       } catch (loadError) {
         if (sequence === requestSequence.current) {
           setError(errorMessage(loadError));
@@ -83,7 +86,7 @@ export function useFutureLabelInventory(orderId: string) {
     };
   }, [load]);
 
-  const refresh = useCallback(() => load(), [load]);
+  const refresh = useCallback(() => load({ force: true }), [load]);
 
   const rescan = useCallback(
     async (labelId: string) => {
@@ -91,7 +94,7 @@ export function useFutureLabelInventory(orderId: string) {
       setError(null);
       try {
         await scanFutureLabel(labelId);
-        await Promise.all([load(), fetchTrackingInfo()]);
+        await Promise.all([load({ force: true }), fetchTrackingInfo()]);
       } catch (scanError) {
         setError(errorMessage(scanError));
       } finally {
@@ -119,7 +122,7 @@ export function useFutureLabelInventory(orderId: string) {
             corrected.processingError ?? "Tracking information is invalid."
           );
         }
-        await Promise.all([load(), fetchTrackingInfo()]);
+        await Promise.all([load({ force: true }), fetchTrackingInfo()]);
       } catch (correctionError) {
         setError(errorMessage(correctionError));
         throw correctionError;
@@ -136,7 +139,7 @@ export function useFutureLabelInventory(orderId: string) {
       setError(null);
       try {
         await deleteFutureLabel(labelId);
-        await load();
+        await load({ force: true });
       } catch (deleteError) {
         setError(errorMessage(deleteError));
       } finally {

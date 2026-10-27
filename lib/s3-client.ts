@@ -12,9 +12,21 @@ import {
   uniqueLegacyLabelFilename,
 } from "@/lib/shipping-labels/legacy-filename";
 
+// The SDK waits forever by default, so one stalled connection left a label
+// dialog spinning until the browser gave up. These bound each attempt; the
+// SDK's built-in retries then pick a fresh connection.
+const S3_CONNECTION_TIMEOUT_MS = 4_000;
+const S3_SOCKET_IDLE_TIMEOUT_MS = 15_000;
+const S3_MAX_ATTEMPTS = 3;
+
 // Initialize the S3 client with credentials from environment variables
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || "us-east-1",
+  maxAttempts: S3_MAX_ATTEMPTS,
+  requestHandler: {
+    connectionTimeout: S3_CONNECTION_TIMEOUT_MS,
+    requestTimeout: S3_SOCKET_IDLE_TIMEOUT_MS,
+  },
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
@@ -31,23 +43,37 @@ export function getPublicUrl(filename: string): string {
   return `https://${BUCKET_NAME}.s3.${region}.amazonaws.com/${filename}`;
 }
 
+// S3 returns at most this many keys per request.
+const KEYS_PER_LIST_REQUEST = 1000;
+
+/** Every key under `options`, following continuation tokens past the first 1000. */
+async function listKeys(options: { Prefix?: string; Delimiter?: string }): Promise<string[]> {
+  const keys: string[] = [];
+  let continuationToken: string | undefined;
+  do {
+    const response = await s3Client.send(
+      new ListObjectsV2Command({
+        Bucket: BUCKET_NAME,
+        MaxKeys: KEYS_PER_LIST_REQUEST,
+        ContinuationToken: continuationToken,
+        ...options,
+      })
+    );
+    for (const object of response.Contents ?? []) {
+      if (object.Key) keys.push(object.Key);
+    }
+    continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+  } while (continuationToken);
+  return keys;
+}
+
 /**
- * List all PDF files in the S3 bucket
+ * List all legacy PDF files (bucket root only). The delimiter keeps S3 from
+ * walking the shipping-label-pages/ and shipping-label-uploads/ trees, which
+ * grow with every new label.
  */
 export async function listAllLabels(): Promise<string[]> {
-  const command = new ListObjectsV2Command({
-    Bucket: BUCKET_NAME,
-  });
-
-  const response = await s3Client.send(command);
-
-  if (!response.Contents) {
-    return [];
-  }
-
-  return filterLegacyLabelKeys(
-    response.Contents.flatMap((obj) => (obj.Key ? [obj.Key] : []))
-  );
+  return filterLegacyLabelKeys(await listKeys({ Delimiter: "/" }));
 }
 
 /**
@@ -55,24 +81,13 @@ export async function listAllLabels(): Promise<string[]> {
  * Matches patterns: {orderId}.pdf, {orderId}-1.pdf, {orderId}-2.pdf, etc.
  */
 export async function listLabelsForOrder(orderId: string): Promise<string[]> {
-  const command = new ListObjectsV2Command({
-    Bucket: BUCKET_NAME,
-    Prefix: orderId,
-  });
-
-  const response = await s3Client.send(command);
-
-  if (!response.Contents) {
-    return [];
-  }
+  const keys = await listKeys({ Prefix: orderId, Delimiter: "/" });
 
   // Filter to only include exact matches for this order ID
   // (orderId.pdf or orderId-N.pdf); the id is escaped before building the regex.
   const regex = legacyLabelKeyPattern(orderId);
 
-  return response.Contents.filter((obj) => obj.Key && regex.test(obj.Key)).map(
-    (obj) => obj.Key as string
-  );
+  return keys.filter((key) => regex.test(key));
 }
 
 /**
