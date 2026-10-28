@@ -29,6 +29,12 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   productionBrowserSourceMaps: false,
+  images: {
+    // The image optimizer answered "isn't a valid image" (400) for every file in
+    // public/, which broke the thumbnails on /print and /setup-utility. The
+    // images are small and only used on the shop network, so serve them as-is.
+    unoptimized: true,
+  },
   async rewrites() {
     return {
       beforeFiles: [
