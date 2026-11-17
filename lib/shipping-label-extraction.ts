@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+import { extractTrackingFromPdfText } from "@/lib/shipping-label-text";
 import type { TrackingInfo } from "@/types/shipping";
 import type { ShippingLabelCarrier } from "@/types/shipping-labels";
 
@@ -18,6 +19,10 @@ const HTTP_PAYLOAD_TOO_LARGE = 413;
 const HTTP_UNPROCESSABLE = 422;
 const UNREADABLE_TRACKING_ERROR =
   "Tracking number could not be read from this label.";
+// Gemini answers 402 once prepaid credits run out (429 when the quota is hit).
+const OUT_OF_CREDITS_ERROR = /\b402\b|\b429\b|Payment Required|credits are depleted|quota/i;
+export const AI_UNAVAILABLE_ERROR =
+  "AI label scan is unavailable (the Gemini account is out of credits). Enter the tracking number by hand.";
 
 export type ExtractionOptions = {
   /** Caller cancellation (e.g. the incoming request's signal). */
@@ -128,6 +133,11 @@ export async function extractTrackingInfoCandidate(
   pdfBuffer: Buffer,
   options: ExtractionOptions = {}
 ): Promise<unknown> {
+  // Labels with real text (FedEx, UPS) are read locally: free, instant, and
+  // still working when the AI account is out of credits.
+  const fromText = await extractTrackingFromPdfText(pdfBuffer);
+  if (fromText) return fromText;
+
   let latestCandidate: unknown = null;
   let latestError: unknown = null;
 
@@ -148,6 +158,9 @@ export async function extractTrackingInfoCandidate(
   }
 
   if (latestCandidate) return latestCandidate;
+  if (latestError instanceof Error && OUT_OF_CREDITS_ERROR.test(latestError.message)) {
+    throw new Error(AI_UNAVAILABLE_ERROR);
+  }
   throw latestError instanceof Error
     ? latestError
     : new Error("Failed to extract tracking information.");
