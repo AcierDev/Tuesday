@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { MongoServerError } from "mongodb";
 
 import clientPromise from "@/app/api/db/connect";
+import { GEMINI_DEFAULT_MODEL } from "@/config/gemini";
 import { laDayKey, shiftDayKey } from "@/lib/debt-metrics";
 import {
   buildDeliveryNarrative, calculateDeliveryMetrics, deliverySeverity,
@@ -12,7 +13,7 @@ import {
 const DATABASE_NAME = "react-web-app";
 const REPORT_COLLECTION = `delivery-briefings-${process.env.NEXT_PUBLIC_MODE}`;
 const ITEM_COLLECTION = `items-${process.env.NEXT_PUBLIC_MODE}`;
-const MODEL_NAME = process.env.GEMINI_BRIEFING_MODEL || "gemini-2.5-flash-lite";
+const MODEL_NAME = process.env.GEMINI_BRIEFING_MODEL || GEMINI_DEFAULT_MODEL;
 const MODEL_TIMEOUT_MS = 30_000;
 const MODEL_MAX_OUTPUT_TOKENS = 700;
 const MODEL_TEMPERATURE = 0.2;

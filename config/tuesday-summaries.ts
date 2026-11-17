@@ -1,6 +1,8 @@
+import { GEMINI_DEFAULT_MODEL } from "./gemini";
+
 export const TUESDAY_SUMMARIES = {
   collection: "ask-tuesday-summaries",
-  defaultModel: "gemini-2.5-flash-lite",
+  defaultModel: GEMINI_DEFAULT_MODEL,
   maxGenerationsPerRun: 2,
   modelTimeoutMs: 30_000,
   attemptLeaseMs: 45_000,

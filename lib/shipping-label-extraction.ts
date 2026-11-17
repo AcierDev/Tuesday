@@ -1,10 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+import { GEMINI_DEFAULT_MODEL } from "@/config/gemini";
 import { extractTrackingFromPdfText } from "@/lib/shipping-label-text";
 import type { TrackingInfo } from "@/types/shipping";
 import type { ShippingLabelCarrier } from "@/types/shipping-labels";
 
-const GEMINI_LABEL_EXTRACTION_MODEL = "gemini-2.5-flash-lite";
+const GEMINI_LABEL_EXTRACTION_MODEL = GEMINI_DEFAULT_MODEL;
 const MAX_EXTRACTION_ATTEMPTS = 2;
 // One Gemini call per attempt; abort instead of hanging an upload request.
 export const GEMINI_EXTRACTION_TIMEOUT_MS = 30_000;
